@@ -1,0 +1,7 @@
+.claude/
+*.env
+__pycache__/
+*.pyc
+node_modules/
+ultimo-briefing.md
+briefing_*.md

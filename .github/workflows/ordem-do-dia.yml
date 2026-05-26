@@ -1,0 +1,56 @@
+name: Briefing Ordem do Dia — Câmara de Santos
+
+on:
+  # Roda às 23h (horário de Brasília) nas segundas e quartas
+  # = 02h UTC nas terças e quintas (UTC-3)
+  # Briefing chega na véspera da sessão, pronto para o dia seguinte
+  schedule:
+    - cron: "0 2 * * 2,4"   # 02h UTC ter/qui = 23h BRT seg/qua
+
+  # Permite rodar manualmente pelo GitHub (útil para testes)
+  workflow_dispatch:
+    inputs:
+      sessao_id:
+        description: "ID da sessão (deixe vazio para a mais recente)"
+        required: false
+        default: ""
+
+jobs:
+  gerar-briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: ordem-do-dia/requirements.txt
+
+      - name: Instalar dependências
+        run: pip install -r ordem-do-dia/requirements.txt
+
+      - name: Gerar briefing e enviar por e-mail
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}
+        run: |
+          SESSAO_ARG=""
+          if [ -n "${{ github.event.inputs.sessao_id }}" ]; then
+            SESSAO_ARG="--sessao ${{ github.event.inputs.sessao_id }}"
+          fi
+          python ordem-do-dia/index.py $SESSAO_ARG --email --output ordem-do-dia/ultimo-briefing.md
+
+      - name: Salvar briefing como artefato
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: briefing-${{ github.run_id }}
+          path: ordem-do-dia/ultimo-briefing.md
+          retention-days: 30

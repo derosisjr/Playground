@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar de Pauta do Gabinete</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Assistente de Sessao e Pauta</p>
+          <h1>Transforme a pauta da Camara em briefing de plenario em minutos.</h1>
+          <p class="hero-text">
+            Cole a pauta da sessao, carregue um PDF convertido em texto ou use
+            um exemplo. O sistema separa materias, estima impacto politico e
+            gera falas para o vereador.
+          </p>
+          <div class="hero-actions">
+            <button id="loadSampleButton" class="primary-button" type="button">
+              Carregar pauta de exemplo
+            </button>
+            <button id="generateButton" class="secondary-button" type="button">
+              Gerar briefing
+            </button>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <span class="card-label">Fluxo do MVP</span>
+          <ol>
+            <li>Entrada da pauta</li>
+            <li>Leitura item a item</li>
+            <li>Radar politico do mandato</li>
+            <li>Falas para plenario</li>
+            <li>Resumo executivo da sessao</li>
+          </ol>
+        </aside>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel panel-input">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Entrada</p>
+              <h2>Pauta da sessao</h2>
+            </div>
+            <label class="upload-chip" for="fileInput">
+              Importar TXT
+            </label>
+          </div>
+
+          <input id="fileInput" type="file" accept=".txt" hidden />
+
+          <textarea
+            id="agendaInput"
+            spellcheck="false"
+            placeholder="Exemplo:
+PROJETO DE LEI 123/2026 - Autor: Executivo - Institui programa de mutirao de exames.
+REQUERIMENTO 44/2026 - Autor: Vereador Joao - Solicita informacoes sobre obras no bairro Centro."
+          ></textarea>
+
+          <div class="settings-grid">
+            <label>
+              Nome do vereador
+              <input id="councilorName" type="text" value="Vereador(a) do Gabinete" />
+            </label>
+            <label>
+              Prioridades do mandato
+              <input
+                id="mandateFocus"
+                type="text"
+                value="saude, bairros perifericos, transparencia, zeladoria"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel panel-summary">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Resumo</p>
+              <h2>Visao executiva</h2>
+            </div>
+            <span id="sessionStatus" class="status-pill">Aguardando leitura</span>
+          </div>
+
+          <div id="summaryCards" class="summary-cards"></div>
+
+          <div class="summary-block">
+            <h3>Leitura politica</h3>
+            <p id="politicalRead">
+              Nenhuma pauta processada ainda. Carregue um exemplo para ver a
+              leitura do dia.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel panel-items">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Materias</p>
+              <h2>Itens identificados</h2>
+            </div>
+          </div>
+
+          <div id="itemsList" class="items-list empty-state">
+            Nenhum item processado ainda.
+          </div>
+        </section>
+
+        <section class="panel panel-briefing">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Plenario</p>
+              <h2>Briefing do vereador</h2>
+            </div>
+          </div>
+
+          <div id="briefingOutput" class="briefing-output">
+            <p>
+              O briefing aparecera aqui com fala curta, fala media e pontos de
+              atencao assim que a pauta for analisada.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
