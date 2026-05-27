@@ -111,6 +111,9 @@ Produza EXATAMENTE nesta estrutura markdown:
 #### ⚖️ Posicionamento Sugerido
 **[OPÇÃO EM MAIÚSCULAS]** — [justificativa política em 2 linhas, considerando agenda do vereador e contexto da Câmara]
 
+#### 💡 Emenda Sugerida
+[Se houver oportunidade real de melhoria, correção técnica ou ajuste político favorável ao mandato do PL, proponha uma emenda com: texto objetivo da emenda, finalidade e justificativa política. Se não houver oportunidade relevante, escreva apenas: "Não há emenda pertinente neste momento."]
+
 ---
 
 ## AGENDA POLÍTICA
@@ -129,7 +132,8 @@ Regras:
 - Seja direto e use linguagem política afiada, não burocrática
 - Considere sempre o contexto de Santos: cidade portuária, turismo, servidores públicos, baixada santista
 - Se não tiver informação suficiente para algum campo, escreva o que for razoável inferir do contexto municipal
-- Nunca deixe campos em branco — use o bom senso político de um assessor experiente"""
+- Nunca deixe campos em branco — use o bom senso político de um assessor experiente
+- **CRÍTICO: Complete TODOS os itens da pauta sem exceção. Se necessário, seja mais conciso nos itens intermediários para garantir que o último item receba a mesma profundidade. Jamais interrompa um item no meio.**"""
 
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
@@ -210,19 +214,37 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
         ensure_ascii=False, indent=2
     )
 
+    system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
+    messages = [{
+        "role": "user",
+        "content": (
+            f"Produza o briefing completo e aprofundado para a seguinte sessão:\n\n"
+            f"```json\n{pauta_json}\n```"
+        ),
+    }]
+
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=8192,
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Produza o briefing completo e aprofundado para a seguinte sessão:\n\n"
-                f"```json\n{pauta_json}\n```"
-            ),
-        }],
+        system=system,
+        messages=messages,
     )
-    return message.content[0].text
+    texto = message.content[0].text
+
+    # continuação automática se o modelo atingiu o limite de tokens
+    if message.stop_reason == "max_tokens":
+        print("Limite de tokens atingido — solicitando continuação...", file=sys.stderr)
+        messages.append({"role": "assistant", "content": texto})
+        messages.append({"role": "user", "content": "Continue o briefing exatamente do ponto onde parou, sem repetir o que já foi escrito."})
+        continuacao = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=8192,
+            system=system,
+            messages=messages,
+        )
+        texto += continuacao.content[0].text
+
+    return texto
 
 
 # ── HTML do e-mail ────────────────────────────────────────────────────────────
@@ -245,6 +267,7 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
     corpo_html = corpo_html.replace("🔴 Alta", '<span class="pri alta">Alta</span>')
     corpo_html = corpo_html.replace("🟡 Média", '<span class="pri media">Média</span>')
     corpo_html = corpo_html.replace("🟢 Baixa", '<span class="pri baixa">Baixa</span>')
+    corpo_html = corpo_html.replace("💡 Emenda Sugerida", '💡 <strong style="color:#003087">Emenda Sugerida</strong>')
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -253,109 +276,170 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Briefing — {sessao_nome}</title>
 <style>
-  /* Reset e base */
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #f0f2f5;
+    background: #eef1f6;
     color: #1a1a2e;
     font-size: 15px;
-    line-height: 1.7;
+    line-height: 1.75;
   }}
 
-  /* Container */
-  .wrapper {{ max-width: 720px; margin: 0 auto; background: #fff; }}
+  .wrapper {{ max-width: 740px; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }}
 
-  /* Cabeçalho */
+  /* ── Faixa dourada superior ── */
+  .top-stripe {{
+    height: 6px;
+    background: linear-gradient(90deg, #FFB81C 0%, #e6a200 100%);
+  }}
+
+  /* ── Cabeçalho PL ── */
   .header {{
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-    padding: 40px 40px 32px;
+    background: linear-gradient(135deg, #002575 0%, #003087 55%, #004aad 100%);
+    padding: 36px 44px 30px;
     color: #fff;
+    position: relative;
+    overflow: hidden;
   }}
-  .header-label {{
+  .header::after {{
+    content: '';
+    position: absolute;
+    right: -30px; top: -30px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,184,28,0.08);
+    pointer-events: none;
+  }}
+  .header-top {{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }}
+  .header-party {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }}
+  .pl-badge {{
+    background: #FFB81C;
+    color: #003087;
+    font-size: 20px;
+    font-weight: 900;
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: -1px;
+    flex-shrink: 0;
+  }}
+  .party-info {{
+    line-height: 1.3;
+  }}
+  .party-name {{
     font-size: 11px;
     font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #FFB81C;
+  }}
+  .vereador-name {{
+    font-size: 17px;
+    font-weight: 800;
+    color: #fff;
+  }}
+  .header-subtitle {{
+    font-size: 11px;
+    font-weight: 600;
     letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: #e94560;
-    margin-bottom: 10px;
+    color: rgba(255,184,28,0.85);
+    margin-bottom: 6px;
   }}
   .header h1 {{
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1.3;
+    font-size: 24px;
+    font-weight: 800;
     color: #fff;
-    margin-bottom: 16px;
+    line-height: 1.25;
+    margin-bottom: 20px;
   }}
   .header-meta {{
     display: flex;
-    gap: 20px;
+    gap: 10px;
     flex-wrap: wrap;
   }}
   .meta-pill {{
     background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,184,28,0.35);
     border-radius: 20px;
-    padding: 4px 14px;
+    padding: 5px 14px;
     font-size: 12px;
-    color: #cdd6f4;
+    color: #e8eeff;
     font-weight: 500;
   }}
 
-  /* Corpo */
-  .body {{ padding: 36px 40px; }}
+  /* ── Corpo ── */
+  .body {{ padding: 40px 44px; }}
 
-  /* Seções */
+  /* Seções h2 */
   .body h2 {{
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 2px;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: #e94560;
-    border-bottom: 2px solid #e94560;
-    padding-bottom: 8px;
-    margin: 40px 0 20px;
+    color: #003087;
+    border-bottom: 2px solid #FFB81C;
+    padding-bottom: 7px;
+    margin: 44px 0 20px;
   }}
   .body h2:first-child {{ margin-top: 0; }}
 
-  /* Sub-seções por item */
+  /* Item da pauta h3 */
   .body h3 {{
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
-    color: #0f3460;
-    margin: 36px 0 4px;
-    padding: 16px 20px;
-    background: #f8f9ff;
-    border-left: 4px solid #0f3460;
+    color: #002575;
+    margin: 40px 0 4px;
+    padding: 14px 20px;
+    background: #f0f4ff;
+    border-left: 5px solid #003087;
     border-radius: 0 8px 8px 0;
     line-height: 1.4;
   }}
 
+  /* Sub-seção h4 */
   .body h4 {{
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.8px;
     text-transform: uppercase;
     color: #6b7280;
-    margin: 24px 0 8px;
+    margin: 22px 0 7px;
   }}
 
-  /* Blockquote (ementa resumida) */
+  /* Ementa blockquote */
   .body blockquote {{
-    border-left: 3px solid #e94560;
+    border-left: 3px solid #FFB81C;
     padding: 10px 18px;
-    margin: 12px 0 20px;
-    background: #fff5f7;
+    margin: 12px 0 18px;
+    background: #fffbf0;
     border-radius: 0 6px 6px 0;
     font-style: italic;
     color: #4a4a6a;
     font-size: 14px;
+    text-align: left;
   }}
 
-  /* Parágrafos e listas */
-  .body p {{ margin: 10px 0; color: #374151; }}
+  /* Parágrafos */
+  .body p {{
+    margin: 10px 0;
+    color: #374151;
+    text-align: justify;
+    hyphens: auto;
+  }}
   .body ul, .body ol {{ padding-left: 22px; margin: 8px 0; }}
-  .body li {{ margin: 5px 0; color: #374151; }}
+  .body li {{ margin: 5px 0; color: #374151; text-align: justify; }}
   .body strong {{ color: #1a1a2e; font-weight: 700; }}
 
   /* Tabela termômetro */
@@ -363,28 +447,29 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    margin: 16px 0;
+    margin: 16px 0 24px;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 1px 6px rgba(0,48,135,0.10);
   }}
   .body th {{
-    background: #1a1a2e;
-    color: #cdd6f4;
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 1px;
+    background: #003087;
+    color: #e8eeff;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
     padding: 11px 14px;
     text-align: left;
   }}
   .body td {{
     padding: 10px 14px;
-    border-bottom: 1px solid #f0f0f5;
+    border-bottom: 1px solid #eef0f8;
     vertical-align: middle;
+    text-align: left;
   }}
   .body tr:last-child td {{ border-bottom: none; }}
-  .body tr:nth-child(even) td {{ background: #fafafa; }}
+  .body tr:nth-child(even) td {{ background: #f7f9ff; }}
 
   /* Badges posicionamento */
   .badge {{
@@ -403,48 +488,61 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   /* Prioridade */
   .pri {{
     display: inline-block;
-    padding: 2px 8px;
+    padding: 2px 9px;
     border-radius: 10px;
     font-size: 11px;
     font-weight: 700;
   }}
   .pri.alta {{ background: #fde8e8; color: #c0392b; }}
-  .pri.media {{ background: #fef3cd; color: #856404; }}
+  .pri.media {{ background: #fff3cd; color: #856404; }}
   .pri.baixa {{ background: #d4edda; color: #155724; }}
-
-  /* Bloco de posicionamento */
-  .body p strong:only-child {{ display: block; }}
 
   /* Separador */
   .body hr {{
     border: none;
     border-top: 1px solid #e5e7eb;
-    margin: 32px 0;
+    margin: 36px 0;
+  }}
+
+  /* ── Faixa dourada inferior ── */
+  .bottom-stripe {{
+    height: 4px;
+    background: linear-gradient(90deg, #003087 0%, #FFB81C 100%);
   }}
 
   /* Rodapé */
   .footer {{
-    background: #f8f9ff;
-    border-top: 1px solid #e5e7eb;
-    padding: 24px 40px;
+    background: #f4f6fb;
+    padding: 22px 44px;
     text-align: center;
     font-size: 12px;
     color: #9ca3af;
-    line-height: 1.8;
+    line-height: 1.9;
   }}
-  .footer a {{ color: #0f3460; text-decoration: none; }}
+  .footer a {{ color: #003087; text-decoration: none; font-weight: 600; }}
 </style>
 </head>
 <body>
 <div class="wrapper">
 
+  <div class="top-stripe"></div>
+
   <div class="header">
-    <div class="header-label">Câmara Municipal de Santos</div>
+    <div class="header-top">
+      <div class="header-party">
+        <div class="pl-badge">PL</div>
+        <div class="party-info">
+          <div class="party-name">Partido Liberal</div>
+          <div class="vereador-name">Rui de Rosis Jr.</div>
+        </div>
+      </div>
+    </div>
+    <div class="header-subtitle">Câmara Municipal de Santos</div>
     <h1>Briefing da Ordem do Dia</h1>
     <div class="header-meta">
       <span class="meta-pill">📅 {sessao_nome}</span>
       <span class="meta-pill">📋 {qtd_itens} itens na pauta</span>
-      <span class="meta-pill">🕐 Gerado às {agora}</span>
+      <span class="meta-pill">🕐 {agora}</span>
     </div>
   </div>
 
@@ -452,9 +550,11 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
     {corpo_html}
   </div>
 
+  <div class="bottom-stripe"></div>
+
   <div class="footer">
-    Gerado automaticamente por IA · Câmara Municipal de Santos<br>
-    <a href="https://www.camarasantos.sp.gov.br/ordem-do-dia">Ver pauta oficial</a>
+    Análise gerada por inteligência artificial para uso interno do gabinete<br>
+    <a href="https://www.camarasantos.sp.gov.br/ordem-do-dia">Acessar pauta oficial da Câmara de Santos</a>
   </div>
 
 </div>
