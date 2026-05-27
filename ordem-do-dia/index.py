@@ -279,104 +279,116 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #eef1f6;
+    background: #0D1117;
     color: #1a1a2e;
     font-size: 15px;
     line-height: 1.75;
   }}
 
-  .wrapper {{ max-width: 740px; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }}
+  .wrapper {{ max-width: 740px; margin: 0 auto; background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,0.25); }}
 
   /* ── Faixa dourada superior ── */
   .top-stripe {{
-    height: 6px;
-    background: linear-gradient(90deg, #FFB81C 0%, #e6a200 100%);
+    height: 3px;
+    background: linear-gradient(90deg, #C9A84C, #E8D48B, #C9A84C);
   }}
 
-  /* ── Cabeçalho PL ── */
+  /* ── Cabeçalho Navy ── */
   .header {{
-    background: linear-gradient(135deg, #002575 0%, #003087 55%, #004aad 100%);
-    padding: 36px 44px 30px;
+    background: #0A1628;
+    padding: 32px 40px 28px;
     color: #fff;
-    position: relative;
-    overflow: hidden;
-  }}
-  .header::after {{
-    content: '';
-    position: absolute;
-    right: -30px; top: -30px;
-    width: 220px; height: 220px;
-    border-radius: 50%;
-    background: rgba(255,184,28,0.08);
-    pointer-events: none;
   }}
   .header-top {{
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }}
   .header-party {{
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
   }}
   .pl-badge {{
-    background: #FFB81C;
-    color: #003087;
-    font-size: 20px;
-    font-weight: 900;
-    width: 48px; height: 48px;
-    border-radius: 10px;
+    border: 1.5px solid #C9A84C;
+    color: #C9A84C;
+    font-size: 15px;
+    font-weight: 600;
+    width: 44px; height: 44px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    letter-spacing: -1px;
+    letter-spacing: 1px;
     flex-shrink: 0;
   }}
   .party-info {{
     line-height: 1.3;
   }}
   .party-name {{
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    color: #FFB81C;
+    color: #C9A84C;
   }}
   .vereador-name {{
-    font-size: 17px;
-    font-weight: 800;
-    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    color: #E8E6E1;
+    margin-top: 2px;
   }}
-  .header-subtitle {{
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 2.5px;
+  .header-camara {{
+    text-align: right;
+  }}
+  .header-camara span {{
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    color: rgba(255,184,28,0.85);
-    margin-bottom: 6px;
+    color: #6B7A8D;
+  }}
+  .header-divider {{
+    border: none;
+    border-top: 0.5px solid rgba(201,168,76,0.2);
+    margin: 0 0 20px;
   }}
   .header h1 {{
-    font-size: 24px;
-    font-weight: 800;
-    color: #fff;
-    line-height: 1.25;
+    font-size: 22px;
+    font-weight: 500;
+    color: #F5F3EE;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
     margin-bottom: 20px;
   }}
   .header-meta {{
     display: flex;
-    gap: 10px;
+    gap: 24px;
     flex-wrap: wrap;
   }}
-  .meta-pill {{
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,184,28,0.35);
-    border-radius: 20px;
-    padding: 5px 14px;
-    font-size: 12px;
-    color: #e8eeff;
-    font-weight: 500;
+  .meta-item {{
+    display: flex;
+    flex-direction: column;
+  }}
+  .meta-label {{
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #4A5568;
+    margin-bottom: 3px;
+  }}
+  .meta-value {{
+    font-size: 13px;
+    color: #B8C1CC;
+    font-weight: 400;
+  }}
+  .meta-divider {{
+    width: 0.5px;
+    background: rgba(201,168,76,0.15);
+    align-self: stretch;
   }}
 
   /* ── Corpo ── */
@@ -385,11 +397,11 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   /* Seções h2 */
   .body h2 {{
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 2.5px;
     text-transform: uppercase;
-    color: #003087;
-    border-bottom: 2px solid #FFB81C;
+    color: #0A1628;
+    border-bottom: 2px solid #C9A84C;
     padding-bottom: 7px;
     margin: 44px 0 20px;
   }}
@@ -398,13 +410,13 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   /* Item da pauta h3 */
   .body h3 {{
     font-size: 16px;
-    font-weight: 700;
-    color: #002575;
+    font-weight: 600;
+    color: #0A1628;
     margin: 40px 0 4px;
     padding: 14px 20px;
-    background: #f0f4ff;
-    border-left: 5px solid #003087;
-    border-radius: 0 8px 8px 0;
+    background: #F4F5F7;
+    border-left: 4px solid #0A1628;
+    border-radius: 0;
     line-height: 1.4;
   }}
 
@@ -414,17 +426,17 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
     font-weight: 700;
     letter-spacing: 1.8px;
     text-transform: uppercase;
-    color: #6b7280;
+    color: #6B7A8D;
     margin: 22px 0 7px;
   }}
 
   /* Ementa blockquote */
   .body blockquote {{
-    border-left: 3px solid #FFB81C;
+    border-left: 3px solid #C9A84C;
     padding: 10px 18px;
     margin: 12px 0 18px;
-    background: #fffbf0;
-    border-radius: 0 6px 6px 0;
+    background: #FDFBF6;
+    border-radius: 0;
     font-style: italic;
     color: #4a4a6a;
     font-size: 14px;
@@ -440,7 +452,7 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   }}
   .body ul, .body ol {{ padding-left: 22px; margin: 8px 0; }}
   .body li {{ margin: 5px 0; color: #374151; text-align: justify; }}
-  .body strong {{ color: #1a1a2e; font-weight: 700; }}
+  .body strong {{ color: #0A1628; font-weight: 700; }}
 
   /* Tabela termômetro */
   .body table {{
@@ -448,14 +460,12 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
     border-collapse: collapse;
     font-size: 13px;
     margin: 16px 0 24px;
-    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 1px 6px rgba(0,48,135,0.10);
   }}
   .body th {{
-    background: #003087;
-    color: #e8eeff;
-    font-weight: 700;
+    background: #0A1628;
+    color: #D4CBB8;
+    font-weight: 600;
     font-size: 10px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
@@ -464,62 +474,64 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   }}
   .body td {{
     padding: 10px 14px;
-    border-bottom: 1px solid #eef0f8;
+    border-bottom: 1px solid #ECEDF0;
     vertical-align: middle;
     text-align: left;
   }}
   .body tr:last-child td {{ border-bottom: none; }}
-  .body tr:nth-child(even) td {{ background: #f7f9ff; }}
+  .body tr:nth-child(even) td {{ background: #F8F8FA; }}
 
   /* Badges posicionamento */
   .badge {{
     display: inline-block;
     padding: 3px 10px;
-    border-radius: 12px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
+    letter-spacing: 0.3px;
   }}
-  .badge.favor {{ background: #dcfce7; color: #166534; }}
-  .badge.contra {{ background: #fee2e2; color: #991b1b; }}
-  .badge.abstencao {{ background: #fef9c3; color: #854d0e; }}
-  .badge.acompanhar {{ background: #e0f2fe; color: #075985; }}
+  .badge.favor {{ background: #E8F5E9; color: #1B5E20; }}
+  .badge.contra {{ background: #FFEBEE; color: #B71C1C; }}
+  .badge.abstencao {{ background: #FFF8E1; color: #795506; }}
+  .badge.acompanhar {{ background: #E3F2FD; color: #0D47A1; }}
 
   /* Prioridade */
   .pri {{
     display: inline-block;
     padding: 2px 9px;
-    border-radius: 10px;
+    border-radius: 3px;
     font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.3px;
   }}
-  .pri.alta {{ background: #fde8e8; color: #c0392b; }}
-  .pri.media {{ background: #fff3cd; color: #856404; }}
-  .pri.baixa {{ background: #d4edda; color: #155724; }}
+  .pri.alta {{ background: #FFEBEE; color: #B71C1C; }}
+  .pri.media {{ background: #FFF8E1; color: #795506; }}
+  .pri.baixa {{ background: #E8F5E9; color: #1B5E20; }}
 
   /* Separador */
   .body hr {{
     border: none;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #ECEDF0;
     margin: 36px 0;
   }}
 
-  /* ── Faixa dourada inferior ── */
+  /* ── Faixa inferior ── */
   .bottom-stripe {{
-    height: 4px;
-    background: linear-gradient(90deg, #003087 0%, #FFB81C 100%);
+    height: 2px;
+    background: linear-gradient(90deg, #0A1628, #C9A84C, #0A1628);
   }}
 
   /* Rodapé */
   .footer {{
-    background: #f4f6fb;
+    background: #F4F5F7;
     padding: 22px 44px;
     text-align: center;
     font-size: 12px;
     color: #9ca3af;
     line-height: 1.9;
   }}
-  .footer a {{ color: #003087; text-decoration: none; font-weight: 600; }}
+  .footer a {{ color: #0A1628; text-decoration: none; font-weight: 600; }}
 </style>
 </head>
 <body>
@@ -536,13 +548,28 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
           <div class="vereador-name">Rui de Rosis Jr.</div>
         </div>
       </div>
+      <div class="header-camara">
+        <span>Câmara Municipal</span>
+        <span>de Santos</span>
+      </div>
     </div>
-    <div class="header-subtitle">Câmara Municipal de Santos</div>
+    <hr class="header-divider">
     <h1>Briefing da Ordem do Dia</h1>
     <div class="header-meta">
-      <span class="meta-pill">📅 {sessao_nome}</span>
-      <span class="meta-pill">📋 {qtd_itens} itens na pauta</span>
-      <span class="meta-pill">🕐 {agora}</span>
+      <div class="meta-item">
+        <span class="meta-label">Sessão</span>
+        <span class="meta-value">{sessao_nome}</span>
+      </div>
+      <div class="meta-divider"></div>
+      <div class="meta-item">
+        <span class="meta-label">Pauta</span>
+        <span class="meta-value">{qtd_itens} itens</span>
+      </div>
+      <div class="meta-divider"></div>
+      <div class="meta-item">
+        <span class="meta-label">Gerado em</span>
+        <span class="meta-value">{agora}</span>
+      </div>
     </div>
   </div>
 
