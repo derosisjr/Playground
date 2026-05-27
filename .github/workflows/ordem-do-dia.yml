@@ -1,17 +1,12 @@
-name: Briefing Ordem do Dia — Câmara de Santos
+name: Briefing Ordem do Dia
 
 on:
-  # Roda às 23h (horário de Brasília) nas segundas e quartas
-  # = 02h UTC nas terças e quintas (UTC-3)
-  # Briefing chega na véspera da sessão, pronto para o dia seguinte
   schedule:
-    - cron: "0 2 * * 2,4"   # 02h UTC ter/qui = 23h BRT seg/qua
-
-  # Permite rodar manualmente pelo GitHub (útil para testes)
+    - cron: "0 2 * * 2,4"
   workflow_dispatch:
     inputs:
       sessao_id:
-        description: "ID da sessão (deixe vazio para a mais recente)"
+        description: "ID da sessao (vazio = mais recente)"
         required: false
         default: ""
 
@@ -21,7 +16,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout do repositório
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configurar Python
@@ -31,7 +26,7 @@ jobs:
           cache: "pip"
           cache-dependency-path: ordem-do-dia/requirements.txt
 
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install -r ordem-do-dia/requirements.txt
 
       - name: Gerar briefing e enviar por e-mail
