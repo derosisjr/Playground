@@ -137,18 +137,17 @@ Regras:
 
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
-def fetch_html(url: str) -> str:
+def fetch_html(url: str) -> bytes:
     resp = requests.get(url, headers=HEADERS, timeout=30)
     resp.raise_for_status()
-    resp.encoding = "utf-8"
-    return resp.text
+    return resp.content
 
 
 def get_sessao(sessao_id: str | None) -> dict:
     if sessao_id:
         return {"id": sessao_id, "nome": f"Sessão {sessao_id}"}
     html = fetch_html(IFRAME_URL)
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")  # BeautifulSoup detecta charset do meta
     options = soup.select("#selSessao option")[1:]
     if not options:
         raise RuntimeError("Nenhuma sessão encontrada.")
@@ -291,104 +290,6 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
   .top-stripe {{
     height: 3px;
     background: linear-gradient(90deg, #C9A84C, #E8D48B, #C9A84C);
-  }}
-
-  /* ── Cabeçalho Navy ── */
-  .header {{
-    background: #0A1628;
-    padding: 32px 40px 28px;
-    color: #fff;
-  }}
-  .header-top {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-  }}
-  .header-party {{
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }}
-  .pl-badge {{
-    border: 1.5px solid #C9A84C;
-    color: #C9A84C;
-    font-size: 15px;
-    font-weight: 600;
-    width: 44px; height: 44px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 1px;
-    flex-shrink: 0;
-  }}
-  .party-info {{
-    line-height: 1.3;
-  }}
-  .party-name {{
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #C9A84C;
-  }}
-  .vereador-name {{
-    font-size: 16px;
-    font-weight: 500;
-    color: #E8E6E1;
-    margin-top: 2px;
-  }}
-  .header-camara {{
-    text-align: right;
-  }}
-  .header-camara span {{
-    display: block;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #6B7A8D;
-  }}
-  .header-divider {{
-    border: none;
-    border-top: 0.5px solid rgba(201,168,76,0.2);
-    margin: 0 0 20px;
-  }}
-  .header h1 {{
-    font-size: 22px;
-    font-weight: 500;
-    color: #F5F3EE;
-    letter-spacing: -0.3px;
-    line-height: 1.3;
-    margin-bottom: 20px;
-  }}
-  .header-meta {{
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-  }}
-  .meta-item {{
-    display: flex;
-    flex-direction: column;
-  }}
-  .meta-label {{
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #4A5568;
-    margin-bottom: 3px;
-  }}
-  .meta-value {{
-    font-size: 13px;
-    color: #B8C1CC;
-    font-weight: 400;
-  }}
-  .meta-divider {{
-    width: 0.5px;
-    background: rgba(201,168,76,0.15);
-    align-self: stretch;
   }}
 
   /* ── Corpo ── */
@@ -539,39 +440,98 @@ def montar_email_html(sessao_nome: str, qtd_itens: int, corpo_md: str, agora: st
 
   <div class="top-stripe"></div>
 
-  <div class="header">
-    <div class="header-top">
-      <div class="header-party">
-        <div class="pl-badge">PL</div>
-        <div class="party-info">
-          <div class="party-name">Partido Liberal</div>
-          <div class="vereador-name">Rui de Rosis Jr.</div>
-        </div>
-      </div>
-      <div class="header-camara">
-        <span>Câmara Municipal</span>
-        <span>de Santos</span>
-      </div>
-    </div>
-    <hr class="header-divider">
-    <h1>Briefing da Ordem do Dia</h1>
-    <div class="header-meta">
-      <div class="meta-item">
-        <span class="meta-label">Sessão</span>
-        <span class="meta-value">{sessao_nome}</span>
-      </div>
-      <div class="meta-divider"></div>
-      <div class="meta-item">
-        <span class="meta-label">Pauta</span>
-        <span class="meta-value">{qtd_itens} itens</span>
-      </div>
-      <div class="meta-divider"></div>
-      <div class="meta-item">
-        <span class="meta-label">Gerado em</span>
-        <span class="meta-value">{agora}</span>
-      </div>
-    </div>
-  </div>
+  <!-- HEADER -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#07111F" style="background:#07111F;">
+    <tr>
+      <td style="padding:32px 40px 0; background:linear-gradient(160deg,#0D1F3C 0%,#07111F 60%);">
+
+        <!-- Linha 1: PL badge + nome + câmara -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="middle" style="width:58px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="56" height="56" align="center" valign="middle"
+                      style="width:56px;height:56px;border:2px solid #C9A84C;border-radius:8px;background:rgba(201,168,76,0.08);font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:800;color:#C9A84C;letter-spacing:1.5px;text-align:center;vertical-align:middle;">
+                    PL
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td valign="middle" style="padding-left:18px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:#C9A84C;margin-bottom:5px;">PARTIDO LIBERAL</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#FFFFFF;letter-spacing:-0.3px;line-height:1.15;">Rui de Rosis Jr.</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#4A5A6A;letter-spacing:0.5px;margin-top:3px;">Vereador &nbsp;·&nbsp; C&acirc;mara Municipal de Santos</div>
+            </td>
+            <td valign="middle" align="right" style="padding-left:20px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#2A3A4A;text-align:right;line-height:2;">C&Acirc;MARA<br>MUNICIPAL<br>DE SANTOS</div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Divisor dourado -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 20px;">
+          <tr>
+            <td style="height:1px;background:linear-gradient(90deg,#C9A84C,rgba(201,168,76,0.15));font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+        </table>
+
+        <!-- Linha 2: Título -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding-bottom:24px;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#C9A84C;margin-bottom:8px;">BRIEFING POL&Iacute;TICO</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:#FFFFFF;letter-spacing:-0.5px;line-height:1.1;">Ordem do Dia</div>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+
+    <!-- Meta-cards: fundo ligeiramente mais escuro -->
+    <tr>
+      <td style="padding:0 40px;background:#050D18;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid rgba(201,168,76,0.2);">
+          <tr>
+
+            <!-- Card: Sessão -->
+            <td valign="top" style="padding:18px 20px 18px 0;width:50%;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#3A4A5A;margin-bottom:6px;">SESS&Atilde;O</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#C8D4E0;line-height:1.45;">{sessao_nome}</div>
+            </td>
+
+            <!-- Separador vertical -->
+            <td style="width:1px;background:rgba(201,168,76,0.12);font-size:0;">&nbsp;</td>
+
+            <!-- Card: Pauta -->
+            <td valign="top" align="center" style="padding:18px 20px;width:20%;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#3A4A5A;margin-bottom:6px;">PAUTA</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:700;color:#C9A84C;line-height:1;">{qtd_itens}</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#4A5A6A;margin-top:2px;">itens</div>
+            </td>
+
+            <!-- Separador vertical -->
+            <td style="width:1px;background:rgba(201,168,76,0.12);font-size:0;">&nbsp;</td>
+
+            <!-- Card: Gerado em -->
+            <td valign="top" style="padding:18px 0 18px 20px;width:30%;">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#3A4A5A;margin-bottom:6px;">GERADO EM</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#C8D4E0;line-height:1.45;">{agora}</div>
+            </td>
+
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Faixa dourada inferior do header -->
+    <tr>
+      <td style="height:3px;background:linear-gradient(90deg,#C9A84C,#E8D48B,#C9A84C);font-size:0;line-height:0;">&nbsp;</td>
+    </tr>
+
+  </table>
+  <!-- /HEADER -->
 
   <div class="body">
     {corpo_html}
