@@ -21,6 +21,7 @@ import os
 import re
 import base64
 import json
+import time
 import argparse
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -254,9 +255,10 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
             ),
         }
     ]
+    blocos_pdf: list[dict] = []
     for doc in documentos:
         for pdf in doc.get("pdfs", []):
-            content.append({
+            blocos_pdf.append({
                 "type": "document",
                 "source": {
                     "type": "base64",
@@ -266,17 +268,18 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
                 "title": f"{doc['titulo']} — {pdf['label']}",
             })
 
+    # cache_control no último bloco: na continuação os PDFs são lidos do cache
+    # (custo de 10% dos tokens de entrada, evitando rate limit)
+    if blocos_pdf:
+        blocos_pdf[-1]["cache_control"] = {"type": "ephemeral"}
+    content.extend(blocos_pdf)
+
     print(f"Enviando {n_pdfs} PDFs para o Claude...", file=sys.stderr)
 
     system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
     messages = [{"role": "user", "content": content}]
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=8192,
-        system=system,
-        messages=messages,
-    )
+    message = _chamar_api(client, system=system, messages=messages)
     texto = message.content[0].text
 
     # continuação automática se o modelo atingiu o limite de tokens
@@ -284,15 +287,23 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
         print("Limite de tokens atingido — solicitando continuação...", file=sys.stderr)
         messages.append({"role": "assistant", "content": texto})
         messages.append({"role": "user", "content": "Continue o briefing exatamente do ponto onde parou, sem repetir o que já foi escrito."})
-        continuacao = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=8192,
-            system=system,
-            messages=messages,
-        )
+        continuacao = _chamar_api(client, system=system, messages=messages)
         texto += continuacao.content[0].text
 
     return texto
+
+
+def _chamar_api(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
+    """Chama messages.create com retry automático em caso de rate limit (429)."""
+    for tentativa in range(3):
+        try:
+            return client.messages.create(model="claude-sonnet-4-6", max_tokens=8192, **kwargs)
+        except anthropic.RateLimitError:
+            if tentativa == 2:
+                raise
+            espera = 65 * (tentativa + 1)
+            print(f"Rate limit atingido. Aguardando {espera}s antes de tentar novamente...", file=sys.stderr)
+            time.sleep(espera)
 
 
 # ── HTML do e-mail ────────────────────────────────────────────────────────────
