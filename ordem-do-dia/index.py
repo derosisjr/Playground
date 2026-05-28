@@ -19,16 +19,19 @@ Variáveis de ambiente:
 import sys
 import os
 import re
+import io
 import json
 import argparse
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
+from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 import anthropic
 import markdown as md
+import pypdf
 
 BASE_URL = "https://administrativo.camarasantos.sp.gov.br"
 IFRAME_URL = f"{BASE_URL}/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/"
@@ -133,7 +136,21 @@ Regras:
 - Considere sempre o contexto de Santos: cidade portuária, turismo, servidores públicos, baixada santista
 - Se não tiver informação suficiente para algum campo, escreva o que for razoável inferir do contexto municipal
 - Nunca deixe campos em branco — use o bom senso político de um assessor experiente
-- **CRÍTICO: Complete TODOS os itens da pauta sem exceção. Se necessário, seja mais conciso nos itens intermediários para garantir que o último item receba a mesma profundidade. Jamais interrompa um item no meio.**"""
+- **CRÍTICO: Complete TODOS os itens da pauta sem exceção. Se necessário, seja mais conciso nos itens intermediários para garantir que o último item receba a mesma profundidade. Jamais interrompa um item no meio.**
+- Cada item pode conter um campo `textoCompleto` com o texto extraído dos PDFs anexados (texto do projeto, pareceres de comissões, etc.). Quando disponível, baseie a análise no texto real do documento — não apenas na ementa. Cite trechos relevantes para fundamentar o posicionamento."""
+
+
+# ── PDF ───────────────────────────────────────────────────────────────────────
+def extrair_texto_pdf(url: str, max_chars: int = 4000) -> str:
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=30)
+        resp.raise_for_status()
+        leitor = pypdf.PdfReader(io.BytesIO(resp.content))
+        partes = [p.extract_text() or "" for p in leitor.pages]
+        return "\n".join(partes).strip()[:max_chars]
+    except Exception as e:
+        print(f"  Aviso: não foi possível ler PDF {url}: {e}", file=sys.stderr)
+        return ""
 
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
@@ -160,7 +177,8 @@ def _text(tag) -> str:
 
 
 def get_documentos(sessao_id: str) -> list[dict]:
-    html = fetch_html(f"{LISTAGEM_URL}{sessao_id}")
+    page_url = f"{LISTAGEM_URL}{sessao_id}"
+    html = fetch_html(page_url)
     soup = BeautifulSoup(html, "html.parser")
     documentos = []
     for doc in soup.select(".documento"):
@@ -180,11 +198,20 @@ def get_documentos(sessao_id: str) -> list[dict]:
                 valor = tds[0].get_text(separator=" ", strip=True)
                 if valor:
                     campos[chave] = valor
-        anexos = [
-            s.get_text(strip=True)
-            for s in doc.select(".documento_rodape_anexo span")
-            if s.get_text(strip=True)
-        ]
+
+        # extrai links de PDF do rodapé do documento
+        pdfs_texto: list[str] = []
+        for a in doc.select(".documento_rodape_anexo a[href]"):
+            href = a.get("href", "")
+            if not href:
+                continue
+            pdf_url = urljoin(page_url, href)
+            label = a.get_text(strip=True) or "Documento"
+            print(f"  Lendo PDF: {label}...", file=sys.stderr)
+            texto = extrair_texto_pdf(pdf_url)
+            if texto:
+                pdfs_texto.append(f"[{label}]\n{texto}")
+
         if not titulo:
             continue
         documentos.append({
@@ -196,7 +223,7 @@ def get_documentos(sessao_id: str) -> list[dict]:
             "ementa": campos.get("Ementa", ""),
             "historico": campos.get("Histórico", ""),
             "discussao": campos.get("Discussão", ""),
-            "anexos": anexos,
+            "textoCompleto": "\n\n---\n\n".join(pdfs_texto) if pdfs_texto else "",
         })
     return documentos
 
