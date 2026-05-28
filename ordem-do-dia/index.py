@@ -19,7 +19,7 @@ Variáveis de ambiente:
 import sys
 import os
 import re
-import io
+import base64
 import json
 import argparse
 import smtplib
@@ -31,7 +31,6 @@ import requests
 from bs4 import BeautifulSoup
 import anthropic
 import markdown as md
-import pypdf
 
 BASE_URL = "https://administrativo.camarasantos.sp.gov.br"
 IFRAME_URL = f"{BASE_URL}/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/"
@@ -141,16 +140,14 @@ Regras:
 
 
 # ── PDF ───────────────────────────────────────────────────────────────────────
-def extrair_texto_pdf(url: str, max_chars: int = 4000) -> str:
+def baixar_pdf_base64(url: str) -> str | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=30)
         resp.raise_for_status()
-        leitor = pypdf.PdfReader(io.BytesIO(resp.content))
-        partes = [p.extract_text() or "" for p in leitor.pages]
-        return "\n".join(partes).strip()[:max_chars]
+        return base64.standard_b64encode(resp.content).decode("utf-8")
     except Exception as e:
-        print(f"  Aviso: não foi possível ler PDF {url}: {e}", file=sys.stderr)
-        return ""
+        print(f"  Aviso: não foi possível baixar PDF {url}: {e}", file=sys.stderr)
+        return None
 
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
@@ -199,18 +196,18 @@ def get_documentos(sessao_id: str) -> list[dict]:
                 if valor:
                     campos[chave] = valor
 
-        # extrai links de PDF do rodapé do documento
-        pdfs_texto: list[str] = []
+        # baixa PDFs do rodapé como base64 para envio direto à API do Claude
+        pdfs: list[dict] = []
         for a in doc.select(".documento_rodape_anexo a[href]"):
             href = a.get("href", "")
             if not href:
                 continue
             pdf_url = urljoin(page_url, href)
             label = a.get_text(strip=True) or "Documento"
-            print(f"  Lendo PDF: {label}...", file=sys.stderr)
-            texto = extrair_texto_pdf(pdf_url)
-            if texto:
-                pdfs_texto.append(f"[{label}]\n{texto}")
+            print(f"  Baixando PDF: {label}...", file=sys.stderr)
+            data = baixar_pdf_base64(pdf_url)
+            if data:
+                pdfs.append({"label": label, "data": data})
 
         if not titulo:
             continue
@@ -223,7 +220,7 @@ def get_documentos(sessao_id: str) -> list[dict]:
             "ementa": campos.get("Ementa", ""),
             "historico": campos.get("Histórico", ""),
             "discussao": campos.get("Discussão", ""),
-            "textoCompleto": "\n\n---\n\n".join(pdfs_texto) if pdfs_texto else "",
+            "pdfs": pdfs,
         })
     return documentos
 
@@ -235,19 +232,44 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
         raise EnvironmentError("ANTHROPIC_API_KEY não definida.")
 
     client = anthropic.Anthropic(api_key=api_key)
-    pauta_json = json.dumps(
-        {"sessao": sessao_nome, "itens": documentos},
-        ensure_ascii=False, indent=2
+
+    # metadados sem os bytes dos PDFs
+    meta = [{k: v for k, v in d.items() if k != "pdfs"} for d in documentos]
+    pauta_json = json.dumps({"sessao": sessao_nome, "itens": meta}, ensure_ascii=False, indent=2)
+
+    n_pdfs = sum(len(d.get("pdfs", [])) for d in documentos)
+    nota_pdfs = (
+        f"\n\nOs textos completos ({n_pdfs} PDFs) estão anexados como documentos abaixo. "
+        "Baseie a análise no conteúdo real dos documentos, citando trechos quando relevante."
+        if n_pdfs else ""
     )
 
+    # monta content array: texto + document blocks
+    content: list[dict] = [
+        {
+            "type": "text",
+            "text": (
+                f"Produza o briefing completo e aprofundado para a seguinte sessão:\n\n"
+                f"```json\n{pauta_json}\n```{nota_pdfs}"
+            ),
+        }
+    ]
+    for doc in documentos:
+        for pdf in doc.get("pdfs", []):
+            content.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": pdf["data"],
+                },
+                "title": f"{doc['titulo']} — {pdf['label']}",
+            })
+
+    print(f"Enviando {n_pdfs} PDFs para o Claude...", file=sys.stderr)
+
     system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
-    messages = [{
-        "role": "user",
-        "content": (
-            f"Produza o briefing completo e aprofundado para a seguinte sessão:\n\n"
-            f"```json\n{pauta_json}\n```"
-        ),
-    }]
+    messages = [{"role": "user", "content": content}]
 
     message = client.messages.create(
         model="claude-sonnet-4-6",
