@@ -474,6 +474,8 @@ def main():
                         help="Não escreve no Drive nem na planilha.")
     parser.add_argument("--limite", type=int, default=0,
                         help="Processa no máximo N itens (0 = todos).")
+    parser.add_argument("--forcar", action="store_true",
+                        help="Reprocessa mesmo itens cuja Resposta já está preenchida.")
     args = parser.parse_args()
 
     print(f"Buscando respostas do Executivo — ano {args.ano}, autor {args.autor}...",
@@ -515,8 +517,8 @@ def main():
             continue
         info = indice.get(aba, {"mapa": {}})
         existente = info["mapa"].get(num)
-        if existente and existente.get("resp"):
-            continue  # resposta já preenchida — pula
+        if existente and existente.get("resp") and not args.forcar:
+            continue  # resposta já preenchida — pula (use --forcar para reprocessar)
 
         rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
         acao = "atualiza" if existente else "nova linha"
