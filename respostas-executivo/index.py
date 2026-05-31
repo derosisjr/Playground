@@ -330,11 +330,26 @@ def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes) -> str:
     return arquivo.get("webViewLink", "")
 
 
-def numeros_registrados(sheets, sheet_id: str) -> dict[str, set[str]]:
-    """Lê o número de cada aba e devolve {aba: {números normalizados}} p/ dedup."""
-    registrados: dict[str, set[str]] = {}
+def _col_letra(idx: int) -> str:
+    """Índice 0-based → letra de coluna A1 (suficiente para até 26 colunas)."""
+    return chr(ord("A") + idx)
+
+
+def _idx_header(cabecalhos: list[str], alvo: str) -> int:
+    alvo = _sem_acento(alvo)
+    for i, h in enumerate(cabecalhos):
+        if _sem_acento(h) == alvo:
+            return i
+    return -1
+
+
+def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
+    """Lê cada aba e devolve, por aba, os índices de coluna e um mapa
+    número→{linha, resp} (resp = se a coluna Resposta já está preenchida)."""
+    indice: dict[str, dict] = {}
     for aba in ABAS:
-        registrados[aba] = set()
+        info = {"col_resp": -1, "col_dataresp": -1, "mapa": {}}
+        indice[aba] = info
         try:
             res = sheets.spreadsheets().values().get(
                 spreadsheetId=sheet_id, range=f"'{aba}'!A1:Z",
@@ -345,13 +360,43 @@ def numeros_registrados(sheets, sheet_id: str) -> dict[str, set[str]]:
         valores = res.get("values", [])
         if not valores:
             continue
-        idx = _idx_coluna_numero(valores[0])
-        if idx < 0:
+        cab = valores[0]
+        idx_num = _idx_coluna_numero(cab)
+        info["col_resp"] = _idx_header(cab, "Resposta")
+        info["col_dataresp"] = _idx_header(cab, "Data da resposta")
+        if idx_num < 0:
             continue
-        for linha in valores[1:]:
-            if len(linha) > idx and linha[idx].strip():
-                registrados[aba].add(_norm_num(linha[idx]))
-    return registrados
+        for n, linha in enumerate(valores[1:], start=2):  # nº da linha (1-based)
+            if len(linha) > idx_num and linha[idx_num].strip():
+                resp_ok = (
+                    info["col_resp"] >= 0
+                    and len(linha) > info["col_resp"]
+                    and linha[info["col_resp"]].strip() != ""
+                )
+                info["mapa"][_norm_num(linha[idx_num])] = {"linha": n, "resp": resp_ok}
+    return indice
+
+
+def atualizar_resposta(sheets, sheet_id: str, aba: str, info: dict, linha: int,
+                       resposta: str, data_resposta: str) -> None:
+    """Preenche as colunas Resposta e Data da resposta de uma linha existente."""
+    cr, cd = info["col_resp"], info["col_dataresp"]
+    if cr >= 0 and cd == cr + 1:  # colunas contíguas (caso das duas abas)
+        sheets.spreadsheets().values().update(
+            spreadsheetId=sheet_id,
+            range=f"'{aba}'!{_col_letra(cr)}{linha}:{_col_letra(cd)}{linha}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [[resposta, data_resposta]]},
+        ).execute()
+        return
+    for col, val in ((cr, resposta), (cd, data_resposta)):
+        if col >= 0:
+            sheets.spreadsheets().values().update(
+                spreadsheetId=sheet_id,
+                range=f"'{aba}'!{_col_letra(col)}{linha}",
+                valueInputOption="USER_ENTERED",
+                body={"values": [[val]]},
+            ).execute()
 
 
 def anexar_linha(sheets, sheet_id: str, aba: str, valores: dict) -> None:
@@ -365,14 +410,18 @@ def anexar_linha(sheets, sheet_id: str, aba: str, valores: dict) -> None:
     ).execute()
 
 
+def _hyperlink(url: str, texto: str, sep: str) -> str:
+    return f'=HYPERLINK("{url}"{sep}"{texto}")'
+
+
 # ── Processamento ─────────────────────────────────────────────────────────────
-def processar_item(item: dict, drive, sheet_id: str, pasta_raiz: str,
-                   dry_run: bool) -> tuple[str, dict]:
+def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
+                   sep: str = ",") -> tuple[str, dict]:
     """Baixa PDFs, sobe ao Drive e devolve (aba, valores) p/ a planilha."""
     aba = aba_do_item(item["tipo"])
-    tipo = item["tipo"] or "Documento"
     numero = item["numero"] or item["cod"]
-    nome_pasta = _slug(f"{tipo} {numero}")
+    categoria = "REQUERIMENTO" if aba == ABA_REQUERIMENTOS else "INDICACAO"
+    nome_pasta = _slug(f"{categoria}_{numero}")
 
     links_resposta = []
     pasta_id = None
@@ -385,7 +434,7 @@ def processar_item(item: dict, drive, sheet_id: str, pasta_raiz: str,
         if dados and not dry_run:
             subir_pdf(drive, pasta_id, _slug(f"PEDIDO {numero} {item['pedidoPdf']['nome']}"), dados)
 
-    # Respostas (link entra na coluna "Resposta")
+    # Respostas (arquivadas na subpasta)
     for i, pdf in enumerate(item["respostasPdf"], 1):
         dados = baixar_pdf_bytes(pdf["url"])
         if not dados:
@@ -397,12 +446,19 @@ def processar_item(item: dict, drive, sheet_id: str, pasta_raiz: str,
                 subir_pdf(drive, pasta_id, _slug(f"RESPOSTA {i} {numero} {pdf['nome']}"), dados)
             )
 
+    # Coluna "Resposta": hyperlink clicável para a subpasta com os PDFs
+    if dry_run:
+        resposta_cell = "\n".join(links_resposta)
+    else:
+        pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
+        resposta_cell = _hyperlink(pasta_url, "Resposta", sep)
+
     col_numero = "Número" if aba == ABA_INDICACOES else "Nùmero"
     valores = {
         "Assunto": item["ementa"],
         "Data da Sessão": item["dataPropositura"],
         col_numero: numero,
-        "Resposta": "\n".join(links_resposta),
+        "Resposta": resposta_cell,
         "Data da resposta": item["dataResposta"],
     }
     return aba, valores
@@ -417,7 +473,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true",
                         help="Não escreve no Drive nem na planilha.")
     parser.add_argument("--limite", type=int, default=0,
-                        help="Processa no máximo N itens novos (0 = todos).")
+                        help="Processa no máximo N itens (0 = todos).")
     args = parser.parse_args()
 
     print(f"Buscando respostas do Executivo — ano {args.ano}, autor {args.autor}...",
@@ -428,15 +484,24 @@ def main():
     drive = sheets = None
     sheet_id = os.environ.get("SHEET_ID", "")
     pasta_raiz = os.environ.get("DRIVE_FOLDER_ID", "")
-    registrados: dict[str, set[str]] = {aba: set() for aba in ABAS}
+    indice: dict[str, dict] = {aba: {"mapa": {}} for aba in ABAS}
+    sep = ","
 
     if not args.dry_run:
         if not sheet_id or not pasta_raiz:
             raise EnvironmentError("Defina SHEET_ID e DRIVE_FOLDER_ID.")
         drive, sheets = _google_services()
-        registrados = numeros_registrados(sheets, sheet_id)
-        total = sum(len(v) for v in registrados.values())
-        print(f"  {total} números já registrados na planilha.", file=sys.stderr)
+        indice = carregar_planilha(sheets, sheet_id)
+        # separador de argumentos de fórmula conforme o locale da planilha
+        try:
+            meta = sheets.spreadsheets().get(
+                spreadsheetId=sheet_id, fields="properties.locale").execute()
+            locale = meta.get("properties", {}).get("locale", "")
+            sep = ";" if locale.startswith("pt") else ","
+        except Exception:
+            sep = ","
+        total = sum(len(v["mapa"]) for v in indice.values())
+        print(f"  {total} linhas já na planilha (sep fórmula '{sep}').", file=sys.stderr)
 
     processados = 0
     for item in itens:
@@ -445,16 +510,28 @@ def main():
         detalhes = detalhar_item(item["cod"])
         detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
         aba = aba_do_item(detalhes["tipo"])
-        if _norm_num(detalhes["numero"]) in registrados.get(aba, set()):
+        num = _norm_num(detalhes["numero"])
+        if not num:
             continue
+        info = indice.get(aba, {"mapa": {}})
+        existente = info["mapa"].get(num)
+        if existente and existente.get("resp"):
+            continue  # resposta já preenchida — pula
+
         rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
-        print(f"Processando: {rotulo}", file=sys.stderr)
-        aba, valores = processar_item(detalhes, drive, sheet_id, pasta_raiz, args.dry_run)
+        acao = "atualiza" if existente else "nova linha"
+        print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
+        aba, valores = processar_item(detalhes, drive, pasta_raiz, args.dry_run, sep)
+
         if args.dry_run:
-            print(json.dumps({"aba": aba, **valores}, ensure_ascii=False, indent=2))
+            print(json.dumps({"aba": aba, "acao": acao, **valores}, ensure_ascii=False, indent=2))
+        elif existente:
+            atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
+                               valores["Resposta"], valores["Data da resposta"])
+            existente["resp"] = True
         else:
             anexar_linha(sheets, sheet_id, aba, valores)
-            registrados.setdefault(aba, set()).add(_norm_num(detalhes["numero"]))
+            info["mapa"][num] = {"linha": -1, "resp": True}
         processados += 1
 
     print(f"Concluído: {processados} itens processados.", file=sys.stderr)

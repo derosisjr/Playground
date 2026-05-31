@@ -37,7 +37,7 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 - **Fonte de dados:** `busca_documento_pub/filtro_resultado.php?pesquisa_resposta_executivo[ano]=AAAA&pesquisa_resposta_executivo[autor]=282` (paginada via `&limite=N`, 20/página). Páginas em ISO-8859-1.
 - **Página canônica:** o link "Mais detalhes" de cada resultado aponta para `detalhes.php?cod=...` do pedido original — contém tipo, número, processo, data, ementa, PDF do pedido e a seção "Resposta anexada" com os PDFs do prefeito.
 - **Arquivamento:** Google Drive via OAuth do próprio usuário (`google-api-python-client`), uma subpasta por item (`Tipo Número`). Token gerado por `setup_oauth.py` (1x); lido de `token.json` (local) ou do secret `GOOGLE_OAUTH_TOKEN` (CI).
-- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo, dedup pelo número dentro de cada aba (ver `ABAS` em `index.py`).
+- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo. Para cada item localiza a linha existente pelo número e **atualiza** as colunas `Resposta` (hyperlink para a subpasta do Drive) e `Data da resposta`; se o número não existir, **anexa** linha nova; se a resposta já estiver preenchida, **pula** (ver `ABAS`/`carregar_planilha` em `index.py`). Pastas no Drive: `REQUERIMENTO_<nº>` / `INDICACAO_<nº>`.
 - **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `0 9 * * 1-5` (06h BRT, dias úteis).
 
 ## Secrets do GitHub Actions

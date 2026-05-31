@@ -28,6 +28,13 @@ import sys
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 
+# Garante UTF-8 na saída mesmo em consoles Windows (cp1252)
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
