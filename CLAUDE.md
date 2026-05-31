@@ -36,8 +36,8 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 
 - **Fonte de dados:** `busca_documento_pub/filtro_resultado.php?pesquisa_resposta_executivo[ano]=AAAA&pesquisa_resposta_executivo[autor]=282` (paginada via `&limite=N`, 20/página). Páginas em ISO-8859-1.
 - **Página canônica:** o link "Mais detalhes" de cada resultado aponta para `detalhes.php?cod=...` do pedido original — contém tipo, número, processo, data, ementa, PDF do pedido e a seção "Resposta anexada" com os PDFs do prefeito.
-- **Arquivamento:** Google Drive via Conta de Serviço (`google-api-python-client`), uma subpasta por item (`Tipo Número`).
-- **Registro:** Google Sheets; dedup pela coluna `cod` (ver `ORDEM_COLUNAS` em `index.py`, ajustar às colunas reais da planilha).
+- **Arquivamento:** Google Drive via OAuth do próprio usuário (`google-api-python-client`), uma subpasta por item (`Tipo Número`). Token gerado por `setup_oauth.py` (1x); lido de `token.json` (local) ou do secret `GOOGLE_OAUTH_TOKEN` (CI).
+- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo, dedup pelo número dentro de cada aba (ver `ABAS` em `index.py`).
 - **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `0 9 * * 1-5` (06h BRT, dias úteis).
 
 ## Secrets do GitHub Actions
@@ -48,7 +48,7 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 | `GMAIL_USER` | Conta Gmail remetente (ordem-do-dia) |
 | `GMAIL_APP_PASSWORD` | App Password de 16 dígitos (ordem-do-dia) |
 | `GMAIL_TO` | Destinatário(s) do briefing (ordem-do-dia) |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | JSON da conta de serviço Drive+Sheets (respostas-executivo) |
+| `GOOGLE_OAUTH_TOKEN` | JSON do token OAuth Drive+Sheets, gerado por `setup_oauth.py` (respostas-executivo) |
 | `SHEET_ID` | ID da planilha de controle (respostas-executivo) |
 | `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
 

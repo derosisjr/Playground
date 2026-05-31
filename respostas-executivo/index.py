@@ -20,9 +20,14 @@ PEDIDO original, fonte canônica com tipo, número, processo, data, ementa, o PD
 do pedido e a seção "Resposta anexada" com os PDFs do prefeito.
 
 Variáveis de ambiente (secrets):
-    GOOGLE_SERVICE_ACCOUNT_JSON   conteúdo JSON da conta de serviço (Drive+Sheets)
-    SHEET_ID                      ID da planilha de controle
-    DRIVE_FOLDER_ID               ID da pasta-raiz no Drive
+    GOOGLE_OAUTH_TOKEN   conteúdo JSON do token OAuth (gerado por setup_oauth.py)
+    SHEET_ID             ID da planilha de controle
+    DRIVE_FOLDER_ID      ID da pasta-raiz no Drive
+
+Autenticação: OAuth como o próprio usuário (sem e-mail) — os arquivos ficam no
+seu Drive sem problema de cota. Rode `python respostas-executivo/setup_oauth.py`
+uma única vez para gerar o token; localmente ele é lido de `token.json`, no
+GitHub Actions do secret GOOGLE_OAUTH_TOKEN.
 
 Uso:
     python respostas-executivo/index.py                 # ano corrente
@@ -264,19 +269,30 @@ def _slug(texto: str) -> str:
 
 
 # ── Google Drive / Sheets ─────────────────────────────────────────────────────
+SCOPES_GOOGLE = [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/spreadsheets",
+]
+TOKEN_FILE = os.path.join(os.path.dirname(__file__), "token.json")
+
+
 def _google_services():
-    from google.oauth2 import service_account
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
-    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if not raw:
-        raise EnvironmentError("Defina GOOGLE_SERVICE_ACCOUNT_JSON.")
-    info = json.loads(raw)
-    scopes = [
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/spreadsheets",
-    ]
-    creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+    raw = os.environ.get("GOOGLE_OAUTH_TOKEN")
+    if raw:
+        creds = Credentials.from_authorized_user_info(json.loads(raw), SCOPES_GOOGLE)
+    elif os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES_GOOGLE)
+    else:
+        raise EnvironmentError(
+            "Token OAuth não encontrado. Rode setup_oauth.py para gerar token.json "
+            "ou defina o secret GOOGLE_OAUTH_TOKEN."
+        )
+    if not creds.valid and creds.refresh_token:
+        creds.refresh(Request())
     drive = build("drive", "v3", credentials=creds, cache_discovery=False)
     sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
     return drive, sheets

@@ -5,3 +5,5 @@ __pycache__/
 node_modules/
 ultimo-briefing.md
 briefing_*.md
+respostas-executivo/client_secret.json
+respostas-executivo/token.json
