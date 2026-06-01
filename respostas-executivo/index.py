@@ -44,6 +44,7 @@ import os
 import re
 import smtplib
 import sys
+import time
 import unicodedata
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -105,17 +106,32 @@ LOG_COLUNAS = [
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
+def _http_get(url: str, params: dict | None = None, timeout: int = 30,
+              tentativas: int = 4) -> requests.Response:
+    """GET com retry/backoff para tolerar timeouts transitórios do site."""
+    ultimo_erro = None
+    for i in range(tentativas):
+        try:
+            resp = requests.get(url, params=params, headers=HEADERS, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.RequestException as e:
+            ultimo_erro = e
+            if i < tentativas - 1:
+                espera = 4 * (i + 1)
+                print(f"  Aviso: falha HTTP ({e}); tentativa {i + 1}/{tentativas}, "
+                      f"aguardando {espera}s...", file=sys.stderr)
+                time.sleep(espera)
+    raise ultimo_erro
+
+
 def fetch_html(url: str) -> bytes:
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    return resp.content
+    return _http_get(url, timeout=30).content
 
 
 def baixar_pdf_bytes(url: str) -> bytes | None:
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=60)
-        resp.raise_for_status()
-        return resp.content
+        return _http_get(url, timeout=60).content
     except Exception as e:
         print(f"  Aviso: não foi possível baixar PDF {url}: {e}", file=sys.stderr)
         return None
@@ -161,8 +177,7 @@ def coletar_cods(ano: str, autor: str) -> list[dict]:
         }
         if limite:
             params["limite"] = str(limite)
-        resp = requests.get(BUSCA_URL, params=params, headers=HEADERS, timeout=30)
-        resp.raise_for_status()
+        resp = _http_get(BUSCA_URL, params=params, timeout=30)
         soup = BeautifulSoup(resp.content, "html.parser", from_encoding="iso-8859-1")
         tabelas = soup.select("table.table-bordered")
         if not tabelas:
@@ -331,6 +346,16 @@ def obter_ou_criar_subpasta(drive, pasta_raiz: str, nome: str) -> str:
 
 def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes) -> str:
     from googleapiclient.http import MediaIoBaseUpload
+
+    # idempotência: se já existe arquivo com esse nome na pasta, não re-sobe
+    nome_escapado = nome.replace("'", "\\'")
+    existentes = drive.files().list(
+        q=f"name = '{nome_escapado}' and '{pasta_id}' in parents and trashed = false",
+        fields="files(webViewLink)", supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+    ).execute().get("files", [])
+    if existentes:
+        return existentes[0].get("webViewLink", "")
 
     media = MediaIoBaseUpload(io.BytesIO(dados), mimetype="application/pdf")
     meta = {"name": nome, "parents": [pasta_id]}
@@ -587,6 +612,8 @@ def main():
                         help="Reprocessa mesmo itens cuja Resposta já está preenchida.")
     parser.add_argument("--email", action="store_true",
                         help="Envia e-mail resumo das respostas processadas (se houver).")
+    parser.add_argument("--sem-log", action="store_true",
+                        help="Não registra na aba Log diário (ex.: carga retroativa).")
     args = parser.parse_args()
 
     print(f"Buscando respostas do Executivo — ano {args.ano}, autor {args.autor}...",
@@ -618,53 +645,62 @@ def main():
 
     hoje = datetime.now().strftime("%d/%m/%Y")
     processados = 0
+    falhas = 0
     log_entradas: list[dict] = []
     for item in itens:
         if args.limite and processados >= args.limite:
             break
-        detalhes = detalhar_item(item["cod"])
-        detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
-        aba = aba_do_item(detalhes["tipo"])
-        num = _norm_num(detalhes["numero"])
-        if not num:
-            continue
-        info = indice.get(aba, {"mapa": {}})
-        existente = info["mapa"].get(num)
-        if existente and existente.get("resp") and not args.forcar:
-            continue  # resposta já preenchida — pula (use --forcar para reprocessar)
+        try:
+            detalhes = detalhar_item(item["cod"])
+            detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
+            aba = aba_do_item(detalhes["tipo"])
+            num = _norm_num(detalhes["numero"])
+            if not num:
+                continue
+            info = indice.get(aba, {"mapa": {}})
+            existente = info["mapa"].get(num)
+            if existente and existente.get("resp") and not args.forcar:
+                continue  # resposta já preenchida — pula (use --forcar para reprocessar)
 
-        rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
-        acao = "atualiza" if existente else "nova linha"
-        print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
-        aba, valores, pasta_url = processar_item(
-            detalhes, drive, pasta_raiz, args.dry_run, sep)
+            rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
+            acao = "atualiza" if existente else "nova linha"
+            print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
+            aba, valores, pasta_url = processar_item(
+                detalhes, drive, pasta_raiz, args.dry_run, sep)
 
-        if args.dry_run:
-            print(json.dumps({"aba": aba, "acao": acao, **valores}, ensure_ascii=False, indent=2))
-        else:
-            if existente:
-                atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
-                                   valores["Resposta"], valores["Data da resposta"])
-                existente["resp"] = True
+            if args.dry_run:
+                print(json.dumps({"aba": aba, "acao": acao, **valores},
+                                 ensure_ascii=False, indent=2))
             else:
-                anexar_linha(sheets, sheet_id, aba, valores)
-                info["mapa"][num] = {"linha": -1, "resp": True}
-            log_entradas.append({
-                "Data processamento": hoje,
-                "Tipo": detalhes["tipo"],
-                "Número": detalhes["numero"],
-                "Assunto": detalhes["ementa"],
-                "Data da resposta": detalhes["dataResposta"],
-                "Link": _hyperlink(pasta_url, "Abrir", sep),
-                "LinkUrl": pasta_url,
-            })
-        processados += 1
+                if existente:
+                    atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
+                                       valores["Resposta"], valores["Data da resposta"])
+                    existente["resp"] = True
+                else:
+                    anexar_linha(sheets, sheet_id, aba, valores)
+                    info["mapa"][num] = {"linha": -1, "resp": True}
+                log_entradas.append({
+                    "Data processamento": hoje,
+                    "Tipo": detalhes["tipo"],
+                    "Número": detalhes["numero"],
+                    "Assunto": detalhes["ementa"],
+                    "Data da resposta": detalhes["dataResposta"],
+                    "Link": _hyperlink(pasta_url, "Abrir", sep),
+                    "LinkUrl": pasta_url,
+                })
+            processados += 1
+        except Exception as e:
+            falhas += 1
+            print(f"  ERRO no cod={item['cod']}: {e} — pulando.", file=sys.stderr)
+            continue
 
-    print(f"Concluído: {processados} itens processados.", file=sys.stderr)
+    print(f"Concluído: {processados} itens processados, {falhas} falha(s).",
+          file=sys.stderr)
 
     if not args.dry_run and log_entradas:
-        registrar_log(sheets, sheet_id, log_entradas)
-        print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
+        if not args.sem_log:
+            registrar_log(sheets, sheet_id, log_entradas)
+            print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
         if args.email:
             enviar_email(log_entradas, hoje)
 
