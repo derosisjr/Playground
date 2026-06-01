@@ -13,6 +13,10 @@ on:
         description: "Reprocessar tudo (true) — útil p/ testar o e-mail"
         required: false
         default: "false"
+      limite:
+        description: "Máx. de itens a processar (vazio = todos)"
+        required: false
+        default: ""
 
 jobs:
   arquivar-respostas:
@@ -50,4 +54,8 @@ jobs:
           if [ "${{ github.event.inputs.forcar }}" = "true" ]; then
             FORCAR_ARG="--forcar"
           fi
-          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG --email
+          LIMITE_ARG=""
+          if [ -n "${{ github.event.inputs.limite }}" ]; then
+            LIMITE_ARG="--limite ${{ github.event.inputs.limite }}"
+          fi
+          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG --email
