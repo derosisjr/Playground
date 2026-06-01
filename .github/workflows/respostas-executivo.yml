@@ -34,9 +34,12 @@ jobs:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}
         run: |
           ANO_ARG=""
           if [ -n "${{ github.event.inputs.ano }}" ]; then
             ANO_ARG="--ano ${{ github.event.inputs.ano }}"
           fi
-          python respostas-executivo/index.py $ANO_ARG
+          python respostas-executivo/index.py $ANO_ARG --email

@@ -42,9 +42,12 @@ import io
 import json
 import os
 import re
+import smtplib
 import sys
 import unicodedata
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from urllib.parse import urljoin
 
 import requests
@@ -92,6 +95,13 @@ ABAS = {
         ],
     },
 }
+
+# Aba de log diário (criada automaticamente se não existir)
+LOG_ABA = "Log diário"
+LOG_COLUNAS = [
+    "Data processamento", "Tipo", "Número", "Assunto",
+    "Data da resposta", "Link",
+]
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
@@ -414,10 +424,107 @@ def _hyperlink(url: str, texto: str, sep: str) -> str:
     return f'=HYPERLINK("{url}"{sep}"{texto}")'
 
 
+# ── Log diário ────────────────────────────────────────────────────────────────
+def garantir_aba_log(sheets, sheet_id: str) -> None:
+    """Cria a aba de log (com cabeçalho) se ela ainda não existir."""
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties.title").execute()
+    titulos = [s["properties"]["title"] for s in meta.get("sheets", [])]
+    if LOG_ABA in titulos:
+        return
+    sheets.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={"requests": [{"addSheet": {"properties": {"title": LOG_ABA}}}]},
+    ).execute()
+    sheets.spreadsheets().values().update(
+        spreadsheetId=sheet_id,
+        range=f"'{LOG_ABA}'!A1",
+        valueInputOption="RAW",
+        body={"values": [LOG_COLUNAS]},
+    ).execute()
+
+
+def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
+    if not entradas:
+        return
+    garantir_aba_log(sheets, sheet_id)
+    linhas = [[e.get(c, "") for c in LOG_COLUNAS] for e in entradas]
+    sheets.spreadsheets().values().append(
+        spreadsheetId=sheet_id,
+        range=f"'{LOG_ABA}'!A1",
+        valueInputOption="USER_ENTERED",
+        insertDataOption="INSERT_ROWS",
+        body={"values": linhas},
+    ).execute()
+
+
+# ── E-mail resumo ─────────────────────────────────────────────────────────────
+def montar_email_html(entradas: list[dict], data: str) -> str:
+    linhas = ""
+    for e in entradas:
+        linhas += (
+            "<tr>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Tipo']}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Número']}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Assunto']}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Data da resposta']}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>"
+            f"<a href='{e['LinkUrl']}'>abrir pasta</a></td>"
+            "</tr>"
+        )
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A1628">
+<div style="max-width:760px;margin:0 auto">
+  <div style="border-top:3px solid #C9A84C;padding:16px 0">
+    <h2 style="margin:0;color:#07111F">Respostas do Executivo</h2>
+    <p style="color:#555;margin:4px 0 0">{len(entradas)} nova(s) resposta(s) — {data}</p>
+  </div>
+  <table style="border-collapse:collapse;width:100%;font-size:14px">
+    <thead><tr style="background:#07111F;color:#fff">
+      <th style="padding:8px 10px;text-align:left">Tipo</th>
+      <th style="padding:8px 10px;text-align:left">Número</th>
+      <th style="padding:8px 10px;text-align:left">Assunto</th>
+      <th style="padding:8px 10px;text-align:left">Data resposta</th>
+      <th style="padding:8px 10px;text-align:left">Pasta</th>
+    </tr></thead>
+    <tbody>{linhas}</tbody>
+  </table>
+  <p style="color:#888;font-size:12px;margin-top:16px">
+    Gerado automaticamente pela rotina Respostas do Executivo — Câmara de Santos.
+  </p>
+</div></body></html>"""
+
+
+def enviar_email(entradas: list[dict], data: str) -> None:
+    user = os.environ.get("GMAIL_USER")
+    senha = os.environ.get("GMAIL_APP_PASSWORD")
+    para = os.environ.get("GMAIL_TO")
+    if not all([user, senha, para]):
+        print("Aviso: GMAIL_USER/GMAIL_APP_PASSWORD/GMAIL_TO não definidos; "
+              "e-mail não enviado.", file=sys.stderr)
+        return
+    destinatarios = [d.strip() for d in para.split(",") if d.strip()]
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Respostas do Executivo — {len(entradas)} nova(s) em {data}"
+    msg["From"] = f"Respostas do Executivo <{user}>"
+    msg["To"] = ", ".join(destinatarios)
+    resumo = "\n".join(
+        f"- {e['Tipo']} {e['Número']}: {e['Assunto']} (resposta {e['Data da resposta']})"
+        for e in entradas
+    )
+    msg.attach(MIMEText(resumo, "plain", "utf-8"))
+    msg.attach(MIMEText(montar_email_html(entradas, data), "html", "utf-8"))
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(user, senha)
+        server.sendmail(user, destinatarios, msg.as_string())
+    print(f"E-mail enviado para {', '.join(destinatarios)}.", file=sys.stderr)
+
+
 # ── Processamento ─────────────────────────────────────────────────────────────
 def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
-                   sep: str = ",") -> tuple[str, dict]:
-    """Baixa PDFs, sobe ao Drive e devolve (aba, valores) p/ a planilha."""
+                   sep: str = ",") -> tuple[str, dict, str]:
+    """Baixa PDFs, sobe ao Drive e devolve (aba, valores, pasta_url)."""
     aba = aba_do_item(item["tipo"])
     numero = item["numero"] or item["cod"]
     categoria = "REQUERIMENTO" if aba == ABA_REQUERIMENTOS else "INDICACAO"
@@ -425,8 +532,10 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
 
     links_resposta = []
     pasta_id = None
+    pasta_url = ""
     if not dry_run:
         pasta_id = obter_ou_criar_subpasta(drive, pasta_raiz, nome_pasta)
+        pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
 
     # Pedido (arquivado no Drive; a planilha não tem coluna própria p/ ele)
     if item["pedidoPdf"]:
@@ -450,7 +559,6 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     if dry_run:
         resposta_cell = "\n".join(links_resposta)
     else:
-        pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
         resposta_cell = _hyperlink(pasta_url, "Resposta", sep)
 
     col_numero = "Número" if aba == ABA_INDICACOES else "Nùmero"
@@ -461,7 +569,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         "Resposta": resposta_cell,
         "Data da resposta": item["dataResposta"],
     }
-    return aba, valores
+    return aba, valores, pasta_url
 
 
 def main():
@@ -476,6 +584,8 @@ def main():
                         help="Processa no máximo N itens (0 = todos).")
     parser.add_argument("--forcar", action="store_true",
                         help="Reprocessa mesmo itens cuja Resposta já está preenchida.")
+    parser.add_argument("--email", action="store_true",
+                        help="Envia e-mail resumo das respostas processadas (se houver).")
     args = parser.parse_args()
 
     print(f"Buscando respostas do Executivo — ano {args.ano}, autor {args.autor}...",
@@ -505,7 +615,9 @@ def main():
         total = sum(len(v["mapa"]) for v in indice.values())
         print(f"  {total} linhas já na planilha (sep fórmula '{sep}').", file=sys.stderr)
 
+    hoje = datetime.now().strftime("%d/%m/%Y")
     processados = 0
+    log_entradas: list[dict] = []
     for item in itens:
         if args.limite and processados >= args.limite:
             break
@@ -523,20 +635,37 @@ def main():
         rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
         acao = "atualiza" if existente else "nova linha"
         print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
-        aba, valores = processar_item(detalhes, drive, pasta_raiz, args.dry_run, sep)
+        aba, valores, pasta_url = processar_item(
+            detalhes, drive, pasta_raiz, args.dry_run, sep)
 
         if args.dry_run:
             print(json.dumps({"aba": aba, "acao": acao, **valores}, ensure_ascii=False, indent=2))
-        elif existente:
-            atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
-                               valores["Resposta"], valores["Data da resposta"])
-            existente["resp"] = True
         else:
-            anexar_linha(sheets, sheet_id, aba, valores)
-            info["mapa"][num] = {"linha": -1, "resp": True}
+            if existente:
+                atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
+                                   valores["Resposta"], valores["Data da resposta"])
+                existente["resp"] = True
+            else:
+                anexar_linha(sheets, sheet_id, aba, valores)
+                info["mapa"][num] = {"linha": -1, "resp": True}
+            log_entradas.append({
+                "Data processamento": hoje,
+                "Tipo": detalhes["tipo"],
+                "Número": detalhes["numero"],
+                "Assunto": detalhes["ementa"],
+                "Data da resposta": detalhes["dataResposta"],
+                "Link": _hyperlink(pasta_url, "Abrir", sep),
+                "LinkUrl": pasta_url,
+            })
         processados += 1
 
     print(f"Concluído: {processados} itens processados.", file=sys.stderr)
+
+    if not args.dry_run and log_entradas:
+        registrar_log(sheets, sheet_id, log_entradas)
+        print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
+        if args.email:
+            enviar_email(log_entradas, hoje)
 
 
 if __name__ == "__main__":
