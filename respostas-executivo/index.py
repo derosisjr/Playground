@@ -498,9 +498,10 @@ def montar_email_html(entradas: list[dict], data: str) -> str:
 def enviar_email(entradas: list[dict], data: str) -> None:
     user = os.environ.get("GMAIL_USER")
     senha = os.environ.get("GMAIL_APP_PASSWORD")
-    para = os.environ.get("GMAIL_TO")
+    # destinatário dedicado (não compartilha com o ordem-do-dia); fallback p/ GMAIL_TO
+    para = os.environ.get("RESPOSTAS_EMAIL_TO") or os.environ.get("GMAIL_TO")
     if not all([user, senha, para]):
-        print("Aviso: GMAIL_USER/GMAIL_APP_PASSWORD/GMAIL_TO não definidos; "
+        print("Aviso: GMAIL_USER/GMAIL_APP_PASSWORD/RESPOSTAS_EMAIL_TO não definidos; "
               "e-mail não enviado.", file=sys.stderr)
         return
     destinatarios = [d.strip() for d in para.split(",") if d.strip()]

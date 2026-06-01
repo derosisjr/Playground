@@ -9,6 +9,10 @@ on:
         description: "Ano da busca (vazio = ano corrente)"
         required: false
         default: ""
+      forcar:
+        description: "Reprocessar tudo (true) — útil p/ testar o e-mail"
+        required: false
+        default: "false"
 
 jobs:
   arquivar-respostas:
@@ -36,10 +40,14 @@ jobs:
           DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          GMAIL_TO: ${{ secrets.GMAIL_TO }}
+          RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
         run: |
           ANO_ARG=""
           if [ -n "${{ github.event.inputs.ano }}" ]; then
             ANO_ARG="--ano ${{ github.event.inputs.ano }}"
           fi
-          python respostas-executivo/index.py $ANO_ARG --email
+          FORCAR_ARG=""
+          if [ "${{ github.event.inputs.forcar }}" = "true" ]; then
+            FORCAR_ARG="--forcar"
+          fi
+          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG --email
