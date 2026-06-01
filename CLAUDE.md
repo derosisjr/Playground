@@ -19,6 +19,11 @@ Usa Chart.js para visualizações e PapaParse para leitura de CSV.
 Automação que acessa o site da Câmara, extrai os itens da pauta via scraping e gera
 um briefing aprofundado com Claude API, entregue por e-mail HTML toda segunda e quarta às 23h.
 
+### Respostas do Executivo (`respostas-executivo/index.py`)
+Automação que varre a busca pública de "Respostas do Executivo" endereçadas ao vereador
+(sem e-mail), baixa os PDFs do pedido original e da resposta do prefeito, organiza-os no
+Google Drive (uma subpasta por item) e registra cada item numa planilha de controle.
+
 ## Arquitetura da Automação (ordem-do-dia)
 
 - **Fonte de dados:** `https://administrativo.camarasantos.sp.gov.br/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/`
@@ -27,14 +32,26 @@ um briefing aprofundado com Claude API, entregue por e-mail HTML toda segunda e 
 - **Entrega:** Gmail SMTP com e-mail HTML estilizado
 - **Agendamento:** GitHub Actions (`.github/workflows/ordem-do-dia.yml`), cron `0 2 * * 2,4`
 
+## Arquitetura da Automação (respostas-executivo)
+
+- **Fonte de dados:** `busca_documento_pub/filtro_resultado.php?pesquisa_resposta_executivo[ano]=AAAA&pesquisa_resposta_executivo[autor]=282` (paginada via `&limite=N`, 20/página). Páginas em ISO-8859-1.
+- **Página canônica:** o link "Mais detalhes" de cada resultado aponta para `detalhes.php?cod=...` do pedido original — contém tipo, número, processo, data, ementa, PDF do pedido e a seção "Resposta anexada" com os PDFs do prefeito.
+- **Arquivamento:** Google Drive via OAuth do próprio usuário (`google-api-python-client`), uma subpasta por item (`Tipo Número`). Token gerado por `setup_oauth.py` (1x); lido de `token.json` (local) ou do secret `GOOGLE_OAUTH_TOKEN` (CI).
+- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo. Para cada item localiza a linha existente pelo número e **atualiza** as colunas `Resposta` (hyperlink para a subpasta do Drive) e `Data da resposta`; se o número não existir, **anexa** linha nova; se a resposta já estiver preenchida, **pula** (ver `ABAS`/`carregar_planilha` em `index.py`). Pastas no Drive: `REQUERIMENTO_<nº>` / `INDICACAO_<nº>`.
+- **Log diário:** aba `Log diário` (criada automaticamente) recebe uma linha por resposta processada (data, tipo, número, assunto, data da resposta, link). Com `--email`, envia também um resumo HTML via Gmail SMTP (secrets `GMAIL_*`) — só quando há novidades.
+- **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `0 9 * * 1-5` (06h BRT, dias úteis).
+
 ## Secrets do GitHub Actions
 
 | Secret | Descrição |
 |---|---|
-| `ANTHROPIC_API_KEY` | API do Claude |
-| `GMAIL_USER` | Conta Gmail remetente |
-| `GMAIL_APP_PASSWORD` | App Password de 16 dígitos |
-| `GMAIL_TO` | Destinatário(s) do briefing |
+| `ANTHROPIC_API_KEY` | API do Claude (ordem-do-dia) |
+| `GMAIL_USER` | Conta Gmail remetente (ordem-do-dia) |
+| `GMAIL_APP_PASSWORD` | App Password de 16 dígitos (ordem-do-dia) |
+| `GMAIL_TO` | Destinatário(s) do briefing (ordem-do-dia) |
+| `GOOGLE_OAUTH_TOKEN` | JSON do token OAuth Drive+Sheets, gerado por `setup_oauth.py` (respostas-executivo) |
+| `SHEET_ID` | ID da planilha de controle (respostas-executivo) |
+| `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
 
 ## Convenções
 
@@ -54,9 +71,19 @@ python ordem-do-dia/index.py --sessao 1278
 
 # Disparar workflow no GitHub
 gh workflow run "Briefing Ordem do Dia" --repo derosisjr/Playground
+
+# Respostas do Executivo — testar scraping sem escrever (Drive/Sheets)
+python respostas-executivo/index.py --dry-run --limite 3
+
+# Respostas do Executivo — rodar de verdade (ano corrente)
+python respostas-executivo/index.py
+
+# Respostas do Executivo — ano específico
+python respostas-executivo/index.py --ano 2026
 ```
 ## PERFIL POLÍTICO DO MANDATO
 
+Rui de Rosis Jr.
 Vereador de oposição ao governo municipal. De direita, filiado ao Partido Liberal (PL).
 
 ### POSICIONAMENTO
@@ -90,3 +117,5 @@ Vereador de oposição ao governo municipal. De direita, filiado ao Partido Libe
 10. NÃO TRATAR INFERÊNCIA COMO FATO: se não há dado concreto no texto do projeto, marcar como [Verificar] ou [Sem informação no texto]. Nunca presumir que "as comissões avaliaram" significa que está tudo certo.
 
 11. POSICIONAMENTO SUGERIDO: sempre justificar com argumento fiscal, jurídico ou de eficiência. Nunca justificar com "é politicamente seguro" ou "não gera desgaste". O mandato não busca conforto político, busca resultado para o contribuinte.
+
+12. VETOS DO PREFEITO: sempre buscar argumentos para a derrubada do veto, caso viável juridicamente. As mensagens de veto costumam ter erros juridicos e de enquadramento. Em caso de veto, desconsiderar o parecer da ccj.

@@ -1,0 +1,61 @@
+name: Respostas do Executivo
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"  # 09h UTC = 06h BRT, dias úteis
+  workflow_dispatch:
+    inputs:
+      ano:
+        description: "Ano da busca (vazio = ano corrente)"
+        required: false
+        default: ""
+      forcar:
+        description: "Reprocessar tudo (true) — útil p/ testar o e-mail"
+        required: false
+        default: "false"
+      limite:
+        description: "Máx. de itens a processar (vazio = todos)"
+        required: false
+        default: ""
+
+jobs:
+  arquivar-respostas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: respostas-executivo/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r respostas-executivo/requirements.txt
+
+      - name: Arquivar respostas no Drive e atualizar planilha
+        env:
+          GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
+        run: |
+          ANO_ARG=""
+          if [ -n "${{ github.event.inputs.ano }}" ]; then
+            ANO_ARG="--ano ${{ github.event.inputs.ano }}"
+          fi
+          FORCAR_ARG=""
+          if [ "${{ github.event.inputs.forcar }}" = "true" ]; then
+            FORCAR_ARG="--forcar"
+          fi
+          LIMITE_ARG=""
+          if [ -n "${{ github.event.inputs.limite }}" ]; then
+            LIMITE_ARG="--limite ${{ github.event.inputs.limite }}"
+          fi
+          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG --email
