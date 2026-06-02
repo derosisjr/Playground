@@ -2,7 +2,7 @@ name: Respostas do Executivo
 
 on:
   schedule:
-    - cron: "0 9 * * 1-5"  # 09h UTC = 06h BRT, dias úteis
+    - cron: "31 8 * * 1-5"  # 08:31 UTC = 05:31 BRT, dias úteis (minuto quebrado p/ evitar pico)
   workflow_dispatch:
     inputs:
       ano:
