@@ -72,6 +72,7 @@ DETALHES_URL = (
     "detalhes.php"
 )
 AUTOR_PADRAO = "282"  # Rui Sergio Gomes de Rosis Junior
+ANO_INICIAL = 2025  # 1º ano do mandato; varredura padrão vai daqui até o ano corrente
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; RespostasExecutivoBot/1.0)"}
 PAGINA_TAMANHO = 20
 
@@ -601,9 +602,9 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
 def main():
     parser = argparse.ArgumentParser(description="Respostas do Executivo — Câmara de Santos")
     parser.add_argument("--ano", default="",
-                        help="Ano(s) da busca, separados por vírgula (ex.: 2025,2026). "
-                             "Padrão: ano corrente + anterior (respostas ficam no ano de "
-                             "envio da propositura, não no ano em que foram respondidas).")
+                        help=f"Ano(s) da busca, separados por vírgula (ex.: 2025,2026). "
+                             f"Padrão: de {ANO_INICIAL} até o ano corrente (respostas ficam "
+                             f"no ano de envio da propositura, não no ano da resposta).")
     parser.add_argument("--autor", default=AUTOR_PADRAO,
                         help=f"Código do autor. Padrão: {AUTOR_PADRAO}.")
     parser.add_argument("--dry-run", action="store_true",
@@ -621,8 +622,7 @@ def main():
     if args.ano.strip():
         anos = [a.strip() for a in args.ano.split(",") if a.strip()]
     else:
-        ano_atual = datetime.now().year
-        anos = [str(ano_atual), str(ano_atual - 1)]
+        anos = [str(a) for a in range(datetime.now().year, ANO_INICIAL - 1, -1)]
 
     print(f"Buscando respostas do Executivo — anos {', '.join(anos)}, "
           f"autor {args.autor}...", file=sys.stderr)
