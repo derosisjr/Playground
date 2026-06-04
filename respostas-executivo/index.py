@@ -600,8 +600,10 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
 
 def main():
     parser = argparse.ArgumentParser(description="Respostas do Executivo — Câmara de Santos")
-    parser.add_argument("--ano", default=str(datetime.now().year),
-                        help="Ano da busca. Padrão: ano corrente.")
+    parser.add_argument("--ano", default="",
+                        help="Ano(s) da busca, separados por vírgula (ex.: 2025,2026). "
+                             "Padrão: ano corrente + anterior (respostas ficam no ano de "
+                             "envio da propositura, não no ano em que foram respondidas).")
     parser.add_argument("--autor", default=AUTOR_PADRAO,
                         help=f"Código do autor. Padrão: {AUTOR_PADRAO}.")
     parser.add_argument("--dry-run", action="store_true",
@@ -616,10 +618,23 @@ def main():
                         help="Não registra na aba Log diário (ex.: carga retroativa).")
     args = parser.parse_args()
 
-    print(f"Buscando respostas do Executivo — ano {args.ano}, autor {args.autor}...",
-          file=sys.stderr)
-    itens = coletar_cods(args.ano, args.autor)
-    print(f"  {len(itens)} itens encontrados na busca.", file=sys.stderr)
+    if args.ano.strip():
+        anos = [a.strip() for a in args.ano.split(",") if a.strip()]
+    else:
+        ano_atual = datetime.now().year
+        anos = [str(ano_atual), str(ano_atual - 1)]
+
+    print(f"Buscando respostas do Executivo — anos {', '.join(anos)}, "
+          f"autor {args.autor}...", file=sys.stderr)
+    itens: list[dict] = []
+    vistos_cod: set[str] = set()
+    for ano in anos:
+        encontrados = coletar_cods(ano, args.autor)
+        novos = [it for it in encontrados if it["cod"] not in vistos_cod]
+        vistos_cod.update(it["cod"] for it in novos)
+        itens.extend(novos)
+        print(f"  {ano}: {len(encontrados)} itens.", file=sys.stderr)
+    print(f"  {len(itens)} itens únicos no total.", file=sys.stderr)
 
     drive = sheets = None
     sheet_id = os.environ.get("SHEET_ID", "")
