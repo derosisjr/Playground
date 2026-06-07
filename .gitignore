@@ -10,3 +10,7 @@ respostas-executivo/token.json
 legis/legis.xlsx
 legis/legis.csv
 legis/_smoke*
+proposituras/proposituras.sqlite
+proposituras/proposituras.xlsx
+proposituras/proposituras.csv
+proposituras/carga_inicial.log
