@@ -16,7 +16,8 @@ Reusa `conectar`/`alertas` de `export.py` e o padrão SMTP de `ordem-do-dia`.
 Secrets/ambiente:
     GMAIL_USER            conta Gmail remetente
     GMAIL_APP_PASSWORD    App Password de 16 dígitos
-    DESPESAS_BRIEFING_TO  destinatários (vírgula); se ausente, usa GMAIL_TO
+    DESPESAS_BRIEFING_TO  destinatários (vírgula). Se ausente, usa RESPOSTAS_EMAIL_TO
+                          (mesma lista do requerimentos) e, por fim, GMAIL_TO.
 
 Uso:
     python despesas/briefing.py --dry-run                       # imprime, não envia
@@ -293,9 +294,12 @@ def montar_texto(d: dict) -> str:
 def enviar_email(assunto: str, html: str, texto: str) -> None:
     user = os.environ.get("GMAIL_USER")
     senha = os.environ.get("GMAIL_APP_PASSWORD")
-    to = os.environ.get("DESPESAS_BRIEFING_TO") or os.environ.get("GMAIL_TO")
+    # destinatários: lista dedicada → mesma lista do requerimentos → fallback geral
+    to = (os.environ.get("DESPESAS_BRIEFING_TO") or os.environ.get("RESPOSTAS_EMAIL_TO")
+          or os.environ.get("GMAIL_TO"))
     if not all([user, senha, to]):
-        raise EnvironmentError("Defina GMAIL_USER, GMAIL_APP_PASSWORD e DESPESAS_BRIEFING_TO (ou GMAIL_TO).")
+        raise EnvironmentError("Defina GMAIL_USER, GMAIL_APP_PASSWORD e "
+                               "DESPESAS_BRIEFING_TO (ou RESPOSTAS_EMAIL_TO / GMAIL_TO).")
     destinatarios = [x.strip() for x in to.split(",") if x.strip()]
 
     msg = MIMEMultipart("alternative")

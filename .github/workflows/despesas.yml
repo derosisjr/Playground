@@ -82,6 +82,7 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           DESPESAS_BRIEFING_TO: ${{ secrets.DESPESAS_BRIEFING_TO }}
+          RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
         run: |
           if [ "$(date +%u)" = "1" ] || [ "${{ github.event.inputs.forcar_briefing }}" = "true" ]; then

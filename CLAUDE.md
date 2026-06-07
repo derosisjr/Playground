@@ -90,8 +90,9 @@ que terminam na **data de pagamento mais recente** da base (robusto à defasagem
 semana é comparado à **média semanal do ano** (baseline estável, já que pagamentos são irregulares).
 Seções: cards (semana/mês/ano com variação YoY), alertas vigentes (alta/média), gasto por função, top
 favorecidos, maiores pagamentos individuais e maiores empenhos novos, com link para o painel. CLI:
-`--dry-run` (imprime, não envia), `--salvar PATH` (preview HTML), `--semana N`. Envio para o secret
-**`DESPESAS_BRIEFING_TO`** (vírgula) com **fallback para `GMAIL_TO`**. Agendamento: passo final do
+`--dry-run` (imprime, não envia), `--salvar PATH` (preview HTML), `--semana N`. Destinatários:
+**`DESPESAS_BRIEFING_TO`** → **`RESPOSTAS_EMAIL_TO`** (mesma lista do requerimentos) → **`GMAIL_TO`**.
+Agendamento: passo final do
 `despesas.yml` que roda **às segundas** (`date +%u = 1`) após o crawl+export — ou via
 `workflow_dispatch` com input `forcar_briefing=true`. Geração de minutas/IA e outros canais
 (WhatsApp/Telegram) ficam para fases futuras.
