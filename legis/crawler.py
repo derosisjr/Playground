@@ -245,7 +245,11 @@ def main():
 
     for tid, nome_tipo in tipos.items():
         print(f"== Tipo {tid} — {nome_tipo} ==", file=sys.stderr)
-        anos = mapear_anos(tid)
+        try:
+            anos = mapear_anos(tid)
+        except Exception as e:
+            print(f"  ERRO ao mapear anos do tipo {tid}: {e} — pulando tipo.", file=sys.stderr)
+            continue
         if anos:
             if args.ano:
                 anos = {args.ano: anos[args.ano]} if args.ano in anos else {}
@@ -255,7 +259,11 @@ def main():
             alvos = [(None, f"{BASE_URL}/legis/topics/{tid}/documents")]
 
         for ano, url in alvos:
-            ids = coletar_ids(url)
+            try:
+                ids = coletar_ids(url)
+            except Exception as e:
+                print(f"  ERRO ao listar {nome_tipo} {ano or ''}: {e} — pulando.", file=sys.stderr)
+                continue
             print(f"  {nome_tipo} {ano or ''}: {len(ids)} documentos.", file=sys.stderr)
             for did in ids:
                 if args.limite and processados >= args.limite:
