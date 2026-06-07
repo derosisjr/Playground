@@ -7,3 +7,6 @@ ultimo-briefing.md
 briefing_*.md
 respostas-executivo/client_secret.json
 respostas-executivo/token.json
+legis/legis.xlsx
+legis/legis.csv
+legis/_smoke*
