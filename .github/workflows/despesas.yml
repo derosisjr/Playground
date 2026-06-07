@@ -9,6 +9,10 @@ on:
         description: "Ano a varrer (vazio = ano corrente)"
         required: false
         default: ""
+      forcar_briefing:
+        description: "Enviar o briefing semanal agora (mesmo fora de segunda)?"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
@@ -69,4 +73,19 @@ jobs:
           else
             git commit -m "chore: atualiza base de Despesas ($(date +%F))"
             git push
+          fi
+
+      # Briefing semanal por e-mail aos assessores: roda na SEGUNDA (após o
+      # crawl+export, com a base do mesmo run) ou quando forçado manualmente.
+      - name: Briefing semanal (segunda-feira)
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DESPESAS_BRIEFING_TO: ${{ secrets.DESPESAS_BRIEFING_TO }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}
+        run: |
+          if [ "$(date +%u)" = "1" ] || [ "${{ github.event.inputs.forcar_briefing }}" = "true" ]; then
+            python despesas/briefing.py
+          else
+            echo "Fora de segunda e sem --forcar_briefing: briefing nao enviado."
           fi

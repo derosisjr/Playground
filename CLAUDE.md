@@ -82,6 +82,20 @@ guarda anti-truncamento (aborta commit se total < 50mi). **Independente** do ant
 (`gastos.html`, por upload de CSV), que segue intacto. Unidade orçamentária real (outra fonte),
 cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futuras.
 
+#### Briefing semanal de despesas (`despesas/briefing.py`)
+Canal *push* para os assessores: e-mail HTML semanal com o panorama das despesas, **só informativo**
+(determinístico, **sem Claude/tokens**). Lê o `despesas.sqlite` e reusa `conectar()`/`alertas()` de
+`export.py` (via `import export`) + o padrão SMTP de `ordem-do-dia/index.py`. A "semana" = os 7 dias
+que terminam na **data de pagamento mais recente** da base (robusto à defasagem do portal); o pago da
+semana é comparado à **média semanal do ano** (baseline estável, já que pagamentos são irregulares).
+Seções: cards (semana/mês/ano com variação YoY), alertas vigentes (alta/média), gasto por função, top
+favorecidos, maiores pagamentos individuais e maiores empenhos novos, com link para o painel. CLI:
+`--dry-run` (imprime, não envia), `--salvar PATH` (preview HTML), `--semana N`. Envio para o secret
+**`DESPESAS_BRIEFING_TO`** (vírgula) com **fallback para `GMAIL_TO`**. Agendamento: passo final do
+`despesas.yml` que roda **às segundas** (`date +%u = 1`) após o crawl+export — ou via
+`workflow_dispatch` com input `forcar_briefing=true`. Geração de minutas/IA e outros canais
+(WhatsApp/Telegram) ficam para fases futuras.
+
 ## Arquitetura da Automação (ordem-do-dia)
 
 - **Fonte de dados:** `https://administrativo.camarasantos.sp.gov.br/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/`
@@ -106,7 +120,8 @@ cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futu
 | `ANTHROPIC_API_KEY` | API do Claude (ordem-do-dia) |
 | `GMAIL_USER` | Conta Gmail remetente (ordem-do-dia) |
 | `GMAIL_APP_PASSWORD` | App Password de 16 dígitos (ordem-do-dia) |
-| `GMAIL_TO` | Destinatário(s) do briefing (ordem-do-dia) |
+| `GMAIL_TO` | Destinatário(s) do briefing (ordem-do-dia; fallback do briefing de despesas) |
+| `DESPESAS_BRIEFING_TO` | Destinatário(s) do briefing semanal de despesas — assessores (opcional; cai em `GMAIL_TO`) |
 | `GOOGLE_OAUTH_TOKEN` | JSON do token OAuth Drive+Sheets, gerado por `setup_oauth.py` (respostas-executivo) |
 | `SHEET_ID` | ID da planilha de controle (respostas-executivo) |
 | `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
@@ -158,6 +173,10 @@ python despesas/crawler.py --ano 2026
 # Despesas — carga do mandato (2025→corrente) + export
 python despesas/crawler.py
 python despesas/export.py
+
+# Despesas — briefing semanal (preview sem enviar)
+python despesas/briefing.py --dry-run
+python despesas/briefing.py --salvar despesas/_briefing.html  # abrir no navegador
 ```
 ## PERFIL POLÍTICO DO MANDATO
 
