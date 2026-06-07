@@ -13,6 +13,10 @@ on:
         description: "Enviar o briefing semanal agora (mesmo fora de segunda)?"
         required: false
         default: "false"
+      email_teste:
+        description: "E-mail de teste: envia o briefing SÓ p/ este endereço (não aos assessores)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -85,7 +89,10 @@ jobs:
           RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
         run: |
-          if [ "$(date +%u)" = "1" ] || [ "${{ github.event.inputs.forcar_briefing }}" = "true" ]; then
+          TESTE="${{ github.event.inputs.email_teste }}"
+          # e-mail de teste sobrepõe os destinatários só nesta execução
+          [ -n "$TESTE" ] && export DESPESAS_BRIEFING_TO="$TESTE"
+          if [ -n "$TESTE" ] || [ "$(date +%u)" = "1" ] || [ "${{ github.event.inputs.forcar_briefing }}" = "true" ]; then
             python despesas/briefing.py
           else
             echo "Fora de segunda e sem --forcar_briefing: briefing nao enviado."
