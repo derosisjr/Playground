@@ -77,7 +77,7 @@ meses ou ano inteiro, tabela com empenhado/liquidado/pago, busca sem acento, **f
 por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). Carga padrão =
 **mandato (2025→ano corrente, `ANO_INICIAL=2025`)**. **`despesas-index.json`, `despesas/dados/*.json`
 e o código são versionados**; `.sqlite`/`.xlsx`/`.csv` no `.gitignore` — o `.sqlite` persiste via cache
-do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente semanalmente (`--forcar`), com
+do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente diariamente (`--forcar`), com
 guarda anti-truncamento (aborta commit se total < 50mi). **Independente** do antigo Radar de Gastos
 (`gastos.html`, por upload de CSV), que segue intacto. Unidade orçamentária real (outra fonte),
 cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futuras.

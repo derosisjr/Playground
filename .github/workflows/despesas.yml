@@ -2,7 +2,7 @@ name: Despesas — atualização incremental
 
 on:
   schedule:
-    - cron: "41 7 * * 1"  # segunda-feira 07:41 UTC = 04:41 BRT
+    - cron: "41 7 * * *"  # diariamente 07:41 UTC = 04:41 BRT
   workflow_dispatch:
     inputs:
       ano:
