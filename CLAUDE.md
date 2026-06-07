@@ -51,6 +51,37 @@ ficam no `.gitignore` — o `.sqlite` persiste entre execuções do workflow via
 (há guarda anti-truncamento no commit). Outros tipos (Indicação, Moção, Ofício, Requerimento) e o
 cruzamento propositura→lei sancionada ficam para fases futuras.
 
+### Base de Despesas (`despesas/` + `despesas.html`)
+Consolidação da **execução da despesa da Prefeitura de Santos** (empenhado→liquidado→pago), a partir
+da API pública do Portal da Transparência. `despesas/crawler.py` baixa **três endpoints** do
+`transparencia.asmx`, cada um um estágio: `json_empenhos` (empenhado), `json_liquidacoes` (liquidado)
+e `json_pagamentos` (pago) — todos `?ano=&mes=`, **um mês por requisição**; a resposta é um
+**XML SOAP `<string>` com array JSON embutido como texto** (extrai `.text`, `html.unescape`,
+`json.loads`). Cada estágio vai para sua tabela (`empenhos`/`liquidacoes`/`pagamentos`); a dedup é por
+**`hash` MD5 das colunas-chave** (`INSERT OR IGNORE` → recarga idempotente); `controle_carga`
+registra (fonte, ano, mês) já baixados. **Atenção:** os campos `empenho`/`liquidacao`/`pagamento` são
+**números de documento**, não valores — o valor de cada estágio é a coluna `valor`. **A API NÃO expõe
+unidade orçamentária (secretaria)**; o único campo de unidade é `unidade_gestora` (a entidade:
+Prefeitura, CAPEP, IPS, fundações). O recorte por órgão usa **`funcao`** como proxy de área/secretaria.
+`despesas/export.py` gera: (a) **`despesas-index.json` AGREGADO** na visão de **caixa/pago**
+(totais, séries mensais, por função/elemento/fonte/unidade, top-300 favorecidos) + **alertas fiscais
+por regras** (limiares no topo do arquivo); (b) **detalhe por empenho** — junta os 3 estágios por
+(`unidade_gestora`,`empenho`) em `montar_execucao()` produzindo a tríade **empenhado/liquidado/pago**
+por empenho, e inclui o que não casa (`Restos a pagar` = empenho de exercício anterior fora da base;
+`Extra-orçamentário` = pagamento sem empenho) para não esconder nada; grava um arquivo por mês de
+competência em `despesas/dados/AAAA-MM.json` (compacto `{campos, linhas}`, arrays-of-arrays; manifesto
+na chave `meses`, campos em `campos_detalhe`) — **estes `dados/*.json` SÃO versionados** (Pages serve
+sob demanda). `despesas.html`+`despesas-app.js` é o painel (vanilla + Chart.js via CDN) com abas
+Visão geral/Alertas/Favorecidos (base pago) e **Detalhamento** (execução por empenho: seleciona 1+
+meses ou ano inteiro, tabela com empenhado/liquidado/pago, busca sem acento, **filtros estruturados**
+por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). Carga padrão =
+**mandato (2025→ano corrente, `ANO_INICIAL=2025`)**. **`despesas-index.json`, `despesas/dados/*.json`
+e o código são versionados**; `.sqlite`/`.xlsx`/`.csv` no `.gitignore` — o `.sqlite` persiste via cache
+do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente semanalmente (`--forcar`), com
+guarda anti-truncamento (aborta commit se total < 50mi). **Independente** do antigo Radar de Gastos
+(`gastos.html`, por upload de CSV), que segue intacto. Unidade orçamentária real (outra fonte),
+cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futuras.
+
 ## Arquitetura da Automação (ordem-do-dia)
 
 - **Fonte de dados:** `https://administrativo.camarasantos.sp.gov.br/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/`
@@ -117,6 +148,16 @@ python proposituras/crawler.py --ano 2026
 # Proposituras — carga inicial completa (todos os anos) + export
 python proposituras/crawler.py
 python proposituras/export.py
+
+# Despesas — amostra de um mês sem gravar
+python despesas/crawler.py --ano 2026 --mes 6 --dry-run
+
+# Despesas — carga de um ano (ou mês específico com --mes)
+python despesas/crawler.py --ano 2026
+
+# Despesas — carga do mandato (2025→corrente) + export
+python despesas/crawler.py
+python despesas/export.py
 ```
 ## PERFIL POLÍTICO DO MANDATO
 

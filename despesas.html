@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar de Despesas — Prefeitura de Santos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --gold: #c9a84c;
+        --bg: #f4f5f7; --card: #ffffff; --line: #e4e7ec; --muted: #667085;
+        --red: #b42318; --amber: #b54708; --slate: #475467;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
+      header.hero { background: var(--navy); color: #fff; border-top: 3px solid var(--gold); }
+      .hero-in { max-width: 1180px; margin: 0 auto; padding: 28px 20px; }
+      .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: .12em;
+        text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
+      h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+      .hero-sub { color: #c7cfdb; margin: 8px 0 0; font-size: 14px; max-width: 760px; line-height: 1.55; }
+
+      .stats { display: grid; gap: 12px; margin: 22px 0 14px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 14px 16px; position: relative; overflow: hidden; }
+      .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+      .stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+      .stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 24px; margin-top: 4px; line-height: 1.1; }
+      .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+      /* ── Abas ─────────────────────────────────────────────────────── */
+      .tabs { display: flex; gap: 6px; margin: 8px 0 18px; flex-wrap: wrap; }
+      .tab { padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--card); font: inherit; font-size: 14px; cursor: pointer; color: var(--navy); }
+      .tab:hover { border-color: var(--gold); }
+      .tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .painel { display: none; }
+      .painel.ativo { display: block; }
+
+      /* ── Gráficos ─────────────────────────────────────────────────── */
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+      .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+      .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+      .box canvas { height: 300px !important; width: 100% !important; }
+
+      /* ── Filtros ──────────────────────────────────────────────────── */
+      .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
+      @media (max-width: 820px) { .filtros { grid-template-columns: 1fr 1fr; } }
+      .filtros input, .filtros select { width: 100%; padding: 11px 12px; border: 1px solid var(--line);
+        border-radius: 10px; background: var(--card); font: inherit; color: var(--navy); }
+      .filtros input:focus, .filtros select:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+
+      /* ── Tabelas ──────────────────────────────────────────────────── */
+      .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      thead th { background: var(--navy2); color: #fff; text-align: left; padding: 11px 12px; font-weight: 700; cursor: pointer; }
+      thead th.r, tbody td.r { text-align: right; }
+      tbody td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+      tbody tr:hover { background: #f9fafb; }
+      .num { font-family: "IBM Plex Mono", monospace; font-weight: 600; white-space: nowrap; }
+      .vazio { padding: 40px 20px; text-align: center; color: var(--muted); }
+
+      /* ── Alertas ──────────────────────────────────────────────────── */
+      .alerta { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--slate);
+        border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
+      .alerta:hover { border-color: var(--gold); }
+      .alerta.alta { border-left-color: var(--red); }
+      .alerta.media { border-left-color: var(--amber); }
+      .alerta.baixa { border-left-color: var(--slate); }
+      .alerta .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+      .alerta .titulo { font-weight: 700; font-size: 14px; }
+      .alerta .vlr { font-family: "IBM Plex Mono", monospace; font-weight: 600; white-space: nowrap; }
+      .alerta .det { color: var(--muted); font-size: 13px; margin-top: 4px; }
+      .sev { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: .06em; padding: 2px 7px; border-radius: 999px; margin-right: 8px; }
+      .sev.alta { background: #fee4e2; color: var(--red); }
+      .sev.media { background: #fef0c7; color: var(--amber); }
+      .sev.baixa { background: #eef1f6; color: var(--slate); }
+
+      /* ── Detalhamento ─────────────────────────────────────────────── */
+      .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+        background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
+      .btn:hover { border-color: var(--gold); }
+      .btn.primario { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .btn.primario:hover { background: var(--navy2); }
+      .acoes { display: flex; gap: 8px; }
+      .periodo-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+      .meses-grid { display: grid; gap: 6px 14px;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .mes-chk { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer;
+        padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+      .mes-chk:hover { border-color: var(--gold); }
+      .mes-chk input { accent-color: var(--navy); }
+      .mes-chk .mn { color: var(--muted); font-size: 11px; font-family: "IBM Plex Mono", monospace; margin-left: auto; }
+      #det-tabela { font-size: 13px; white-space: nowrap; }
+      #det-tabela td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+      #det-tabela td.r { text-align: right; }
+      #det-tabela td.neg { color: var(--red); }
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
+      .barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+      .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Fiscalização do Executivo</p>
+        <h1>Radar de Despesas — Prefeitura de Santos</h1>
+        <p class="hero-sub">
+          Pagamentos da Prefeitura de Santos consolidados a partir do Portal da Transparência.
+          Acompanhe para onde vai o dinheiro do contribuinte: por função, fonte, favorecido e mês —
+          com alertas fiscais automáticos para o que merece investigação. Caráter informativo;
+          confira sempre o portal oficial.
+        </p>
+      </div>
+    </header>
+
+    <div class="shell">
+      <div class="stats" id="stats"></div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="geral" aria-selected="true">Visão geral</button>
+        <button class="tab" role="tab" data-tab="alertas" aria-selected="false">Alertas fiscais <span id="badge-alertas"></span></button>
+        <button class="tab" role="tab" data-tab="favorecidos" aria-selected="false">Favorecidos</button>
+        <button class="tab" role="tab" data-tab="detalhe" aria-selected="false">Detalhamento</button>
+      </div>
+
+      <!-- ── Visão geral ── -->
+      <section class="painel ativo" id="painel-geral">
+        <div class="box">
+          <h3>Gasto mensal (R$)</h3>
+          <canvas id="ch-mensal"></canvas>
+        </div>
+        <div class="grid2">
+          <div class="box"><h3>Top funções</h3><canvas id="ch-funcao"></canvas></div>
+          <div class="box"><h3>Por fonte de recurso</h3><canvas id="ch-fonte"></canvas></div>
+        </div>
+        <div class="box">
+          <h3>Por unidade gestora</h3><canvas id="ch-unidade"></canvas>
+        </div>
+      </section>
+
+      <!-- ── Alertas ── -->
+      <section class="painel" id="painel-alertas">
+        <p class="hero-sub" style="color:var(--muted);margin:0 0 14px">
+          Sinais automáticos por regras (concentração, recorrência, picos, extra-orçamentário).
+          Clique para ver o favorecido na aba de favorecidos. Cada alerta é um ponto de partida para
+          requerimento de informação — não é conclusão de irregularidade.
+        </p>
+        <div id="lista-alertas"></div>
+        <div class="vazio" id="alertas-vazio" hidden>Nenhum alerta com os limiares atuais.</div>
+      </section>
+
+      <!-- ── Favorecidos ── -->
+      <section class="painel" id="painel-favorecidos">
+        <div class="filtros">
+          <input id="q" type="search" placeholder="Buscar favorecido..." />
+        </div>
+        <div class="barra">
+          <span class="contagem" id="contagem">—</span>
+        </div>
+        <div class="tabela-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="nome">Favorecido</th>
+                <th data-sort="valor" class="r">Valor total</th>
+                <th data-sort="qtd" class="r">Pagamentos</th>
+                <th data-sort="meses" class="r">Meses</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-fav"></tbody>
+          </table>
+          <div class="vazio" id="fav-vazio" hidden>Nenhum favorecido encontrado.</div>
+        </div>
+      </section>
+
+      <!-- ── Detalhamento (íntegra pesquisável) ── -->
+      <section class="painel" id="painel-detalhe">
+        <div class="box">
+          <h3>Selecione o período</h3>
+          <div class="periodo-acoes" id="periodo-rapido"></div>
+          <div class="meses-grid" id="meses-grid"></div>
+          <div class="barra" style="margin-top:12px">
+            <span class="contagem" id="sel-info">Nenhum mês selecionado.</span>
+            <div class="acoes">
+              <button class="btn" id="det-limpar" type="button">Limpar seleção</button>
+              <button class="btn primario" id="det-carregar" type="button">Carregar dados</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="det-resultado" hidden>
+          <div class="filtros" style="grid-template-columns: 2fr 1fr">
+            <input id="det-q" type="search" placeholder="Buscar em qualquer coluna (favorecido, elemento, programa, nº empenho)..." />
+            <button class="btn" id="det-csv" type="button">Exportar CSV (filtro atual)</button>
+          </div>
+          <div class="filtros" id="det-filtros">
+            <select id="f-tipo"><option value="">Tipo (todos)</option></select>
+            <select id="f-unidade_gestora"><option value="">Unidade gestora (todas)</option></select>
+            <select id="f-funcao"><option value="">Função / área (todas)</option></select>
+            <select id="f-fonte_recurso"><option value="">Fonte de recurso (todas)</option></select>
+            <select id="f-grupo_despesa"><option value="">Grupo de despesa (todos)</option></select>
+          </div>
+          <div class="barra">
+            <span class="contagem" id="det-contagem">—</span>
+            <span class="contagem" id="det-soma"></span>
+          </div>
+          <div class="tabela-wrap" style="overflow-x:auto">
+            <table id="det-tabela">
+              <thead><tr id="det-cabecalho"></tr></thead>
+              <tbody id="det-corpo"></tbody>
+            </table>
+            <div class="vazio" id="det-vazio" hidden>Nenhum pagamento com esse filtro.</div>
+          </div>
+          <div class="barra" style="justify-content:center;margin-top:12px">
+            <button class="btn" id="det-anterior" type="button">‹ Anterior</button>
+            <span class="contagem" id="det-pagina">—</span>
+            <button class="btn" id="det-proxima" type="button">Próxima ›</button>
+          </div>
+        </div>
+        <div class="vazio" id="det-carregando" hidden>Carregando…</div>
+      </section>
+
+      <p class="rodape">
+        Fonte: Portal da Transparência da Prefeitura de Santos (santos-sp.portaltp.com.br) —
+        API pública de pagamentos. Base de descoberta/triagem; dados informativos e não oficiais.
+        A íntegra linha-a-linha está na aba <strong>Detalhamento</strong> (pesquisável e exportável)
+        e também na planilha <strong>despesas.xlsx</strong>. <span id="atualizado"></span>
+      </p>
+    </div>
+
+    <script src="./despesas-app.js?v=1"></script>
+  </body>
+</html>
