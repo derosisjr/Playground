@@ -22,14 +22,14 @@ function preencherSelects() {
   const autores = [...new Set(PROPS.map((p) => p.autor).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b, "pt")
   );
-  const situacoes = [...new Set(PROPS.map((p) => p.situacao).filter(Boolean))].sort((a, b) =>
+  const locais = [...new Set(PROPS.map((p) => p.local_atual).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b, "pt")
   );
 
   for (const s of subtipos) el("subtipo").add(new Option(s, s));
   for (const a of anos) el("ano").add(new Option(a, a));
   for (const a of autores) el("autor").add(new Option(a, a));
-  for (const s of situacoes) el("situacao").add(new Option(s, s));
+  for (const l of locais) el("local").add(new Option(l, l));
 }
 
 function aplicarFiltros() {
@@ -38,16 +38,16 @@ function aplicarFiltros() {
   const subtipo = el("subtipo").value;
   const ano = el("ano").value;
   const autor = el("autor").value;
-  const situacao = el("situacao").value;
+  const local = el("local").value;
 
   filtradas = PROPS.filter((p) => {
     if (subtipo && p.subtipo !== subtipo) return false;
     if (ano && String(p.ano) !== ano) return false;
     if (autor && p.autor !== autor) return false;
-    if (situacao && p.situacao !== situacao) return false;
+    if (local && p.local_atual !== local) return false;
     if (termos.length) {
       const alvo = norm(
-        [p.numero, p.ano, p.subtipo, p.ementa, p.autor, p.situacao, p.local_atual].join(" ")
+        [p.numero, p.ano, p.subtipo, p.ementa, p.autor, p.local_atual].join(" ")
       );
       if (!termos.every((t) => alvo.includes(t))) return false;
     }
@@ -62,11 +62,8 @@ function aplicarFiltros() {
 
 function linhaHTML(p) {
   const local = p.local_atual
-    ? `<div class="tags">${escapar(p.local_atual)}</div>`
+    ? `<span class="sit-badge">${escapar(p.local_atual)}</span>`
     : "";
-  const sit = p.situacao
-    ? `<span class="sit-badge">${escapar(p.situacao)}</span>${local}`
-    : local;
   const pdf = p.url_pdf
     ? `<a class="pdf" href="${escapar(p.url_pdf)}" target="_blank" rel="noopener">PDF ↗</a>`
     : "";
@@ -79,7 +76,7 @@ function linhaHTML(p) {
     <td>${escapar(p.data_propositura)}</td>
     <td>${escapar(p.autor)}</td>
     <td>${escapar(p.ementa)}</td>
-    <td>${sit}</td>
+    <td>${local}</td>
     <td>${det}${det && pdf ? "<br />" : ""}${pdf}</td>
   </tr>`;
 }
@@ -112,7 +109,7 @@ async function init() {
     return;
   }
   preencherSelects();
-  ["q", "subtipo", "ano", "autor", "situacao"].forEach((id) =>
+  ["q", "subtipo", "ano", "autor", "local"].forEach((id) =>
     el(id).addEventListener("input", aplicarFiltros)
   );
   el("mais").addEventListener("click", renderizarMais);
