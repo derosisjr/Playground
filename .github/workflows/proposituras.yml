@@ -1,0 +1,77 @@
+name: Proposituras — atualização incremental
+
+on:
+  schedule:
+    - cron: "37 7 * * 1"  # segunda-feira 07:37 UTC = 04:37 BRT
+  workflow_dispatch:
+    inputs:
+      ano:
+        description: "Ano a varrer (vazio = ano corrente)"
+        required: false
+        default: ""
+      forcar:
+        description: "Reprocessar proposituras já no banco (vazio = sim, p/ atualizar tramitação)"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: proposituras/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r proposituras/requirements.txt
+
+      # O .sqlite (68M) NÃO é versionado — persiste entre execuções via cache do
+      # Actions (chave rotativa por run + restore-keys p/ recuperar o mais recente).
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v4
+        with:
+          path: proposituras/proposituras.sqlite
+          key: proposituras-db-${{ github.run_id }}
+          restore-keys: |
+            proposituras-db-
+
+      - name: Crawl incremental + export
+        run: |
+          ANO="${{ github.event.inputs.ano }}"
+          [ -z "$ANO" ] && ANO="$(date +%Y)"
+          # Padrão: --forcar (re-coleta o ano corrente p/ manter situação/tramitação atualizadas)
+          FORCAR="--forcar"
+          [ "${{ github.event.inputs.forcar }}" = "false" ] && FORCAR=""
+          python proposituras/crawler.py --ano "$ANO" $FORCAR
+          python proposituras/export.py
+
+      # Guarda anti-truncamento: se o cache foi perdido, a base teria só o ano
+      # corrente e o index.json sairia mutilado. Só comita se houver volume coerente.
+      - name: Commitar index (se houver e for íntegro)
+        run: |
+          N=$(python -c "import json;print(len(json.load(open('proposituras-index.json',encoding='utf-8'))))")
+          echo "index.json com $N proposituras."
+          if [ "$N" -lt 6000 ]; then
+            echo "ABORTANDO commit: base parcial ($N < 6000), provável cache miss do .sqlite."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add proposituras-index.json
+          if git diff --quiet --cached; then
+            echo "Sem mudancas na base."
+          else
+            git commit -m "chore: atualiza base de Proposituras ($(date +%F))"
+            git push
+          fi
