@@ -3,136 +3,144 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radar de Pauta do Gabinete</title>
+    <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --gold: #c9a84c;
+        --bg: #f4f5f7; --card: #ffffff; --line: #e4e7ec; --muted: #667085;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased; min-height: 100vh;
+        display: flex; flex-direction: column;
+      }
+      header.hero { background: var(--navy); color: #fff; border-top: 3px solid var(--gold); }
+      .hero-in { max-width: 1080px; margin: 0 auto; padding: 40px 22px 34px; }
+      .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: .14em;
+        text-transform: uppercase; margin: 0 0 10px; font-weight: 700; }
+      h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+      .hero-sub { color: #c7cfdb; margin: 12px 0 0; font-size: 15px; max-width: 640px; line-height: 1.6; }
+
+      .shell { max-width: 1080px; margin: 0 auto; padding: 32px 22px 48px; width: 100%; flex: 1; }
+      .grade { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+
+      .cartao { display: flex; flex-direction: column; background: var(--card);
+        border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 20px;
+        text-decoration: none; color: inherit; position: relative; overflow: hidden;
+        transition: border-color .15s, transform .15s, box-shadow .15s; }
+      .cartao::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+        background: var(--gold); }
+      .cartao:hover { border-color: var(--gold); transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(7,17,31,.08); }
+      .cartao .tag { color: var(--muted); font-size: 11px; letter-spacing: .08em;
+        text-transform: uppercase; font-weight: 700; }
+      .cartao h2 { margin: 6px 0 0; font-size: 20px; font-weight: 800; }
+      .cartao p { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 10px 0 0; flex: 1; }
+      .cartao .stat { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+        font-size: 22px; margin: 16px 0 0; color: var(--navy); min-height: 26px; }
+      .cartao .stat .lbl { font-family: "Manrope"; font-weight: 600; font-size: 12px;
+        color: var(--muted); display: block; text-transform: none; letter-spacing: 0; }
+      .cartao .abrir { margin-top: 14px; font-weight: 700; font-size: 14px; color: var(--navy);
+        display: inline-flex; align-items: center; gap: 6px; }
+      .cartao:hover .abrir { color: #8a6d1f; }
+
+      .extra { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line);
+        color: var(--muted); font-size: 13px; }
+      .extra a { color: var(--navy); font-weight: 600; text-decoration: none; }
+      .extra a:hover { text-decoration: underline; }
+      footer.rod { color: var(--muted); font-size: 12px; text-align: center;
+        padding: 22px; line-height: 1.6; }
+
+      @media (max-width: 560px) { h1 { font-size: 26px; } .hero-in { padding: 30px 18px 26px; } }
+    </style>
   </head>
   <body>
-    <div class="page-shell">
-      <header class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Assistente de Sessao e Pauta</p>
-          <h1>Transforme a pauta da Camara em briefing de plenario em minutos.</h1>
-          <p class="hero-text">
-            Cole a pauta da sessao, carregue um PDF convertido em texto ou use
-            um exemplo. O sistema separa materias, estima impacto politico e
-            gera falas para o vereador.
-          </p>
-          <div class="hero-actions">
-            <button id="loadSampleButton" class="primary-button" type="button">
-              Carregar pauta de exemplo
-            </button>
-            <button id="generateButton" class="secondary-button" type="button">
-              Gerar briefing
-            </button>
-          </div>
-        </div>
-        <aside class="hero-card">
-          <span class="card-label">Fluxo do MVP</span>
-          <ol>
-            <li>Entrada da pauta</li>
-            <li>Leitura item a item</li>
-            <li>Radar politico do mandato</li>
-            <li>Falas para plenario</li>
-            <li>Resumo executivo da sessao</li>
-          </ol>
-        </aside>
-      </header>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Câmara Municipal de Santos</p>
+        <h1>Ferramentas de transparência e fiscalização</h1>
+        <p class="hero-sub">
+          Painéis públicos que acompanham para onde vai o dinheiro do contribuinte e o que tramita na
+          Câmara. Dados oficiais, atualizados automaticamente. Escolha uma base para explorar.
+        </p>
+      </div>
+    </header>
 
-      <main class="dashboard">
-        <section class="panel panel-input">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">Entrada</p>
-              <h2>Pauta da sessao</h2>
-            </div>
-            <label class="upload-chip" for="fileInput">
-              Importar TXT
-            </label>
-          </div>
+    <div class="shell">
+      <div class="grade">
+        <a class="cartao" href="./despesas.html">
+          <span class="tag">Prefeitura · Execução orçamentária</span>
+          <h2>Radar de Despesas</h2>
+          <p>Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e
+             busca detalhada por favorecido, função e fonte.</p>
+          <div class="stat" id="stat-despesas"><span class="lbl">pago monitorado (mandato)</span>—</div>
+          <span class="abrir">Abrir painel →</span>
+        </a>
 
-          <input id="fileInput" type="file" accept=".txt" hidden />
+        <a class="cartao" href="./proposituras.html">
+          <span class="tag">Câmara · Proposituras</span>
+          <h2>Base de Proposituras</h2>
+          <p>Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo, autor, situação e
+             palavra-chave, com a tramitação de cada um.</p>
+          <div class="stat" id="stat-proposituras"><span class="lbl">proposituras indexadas</span>—</div>
+          <span class="abrir">Abrir painel →</span>
+        </a>
 
-          <textarea
-            id="agendaInput"
-            spellcheck="false"
-            placeholder="Exemplo:
-PROJETO DE LEI 123/2026 - Autor: Executivo - Institui programa de mutirao de exames.
-REQUERIMENTO 44/2026 - Autor: Vereador Joao - Solicita informacoes sobre obras no bairro Centro."
-          ></textarea>
+        <a class="cartao" href="./legis.html">
+          <span class="tag">Prefeitura · Legislação</span>
+          <h2>Base de Legislação</h2>
+          <p>Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema, com link para
+             o documento oficial.</p>
+          <div class="stat" id="stat-legis"><span class="lbl">normas indexadas</span>—</div>
+          <span class="abrir">Abrir painel →</span>
+        </a>
+      </div>
 
-          <div class="settings-grid">
-            <label>
-              Nome do vereador
-              <input id="councilorName" type="text" value="Vereador(a) do Gabinete" />
-            </label>
-            <label>
-              Prioridades do mandato
-              <input
-                id="mandateFocus"
-                type="text"
-                value="saude, bairros perifericos, transparencia, zeladoria"
-              />
-            </label>
-          </div>
-        </section>
-
-        <section class="panel panel-summary">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">Resumo</p>
-              <h2>Visao executiva</h2>
-            </div>
-            <span id="sessionStatus" class="status-pill">Aguardando leitura</span>
-          </div>
-
-          <div id="summaryCards" class="summary-cards"></div>
-
-          <div class="summary-block">
-            <h3>Leitura politica</h3>
-            <p id="politicalRead">
-              Nenhuma pauta processada ainda. Carregue um exemplo para ver a
-              leitura do dia.
-            </p>
-          </div>
-        </section>
-
-        <section class="panel panel-items">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">Materias</p>
-              <h2>Itens identificados</h2>
-            </div>
-          </div>
-
-          <div id="itemsList" class="items-list empty-state">
-            Nenhum item processado ainda.
-          </div>
-        </section>
-
-        <section class="panel panel-briefing">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">Plenario</p>
-              <h2>Briefing do vereador</h2>
-            </div>
-          </div>
-
-          <div id="briefingOutput" class="briefing-output">
-            <p>
-              O briefing aparecera aqui com fala curta, fala media e pontos de
-              atencao assim que a pauta for analisada.
-            </p>
-          </div>
-        </section>
-      </main>
+      <p class="extra">
+        Outras ferramentas: <a href="./pauta.html">Radar de Pauta</a> ·
+        <a href="./gastos.html">Radar de Gastos (CSV)</a>
+      </p>
     </div>
 
-    <script src="./app.js"></script>
+    <footer class="rod">
+      Dados de fontes oficiais (Portal da Transparência e sistemas da Câmara de Santos). Caráter
+      informativo e não oficial. · Gabinete Rui de Rosis Jr. (PL)
+    </footer>
+
+    <script>
+      // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
+      const compacto = (v) => {
+        const a = Math.abs(v);
+        if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(2).replace(".", ",") + " bi";
+        if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
+        return "R$ " + Math.round(v).toLocaleString("pt-BR");
+      };
+      const num = (n) => n.toLocaleString("pt-BR");
+      async function carregar(url) {
+        const r = await fetch(url + "?v=" + Date.now());
+        if (!r.ok) throw new Error("falha");
+        return r.json();
+      }
+      function setStat(id, valor) {
+        const el = document.getElementById(id);
+        const lbl = el.querySelector(".lbl");
+        el.textContent = valor;
+        el.prepend(lbl);
+      }
+      carregar("./despesas-index.json")
+        .then(d => setStat("stat-despesas", compacto(d.totais.geral)))
+        .catch(() => setStat("stat-despesas", "—"));
+      carregar("./proposituras-index.json")
+        .then(d => setStat("stat-proposituras", num(d.length)))
+        .catch(() => setStat("stat-proposituras", "—"));
+      carregar("./legis-index.json")
+        .then(d => setStat("stat-legis", num(d.length)))
+        .catch(() => setStat("stat-legis", "—"));
+    </script>
   </body>
 </html>

@@ -7,9 +7,16 @@ Stack: HTML/CSS/JS vanilla (frontend) + Python (automações).
 
 ## Aplicações
 
-### Radar de Pauta (`index.html` + `app.js`)
+### Hub / Página inicial (`index.html`)
+Porta de entrada do site (GitHub Pages serve da raiz). Página estática autocontida (navy/gold,
+sem build) com cartões para os 3 bancos pesquisáveis — **Despesas, Proposituras e Legislação** —
+cada um com um número "ao vivo" lido via `fetch` do respectivo `*-index.json` (degrada se falhar).
+Rodapé "Outras ferramentas" linka Pauta e Gastos. Cada painel tem um link "← Início" de volta ao hub.
+
+### Radar de Pauta (`pauta.html` + `app.js`)
 Transforma texto de pauta legislativa em briefing político com classificação por prioridade,
-tags temáticas e sugestão de discurso para plenário.
+tags temáticas e sugestão de discurso para plenário. (Antes era o `index.html`; movido para
+`pauta.html` quando o hub virou a página inicial — `app.js`/`styles.css` seguem na raiz.)
 
 ### Radar de Gastos (`gastos.html` + `gastos-app.js`)
 Dashboard de análise de gastos municipais a partir de CSV exportado da Prefeitura de Santos.

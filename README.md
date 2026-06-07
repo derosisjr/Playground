@@ -1,4 +1,14 @@
-# Radar de Pauta do Gabinete
+# Ferramentas do Gabinete — Câmara de Santos
+
+Conjunto de painéis de transparência e fiscalização do gabinete (Rui de Rosis Jr., PL). A página
+inicial (`index.html`) é um **hub** que reúne os 3 bancos pesquisáveis — **Despesas**, **Proposituras**
+e **Legislação**. Veja o `CLAUDE.md` para a visão completa das aplicações e automações.
+
+Publicado em: https://derosisjr.github.io/Playground/
+
+---
+
+## Radar de Pauta (`pauta.html`)
 
 MVP estatico para transformar a pauta de uma sessao legislativa em briefing politico rapido para gabinete parlamentar.
 
@@ -13,14 +23,14 @@ MVP estatico para transformar a pauta de uma sessao legislativa em briefing poli
 
 ## Como usar
 
-1. Abra `index.html` no navegador.
+1. Abra `pauta.html` no navegador (ou clique no hub em `index.html`).
 2. Clique em `Carregar pauta de exemplo` ou cole uma pauta real.
 3. Ajuste `Nome do vereador` e `Prioridades do mandato`.
 4. Clique em `Gerar briefing`.
 
 ## Estrutura
 
-- `index.html`: interface principal
+- `pauta.html`: interface principal
 - `styles.css`: identidade visual
 - `app.js`: parser, classificacao e briefing
 

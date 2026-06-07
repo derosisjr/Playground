@@ -50,28 +50,31 @@ jobs:
           restore-keys: |
             despesas-db-
 
-      # Re-baixa os meses do ano corrente (--forcar) p/ pegar pagamentos novos do mês
-      # em andamento; meses fechados de anos anteriores ficam no cache.
+      # Etapa 1: garante o mandato inteiro na base — se o cache estiver frio,
+      # baixa os meses faltantes (2025→corrente). Se quente, não faz nada.
+      # Etapa 2: re-baixa o ano corrente (--forcar) p/ pegar pagamentos novos.
       - name: Crawl incremental + export
         run: |
           ANO="${{ github.event.inputs.ano }}"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
+          python despesas/crawler.py                 # preenche meses faltantes do mandato
           python despesas/crawler.py --ano "$ANO" --forcar
           python despesas/export.py
 
-      # Guarda anti-truncamento: se o cache foi perdido, a base teria só o ano
-      # corrente. Só comita se o total geral for coerente (>50 mi).
+      # Guarda anti-truncamento: o mandato completo é ~R$8 bi. Se a base vier
+      # parcial (ex.: só o ano corrente, ~R$2-3 bi), aborta o commit p/ não
+      # publicar uma base mutilada.
       - name: Commitar index (se houver e for íntegro)
         run: |
           TOTAL=$(python -c "import json;print(int(json.load(open('despesas-index.json',encoding='utf-8'))['totais']['geral']))")
           echo "index.json com total geral R$ $TOTAL."
-          if [ "$TOTAL" -lt 50000000 ]; then
-            echo "ABORTANDO commit: base parcial (total $TOTAL < 50mi), provável cache miss do .sqlite."
+          if [ "$TOTAL" -lt 4000000000 ]; then
+            echo "ABORTANDO commit: base parcial (total $TOTAL < 4 bi), provável cache miss do .sqlite."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add despesas-index.json
+          git add despesas-index.json despesas/dados
           if git diff --quiet --cached; then
             echo "Sem mudancas na base."
           else
