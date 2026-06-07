@@ -80,6 +80,37 @@ def data_br(iso: str) -> str:
         return iso or ""
 
 
+# ── Classificação "ente público" × "fornecedores/terceiros" ───────────────────
+# Repasses/retenções a entes públicos (municipais, estaduais e federais) têm
+# natureza distinta de um pagamento a fornecedor — não é despesa de "compra".
+# Nada é filtrado; só separado em tabelas próprias. Heurística por nome do
+# favorecido (sem acento, maiúsculo).
+PUBLICO_KW = [
+    "MUNICIPIO", "PREFEITURA", "CAMARA MUNICIPAL",
+    "INSTITUTO DE PREVIDENCIA", "PREVIDENCIA SOCIAL DOS SERVIDORES", "IPREMM",
+    "CAIXA DE ASSIST", "CAPEP",
+    "FUNDACAO ARQUIVO E MEMORIA", "FUNDACAO PARQUE TECNOLOGICO",
+    "FUNDACAO PRO-ESPORTE", "FUPES",
+    "INSS", "INSTITUTO NACIONAL DO SEGURO",
+    "CAIXA ECONOMICA FEDERAL", "MINISTERIO", "FAZENDA NACIONAL",
+    "RECEITA FEDERAL", "SECRETARIA DA RECEITA", "TESOURO NACIONAL",
+    "GOVERNO DO ESTADO", "ESTADO DE SAO PAULO", "FAZENDA DO ESTADO",
+    "FUNDO DE GARANTIA", "FGTS", "PASEP",
+]
+
+
+def _semac(s) -> str:
+    import unicodedata
+    s = "" if s is None else str(s)
+    return "".join(c for c in unicodedata.normalize("NFD", s)
+                   if unicodedata.category(c) != "Mn").upper()
+
+
+def eh_publico(nome) -> bool:
+    n = _semac(nome)
+    return any(kw in n for kw in PUBLICO_KW)
+
+
 # ── Coleta dos dados da semana ────────────────────────────────────────────────
 def coletar(conn, dias: int, defasagem: int) -> dict:
     q = lambda sql, *p: export._q(conn, sql, *p)
@@ -121,10 +152,13 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
     mes_ly = soma_pago(date(ano - 1, mes, 1).isoformat(), fim_ly)
     ano_ly = soma_pago(date(ano - 1, 1, 1).isoformat(), fim_ly)
 
-    favorecidos = q(
+    todos_fav = q(
         "SELECT nome_favorecido k, ROUND(SUM(valor),2) s, COUNT(*) n FROM pagamentos "
-        "WHERE data BETWEEN ? AND ? GROUP BY nome_favorecido ORDER BY s DESC LIMIT ?",
-        ini, fim, TOP)
+        "WHERE data BETWEEN ? AND ? GROUP BY nome_favorecido ORDER BY s DESC", ini, fim)
+    fav_publico = [r for r in todos_fav if eh_publico(r["k"])]
+    fav_demais = [r for r in todos_fav if not eh_publico(r["k"])]
+    total_publico = round(sum(r["s"] for r in fav_publico), 2)
+    total_demais = round(sum(r["s"] for r in fav_demais), 2)
     pagamentos = q(
         "SELECT data, nome_favorecido k, elemento_despesa e, ROUND(valor,2) v FROM pagamentos "
         "WHERE data BETWEEN ? AND ? ORDER BY valor DESC LIMIT ?", ini, fim, TOP)
@@ -142,8 +176,9 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
         "semana": semana, "semana_ant": semana_ant, "media_semanal": media_semanal,
         "mes_atual": mes_atual, "mes_ly": mes_ly, "mes_nome": fim_d.strftime("%m/%Y"),
         "ano_atual": ano_atual, "ano_ly": ano_ly, "ano": ano,
-        "favorecidos": favorecidos, "pagamentos": pagamentos,
-        "funcoes": funcoes, "empenhos": empenhos,
+        "fav_publico": fav_publico[:TOP], "fav_demais": fav_demais[:TOP],
+        "total_publico": total_publico, "total_demais": total_demais,
+        "pagamentos": pagamentos, "funcoes": funcoes, "empenhos": empenhos,
         "alertas": export.alertas(conn),
     }
 
@@ -219,10 +254,24 @@ def montar_html(d: dict) -> str:
     else:
         bloco_alertas = ""
 
-    t_fav = _tabela("Maiores favorecidos da semana",
-                    [("Favorecido", "left"), ("Pagamentos", "right"), ("Total", "right")],
-                    [[(esc(r["k"]), "left"), (str(r["n"]), "right"), (brl(r["s"]), "right")]
-                     for r in d["favorecidos"]])
+    def _tab_fav(titulo, linhas):
+        return _tabela(titulo,
+                       [("Favorecido", "left"), ("Pagamentos", "right"), ("Total", "right")],
+                       [[(esc(r["k"]), "left"), (str(r["n"]), "right"), (brl(r["s"]), "right")]
+                        for r in linhas]) if linhas else ""
+
+    sem = d["semana"] or 1
+    split = (
+        f'<div style="margin:24px 0 0;padding:12px 14px;background:#fff;'
+        f'border:1px solid {LINE};border-radius:10px;font-size:13px;color:{NAVY}">'
+        f'<strong>Divisão da semana:</strong> '
+        f'<span style="color:{SLATE}">fornecedores/terceiros</span> '
+        f'<strong>{brl(d["total_demais"])}</strong> ({100*d["total_demais"]/sem:.0f}%) · '
+        f'<span style="color:{SLATE}">repasses a entes públicos</span> '
+        f'<strong>{brl(d["total_publico"])}</strong> ({100*d["total_publico"]/sem:.0f}%)</div>')
+    t_fav = (split +
+             _tab_fav("Maiores fornecedores e terceiros da semana", d["fav_demais"]) +
+             _tab_fav("Maiores repasses a entes públicos (transferências/retenções)", d["fav_publico"]))
     t_pag = _tabela("Maiores pagamentos individuais",
                     [("Data", "left"), ("Favorecido", "left"), ("Elemento", "left"), ("Valor", "right")],
                     [[(data_br(r["data"]), "left"), (esc(r["k"]), "left"),
@@ -281,10 +330,14 @@ def montar_texto(d: dict) -> str:
         "",
         f"Pago na semana: {brl(d['semana'])} ({pct(d['semana'], d['media_semanal'])} vs. média semanal)",
         f"Mês {d['mes_nome']}: {brl(d['mes_atual'])} | Acumulado {d['ano']}: {brl(d['ano_atual'])}",
+        f"Fornecedores/terceiros: {brl(d['total_demais'])} | Entes públicos: {brl(d['total_publico'])}",
         "",
-        "Maiores favorecidos da semana:",
+        "Maiores fornecedores e terceiros da semana:",
     ]
-    for r in d["favorecidos"]:
+    for r in d["fav_demais"]:
+        linhas.append(f"  - {r['k']}: {brl(r['s'])}")
+    linhas += ["", "Maiores repasses a entes públicos:"]
+    for r in d["fav_publico"]:
         linhas.append(f"  - {r['k']}: {brl(r['s'])}")
     linhas += ["", f"Painel: {PAINEL_URL}"]
     return "\n".join(linhas)
