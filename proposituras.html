@@ -16,16 +16,44 @@
       body {
         margin: 0; background: var(--bg); color: var(--navy);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
       header.hero { background: var(--navy); color: #fff; border-top: 3px solid var(--gold); }
       .hero-in { max-width: 1180px; margin: 0 auto; padding: 28px 20px; }
       .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: .12em;
         text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
-      h1 { margin: 0; font-size: 28px; font-weight: 800; }
-      .hero-sub { color: #c7cfdb; margin: 8px 0 0; font-size: 14px; max-width: 720px; }
+      h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+      .hero-sub { color: #c7cfdb; margin: 8px 0 0; font-size: 14px; max-width: 720px; line-height: 1.55; }
+
+      /* ── Cards de estatística ─────────────────────────────────────── */
+      .stats { display: grid; gap: 12px; margin: 22px 0 14px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 14px 16px; position: relative; overflow: hidden; }
+      .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+        background: var(--gold); }
+      .stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em;
+        text-transform: uppercase; font-weight: 700; }
+      .stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+        font-size: 26px; margin-top: 4px; line-height: 1.1; }
+      .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+      /* ── Chips de subtipo ─────────────────────────────────────────── */
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+        padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--card); font: inherit; font-size: 13px; color: var(--navy); }
+      .chip:hover { border-color: var(--gold); }
+      .chip .n { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+        background: #eef1f6; border-radius: 999px; padding: 1px 7px; }
+      .chip[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .chip[aria-pressed="true"] .n { background: var(--gold); color: var(--navy); }
+
+      /* ── Filtros ──────────────────────────────────────────────────── */
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px;
-        margin: 22px 0 14px; }
+        margin: 0 0 14px; }
       @media (max-width: 820px) { .filtros { grid-template-columns: 1fr 1fr; } }
       .filtros input, .filtros select {
         width: 100%; padding: 11px 12px; border: 1px solid var(--line);
@@ -34,25 +62,52 @@
       .barra { display: flex; align-items: center; justify-content: space-between;
         gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
+      .acoes { display: flex; gap: 8px; }
+      .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+        background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
+      .btn:hover { border-color: var(--gold); }
+      .btn:disabled { opacity: .5; cursor: default; }
+
+      /* ── Tabela ───────────────────────────────────────────────────── */
       .tabela-wrap { background: var(--card); border: 1px solid var(--line);
         border-radius: 14px; overflow: hidden; }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }
       thead th { background: var(--navy2); color: #fff; text-align: left;
         padding: 11px 12px; font-weight: 700; position: sticky; top: 0; }
-      tbody td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
-      tbody tr:hover { background: #fafbfc; }
-      .tipo-badge { display: inline-block; padding: 2px 8px; border-radius: 999px;
+      tbody td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+      tbody tr:hover { background: #f9fafb; }
+      .tipo-badge { display: inline-block; padding: 2px 9px; border-radius: 999px;
         background: #eef1f6; color: var(--navy); font-size: 12px; font-weight: 600; white-space: nowrap; }
-      .sit-badge { display: inline-block; padding: 2px 8px; border-radius: 999px;
-        background: #fff4d6; color: #7a5b00; font-size: 12px; font-weight: 600; white-space: nowrap; }
+      .sit-badge { display: inline-block; padding: 2px 9px; border-radius: 999px;
+        background: #fff4d6; color: #7a5b00; font-size: 12px; font-weight: 600; }
       .num { font-family: "IBM Plex Mono", monospace; font-weight: 600; white-space: nowrap; }
-      .tags { color: var(--muted); font-size: 12px; }
+      .ementa { line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical; overflow: hidden; }
       a.pdf, a.det { color: #0a58ca; font-weight: 600; text-decoration: none; white-space: nowrap; }
       a.pdf:hover, a.det:hover { text-decoration: underline; }
-      .vazio { padding: 40px; text-align: center; color: var(--muted); }
+      .vazio { padding: 48px 20px; text-align: center; color: var(--muted); }
       .rodape { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.5; }
       .mais { display: block; margin: 14px auto 0; padding: 10px 18px; border: 1px solid var(--line);
         border-radius: 10px; background: var(--card); font: inherit; cursor: pointer; }
+      .mais:hover { border-color: var(--gold); }
+
+      /* ── Mobile: tabela vira cartões ──────────────────────────────── */
+      @media (max-width: 760px) {
+        thead { display: none; }
+        table, tbody, tr, td { display: block; width: 100%; }
+        .tabela-wrap { border: none; background: transparent; border-radius: 0; overflow: visible; }
+        tbody tr { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          margin-bottom: 12px; padding: 6px 4px; }
+        tbody tr:hover { background: var(--card); }
+        tbody td { border-top: none; padding: 6px 14px; display: flex; gap: 12px;
+          min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+        tbody td > * { min-width: 0; }
+        tbody td::before { content: attr(data-label); flex: 0 0 80px; color: var(--muted);
+          font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+          padding-top: 2px; }
+        .sit-badge, .tipo-badge { white-space: normal; }
+        .ementa { -webkit-line-clamp: 6; }
+      }
     </style>
   </head>
   <body>
@@ -63,13 +118,16 @@
         <p class="hero-sub">
           Índice pesquisável dos projetos em tramitação (ou já tramitados) na Câmara de Santos —
           Projetos de Lei, PL Complementares, Decretos Legislativos, Resoluções e Emendas à LOM.
-          Filtre por subtipo, ano, autor, situação ou palavra-chave e abra o detalhe oficial.
+          Filtre por subtipo, ano, autor, local ou palavra-chave e abra o detalhe oficial.
           Caráter informativo — confira sempre o sistema oficial da Câmara.
         </p>
       </div>
     </header>
 
     <div class="shell">
+      <div class="stats" id="stats"></div>
+      <div class="chips" id="chips"></div>
+
       <div class="filtros">
         <input id="q" type="search" placeholder="Buscar por palavra-chave, ementa, número ou autor..." />
         <select id="subtipo"><option value="">Todos os subtipos</option></select>
@@ -80,6 +138,10 @@
 
       <div class="barra">
         <span class="contagem" id="contagem">Carregando…</span>
+        <div class="acoes">
+          <button class="btn" id="limpar" type="button">Limpar filtros</button>
+          <button class="btn" id="csv" type="button">Exportar CSV</button>
+        </div>
       </div>
 
       <div class="tabela-wrap">
@@ -105,6 +167,6 @@
       </p>
     </div>
 
-    <script src="./proposituras-app.js?v=2"></script>
+    <script src="./proposituras-app.js?v=3"></script>
   </body>
 </html>
