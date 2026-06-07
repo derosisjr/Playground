@@ -4,112 +4,235 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
+    <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --navy: #07111f; --navy2: #0a1628; --gold: #c9a84c;
-        --bg: #f4f5f7; --card: #ffffff; --line: #e4e7ec; --muted: #667085;
+        --navy: #060e1a;        /* tinta profunda */
+        --navy-2: #0c1b30;
+        --navy-3: #12263f;
+        --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --paper: #f4f1e9;       /* off-white quente (documento) */
+        --paper-2: #ebe6da;
+        --card: #fffdf8;
+        --ink: #0c1626;
+        --muted: #5d6675;
+        --line: #e2dccd;
+        --line-ink: rgba(201, 168, 76, 0.18);
+        --shadow: 24px 40px 80px -40px rgba(6, 14, 26, 0.45);
       }
       * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       body {
-        margin: 0; background: var(--bg); color: var(--navy);
+        margin: 0; background: var(--paper); color: var(--ink);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
-        -webkit-font-smoothing: antialiased; min-height: 100vh;
-        display: flex; flex-direction: column;
+        -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+        min-height: 100vh; display: flex; flex-direction: column;
       }
-      header.hero { background: var(--navy); color: #fff; border-top: 3px solid var(--gold); }
-      .hero-in { max-width: 1080px; margin: 0 auto; padding: 40px 22px 34px; }
-      .eyebrow { color: var(--gold); font-size: 12px; letter-spacing: .14em;
-        text-transform: uppercase; margin: 0 0 10px; font-weight: 700; }
-      h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
-      .hero-sub { color: #c7cfdb; margin: 12px 0 0; font-size: 15px; max-width: 640px; line-height: 1.6; }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a { color: inherit; }
+      a:focus-visible, button:focus-visible {
+        outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px;
+      }
 
-      .shell { max-width: 1080px; margin: 0 auto; padding: 32px 22px 48px; width: 100%; flex: 1; }
-      .grade { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+      /* ── Cabeçalho / hero ─────────────────────────────────────────── */
+      header.hero {
+        position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy-3) 0%, transparent 55%),
+          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
+          linear-gradient(180deg, var(--navy-2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25);
+      }
+      header.hero::before {  /* trama fina tipo guilloché (cédula/documento) */
+        content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+        background-image:
+          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
+          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
+        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
+      }
+      header.hero::after {  /* fio dourado superior */
+        content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent);
+      }
+      .hero-in { position: relative; max-width: 1120px; margin: 0 auto;
+        padding: clamp(38px, 7vw, 76px) 24px clamp(34px, 5vw, 60px); }
 
-      .cartao { display: flex; flex-direction: column; background: var(--card);
-        border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 20px;
-        text-decoration: none; color: inherit; position: relative; overflow: hidden;
-        transition: border-color .15s, transform .15s, box-shadow .15s; }
-      .cartao::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-        background: var(--gold); }
-      .cartao:hover { border-color: var(--gold); transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(7,17,31,.08); }
-      .cartao .tag { color: var(--muted); font-size: 11px; letter-spacing: .08em;
-        text-transform: uppercase; font-weight: 700; }
-      .cartao h2 { margin: 6px 0 0; font-size: 20px; font-weight: 800; }
-      .cartao p { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 10px 0 0; flex: 1; }
-      .cartao .stat { font-family: "IBM Plex Mono", monospace; font-weight: 600;
-        font-size: 22px; margin: 16px 0 0; color: var(--navy); min-height: 26px; }
-      .cartao .stat .lbl { font-family: "Manrope"; font-weight: 600; font-size: 12px;
-        color: var(--muted); display: block; text-transform: none; letter-spacing: 0; }
-      .cartao .abrir { margin-top: 14px; font-weight: 700; font-size: 14px; color: var(--navy);
-        display: inline-flex; align-items: center; gap: 6px; }
-      .cartao:hover .abrir { color: #8a6d1f; }
+      .brand { display: flex; align-items: center; gap: 12px; margin: 0 0 clamp(26px, 5vw, 46px);
+        opacity: 0; animation: rise .7s .05s cubic-bezier(.2,.7,.2,1) forwards; }
+      .crest { width: 34px; height: 34px; flex: none; border: 1.5px solid var(--gold);
+        border-radius: 50%; display: grid; place-items: center; color: var(--gold);
+        font-family: "Fraunces", serif; font-weight: 600; font-size: 16px; }
+      .brand .who { font-size: 12.5px; letter-spacing: .04em; color: #cdd6e3; }
+      .brand .who b { color: #fff; font-weight: 700; }
 
-      .extra { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line);
-        color: var(--muted); font-size: 13px; }
-      .extra a { color: var(--navy); font-weight: 600; text-decoration: none; }
-      .extra a:hover { text-decoration: underline; }
-      footer.rod { color: var(--muted); font-size: 12px; text-align: center;
-        padding: 22px; line-height: 1.6; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .26em;
+        text-transform: uppercase; color: var(--gold-bright); margin: 0 0 18px; font-weight: 500;
+        opacity: 0; animation: rise .7s .12s cubic-bezier(.2,.7,.2,1) forwards; }
+      .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); display: inline-block; }
 
-      @media (max-width: 560px) { h1 { font-size: 26px; } .hero-in { padding: 30px 18px 26px; } }
+      h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600;
+        font-size: clamp(34px, 6.2vw, 62px); line-height: 1.02; letter-spacing: -0.015em;
+        margin: 0; max-width: 16ch;
+        opacity: 0; animation: rise .8s .2s cubic-bezier(.2,.7,.2,1) forwards; }
+      h1 em { font-style: italic; color: var(--gold-bright); }
+      .lede { color: #c3cdda; margin: 22px 0 0; font-size: clamp(15px, 1.6vw, 17px);
+        line-height: 1.6; max-width: 56ch; font-weight: 400;
+        opacity: 0; animation: rise .8s .3s cubic-bezier(.2,.7,.2,1) forwards; }
+
+      .meta { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 30px 0 0;
+        font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
+        color: #8794a6; text-transform: uppercase;
+        opacity: 0; animation: rise .8s .4s cubic-bezier(.2,.7,.2,1) forwards; }
+      .meta span { display: inline-flex; align-items: center; gap: 8px; }
+      .meta i { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); display: inline-block; font-style: normal; }
+
+      /* ── Corpo ────────────────────────────────────────────────────── */
+      .shell { max-width: 1120px; margin: 0 auto; width: 100%; flex: 1;
+        padding: clamp(34px, 5vw, 56px) 24px clamp(40px, 6vw, 64px); }
+      .section-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+        display: flex; align-items: center; gap: 14px; margin: 0 0 22px; }
+      .section-tag::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+      .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+      .cartao {
+        position: relative; display: flex; flex-direction: column; isolation: isolate;
+        background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+        padding: 30px 28px 26px; text-decoration: none; color: inherit; overflow: hidden;
+        opacity: 0; transform: translateY(16px);
+        animation: rise .7s cubic-bezier(.2,.7,.2,1) forwards;
+        transition: border-color .25s ease, transform .25s ease, box-shadow .35s ease;
+      }
+      .cartao:nth-child(1) { animation-delay: .42s; }
+      .cartao:nth-child(2) { animation-delay: .52s; }
+      .cartao:nth-child(3) { animation-delay: .62s; }
+      .cartao::before {  /* filete dourado superior que cresce no hover */
+        content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 46px;
+        background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+        transition: width .35s cubic-bezier(.2,.7,.2,1);
+      }
+      .cartao:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: var(--shadow); }
+      .cartao:hover::before { width: 100%; }
+
+      .idx { position: absolute; top: 16px; right: 22px; font-family: "Fraunces", serif;
+        font-weight: 500; font-size: 40px; line-height: 1; color: var(--paper-2);
+        z-index: -1; transition: color .3s ease; }
+      .cartao:hover .idx { color: rgba(201,168,76,0.28); }
+
+      .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .16em;
+        text-transform: uppercase; color: var(--gold); font-weight: 500; }
+      .cartao h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 25px;
+        letter-spacing: -0.01em; margin: 10px 0 0; line-height: 1.1; }
+      .cartao .desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 12px 0 0; flex: 1; }
+
+      .stat { margin: 22px 0 0; padding: 16px 0 0; border-top: 1px solid var(--line); }
+      .stat .val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 27px;
+        line-height: 1; color: var(--ink); letter-spacing: -0.01em; display: block; }
+      .stat .lbl { font-size: 11.5px; color: var(--muted); margin-top: 7px; display: block;
+        letter-spacing: .02em; }
+
+      .abrir { display: inline-flex; align-items: center; gap: 9px; margin-top: 20px;
+        font-weight: 700; font-size: 13.5px; letter-spacing: .01em; color: var(--ink); }
+      .abrir .arw { transition: transform .3s cubic-bezier(.2,.7,.2,1); color: var(--gold); font-size: 16px; }
+      .cartao:hover .abrir .arw { transform: translateX(6px); }
+
+      /* ── Rodapé ───────────────────────────────────────────────────── */
+      .extra { margin-top: 38px; padding-top: 22px; border-top: 1px solid var(--line);
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px;
+        color: var(--muted); font-size: 13.5px; }
+      .extra .rot { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .18em;
+        text-transform: uppercase; color: var(--muted); }
+      .extra a { font-weight: 600; text-decoration: none; color: var(--ink);
+        border-bottom: 1px solid var(--line-ink); padding-bottom: 1px; transition: border-color .2s; }
+      .extra a:hover { border-color: var(--gold); }
+      .extra .dot { color: var(--line); }
+
+      footer.rod { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px;
+        text-align: center; padding: 24px; line-height: 1.7; background: var(--paper-2); }
+      footer.rod b { color: var(--ink); font-weight: 700; }
+
+      @keyframes rise { to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+        .brand, .eyebrow, h1, .lede, .meta, .cartao { opacity: 1; transform: none; }
+      }
     </style>
   </head>
   <body>
     <header class="hero">
       <div class="hero-in">
-        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Câmara Municipal de Santos</p>
-        <h1>Ferramentas de transparência e fiscalização</h1>
-        <p class="hero-sub">
-          Painéis públicos que acompanham para onde vai o dinheiro do contribuinte e o que tramita na
-          Câmara. Dados oficiais, atualizados automaticamente. Escolha uma base para explorar.
+        <div class="brand">
+          <span class="crest">R</span>
+          <span class="who"><b>Rui de Rosis Jr.</b> &nbsp;·&nbsp; Vereador (PL) &nbsp;·&nbsp; Câmara Municipal de Santos</span>
+        </div>
+        <p class="eyebrow">Transparência &amp; Fiscalização</p>
+        <h1>Para onde vai o dinheiro do <em>contribuinte</em>.</h1>
+        <p class="lede">
+          Painéis públicos que acompanham a despesa da Prefeitura e o que tramita na Câmara —
+          a partir de dados oficiais, atualizados automaticamente. Escolha uma base para explorar.
         </p>
+        <div class="meta">
+          <span><i></i>Dados oficiais</span>
+          <span><i></i>Atualização automática</span>
+          <span><i></i><span id="meta-update">Carregando…</span></span>
+        </div>
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
+      <p class="section-tag">Bases de dados</p>
       <div class="grade">
         <a class="cartao" href="./despesas.html">
+          <span class="idx">01</span>
           <span class="tag">Prefeitura · Execução orçamentária</span>
           <h2>Radar de Despesas</h2>
-          <p>Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e
-             busca detalhada por favorecido, função e fonte.</p>
-          <div class="stat" id="stat-despesas"><span class="lbl">pago monitorado (mandato)</span>—</div>
-          <span class="abrir">Abrir painel →</span>
+          <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
+             automáticos e busca detalhada por favorecido, função e fonte.</p>
+          <div class="stat"><span class="val" id="stat-despesas">—</span>
+            <span class="lbl">pago monitorado · mandato</span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
         <a class="cartao" href="./proposituras.html">
+          <span class="idx">02</span>
           <span class="tag">Câmara · Proposituras</span>
           <h2>Base de Proposituras</h2>
-          <p>Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo, autor, situação e
-             palavra-chave, com a tramitação de cada um.</p>
-          <div class="stat" id="stat-proposituras"><span class="lbl">proposituras indexadas</span>—</div>
-          <span class="abrir">Abrir painel →</span>
+          <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
+             autor, situação e palavra-chave, com a tramitação de cada um.</p>
+          <div class="stat"><span class="val" id="stat-proposituras">—</span>
+            <span class="lbl">proposituras indexadas</span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
         <a class="cartao" href="./legis.html">
+          <span class="idx">03</span>
           <span class="tag">Prefeitura · Legislação</span>
           <h2>Base de Legislação</h2>
-          <p>Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema, com link para
-             o documento oficial.</p>
-          <div class="stat" id="stat-legis"><span class="lbl">normas indexadas</span>—</div>
-          <span class="abrir">Abrir painel →</span>
+          <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
+             com link direto para o documento oficial.</p>
+          <div class="stat"><span class="val" id="stat-legis">—</span>
+            <span class="lbl">normas indexadas</span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
       </div>
 
       <p class="extra">
-        Outras ferramentas: <a href="./pauta.html">Radar de Pauta</a> ·
+        <span class="rot">Outras ferramentas</span>
+        <a href="./pauta.html">Radar de Pauta</a>
+        <span class="dot">·</span>
         <a href="./gastos.html">Radar de Gastos (CSV)</a>
       </p>
-    </div>
+    </main>
 
     <footer class="rod">
-      Dados de fontes oficiais (Portal da Transparência e sistemas da Câmara de Santos). Caráter
-      informativo e não oficial. · Gabinete Rui de Rosis Jr. (PL)
+      Dados de fontes oficiais (Portal da Transparência e sistemas da Câmara de Santos).
+      Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
     <script>
@@ -121,26 +244,21 @@
         return "R$ " + Math.round(v).toLocaleString("pt-BR");
       };
       const num = (n) => n.toLocaleString("pt-BR");
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
       async function carregar(url) {
         const r = await fetch(url + "?v=" + Date.now());
         if (!r.ok) throw new Error("falha");
         return r.json();
       }
-      function setStat(id, valor) {
-        const el = document.getElementById(id);
-        const lbl = el.querySelector(".lbl");
-        el.textContent = valor;
-        el.prepend(lbl);
-      }
-      carregar("./despesas-index.json")
-        .then(d => setStat("stat-despesas", compacto(d.totais.geral)))
-        .catch(() => setStat("stat-despesas", "—"));
-      carregar("./proposituras-index.json")
-        .then(d => setStat("stat-proposituras", num(d.length)))
-        .catch(() => setStat("stat-proposituras", "—"));
-      carregar("./legis-index.json")
-        .then(d => setStat("stat-legis", num(d.length)))
-        .catch(() => setStat("stat-legis", "—"));
+      carregar("./despesas-index.json").then(d => {
+        set("stat-despesas", compacto(d.totais.geral));
+        if (d.atualizado_em) {
+          const dt = new Date(d.atualizado_em);
+          set("meta-update", "Atualizado " + dt.toLocaleDateString("pt-BR"));
+        } else set("meta-update", "Dados do mandato");
+      }).catch(() => { set("stat-despesas", "—"); set("meta-update", "Dados oficiais"); });
+      carregar("./proposituras-index.json").then(d => set("stat-proposituras", num(d.length))).catch(() => set("stat-proposituras", "—"));
+      carregar("./legis-index.json").then(d => set("stat-legis", num(d.length))).catch(() => set("stat-legis", "—"));
     </script>
   </body>
 </html>
