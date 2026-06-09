@@ -153,6 +153,22 @@ def _norm_num(s: str) -> str:
     return re.sub(r"\D", "", s or "")
 
 
+def _data_mais_recente(datas: list[str]) -> str:
+    """Dada uma lista de datas 'dd/mm/aaaa', devolve a mais recente (string original).
+    Se nenhuma fizer parse, devolve a última da lista (ou '' se vazia)."""
+    melhor, melhor_chave = "", None
+    for d in datas:
+        m = re.search(r"(\d{2})/(\d{2})/(\d{4})", d or "")
+        if not m:
+            continue
+        chave = (m.group(3), m.group(2), m.group(1))
+        if melhor_chave is None or chave > melhor_chave:
+            melhor_chave, melhor = chave, d.strip()
+    if melhor:
+        return melhor
+    return datas[-1].strip() if datas else ""
+
+
 def aba_do_item(tipo: str) -> str:
     return ABA_INDICACOES if "indica" in _sem_acento(tipo) else ABA_REQUERIMENTOS
 
@@ -256,20 +272,28 @@ def detalhar_item(cod: str) -> dict:
         if a:
             pedido_pdf = {"url": urljoin(url, a["href"]), "nome": _nome_arquivo(a["href"])}
 
-    # Resposta anexada: tabela após o <h4>Resposta anexada</h4>
+    # Resposta anexada: pode haver VÁRIOS blocos <h4>Resposta anexada</h4>, um por
+    # resposta do prefeito (ex.: 1º pedido de dilação de prazo, 2º a resposta de fato).
+    # Coletamos os PDFs de todos os blocos e usamos como dataResposta a MAIS RECENTE.
     respostas: list[dict] = []
-    data_resposta = ""
-    h4 = soup.find("h4", string=re.compile(r"Resposta anexada", re.I))
-    if h4:
+    urls_vistas: set[str] = set()
+    datas_resposta: list[str] = []
+    for h4 in soup.find_all("h4", string=re.compile(r"Resposta anexada", re.I)):
         tab_resp = h4.find_next("table")
-        if tab_resp:
-            for a in tab_resp.find_all("a", href=re.compile(r"\.pdf", re.I)):
-                respostas.append({"url": urljoin(url, a["href"]), "nome": _nome_arquivo(a["href"])})
-            for row in tab_resp.select("tr"):
-                th = row.find("th")
-                if th and "recebimento" in th.get_text().lower():
-                    data_resposta = _text(row.find("td"))
-                    break
+        if not tab_resp:
+            continue
+        for a in tab_resp.find_all("a", href=re.compile(r"\.pdf", re.I)):
+            href = urljoin(url, a["href"])
+            if href in urls_vistas:
+                continue
+            urls_vistas.add(href)
+            respostas.append({"url": href, "nome": _nome_arquivo(a["href"])})
+        for row in tab_resp.select("tr"):
+            th = row.find("th")
+            if th and "recebimento" in th.get_text().lower():
+                datas_resposta.append(_text(row.find("td")))
+                break
+    data_resposta = _data_mais_recente(datas_resposta)
 
     return {
         "cod": cod,
@@ -345,25 +369,77 @@ def obter_ou_criar_subpasta(drive, pasta_raiz: str, nome: str) -> str:
     return pasta["id"]
 
 
-def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes) -> str:
+def listar_arquivos_pasta(drive, pasta_id: str) -> list[dict]:
+    """Lista os arquivos (não-pasta) de uma pasta, com id/nome/link/criação."""
+    arquivos: list[dict] = []
+    token = None
+    while True:
+        res = drive.files().list(
+            q=f"'{pasta_id}' in parents and trashed = false "
+              "and mimeType != 'application/vnd.google-apps.folder'",
+            fields="nextPageToken, files(id, name, webViewLink, createdTime)",
+            supportsAllDrives=True, includeItemsFromAllDrives=True,
+            pageToken=token,
+        ).execute()
+        arquivos.extend(res.get("files", []))
+        token = res.get("nextPageToken")
+        if not token:
+            break
+    return arquivos
+
+
+def limpar_duplicatas(drive, arquivos: list[dict]) -> list[dict]:
+    """Remove cópias redundantes (mesmo nome) de uma pasta, mantendo a mais antiga.
+    Devolve a lista de arquivos remanescentes (1 por nome)."""
+    por_nome: dict[str, list[dict]] = {}
+    for a in arquivos:
+        por_nome.setdefault(a["name"], []).append(a)
+    remanescentes: list[dict] = []
+    for nome, grupo in por_nome.items():
+        if len(grupo) > 1:
+            grupo.sort(key=lambda x: x.get("createdTime", ""))  # mantém a mais antiga
+            for extra in grupo[1:]:
+                try:
+                    drive.files().delete(
+                        fileId=extra["id"], supportsAllDrives=True).execute()
+                    print(f"  Duplicata removida: {nome} (id={extra['id']})",
+                          file=sys.stderr)
+                except Exception as e:
+                    print(f"  Aviso: falha ao remover duplicata {nome}: {e}",
+                          file=sys.stderr)
+        remanescentes.append(grupo[0])
+    return remanescentes
+
+
+def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes,
+              existentes: dict[str, str] | None = None) -> str:
+    """Sobe um PDF, evitando re-upload se já houver arquivo com esse nome na pasta.
+    `existentes` (nome→webViewLink) evita uma consulta por arquivo; se não vier,
+    consulta a pasta pelo nome."""
     from googleapiclient.http import MediaIoBaseUpload
 
-    # idempotência: se já existe arquivo com esse nome na pasta, não re-sobe
-    nome_escapado = nome.replace("'", "\\'")
-    existentes = drive.files().list(
-        q=f"name = '{nome_escapado}' and '{pasta_id}' in parents and trashed = false",
-        fields="files(webViewLink)", supportsAllDrives=True,
-        includeItemsFromAllDrives=True,
-    ).execute().get("files", [])
-    if existentes:
-        return existentes[0].get("webViewLink", "")
+    if existentes is not None:
+        if nome in existentes:
+            return existentes[nome]
+    else:
+        nome_escapado = nome.replace("'", "\\'")
+        achados = drive.files().list(
+            q=f"name = '{nome_escapado}' and '{pasta_id}' in parents and trashed = false",
+            fields="files(webViewLink)", supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        ).execute().get("files", [])
+        if achados:
+            return achados[0].get("webViewLink", "")
 
     media = MediaIoBaseUpload(io.BytesIO(dados), mimetype="application/pdf")
     meta = {"name": nome, "parents": [pasta_id]}
     arquivo = drive.files().create(
         body=meta, media_body=media, fields="webViewLink", supportsAllDrives=True,
     ).execute()
-    return arquivo.get("webViewLink", "")
+    link = arquivo.get("webViewLink", "")
+    if existentes is not None:
+        existentes[nome] = link
+    return link
 
 
 def _col_letra(idx: int) -> str:
@@ -550,8 +626,11 @@ def enviar_email(entradas: list[dict], data: str) -> None:
 
 # ── Processamento ─────────────────────────────────────────────────────────────
 def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
-                   sep: str = ",") -> tuple[str, dict, str]:
-    """Baixa PDFs, sobe ao Drive e devolve (aba, valores, pasta_url)."""
+                   sep: str = ",") -> tuple[str, dict, str, bool]:
+    """Baixa PDFs que ainda não estão arquivados, sobe ao Drive e devolve
+    (aba, valores, pasta_url, resposta_nova) — `resposta_nova` indica se algum PDF
+    de RESPOSTA foi arquivado agora (sinal robusto p/ saber se chegou novidade,
+    independente do formato de data na planilha)."""
     aba = aba_do_item(item["tipo"])
     numero = item["numero"] or item["cod"]
     categoria = "REQUERIMENTO" if aba == ABA_REQUERIMENTOS else "INDICACAO"
@@ -560,31 +639,43 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     links_resposta = []
     pasta_id = None
     pasta_url = ""
+    existentes: dict[str, str] = {}
+    resposta_nova = False
     if not dry_run:
         pasta_id = obter_ou_criar_subpasta(drive, pasta_raiz, nome_pasta)
         pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
+        # Lista a pasta uma vez: limpa duplicatas antigas e monta o mapa nome→link.
+        # Permite pular o download de PDFs já arquivados e detectar respostas novas.
+        arquivos = limpar_duplicatas(drive, listar_arquivos_pasta(drive, pasta_id))
+        existentes = {a["name"]: a.get("webViewLink", "") for a in arquivos}
 
     # Pedido (arquivado no Drive; a planilha não tem coluna própria p/ ele)
     if item["pedidoPdf"]:
-        dados = baixar_pdf_bytes(item["pedidoPdf"]["url"])
-        if dados and not dry_run:
-            subir_pdf(drive, pasta_id, _slug(f"PEDIDO {numero} {item['pedidoPdf']['nome']}"), dados)
+        nome_pedido = _slug(f"PEDIDO {numero} {item['pedidoPdf']['nome']}")
+        if not dry_run and nome_pedido not in existentes:
+            dados = baixar_pdf_bytes(item["pedidoPdf"]["url"])
+            if dados:
+                subir_pdf(drive, pasta_id, nome_pedido, dados, existentes)
 
     # Respostas (arquivadas na subpasta)
     for i, pdf in enumerate(item["respostasPdf"], 1):
+        if dry_run:
+            links_resposta.append(pdf["url"])
+            continue
+        nome_resp = _slug(f"RESPOSTA {i} {numero} {pdf['nome']}")
+        if nome_resp in existentes:
+            links_resposta.append(existentes[nome_resp])
+            continue
         dados = baixar_pdf_bytes(pdf["url"])
         if not dados:
             continue
-        if dry_run:
-            links_resposta.append(pdf["url"])
-        else:
-            links_resposta.append(
-                subir_pdf(drive, pasta_id, _slug(f"RESPOSTA {i} {numero} {pdf['nome']}"), dados)
-            )
+        links_resposta.append(subir_pdf(drive, pasta_id, nome_resp, dados, existentes))
+        resposta_nova = True
 
     # Coluna "Resposta": hyperlink clicável para a subpasta com os PDFs
     if dry_run:
         resposta_cell = "\n".join(links_resposta)
+        resposta_nova = True  # sem Drive não dá pra comparar; trata como novidade
     else:
         resposta_cell = _hyperlink(pasta_url, "Resposta", sep)
 
@@ -596,7 +687,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         "Resposta": resposta_cell,
         "Data da resposta": item["dataResposta"],
     }
-    return aba, valores, pasta_url
+    return aba, valores, pasta_url, resposta_nova
 
 
 def main():
@@ -674,14 +765,20 @@ def main():
                 continue
             info = indice.get(aba, {"mapa": {}})
             existente = info["mapa"].get(num)
-            if existente and existente.get("resp") and not args.forcar:
-                continue  # resposta já preenchida — pula (use --forcar para reprocessar)
+            ja_respondido = bool(existente and existente.get("resp"))
+
+            aba, valores, pasta_url, resposta_nova = processar_item(
+                detalhes, drive, pasta_raiz, args.dry_run, sep)
+
+            # Item já respondido: só registra de novo se chegou RESPOSTA nova no Drive
+            # (sinal robusto, imune ao reformato de data feito pela planilha).
+            if ja_respondido and not resposta_nova and not args.forcar:
+                continue
 
             rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
-            acao = "atualiza" if existente else "nova linha"
+            acao = ("resposta nova" if ja_respondido
+                    else "atualiza" if existente else "nova linha")
             print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
-            aba, valores, pasta_url = processar_item(
-                detalhes, drive, pasta_raiz, args.dry_run, sep)
 
             if args.dry_run:
                 print(json.dumps({"aba": aba, "acao": acao, **valores},
