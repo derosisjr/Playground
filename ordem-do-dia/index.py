@@ -342,10 +342,16 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
 
 
 def _chamar_api(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
-    """Chama messages.create com retry automático em caso de rate limit (429)."""
+    """Chama a API com streaming e retry automático em caso de rate limit (429).
+
+    Usa streaming + max_tokens alto para o briefing caber numa única resposta:
+    a continuação reenviaria todos os PDFs e estouraria o limite de ITPM (30k/min),
+    pois tokens lidos do cache também contam para o rate limit. Streaming evita o
+    timeout de HTTP em respostas longas (recomendado para max_tokens alto)."""
     for tentativa in range(3):
         try:
-            return client.messages.create(model="claude-sonnet-4-6", max_tokens=8192, **kwargs)
+            with client.messages.stream(model="claude-sonnet-4-6", max_tokens=32000, **kwargs) as stream:
+                return stream.get_final_message()
         except anthropic.RateLimitError:
             if tentativa == 2:
                 raise
