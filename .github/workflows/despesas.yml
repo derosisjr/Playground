@@ -28,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
@@ -43,7 +43,7 @@ jobs:
       # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions
       # (chave rotativa por run + restore-keys p/ recuperar o mais recente).
       - name: Restaurar base SQLite (cache)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: despesas/despesas.sqlite
           key: despesas-db-${{ github.run_id }}

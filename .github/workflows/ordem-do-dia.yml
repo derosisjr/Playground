@@ -17,10 +17,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
@@ -43,7 +43,7 @@ jobs:
           python ordem-do-dia/index.py $SESSAO_ARG --email --output ordem-do-dia/ultimo-briefing.md
 
       - name: Salvar briefing como artefato
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: briefing-${{ github.run_id }}
