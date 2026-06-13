@@ -128,6 +128,22 @@
       .rodape { color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
       .barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
+
+      /* ── Modal (ficha do favorecido) ──────────────────────────────── */
+      .modal-overlay { position: fixed; inset: 0; background: rgba(7,17,31,.55);
+        display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+      .modal-overlay[hidden] { display: none; }
+      .modal-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+        max-width: 1000px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+      .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+        padding: 16px 18px; background: var(--navy2); color: #fff; border-bottom: 1px solid var(--line); }
+      .modal-tit { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600; line-height: 1.2; }
+      .modal-doc { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--gold-bright); margin-top: 4px; }
+      .modal-body { padding: 16px 18px; overflow: auto; }
+      #fav-tabela { font-size: 13px; white-space: nowrap; }
+      #fav-tabela td { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+      #fav-tabela td.neg { color: var(--red); }
+      #fav-resumo { white-space: normal; }
     </style>
   </head>
   <body>
@@ -183,11 +199,18 @@
 
       <!-- ── Favorecidos ── -->
       <section class="painel" id="painel-favorecidos">
-        <div class="filtros">
-          <input id="q" type="search" placeholder="Buscar favorecido..." />
+        <div class="periodo-acoes" id="fav-modos" style="margin-bottom:12px">
+          <button class="btn primario" data-modo="todos" type="button">Todos</button>
+          <button class="btn" data-modo="pj" type="button">Pessoa jurídica (CNPJ)</button>
+          <button class="btn" data-modo="pf" type="button">Pessoa física (CPF)</button>
+        </div>
+        <div class="filtros" style="grid-template-columns: 2fr 1fr">
+          <input id="q" type="search" placeholder="Buscar por nome, CPF ou CNPJ..." />
+          <select id="f-elemento-fav"><option value="">Elemento de despesa (todos)</option></select>
         </div>
         <div class="barra">
           <span class="contagem" id="contagem">—</span>
+          <span class="contagem" style="color:var(--muted)">Clique num favorecido para ver os pagamentos.</span>
         </div>
         <div class="tabela-wrap">
           <table>
@@ -260,6 +283,40 @@
       </p>
     </div>
 
-    <script src="./despesas-app.js?v=1"></script>
+    <!-- ── Ficha do favorecido (modal) ── -->
+    <div class="modal-overlay" id="fav-modal" hidden>
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-tit">
+            <div id="fav-titulo">—</div>
+            <div class="modal-doc" id="fav-doc"></div>
+          </div>
+          <button class="btn" id="fav-fechar" type="button" aria-label="Fechar">✕ Fechar</button>
+        </div>
+        <div class="modal-body">
+          <div class="vazio" id="fav-carregando">Carregando…</div>
+          <div id="fav-conteudo" hidden>
+            <div class="barra" style="margin-bottom:12px">
+              <span class="contagem" id="fav-resumo"></span>
+              <button class="btn" id="fav-csv" type="button">Exportar CSV</button>
+            </div>
+            <div class="tabela-wrap" style="overflow-x:auto">
+              <table id="fav-tabela">
+                <thead><tr id="fav-cabecalho"></tr></thead>
+                <tbody id="fav-corpo"></tbody>
+              </table>
+              <div class="vazio" id="fav-vazio" hidden>Sem lançamentos de execução para este favorecido no período detalhado.</div>
+            </div>
+            <div class="barra" style="justify-content:center;margin-top:12px">
+              <button class="btn" id="fav-anterior" type="button">‹ Anterior</button>
+              <span class="contagem" id="fav-pagina">—</span>
+              <button class="btn" id="fav-proxima" type="button">Próxima ›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./despesas-app.js?v=5"></script>
   </body>
 </html>

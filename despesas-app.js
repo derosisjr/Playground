@@ -39,7 +39,9 @@ async function init() {
   ligarAbas();
   ligarBusca();
   ligarOrdenacao();
+  ligarModosFav();
   ligarDetalhe();
+  ligarFicha();
 
   const at = DADOS.atualizado_em ? new Date(DADOS.atualizado_em).toLocaleString("pt-BR") : "";
   document.getElementById("atualizado").textContent = at ? "Atualizado em " + at + "." : "";
@@ -157,12 +159,71 @@ function renderAlertas() {
 }
 
 // ── Favorecidos ──────────────────────────────────────────────────────────────
+const soDigitos = (s) => String(s).replace(/\D/g, "");
+// CPF mascarado vem como "***.158.308-**" (sem barra); CNPJ tem "/".
+const ehCpf = (doc) => !!doc && !doc.includes("/") && doc.includes("*");
+
+let favModo = "todos";        // "todos" | "pj" (CNPJ) | "pf" (CPF)
+let favElemento = "";         // filtro de elemento de despesa ("" = todos)
+let favMemo = { chave: null, lista: [] };  // cache do agregado do detalhe
+
+// predicado de tipo de documento conforme o modo
+function predTipoFav() {
+  if (favModo === "pf") return (d) => ehCpf(d);
+  if (favModo === "pj") return (d) => (d || "").includes("/");
+  return () => true;
+}
+
+// Agrega favorecidos a partir do detalhe (execução), filtrando por tipo e elemento.
+function agregarFavDetalhe(predTipo, elemento) {
+  const { campos, rows } = FAV_DETALHE;
+  const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido"),
+        iP = campos.indexOf("pago"), iData = campos.indexOf("data"), iE = campos.indexOf("elemento_despesa");
+  const map = new Map();
+  for (const r of rows) {
+    const doc = r[iD];
+    if (!predTipo(doc)) continue;
+    if (elemento && r[iE] !== elemento) continue;
+    const chave = r[iN] + "|" + doc;
+    let o = map.get(chave);
+    if (!o) { o = { nome: r[iN], documento: doc, valor: 0, qtd: 0, meses: new Set() }; map.set(chave, o); }
+    o.valor += (r[iP] || 0);
+    o.qtd += 1;
+    if (r[iData]) o.meses.add(String(r[iData]).slice(0, 7));
+  }
+  return [...map.values()]
+    .map(o => ({ nome: o.nome, documento: o.documento, valor: o.valor, qtd: o.qtd, meses: o.meses.size }))
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 300);
+}
+
+// Fonte da tabela conforme modo + elemento (com memo p/ não reagregar a cada render).
+function fonteFav() {
+  // Sem elemento e em modo CNPJ/Todos: usa o agregado pronto do index (visão caixa/pago).
+  if (!favElemento && favModo !== "pf") {
+    const all = DADOS.top_favorecidos || [];
+    if (favModo === "pj") return all.filter(f => (f.documento || "").includes("/"));
+    return all;
+  }
+  // PF (sem elemento) ou qualquer modo com elemento: agrega do detalhe.
+  if (!FAV_DETALHE) return [];
+  const chave = favModo + "|" + favElemento;
+  if (favMemo.chave !== chave) favMemo = { chave, lista: agregarFavDetalhe(predTipoFav(), favElemento || null) };
+  return favMemo.lista;
+}
+
 function renderFavoridosTabela() {
-  const termo = (document.getElementById("q").value || "").toLowerCase().trim();
-  let linhas = (DADOS.top_favorecidos || []).map(f => ({
+  const bruto = (document.getElementById("q").value || "").trim();
+  const termo = semAcento(bruto);
+  const termoDig = soDigitos(bruto);
+  const fonte = fonteFav();
+  let linhas = fonte.map(f => ({
     nome: f.nome || "—", valor: f.valor, qtd: f.qtd, meses: f.meses, documento: f.documento || "",
   }));
-  if (termo) linhas = linhas.filter(f => f.nome.toLowerCase().includes(termo));
+  if (termo) linhas = linhas.filter(f =>
+    semAcento(f.nome).includes(termo) ||
+    (f.documento && (semAcento(f.documento).includes(termo) ||
+      (termoDig && soDigitos(f.documento).includes(termoDig)))));
   const dir = favSort.dir === "asc" ? 1 : -1;
   linhas.sort((a, b) => {
     const va = a[favSort.col], vb = b[favSort.col];
@@ -173,14 +234,64 @@ function renderFavoridosTabela() {
   const corpo = document.getElementById("corpo-fav");
   document.getElementById("fav-vazio").hidden = linhas.length > 0;
   corpo.innerHTML = linhas.map(f => `
-    <tr>
+    <tr class="fav-row" style="cursor:pointer" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}">
       <td>${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}</div>` : ""}</td>
       <td class="r num">${brlc(f.valor)}</td>
       <td class="r num">${f.qtd}</td>
       <td class="r num">${f.meses}</td>
     </tr>`).join("");
+  corpo.querySelectorAll(".fav-row").forEach(tr =>
+    tr.addEventListener("click", () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc)));
+  const rotuloModo = favModo === "pf" ? "pessoa(s) física(s)"
+    : favModo === "pj" ? "empresa(s)" : "favorecido(s)";
   document.getElementById("contagem").textContent =
-    `${linhas.length} favorecido(s) — top ${DADOS.top_favorecidos.length} por valor`;
+    `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor`;
+}
+
+// Popula o select de elemento de despesa com APENAS os elementos que aparecem
+// para o tipo de documento selecionado (CPF/CNPJ/Todos), do detalhe de execução.
+function popularElementosFav() {
+  if (!FAV_DETALHE) return;
+  const pred = predTipoFav();
+  const iE = FAV_DETALHE.campos.indexOf("elemento_despesa");
+  const iD = FAV_DETALHE.campos.indexOf("documento_favorecido");
+  const vals = [...new Set(FAV_DETALHE.rows
+    .filter(r => r[iE] && pred(r[iD]))
+    .map(r => r[iE]))].sort((a, b) => a.localeCompare(b));
+  const sel = document.getElementById("f-elemento-fav");
+  // se o elemento escolhido não existe para este tipo, volta para "todos"
+  if (favElemento && !vals.includes(favElemento)) favElemento = "";
+  sel.innerHTML = '<option value="">Elemento de despesa (todos)</option>' +
+    vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  sel.value = favElemento;
+}
+
+// Recalcula a lista ativa, carregando o detalhe quando o modo/elemento exigem.
+async function atualizarFav() {
+  const precisaDetalhe = favElemento || favModo === "pf";
+  if (precisaDetalhe && !FAV_DETALHE) {
+    document.getElementById("contagem").textContent = "Carregando…";
+    try { await carregarTodoDetalhe(); }
+    catch (e) { document.getElementById("contagem").textContent = "Falha ao carregar o detalhe."; return; }
+  }
+  if (FAV_DETALHE) popularElementosFav();
+  renderFavoridosTabela();
+}
+
+function ligarModosFav() {
+  document.querySelectorAll("#fav-modos button").forEach(b =>
+    b.addEventListener("click", () => {
+      favModo = b.dataset.modo;
+      document.querySelectorAll("#fav-modos button").forEach(x =>
+        x.classList.toggle("primario", x.dataset.modo === favModo));
+      atualizarFav();
+    }));
+  const sel = document.getElementById("f-elemento-fav");
+  // Carrega o detalhe ao abrir o select pela 1ª vez, para listar os elementos.
+  sel.addEventListener("mousedown", () => {
+    if (!FAV_DETALHE) carregarTodoDetalhe().then(popularElementosFav);
+  });
+  sel.addEventListener("change", () => { favElemento = sel.value; atualizarFav(); });
 }
 
 // ── Abas / interações ────────────────────────────────────────────────────────
@@ -389,20 +500,141 @@ function renderDetTabela() {
   document.getElementById("det-proxima").disabled = detPagina >= totalPag;
 }
 
-function exportarDetCsv() {
-  if (!detFiltradas.length) { alert("Nada para exportar."); return; }
+// Monta e baixa um CSV (`;`, BOM, CRLF) a partir de campos (chaves) + linhas (arrays).
+function baixarCsv(campos, rows, nomeArquivo) {
   const sep = ";";
   const escaparCsv = (v) => {
     const s = String(v ?? "");
     return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
-  const linhas = [detCampos.map(c => DET_LABELS[c] || c).join(sep)];
-  for (const r of detFiltradas) linhas.push(r.map(escaparCsv).join(sep));
+  const linhas = [campos.map(c => DET_LABELS[c] || c).join(sep)];
+  for (const r of rows) linhas.push(r.map(escaparCsv).join(sep));
   const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "despesas-detalhe.csv"; a.click();
+  a.href = url; a.download = nomeArquivo; a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportarDetCsv() {
+  if (!detFiltradas.length) { alert("Nada para exportar."); return; }
+  baixarCsv(detCampos, detFiltradas, "despesas-detalhe.csv");
+}
+
+// ── Ficha do favorecido (modal) ──────────────────────────────────────────────
+// Colunas exibidas na ficha (subconjunto de CAMPOS_DETALHE; o CSV exporta o mesmo)
+const FAV_COLS = ["data", "unidade_gestora", "tipo", "funcao", "elemento_despesa",
+                  "empenho", "empenhado", "liquidado", "pago"];
+const FAV_PAGINA = 50;
+let FAV_DETALHE = null;   // { campos, rows } — todos os meses concatenados (cacheado)
+let favFicha = { nome: "", doc: "", campos: [], rows: [], sort: { idx: 0, dir: "desc" }, pag: 1 };
+
+async function carregarTodoDetalhe() {
+  if (FAV_DETALHE) return FAV_DETALHE;
+  const meses = DADOS.meses || [];
+  const partes = await Promise.all(meses.map(m =>
+    fetch("./" + m.arquivo + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())));
+  FAV_DETALHE = { campos: partes[0]?.campos || [], rows: partes.flatMap(p => p.linhas) };
+  popularElementosFav();
+  return FAV_DETALHE;
+}
+
+async function abrirFichaFavorecido(nome, documento) {
+  const modal = document.getElementById("fav-modal");
+  modal.hidden = false;
+  document.getElementById("fav-titulo").textContent = nome;
+  document.getElementById("fav-doc").textContent = documento || "";
+  document.getElementById("fav-carregando").hidden = false;
+  document.getElementById("fav-conteudo").hidden = true;
+  try {
+    const { campos, rows } = await carregarTodoDetalhe();
+    const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido");
+    const linhas = rows.filter(r => r[iN] === nome && r[iD] === documento);
+    favFicha = { nome, doc: documento, campos, rows: linhas,
+                 sort: { idx: campos.indexOf("pago"), dir: "desc" }, pag: 1 };
+    renderFichaCabecalho();
+    renderFicha();
+    document.getElementById("fav-carregando").hidden = true;
+    document.getElementById("fav-conteudo").hidden = false;
+  } catch (e) {
+    document.getElementById("fav-carregando").textContent = "Falha ao carregar os lançamentos.";
+  }
+}
+
+function fecharFichaFavorecido() {
+  document.getElementById("fav-modal").hidden = true;
+}
+
+function renderFichaCabecalho() {
+  const tr = document.getElementById("fav-cabecalho");
+  tr.innerHTML = FAV_COLS.map(c => {
+    const i = favFicha.campos.indexOf(c);
+    const seta = favFicha.sort.idx === i ? (favFicha.sort.dir === "asc" ? " ▲" : " ▼") : "";
+    const cls = DET_NUM.has(c) ? ' class="r"' : "";
+    return `<th data-idx="${i}"${cls}>${DET_LABELS[c] || c}${seta}</th>`;
+  }).join("");
+  tr.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+    const i = +th.dataset.idx;
+    favFicha.sort.dir = favFicha.sort.idx === i && favFicha.sort.dir === "asc" ? "desc" : "asc";
+    favFicha.sort.idx = i; favFicha.pag = 1;
+    renderFichaCabecalho(); renderFicha();
+  }));
+}
+
+function renderFicha() {
+  const { campos, rows, sort } = favFicha;
+  const numerico = DET_NUM.has(campos[sort.idx]);
+  const dir = sort.dir === "asc" ? 1 : -1;
+  rows.sort((a, b) => {
+    let va = a[sort.idx], vb = b[sort.idx];
+    if (numerico) return ((va ?? 0) - (vb ?? 0)) * dir;
+    return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
+  });
+
+  const soma = (campo) => rows.reduce((s, r) => s + (r[campos.indexOf(campo)] ?? 0), 0);
+  document.getElementById("fav-resumo").innerHTML =
+    `<strong>${rows.length.toLocaleString("pt-BR")}</strong> lançamento(s) de execução · ` +
+    `Empenhado ${brlc(soma("empenhado"))} · Liquidado ${brlc(soma("liquidado"))} · ` +
+    `Pago ${brlc(soma("pago"))}` +
+    `<div class="sub" style="color:var(--muted);font-size:12px;margin-top:4px">` +
+    `Execução por empenho — o total pago aproxima o valor agregado da lista de favorecidos.</div>`;
+
+  const totalPag = Math.max(1, Math.ceil(rows.length / FAV_PAGINA));
+  favFicha.pag = Math.min(Math.max(1, favFicha.pag), totalPag);
+  const ini = (favFicha.pag - 1) * FAV_PAGINA;
+  const pagina = rows.slice(ini, ini + FAV_PAGINA);
+
+  const corpo = document.getElementById("fav-corpo");
+  document.getElementById("fav-vazio").hidden = rows.length > 0;
+  corpo.innerHTML = pagina.map(r => "<tr>" + FAV_COLS.map(c => {
+    const i = campos.indexOf(c), v = r[i];
+    if (DET_NUM.has(c)) {
+      if (v == null) return `<td class="r" style="color:var(--muted)">—</td>`;
+      return `<td class="r num${v < 0 ? " neg" : ""}">${brlc(v)}</td>`;
+    }
+    return `<td title="${esc(v ?? "")}">${esc(v ?? "")}</td>`;
+  }).join("") + "</tr>").join("");
+
+  document.getElementById("fav-pagina").textContent = `Página ${favFicha.pag} de ${totalPag}`;
+  document.getElementById("fav-anterior").disabled = favFicha.pag <= 1;
+  document.getElementById("fav-proxima").disabled = favFicha.pag >= totalPag;
+}
+
+function ligarFicha() {
+  document.getElementById("fav-fechar").addEventListener("click", fecharFichaFavorecido);
+  document.getElementById("fav-modal").addEventListener("click", (e) => {
+    if (e.target.id === "fav-modal") fecharFichaFavorecido();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("fav-modal").hidden) fecharFichaFavorecido();
+  });
+  document.getElementById("fav-anterior").addEventListener("click", () => { favFicha.pag--; renderFicha(); });
+  document.getElementById("fav-proxima").addEventListener("click", () => { favFicha.pag++; renderFicha(); });
+  document.getElementById("fav-csv").addEventListener("click", () => {
+    if (!favFicha.rows.length) { alert("Nada para exportar."); return; }
+    const nomeArq = "favorecido-" + soDigitos(favFicha.doc || favFicha.nome).slice(0, 20) + ".csv";
+    baixarCsv(favFicha.campos, favFicha.rows, nomeArq);
+  });
 }
 
 function esc(s) {
