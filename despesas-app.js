@@ -33,7 +33,9 @@ async function init() {
   }
   renderStats();
   renderGraficos();
+  popularFiltrosAlertas();
   renderAlertas();
+  ligarAlertas();
   renderFavoridosTabela();
   renderSeletorMeses();
   ligarAbas();
@@ -132,13 +134,38 @@ function chartOpts(scales, indexAxis) {
 }
 
 // ── Alertas ──────────────────────────────────────────────────────────────────
+const ALERTA_LABELS = {
+  favorecido_recorrente: "Favorecido recorrente", concentracao: "Concentração em função",
+  pico_mensal: "Pico mensal", extra_orcamentario: "Extra-orçamentário",
+  fracionamento: "Possível fracionamento", favorecido_novo: "Favorecido novo",
+  crescimento_yoy: "Crescimento anômalo", pf_sensivel: "Pessoa física sensível",
+};
+
+function popularFiltrosAlertas() {
+  const lista = DADOS.alertas || [];
+  const tipos = [...new Set(lista.map(a => a.tipo))];
+  const selT = document.getElementById("alerta-tipo");
+  selT.innerHTML = '<option value="">Tipo (todos)</option>' +
+    tipos.map(t => `<option value="${esc(t)}">${esc(ALERTA_LABELS[t] || t)}</option>`).join("");
+}
+
+function ligarAlertas() {
+  document.getElementById("alerta-tipo").addEventListener("change", renderAlertas);
+  document.getElementById("alerta-sev").addEventListener("change", renderAlertas);
+}
+
 function renderAlertas() {
   const lista = DADOS.alertas || [];
   document.getElementById("badge-alertas").textContent = lista.length ? `(${lista.length})` : "";
+  const fTipo = document.getElementById("alerta-tipo").value;
+  const fSev = document.getElementById("alerta-sev").value;
+  const vis = lista.filter(a => (!fTipo || a.tipo === fTipo) && (!fSev || a.severidade === fSev));
+
   const cont = document.getElementById("lista-alertas");
-  document.getElementById("alertas-vazio").hidden = lista.length > 0;
-  cont.innerHTML = lista.map((a, i) => `
-    <div class="alerta ${a.severidade}" data-fav="${esc(a.filtro?.favorecido || "")}">
+  document.getElementById("alertas-vazio").hidden = vis.length > 0;
+  cont.innerHTML = vis.map(a => `
+    <div class="alerta ${a.severidade}" data-fav="${esc(a.filtro?.favorecido || "")}"
+         data-elemento="${esc(a.filtro?.elemento || "")}" data-modo="${esc(a.filtro?.tipo_doc || "")}">
       <div class="top">
         <div class="titulo"><span class="sev ${a.severidade}">${a.severidade}</span>${esc(a.titulo)}</div>
         <div class="vlr">${brlc(a.valor)}</div>
@@ -147,13 +174,21 @@ function renderAlertas() {
     </div>`).join("");
 
   cont.querySelectorAll(".alerta").forEach(el => {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", async () => {
       const fav = el.getAttribute("data-fav");
       if (!fav) return;
+      const modo = el.getAttribute("data-modo");
+      const elemento = el.getAttribute("data-elemento");
       selecionarAba("favorecidos");
-      const q = document.getElementById("q");
-      q.value = fav;
-      renderFavoridosTabela();
+      if (modo) {
+        favModo = modo;
+        document.querySelectorAll("#fav-modos button").forEach(x =>
+          x.classList.toggle("primario", x.dataset.modo === favModo));
+      }
+      favElemento = elemento || "";
+      document.getElementById("q").value = fav;
+      await atualizarFav();
+      document.getElementById("f-elemento-fav").value = favElemento;
     });
   });
 }

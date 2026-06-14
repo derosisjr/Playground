@@ -189,10 +189,20 @@
       <!-- ── Alertas ── -->
       <section class="painel" id="painel-alertas">
         <p class="hero-sub" style="color:var(--muted);margin:0 0 14px">
-          Sinais automáticos por regras (concentração, recorrência, picos, extra-orçamentário).
-          Clique para ver o favorecido na aba de favorecidos. Cada alerta é um ponto de partida para
-          requerimento de informação — não é conclusão de irregularidade.
+          Sinais automáticos por regras (fracionamento, concentração, recorrência, favorecido novo,
+          crescimento anômalo, pessoa física em elemento sensível, picos, extra-orçamentário).
+          Clique num alerta para abri-lo já filtrado na aba de favorecidos. Cada alerta é um ponto de
+          partida para requerimento de informação — não é conclusão de irregularidade.
         </p>
+        <div class="filtros" style="grid-template-columns: 1fr 1fr">
+          <select id="alerta-tipo"><option value="">Tipo (todos)</option></select>
+          <select id="alerta-sev">
+            <option value="">Severidade (todas)</option>
+            <option value="alta">Alta</option>
+            <option value="media">Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
         <div id="lista-alertas"></div>
         <div class="vazio" id="alertas-vazio" hidden>Nenhum alerta com os limiares atuais.</div>
       </section>
@@ -317,6 +327,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=5"></script>
+    <script src="./despesas-app.js?v=6"></script>
   </body>
 </html>

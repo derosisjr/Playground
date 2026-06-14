@@ -20,6 +20,7 @@ Uso:
 import csv
 import json
 import os
+import re
 import sqlite3
 import sys
 from collections import defaultdict
@@ -54,7 +55,27 @@ ALERTA_CONCENTRACAO_PCT = 40    # favorecido que domina >X% de uma função → 
 ALERTA_CONCENTRACAO_MIN = 1_000_000   # ...e move ao menos isso (evita ruído)
 ALERTA_PICO_K = 2.5             # mês cujo gasto > média + k·desvio → alerta
 ALERTA_EXTRA_VALOR = 1_000_000  # pagamento extra-orçamentário acima disso → alerta
-MAX_ALERTAS = 60
+
+# Regras inteligentes adicionais (calibradas sobre a base do mandato)
+# Lei 14.133/2021 art. 75 — limite de dispensa (compras/serviços). MANTER atualizado por decreto.
+LIMITE_DISPENSA = 59_906        # usado p/ detectar fracionamento
+FRAC_MIN_EMPENHOS = 4           # nº mínimo de empenhos < limite no mesmo favorecido+elemento+ano
+FRAC_FATOR_TOTAL = 1.5          # ...somando ao menos FATOR×limite
+ALERTA_NOVO_MESES = 6           # "novo" = 1ª aparição nos últimos N meses
+ALERTA_NOVO_VALOR = 1_000_000   # ...e já acumulou ao menos isso
+ALERTA_YOY_FATOR = 3.0          # crescimento anualizado do ano corrente ≥ FATOR× ano anterior
+ALERTA_YOY_VALOR = 1_000_000    # ...e move ao menos isso no ano corrente
+ALERTA_PF_VALOR = 100_000       # pessoa física (CPF) em elemento sensível acima disso
+CAP_POR_REGRA = 15             # teto de alertas por regra nova (não afogar o painel/e-mail)
+MAX_ALERTAS = 100              # era 60
+
+# entes internos/governamentais — excluídos de "novo"/"YoY" (não são fornecedores de mercado)
+EXCLUIR_ENTE = re.compile(
+    r"MUNIC[IÍ]PIO|PREFEITURA|INSTITUTO DE PREVID|C[ÂA]MARA|FUNDO |FUNDA[ÇC][ÃA]O|"
+    r"CAIXA DE ASSIST|\bIPS\b|CAPEP|RECEITA|TESOURO", re.I)
+# CPF mascarado: sem "/" e com "*"; elementos sensíveis p/ pessoa física
+SQL_EH_CPF = "documento_favorecido NOT LIKE '%/%' AND documento_favorecido LIKE '%*%'"
+ELEM_SENSIVEIS = ("%LOCA%IM%", "%TERCEIRIZA%", "%INDENIZA%", "%CONSULTORIA%", "%TERCEIRO%F_SICA%")
 
 
 def conectar() -> sqlite3.Connection:
@@ -128,8 +149,8 @@ def alertas(conn) -> list[dict]:
         "SELECT nome_favorecido k, documento_favorecido doc, SUM(valor) s, "
         "COUNT(DISTINCT ano*100+mes) meses FROM pagamentos "
         "GROUP BY nome_favorecido, documento_favorecido "
-        "HAVING s >= ? AND meses >= ? ORDER BY s DESC",
-        ALERTA_FAV_VALOR, ALERTA_FAV_MESES):
+        "HAVING s >= ? AND meses >= ? ORDER BY s DESC LIMIT ?",
+        ALERTA_FAV_VALOR, ALERTA_FAV_MESES, CAP_POR_REGRA):
         out.append({
             "tipo": "favorecido_recorrente",
             "severidade": "alta",
@@ -143,13 +164,17 @@ def alertas(conn) -> list[dict]:
     tot_funcao = {r["k"]: r["s"] for r in _q(conn,
         "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
         "FROM pagamentos GROUP BY k")}
+    n_conc = 0
     for r in _q(conn,
         "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') f, nome_favorecido k, SUM(valor) s "
-        "FROM pagamentos GROUP BY f, nome_favorecido HAVING s >= ?",
+        "FROM pagamentos GROUP BY f, nome_favorecido HAVING s >= ? ORDER BY s DESC",
         ALERTA_CONCENTRACAO_MIN):
         base = tot_funcao.get(r["f"], 0) or 1
         pct = 100 * r["s"] / base
         if pct >= ALERTA_CONCENTRACAO_PCT and r["f"] != "(sem função)":
+            if n_conc >= CAP_POR_REGRA:
+                break
+            n_conc += 1
             out.append({
                 "tipo": "concentracao",
                 "severidade": "media",
@@ -190,6 +215,111 @@ def alertas(conn) -> list[dict]:
             "detalhe": f"R$ {r['s']:,.2f} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"]},
+        })
+
+    # 5) Possível fracionamento de despesa (vários empenhos logo abaixo do limite de dispensa)
+    n = 0
+    for r in _q(conn,
+        "SELECT nome_favorecido k, elemento_despesa e, ano, COUNT(*) qt, SUM(valor) s "
+        "FROM empenhos WHERE valor < ? AND valor > ? "
+        "GROUP BY nome_favorecido, elemento_despesa, ano "
+        "HAVING qt >= ? AND s >= ? ORDER BY s DESC",
+        LIMITE_DISPENSA, LIMITE_DISPENSA * 0.4, FRAC_MIN_EMPENHOS, LIMITE_DISPENSA * FRAC_FATOR_TOTAL):
+        if n >= CAP_POR_REGRA:
+            break
+        n += 1
+        out.append({
+            "tipo": "fracionamento",
+            "severidade": "alta",
+            "titulo": f"Possível fracionamento: {r['qt']} empenhos a {r['k']}",
+            "detalhe": (f"R$ {r['s']:,.2f} em {r['qt']} empenhos abaixo de R$ {LIMITE_DISPENSA:,.2f} "
+                        f"({r['ano']}) — {(r['e'] or '')[:50]}."),
+            "valor": round(r["s"], 2),
+            "filtro": {"favorecido": r["k"], "elemento": r["e"], "tipo_doc": "pj"},
+        })
+
+    # 6) Favorecido novo (1ª aparição recente) de alto valor
+    ultimo = _q(conn, "SELECT MAX(ano*100+mes) m FROM pagamentos")[0]["m"]
+    if ultimo:
+        ay, am = ultimo // 100, ultimo % 100
+        cm = am - ALERTA_NOVO_MESES
+        cy = ay
+        while cm <= 0:
+            cm += 12
+            cy -= 1
+        corte = cy * 100 + cm
+        n = 0
+        for r in _q(conn,
+            "SELECT nome_favorecido k, documento_favorecido doc, SUM(valor) s, "
+            "MIN(ano*100+mes) ini FROM pagamentos GROUP BY nome_favorecido, documento_favorecido "
+            "HAVING ini >= ? AND s >= ? ORDER BY s DESC",
+            corte, ALERTA_NOVO_VALOR):
+            if EXCLUIR_ENTE.search(r["k"] or ""):
+                continue
+            if n >= CAP_POR_REGRA:
+                break
+            n += 1
+            out.append({
+                "tipo": "favorecido_novo",
+                "severidade": "media",
+                "titulo": f"Favorecido novo de alto valor: {r['k']}",
+                "detalhe": (f"R$ {r['s']:,.2f} desde {r['ini'] // 100}-{r['ini'] % 100:02d} "
+                            f"(1ª aparição na base)."),
+                "valor": round(r["s"], 2),
+                "filtro": {"favorecido": r["k"]},
+            })
+
+    # 7) Crescimento anômalo ano-a-ano (anualizando o ano corrente)
+    anos = [r["ano"] for r in _q(conn, "SELECT DISTINCT ano FROM pagamentos ORDER BY ano")]
+    if len(anos) >= 2:
+        ant, atual = anos[-2], anos[-1]
+        meses_dec = _q(conn, "SELECT MAX(mes) m FROM pagamentos WHERE ano = ?", atual)[0]["m"] or 12
+        fator_anual = 12.0 / meses_dec
+        n = 0
+        for r in _q(conn,
+            "SELECT nome_favorecido k, "
+            "SUM(CASE WHEN ano=? THEN valor ELSE 0 END) v_ant, "
+            "SUM(CASE WHEN ano=? THEN valor ELSE 0 END) v_atual "
+            "FROM pagamentos GROUP BY nome_favorecido "
+            "HAVING v_ant > 0 AND v_atual >= ? ORDER BY v_atual DESC",
+            ant, atual, ALERTA_YOY_VALOR):
+            if EXCLUIR_ENTE.search(r["k"] or ""):
+                continue
+            proj = r["v_atual"] * fator_anual
+            if proj < ALERTA_YOY_FATOR * r["v_ant"]:
+                continue
+            if n >= CAP_POR_REGRA:
+                break
+            n += 1
+            out.append({
+                "tipo": "crescimento_yoy",
+                "severidade": "media",
+                "titulo": f"Crescimento anômalo: {r['k']}",
+                "detalhe": (f"R$ {r['v_atual']:,.2f} em {atual} (proj. anual R$ {proj:,.2f}) "
+                            f"vs R$ {r['v_ant']:,.2f} em {ant} — {proj / r['v_ant']:.1f}×."),
+                "valor": round(r["v_atual"], 2),
+                "filtro": {"favorecido": r["k"]},
+            })
+
+    # 8) Pessoa física (CPF) recebendo em elemento sensível
+    cond_elem = " OR ".join(f"elemento_despesa LIKE '{p}'" for p in ELEM_SENSIVEIS)
+    n = 0
+    for r in _q(conn,
+        "SELECT nome_favorecido k, elemento_despesa e, SUM(valor) s, COUNT(*) qt "
+        f"FROM pagamentos WHERE ({SQL_EH_CPF}) AND ({cond_elem}) "
+        "GROUP BY nome_favorecido, elemento_despesa HAVING s >= ? ORDER BY s DESC",
+        ALERTA_PF_VALOR):
+        if n >= CAP_POR_REGRA:
+            break
+        n += 1
+        elem_curto = (r["e"] or "").split(" - ", 1)[-1][:40]
+        out.append({
+            "tipo": "pf_sensivel",
+            "severidade": "alta",
+            "titulo": f"Pessoa física em {elem_curto}: {r['k']}",
+            "detalhe": f"R$ {r['s']:,.2f} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
+            "valor": round(r["s"], 2),
+            "filtro": {"favorecido": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
         })
 
     ordem = {"alta": 0, "media": 1, "baixa": 2}
