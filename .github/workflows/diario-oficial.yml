@@ -16,6 +16,10 @@ on:
         description: "Carga retroativa a partir de (AAAA-MM-DD). Prioridade sobre 'data'. (NÃO envia e-mail)"
         required: false
         default: ""
+      email_teste:
+        description: "E-mail de teste: envia o briefing SÓ p/ este endereço (não aos assessores)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -60,6 +64,9 @@ jobs:
           RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
         run: |
+          # e-mail de teste sobrepõe os destinatários só nesta execução
+          TESTE="${{ github.event.inputs.email_teste }}"
+          [ -n "$TESTE" ] && export DOM_BRIEFING_TO="$TESTE"
           if [ -n "${{ github.event.inputs.desde }}" ]; then
             python diario-oficial/monitor.py --desde "${{ github.event.inputs.desde }}"
           elif [ -n "${{ github.event.inputs.data }}" ]; then
