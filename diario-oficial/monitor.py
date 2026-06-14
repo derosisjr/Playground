@@ -107,16 +107,16 @@ def datas_intervalo(desde: str, ate: str) -> list[str]:
     return out
 
 
-def linha_planilha(data_edicao: str, ato: dict, sep: str, captado: str) -> list:
+def linha_planilha(data_edicao: str, ato: dict, sep: str) -> list:
     """Monta a linha na ordem de gsheets.COLUNAS. A coluna 'Edição' é o hyperlink que
     já exibe a data e linka o PDF (unifica data+edição); Risco/Motivo vão no fim."""
     edicao_cell = gsheets.hyperlink(extrator.url_edicao(data_edicao), data_edicao, sep)
     return [
         edicao_cell, ato.get("categoria", ""), ato.get("tipo", ""),
-        ato.get("secretaria", ""), ato.get("numero", ""), ato.get("objeto", ""),
-        ato.get("valor", ""), ato.get("favorecido", ""), ato.get("processo", ""),
-        ato.get("modalidade", ""), ato.get("vigencia", ""), ato.get("pagina", ""),
-        captado, ato.get("risco", ""), ato.get("motivo", ""),
+        ato.get("secretaria", ""), ato.get("objeto", ""), ato.get("valor", ""),
+        ato.get("favorecido", ""), ato.get("processo", ""), ato.get("modalidade", ""),
+        ato.get("vigencia", ""), ato.get("pagina", ""), ato.get("risco", ""),
+        ato.get("motivo", ""),
     ]
 
 
@@ -263,7 +263,6 @@ def main():
         gsheets.garantir_aba(sheets, sheet_id)
         sep = gsheets.separador_formula(sheets, sheet_id)
 
-    captado = datetime.now().strftime("%d/%m/%Y %H:%M")
     total_novos = 0
     novos_atos: list[dict] = []  # atos novos do run inteiro (para o e-mail)
     for data_edicao in datas:
@@ -298,7 +297,7 @@ def main():
                  a.get("secretaria", ""), a.get("favorecido", ""), a.get("valor_num")),
             )
             if cur.rowcount:  # inserido = ato novo
-                linhas_novas.append(linha_planilha(data_edicao, a, sep, captado))
+                linhas_novas.append(linha_planilha(data_edicao, a, sep))
                 a["data_edicao"] = data_edicao
                 novos_atos.append(a)
         gsheets.anexar_linhas(sheets, sheet_id, linhas_novas)

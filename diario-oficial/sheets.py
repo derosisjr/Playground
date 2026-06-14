@@ -31,9 +31,9 @@ ABA = "Atos do DOM"
 # Ordem pensada para leitura/filtro: Categoria e Tipo na frente; identificação e
 # conteúdo no meio; página/edição/carimbo no fim.
 COLUNAS = [
-    "Edição", "Categoria", "Tipo", "Secretaria", "Número", "Objeto", "Valor",
+    "Edição", "Categoria", "Tipo", "Secretaria", "Objeto", "Valor",
     "Favorecido/Contratada", "Processo", "Modalidade", "Vigência", "Página",
-    "Captado em", "Risco", "Motivo do risco",
+    "Risco", "Motivo do risco",
 ]
 
 
