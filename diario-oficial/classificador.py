@@ -222,6 +222,16 @@ def _valor_num(valor: str) -> float | None:
 
 _RE_RETRO = re.compile(r"retroativ|efeitos?\s+retroativos?", re.I)
 
+# "UNIDADE: SEDUC." — a secretaria/sigla real do ato (extratos de contrato/convênio/
+# fomento/ata sempre trazem). Estrito (dois-pontos + SIGLA maiúscula) p/ não pegar a
+# palavra "unidade" em prosa ("unidade de Ensino", "Unidade I, Seção de…").
+_RE_UNIDADE = re.compile(r"\bUNIDADE\s*(?:GESTORA|OR[ÇC]AMENT\w+)?\s*:\s*([A-ZÀ-Ý]{2,12})\b")
+
+
+def _unidade(bloco: str) -> str:
+    m = _RE_UNIDADE.search(bloco)
+    return m.group(1).strip() if m else ""
+
 
 def _limpa_favorecido(fav: str) -> str:
     """Remove o prefixo 'Município de Santos e [a/o]' para sobrar a contraparte.
@@ -291,6 +301,10 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
             man = _RE_ANO_NUM.search(numero)
             if man and int(man.group(1)) < ano_edicao:
                 continue
+
+        # Secretaria: preferir a "UNIDADE: XXX" do próprio ato (precisa) ao índice
+        # (que às vezes só dá "PODER EXECUTIVO"). Cai no índice quando não houver.
+        secretaria = _unidade(bloco) or secretaria
 
         # dedup intra-edição (mesmo ato citado em 2 páginas/seções)
         chave = (categoria, numero, secretaria)
