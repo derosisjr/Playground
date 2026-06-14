@@ -113,6 +113,31 @@ _RE_OBJETO_INLINE = re.compile(
     r"\bobjeto\b[^A-Za-zÀ-Ý0-9]{0,6}(?:é\s+|e\s+|a\s+|o\s+|de\s+|da\s+|do\s+)?"
     r"(.{18,}?)(?=\s+(?:PROCESSO|VALOR|VIG[ÊE]NCIA|MODALIDADE|ASSINATURA|DATA DA|R\$)|$)",
     re.I | re.S)
+# Objeto "PARA ...": pregões/dispensas costumam dizer "PARA REGISTRO DE PREÇOS/AQUISIÇÃO DE X".
+_RE_OBJETO_PARA = re.compile(
+    r"\bPARA\s+(?:A\s+|O\s+|AO\s+)?(REGISTRO DE PRE[ÇC]OS|AQUISI[ÇC][ÃA]O|CONTRATA[ÇC][ÃA]O|"
+    r"FORNECIMENTO|LOCA[ÇC][ÃA]O|PRESTA[ÇC][ÃA]O)\b(.{0,220}?)"
+    r"(?=\s+(?:PROCESSO|A\s+SE[ÇC][ÃA]O|A\s+COMISS|O\s+MUNIC[IÍ]PIO|ABERTURA|DATA|EDITAL)|$)",
+    re.I | re.S)
+# Limpeza de objeto: tira prefixo de processo/código de órgão e boilerplate final.
+_RE_OBJ_PREFIXO = re.compile(
+    r"^(?:PROCESSO[^A-Za-zÀ-Ý]{0,4}N?[ºO°]?[\s:]*[\d./-]+\s*[-–:]?\s*|[A-ZÀ-Ý]{2,}[-/][A-ZÀ-Ý]{2,}\s+)", re.I)
+_RE_OBJ_BOILER = re.compile(
+    r"\s+(?:A\s+Se[çc][ãa]o\b|A\s+Comiss[ãa]o\b|comunica\s+que\b|O\s+MUNIC[IÍ]PIO DE SANTOS,\s+por\b|"
+    r"Torna[\- ]se\s+p[úu]blico\b).*$", re.I | re.S)
+# trecho de processo no meio/fim do objeto: "... PROCESSO N° 43557/2025-21 ..."
+_RE_OBJ_PROC_TRAIL = re.compile(r"\s+PROCESSO[^A-Za-zÀ-Ý]{0,4}N?[ºO°]?[\s:]*[\d./-]+.*$", re.I | re.S)
+
+
+def _limpa_objeto(obj: str) -> str:
+    for _ in range(2):  # remove prefixo de processo/código (pode haver os dois)
+        novo = _RE_OBJ_PREFIXO.sub("", obj).strip(" .:-")
+        if novo == obj:
+            break
+        obj = novo
+    obj = _RE_OBJ_BOILER.sub("", obj).strip(" .:-")
+    obj = _RE_OBJ_PROC_TRAIL.sub("", obj).strip(" .:-")
+    return obj
 # Cabeçalho de norma a remover p/ sobrar a ementa: "DECRETO Nº 11.242, DE 10 DE JUNHO DE 2026."
 _RE_EMENTA = re.compile(
     r"^.*?\bDE\s+\d{4}\b\s*\.?\s*", re.I | re.S)
@@ -199,8 +224,12 @@ _RE_RETRO = re.compile(r"retroativ|efeitos?\s+retroativos?", re.I)
 
 
 def _limpa_favorecido(fav: str) -> str:
-    """Remove o prefixo 'Município de Santos e [a/o]' para sobrar a contraparte."""
-    return re.sub(r"^MUN[IÍ]C[IÍ]PIO DE SANTOS\s+e\s+(?:a\s+|o\s+)?", "", fav, flags=re.I).strip(" .:-")
+    """Remove o prefixo 'Município de Santos e [a/o]' para sobrar a contraparte.
+    Se a contraparte não foi capturada (sobra só 'Município de Santos [e]'), devolve ''."""
+    out = re.sub(r"^MUN[IÍ]C[IÍ]PIO DE SANTOS\s+e\s+(?:a\s+|o\s+)?", "", fav, flags=re.I).strip(" .:-")
+    if re.match(r"(?i)^MUN[IÍ]C[IÍ]PIO DE SANTOS\b", out) or out.lower() in ("", "e"):
+        return ""
+    return out
 
 
 # Marcadores de lista/pontuação que podem preceder o cabeçalho de um ato.
@@ -287,6 +316,11 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
             mo = _RE_OBJETO_INLINE.search(bloco)
             if mo:
                 objeto = re.sub(r"\s+", " ", mo.group(1)).strip(" .:-")[:300]
+        # Pregões/dispensas: "PARA REGISTRO DE PREÇOS/AQUISIÇÃO DE X".
+        if not objeto:
+            mp = _RE_OBJETO_PARA.search(bloco)
+            if mp:
+                objeto = re.sub(r"\s+", " ", mp.group(1) + mp.group(2)).strip(" .:-")[:300]
         # Fallback genérico: usa o texto do ato (sem o cabeçalho) para a linha
         # trazer ao menos o contexto.
         if not objeto:
@@ -294,6 +328,8 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
             objeto = re.sub(r"\s+", " ", _desfaz_hifen([corpo])).strip(" .:-")[:300]
         # remove prefixo de cláusula ("1.1.", "3)", "Item 2.") no início do objeto
         objeto = re.sub(r"^(?:\d+(?:\.\d+)*\.?|\d+\)|Item\s+\d+\.?)\s*", "", objeto).strip(" .:-")
+        # remove prefixo de processo/código de órgão e boilerplate final
+        objeto = _limpa_objeto(objeto)
 
         valor = (mval.group(0) if mval else "").replace(" ", " ")
         atos.append({

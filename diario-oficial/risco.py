@@ -20,8 +20,9 @@ import unicodedata
 
 # ── Limiares (verificar anualmente) ───────────────────────────────────────────
 ADITIVO_PCT = 0.25                       # art. 125, Lei 14.133/21
-DISPENSA_COMPRAS_SERVICOS = 59_906.02    # art. 75, II — base 2024 (atualizar p/ ano corrente)
-DISPENSA_OBRAS = 119_812.02             # art. 75, I
+# art. 75 — valores de 2026 (Decreto 12.807/2025, vigente desde 01/01/2026).
+DISPENSA_COMPRAS_SERVICOS = 65_492.11    # art. 75, II (compras e outros serviços)
+DISPENSA_OBRAS = 130_984.20             # art. 75, I (obras e serviços de engenharia)
 LOCACAO_INEXIG_MES = 30_000.0            # art. 74, V (heurística da skill)
 BRINDES = 50_000.0                       # art. 37, §1º, CF/88
 VALOR_ALERTA = 1_000_000.0               # teto genérico p/ monitorar (🟡)
@@ -112,9 +113,9 @@ def avaliar(atos: list[dict], conn=None) -> list[dict]:
             total = osc_edicao.get(k, 0) + _contar_osc_historico(conn, *k)
             if total >= 2:
                 r.add(VERMELHO, "Mesma OSC com 2+ termos na mesma secretaria — Lei 13.019/14")
-            # valores idênticos para OSCs diferentes
+            # valores idênticos para OSCs diferentes (🟡: pode ser valor padronizado de edital)
             if v and len(valor_favs.get(v, set())) >= 2:
-                r.add(VERMELHO, "Valores idênticos em termos para OSCs diferentes — Lei 13.019/14")
+                r.add(AMARELO, "Valores idênticos em termos para OSCs diferentes — monitorar (Lei 13.019/14)")
 
         # Valor elevado (genérico) — só sobe se ainda estiver verde
         if v and v >= VALOR_ALERTA and r.nivel == VERDE:

@@ -108,15 +108,15 @@ def datas_intervalo(desde: str, ate: str) -> list[str]:
 
 
 def linha_planilha(data_edicao: str, ato: dict, sep: str, captado: str) -> list:
-    """Monta a linha na ordem de gsheets.COLUNAS (aba única, com Risco e Categoria)."""
+    """Monta a linha na ordem de gsheets.COLUNAS. A coluna 'Edição' é o hyperlink que
+    já exibe a data e linka o PDF (unifica data+edição); Risco/Motivo vão no fim."""
     edicao_cell = gsheets.hyperlink(extrator.url_edicao(data_edicao), data_edicao, sep)
     return [
-        data_edicao, ato.get("risco", ""), ato.get("motivo", ""),
-        ato.get("categoria", ""), ato.get("tipo", ""), ato.get("secretaria", ""),
-        ato.get("numero", ""), ato.get("objeto", ""), ato.get("valor", ""),
-        ato.get("favorecido", ""), ato.get("processo", ""), ato.get("modalidade", ""),
-        ato.get("vigencia", ""), ato.get("fundamentacao", ""), ato.get("pagina", ""),
-        edicao_cell, captado,
+        edicao_cell, ato.get("categoria", ""), ato.get("tipo", ""),
+        ato.get("secretaria", ""), ato.get("numero", ""), ato.get("objeto", ""),
+        ato.get("valor", ""), ato.get("favorecido", ""), ato.get("processo", ""),
+        ato.get("modalidade", ""), ato.get("vigencia", ""), ato.get("pagina", ""),
+        captado, ato.get("risco", ""), ato.get("motivo", ""),
     ]
 
 
