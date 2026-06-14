@@ -233,6 +233,50 @@ def _unidade(bloco: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+# Padronização da secretaria: unifica siglas (UNIDADE) e nomes do índice num único
+# rótulo canônico, p/ a mesma secretaria não aparecer com 2 nomes (ex.: SMS/SAÚDE).
+# Chaves NORMALIZADAS (maiúsculas, sem acento — ver _norm_busca). Fonte: "Unidades e
+# Siglas da Prefeitura" (santos.sp.gov.br). Órgãos/autarquias sem secretaria ficam
+# como estão (CAPEP, IPREV, COHAB, FUNDAÇÃO, CONSELHOS, PRODESAN, CET).
+_CANON_SECRETARIAS = {
+    "SEDUC": "Secretaria de Educação", "EDUCACAO": "Secretaria de Educação",
+    "SMS": "Secretaria de Saúde", "SAUDE": "Secretaria de Saúde",
+    "SECULT": "Secretaria de Cultura", "CULTURA": "Secretaria de Cultura",
+    "SEMES": "Secretaria de Esportes", "ESPORTES": "Secretaria de Esportes",
+    "SETUR": "Secretaria de Turismo, Comércio e Empreendedorismo",
+    "SEGOV": "Secretaria de Governo",
+    "SEINFRA": "Secretaria de Infraestrutura e Serviços Públicos",
+    "SECOM": "Secretaria de Comunicação e Economia Criativa",
+    "COMUNICACAO E ECONOMIA CRIATIVA": "Secretaria de Comunicação e Economia Criativa",
+    "SEDS": "Secretaria de Desenvolvimento Social",
+    "DESENVOLVIMENTO SOCIAL": "Secretaria de Desenvolvimento Social",
+    "SEPREF": "Secretaria das Prefeituras Regionais",
+    "PREFEITURAS REGIONAIS": "Secretaria das Prefeituras Regionais",
+    "SEOBE": "Secretaria de Obras e Edificações",
+    "OBRAS E EDIFICACOES": "Secretaria de Obras e Edificações",
+    "SEFIN": "Secretaria de Finanças e Gestão", "SEGES": "Secretaria de Finanças e Gestão",
+    "FINANCAS E GESTAO": "Secretaria de Finanças e Gestão",
+    "SESEG": "Secretaria de Segurança", "SEGURANCA": "Secretaria de Segurança",
+    "SEMAM": "Secretaria de Meio Ambiente, Desenvolvimento Urbano e Sustentabilidade",
+    "MEIO AMBIENTE, DESENVOLVIMENTO URBANO E SUSTENTABILIDADE":
+        "Secretaria de Meio Ambiente, Desenvolvimento Urbano e Sustentabilidade",
+    "SECC": "Secretaria da Casa Civil",
+    "SEPORTE": "Secretaria de Assuntos Portuários e Emprego",
+    "SEMULHER": "Secretaria da Mulher, Cidadania, Diversidade e Direitos Humanos",
+    "PGM": "Procuradoria Geral do Município",
+    "PROCURADORIA GERAL": "Procuradoria Geral do Município",
+    "GPM": "Gabinete do Prefeito Municipal",
+    "PODER EXECUTIVO": "Poder Executivo",
+    "CAMARA": "Câmara Municipal",
+}
+
+
+def _padroniza_secretaria(sec: str) -> str:
+    if not sec:
+        return sec
+    return _CANON_SECRETARIAS.get(_norm_busca(sec).strip(), sec)
+
+
 def _limpa_favorecido(fav: str) -> str:
     """Remove o prefixo 'Município de Santos e [a/o]' para sobrar a contraparte.
     Se a contraparte não foi capturada (sobra só 'Município de Santos [e]'), devolve ''."""
@@ -303,8 +347,8 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
                 continue
 
         # Secretaria: preferir a "UNIDADE: XXX" do próprio ato (precisa) ao índice
-        # (que às vezes só dá "PODER EXECUTIVO"). Cai no índice quando não houver.
-        secretaria = _unidade(bloco) or secretaria
+        # (que às vezes só dá "PODER EXECUTIVO"); padronizar sigla/nome num rótulo único.
+        secretaria = _padroniza_secretaria(_unidade(bloco) or secretaria)
 
         # dedup intra-edição (mesmo ato citado em 2 páginas/seções)
         chave = (categoria, numero, secretaria)

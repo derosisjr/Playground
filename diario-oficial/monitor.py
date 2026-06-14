@@ -112,10 +112,10 @@ def linha_planilha(data_edicao: str, ato: dict, sep: str) -> list:
     já exibe a data e linka o PDF (unifica data+edição); Risco/Motivo vão no fim."""
     edicao_cell = gsheets.hyperlink(extrator.url_edicao(data_edicao), data_edicao, sep)
     return [
-        edicao_cell, ato.get("categoria", ""), ato.get("tipo", ""),
-        ato.get("secretaria", ""), ato.get("objeto", ""), ato.get("valor", ""),
-        ato.get("favorecido", ""), ato.get("processo", ""), ato.get("modalidade", ""),
-        ato.get("vigencia", ""), ato.get("pagina", ""), ato.get("risco", ""),
+        edicao_cell, ato.get("pagina", ""), ato.get("categoria", ""),
+        ato.get("tipo", ""), ato.get("secretaria", ""), ato.get("objeto", ""),
+        ato.get("valor", ""), ato.get("favorecido", ""), ato.get("processo", ""),
+        ato.get("modalidade", ""), ato.get("vigencia", ""), ato.get("risco", ""),
         ato.get("motivo", ""),
     ]
 
