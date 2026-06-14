@@ -2,15 +2,18 @@ name: Diário Oficial — captura diária de atos
 
 on:
   schedule:
-    - cron: "0 11 * * 1-6"  # 11:00 UTC = 08:00 BRT, seg–sáb (DOM publica de manhã)
+    # 03:17 UTC = 00:17 BRT — logo após a meia-noite. Minuto "quebrado" e fora do
+    # topo da hora de propósito: cron na virada de hora (HH:00) é quando o GitHub
+    # Actions mais atrasa por congestionamento. Roda todos os dias.
+    - cron: "17 3 * * *"
   workflow_dispatch:
     inputs:
       data:
-        description: "Edição específica (AAAA-MM-DD). Vazio = últimos dias."
+        description: "Edição específica (AAAA-MM-DD). Vazio = últimos dias. (envia e-mail)"
         required: false
         default: ""
       desde:
-        description: "Carga retroativa a partir de (AAAA-MM-DD). Tem prioridade sobre 'data'."
+        description: "Carga retroativa a partir de (AAAA-MM-DD). Prioridade sobre 'data'. (NÃO envia e-mail)"
         required: false
         default: ""
 
@@ -46,15 +49,21 @@ jobs:
           restore-keys: |
             diario-db-
 
-      - name: Capturar atos e escrever no Sheets
+      - name: Capturar atos, escrever no Sheets e avisar assessores
         env:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
           DOM_SHEET_ID: ${{ secrets.DOM_SHEET_ID }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DOM_BRIEFING_TO: ${{ secrets.DOM_BRIEFING_TO }}
+          DESPESAS_BRIEFING_TO: ${{ secrets.DESPESAS_BRIEFING_TO }}
+          RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}
         run: |
           if [ -n "${{ github.event.inputs.desde }}" ]; then
             python diario-oficial/monitor.py --desde "${{ github.event.inputs.desde }}"
           elif [ -n "${{ github.event.inputs.data }}" ]; then
-            python diario-oficial/monitor.py --data "${{ github.event.inputs.data }}"
+            python diario-oficial/monitor.py --data "${{ github.event.inputs.data }}" --email
           else
-            python diario-oficial/monitor.py --dias 3
+            python diario-oficial/monitor.py --dias 3 --email
           fi

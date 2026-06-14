@@ -32,9 +32,12 @@ Uso:
 import argparse
 import hashlib
 import os
+import smtplib
 import sqlite3
 import sys
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import extrator
 import classificador
@@ -128,6 +131,102 @@ def processar_edicao(data_edicao: str) -> list[dict]:
     return classificador.classificar(paginas, ano_edicao=ano)
 
 
+# ── E-mail aos assessores ──────────────────────────────────────────────────────
+_COR_RISCO = {"🔴": "#C0392B", "🟡": "#B7950B", "🟢": "#1E8449"}
+
+
+def _linha_email(a: dict, sheet_id: str) -> str:
+    cor = _COR_RISCO.get(a.get("risco", ""), "#555")
+    url = extrator.url_edicao(a.get("data_edicao", ""))
+    val = a.get("valor", "")
+    return (
+        "<tr>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee;font-size:18px'>{a.get('risco','')}</td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{a.get('categoria','')}<br>"
+        f"<span style='color:#888;font-size:12px'>{a.get('tipo','')}</span></td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{a.get('secretaria','')}</td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{(a.get('objeto','') or '')[:160]}"
+        f"<br><span style='color:#888;font-size:12px'>nº {a.get('numero','')} · "
+        f"<a href='{url}'>edição {a.get('data_edicao','')}</a></span></td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap'>{val}</td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee;color:{cor}'>{a.get('motivo','')}</td>"
+        "</tr>"
+    )
+
+
+def montar_email_html(novos: list[dict], sheet_id: str) -> str:
+    n_r = sum(1 for a in novos if a.get("risco") == "🔴")
+    n_a = sum(1 for a in novos if a.get("risco") == "🟡")
+    # ordena por gravidade (🔴 > 🟡 > 🟢)
+    ordem = {"🔴": 0, "🟡": 1, "🟢": 2}
+    dest = sorted(novos, key=lambda a: ordem.get(a.get("risco", "🟢"), 3))
+    # no corpo, prioriza os acionáveis; verdes resumidos no rodapé
+    acionaveis = [a for a in dest if a.get("risco") in ("🔴", "🟡")]
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+    linhas = "".join(_linha_email(a, sheet_id) for a in acionaveis)
+    bloco_acionaveis = (
+        "<table style='border-collapse:collapse;width:100%;font-size:14px'>"
+        "<thead><tr style='background:#07111F;color:#fff'>"
+        "<th style='padding:8px'>Risco</th><th style='padding:8px;text-align:left'>Categoria</th>"
+        "<th style='padding:8px;text-align:left'>Secretaria</th><th style='padding:8px;text-align:left'>Objeto</th>"
+        "<th style='padding:8px;text-align:left'>Valor</th><th style='padding:8px;text-align:left'>Motivo</th>"
+        "</tr></thead><tbody>" + linhas + "</tbody></table>"
+        if acionaveis else
+        "<p style='color:#1E8449'>Nenhum ato de risco (🔴/🟡) nesta atualização — apenas itens regulares (🟢).</p>"
+    )
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A1628">
+<div style="max-width:900px;margin:0 auto">
+  <div style="border-top:3px solid #C9A84C;padding:16px 0">
+    <h2 style="margin:0;color:#07111F">Diário Oficial de Santos — atos novos</h2>
+    <p style="color:#555;margin:6px 0 0">
+      {len(novos)} ato(s) capturado(s) · <b style="color:#C0392B">{n_r} 🔴</b> ·
+      <b style="color:#B7950B">{n_a} 🟡</b> · {len(novos)-n_r-n_a} 🟢
+    </p>
+  </div>
+  {bloco_acionaveis}
+  <p style="margin-top:18px">
+    <a href="{sheet_url}" style="background:#0A1628;color:#fff;padding:10px 16px;
+       text-decoration:none;border-radius:4px">Abrir a planilha completa</a>
+  </p>
+  <p style="color:#888;font-size:12px;margin-top:16px">
+    Gerado automaticamente pelo Monitor do Diário Oficial — Gabinete Ver. Rui de Rosis Jr.
+    Triagem de risco determinística; conferir o ato antes de qualquer providência.
+  </p>
+</div></body></html>"""
+
+
+def enviar_email(novos: list[dict], sheet_id: str) -> None:
+    user = os.environ.get("GMAIL_USER")
+    senha = os.environ.get("GMAIL_APP_PASSWORD")
+    # destinatários: lista própria do DOM → assessores (despesas) → respostas → geral
+    para = (os.environ.get("DOM_BRIEFING_TO") or os.environ.get("DESPESAS_BRIEFING_TO")
+            or os.environ.get("RESPOSTAS_EMAIL_TO") or os.environ.get("GMAIL_TO"))
+    if not all([user, senha, para]):
+        print("Aviso: GMAIL_USER/GMAIL_APP_PASSWORD/destinatário não definidos; "
+              "e-mail não enviado.", file=sys.stderr)
+        return
+    destinatarios = [d.strip() for d in para.split(",") if d.strip()]
+    n_r = sum(1 for a in novos if a.get("risco") == "🔴")
+    msg = MIMEMultipart("alternative")
+    selo = f"{n_r} 🔴 · " if n_r else ""
+    msg["Subject"] = f"DOM Santos — {selo}{len(novos)} ato(s) novo(s)"
+    msg["From"] = f"Monitor do Diário Oficial <{user}>"
+    msg["To"] = ", ".join(destinatarios)
+    resumo = "\n".join(
+        f"- {a.get('risco','')} {a.get('categoria','')}/{a.get('tipo','')} nº {a.get('numero','')}: "
+        f"{(a.get('objeto','') or '')[:80]}" + (f" [{a['motivo']}]" if a.get("motivo") else "")
+        for a in novos if a.get("risco") in ("🔴", "🟡")
+    ) or "Sem atos de risco nesta atualização."
+    msg.attach(MIMEText(resumo, "plain", "utf-8"))
+    msg.attach(MIMEText(montar_email_html(novos, sheet_id), "html", "utf-8"))
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(user, senha)
+        server.sendmail(user, destinatarios, msg.as_string())
+    print(f"E-mail enviado para {', '.join(destinatarios)}.", file=sys.stderr)
+
+
 def main():
     p = argparse.ArgumentParser(description="Monitor do Diário Oficial de Santos")
     p.add_argument("--data", help="Edição específica (AAAA-MM-DD).")
@@ -138,6 +237,8 @@ def main():
     p.add_argument("--forcar", action="store_true", help="Reprocessa edição já registrada.")
     p.add_argument("--dry-run", action="store_true",
                    help="Não grava no SQLite nem no Sheets; imprime os atos.")
+    p.add_argument("--email", action="store_true",
+                   help="Envia e-mail aos assessores com os atos novos (se houver).")
     p.add_argument("--limite", type=int, default=0, help="Máx. de atos a imprimir no dry-run.")
     args = p.parse_args()
 
@@ -164,6 +265,7 @@ def main():
 
     captado = datetime.now().strftime("%d/%m/%Y %H:%M")
     total_novos = 0
+    novos_atos: list[dict] = []  # atos novos do run inteiro (para o e-mail)
     for data_edicao in datas:
         if conn and data_edicao in ja and not args.forcar:
             continue
@@ -197,6 +299,8 @@ def main():
             )
             if cur.rowcount:  # inserido = ato novo
                 linhas_novas.append(linha_planilha(data_edicao, a, sep, captado))
+                a["data_edicao"] = data_edicao
+                novos_atos.append(a)
         gsheets.anexar_linhas(sheets, sheet_id, linhas_novas)
         novos = len(linhas_novas)
         conn.execute(
@@ -210,6 +314,12 @@ def main():
     if conn:
         conn.close()
     print(f"Concluído: {total_novos} atos novos.", file=sys.stderr)
+
+    if args.email and not args.dry_run:
+        if novos_atos:
+            enviar_email(novos_atos, sheet_id)
+        else:
+            print("Sem atos novos — e-mail não enviado.", file=sys.stderr)
 
 
 if __name__ == "__main__":

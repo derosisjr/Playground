@@ -127,10 +127,15 @@ do Google Sheets** (aba única "Atos do DOM", coluna `Categoria` para filtrar). 
 - **`sheets.py`** reusa o OAuth/Sheets do `respostas-executivo` (mesmo `GOOGLE_OAUTH_TOKEN`, escopo Sheets);
   planilha dedicada em **`DOM_SHEET_ID`**. Formatação aplicada por script (cabeçalho navy/dourado, filtro,
   zebra, cores por categoria e por nível de risco).
+- **E-mail aos assessores:** `monitor.py --email` envia, ao fim do run, um briefing HTML com os atos novos
+  (🔴/🟡 no topo, com o motivo/base legal e link p/ a planilha) via Gmail SMTP — só quando há atos novos.
+  Destinatários: `DOM_BRIEFING_TO` → `DESPESAS_BRIEFING_TO` → `RESPOSTAS_EMAIL_TO` → `GMAIL_TO`.
 - **`.sqlite` no `.gitignore`**, persiste via cache do Actions; `.github/workflows/diario-oficial.yml`
-  roda **seg–sáb de manhã** (e `workflow_dispatch` com `--data`/`--desde`). **Só código e referências são
-  versionados** — a saída é o Sheets, não há commit de dados. Geração de peças (requerimentos) segue na
-  **skill `dom-santos` no Claude web**; cruzar favorecido↔Despesas e nomeações/exonerações ficam p/ fases futuras.
+  roda **todos os dias ~00:17 BRT** (cron `17 3 * * *`, minuto quebrado p/ fugir do congestionamento do
+  topo da hora) com `--dias 3 --email`, e via `workflow_dispatch` (`--data` envia e-mail; `--desde` é
+  backfill sem e-mail). **Só código e referências são versionados** — a saída é o Sheets, não há commit de
+  dados. Geração de peças (requerimentos) segue na **skill `dom-santos` no Claude web**; cruzar
+  favorecido↔Despesas e nomeações/exonerações ficam p/ fases futuras.
 
 ## Arquitetura da Automação (ordem-do-dia)
 
@@ -162,6 +167,7 @@ do Google Sheets** (aba única "Atos do DOM", coluna `Categoria` para filtrar). 
 | `SHEET_ID` | ID da planilha de controle (respostas-executivo) |
 | `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
 | `DOM_SHEET_ID` | ID da planilha dedicada do Monitor do Diário Oficial (reusa `GOOGLE_OAUTH_TOKEN`) |
+| `DOM_BRIEFING_TO` | Destinatário(s) do e-mail diário do DOM — assessores (opcional; cai em `DESPESAS_BRIEFING_TO`) |
 
 ## Convenções
 
