@@ -104,6 +104,34 @@ Agendamento: passo final do
 `workflow_dispatch` com input `forcar_briefing=true`. Geração de minutas/IA e outros canais
 (WhatsApp/Telegram) ficam para fases futuras.
 
+### Monitor do Diário Oficial (`diario-oficial/`)
+Automatiza a varredura diária que os assessores faziam à mão no **Diário Oficial de Santos (DOM)**:
+baixa o PDF da edição (`diariooficial.santos.sp.gov.br/edicoes/inicio/download/AAAA-MM-DD`), extrai e
+**classifica deterministicamente (sem IA/tokens)** os atos de 4 categorias — **Contratos e aditivos,
+Licitações e dispensas, Convênios e fomento, Leis e decretos** — e **anexa os atos novos numa planilha
+do Google Sheets** (aba única "Atos do DOM", coluna `Categoria` para filtrar). Pipeline:
+`extrator.py` → `classificador.py` → `risco.py` → dedup SQLite → `sheets.py`.
+- **`extrator.py`** resolve o **layout multi-coluna** do DOM: detecta 1 vs 2 colunas pela cobertura de
+  tinta na faixa central e separa no *gutter* (o `extract_text` ingênuo intercala as colunas); o **índice**
+  do PDF mapeia secretaria→página, dando a **secretaria** de cada ato (unidade que falta na Base de Despesas).
+- **`classificador.py`** detecta atos por âncora **só no início da linha** (mata citações); exige **número**
+  no cabeçalho (mata fragmentos de cláusula); leis/decretos filtrados pelo **ano** (descarta lei antiga
+  citada); dedup por (categoria, número, secretaria). Captura objeto, valor, favorecido, processo, e os
+  campos de risco: `termo` (nº do aditivo), `valor_num`, `retroativo`.
+- **`risco.py`** aplica os **gatilhos da skill `dom-santos`** (versionada em `diario-oficial/references/`)
+  de forma **determinística, sem IA e sem a Base de Despesas** — só dados do ato + histórico do `diario.sqlite`:
+  aditivo ≥3º termo / 2º termo, efeitos retroativos, dispensa/inexig. acima do limite (art. 75), crédito
+  extraordinário, OSC repetida/valores idênticos, valor elevado. Gera colunas **Risco** (🔴🟡🟢) e
+  **Motivo do risco** (com base legal) — os 🔴 são insumo para a skill redigir requerimentos/representações.
+  Limiares legais ficam em constantes no topo de `risco.py` (**verificar anualmente**).
+- **`sheets.py`** reusa o OAuth/Sheets do `respostas-executivo` (mesmo `GOOGLE_OAUTH_TOKEN`, escopo Sheets);
+  planilha dedicada em **`DOM_SHEET_ID`**. Formatação aplicada por script (cabeçalho navy/dourado, filtro,
+  zebra, cores por categoria e por nível de risco).
+- **`.sqlite` no `.gitignore`**, persiste via cache do Actions; `.github/workflows/diario-oficial.yml`
+  roda **seg–sáb de manhã** (e `workflow_dispatch` com `--data`/`--desde`). **Só código e referências são
+  versionados** — a saída é o Sheets, não há commit de dados. Geração de peças (requerimentos) segue na
+  **skill `dom-santos` no Claude web**; cruzar favorecido↔Despesas e nomeações/exonerações ficam p/ fases futuras.
+
 ## Arquitetura da Automação (ordem-do-dia)
 
 - **Fonte de dados:** `https://administrativo.camarasantos.sp.gov.br/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/`
@@ -133,6 +161,7 @@ Agendamento: passo final do
 | `GOOGLE_OAUTH_TOKEN` | JSON do token OAuth Drive+Sheets, gerado por `setup_oauth.py` (respostas-executivo) |
 | `SHEET_ID` | ID da planilha de controle (respostas-executivo) |
 | `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
+| `DOM_SHEET_ID` | ID da planilha dedicada do Monitor do Diário Oficial (reusa `GOOGLE_OAUTH_TOKEN`) |
 
 ## Convenções
 
@@ -185,6 +214,16 @@ python despesas/export.py
 # Despesas — briefing semanal (preview sem enviar)
 python despesas/briefing.py --dry-run
 python despesas/briefing.py --salvar despesas/_briefing.html  # abrir no navegador
+
+# Diário Oficial — testar 1 edição sem escrever (imprime atos + risco)
+python diario-oficial/monitor.py --data 2026-06-12 --dry-run
+
+# Diário Oficial — depurar a extração de uma página (layout-aware)
+python diario-oficial/extrator.py --data 2026-06-12 --pagina 8
+
+# Diário Oficial — gravar no Sheets (precisa DOM_SHEET_ID no ambiente)
+DOM_SHEET_ID=... python diario-oficial/monitor.py --data 2026-06-13
+DOM_SHEET_ID=... python diario-oficial/monitor.py --desde 2026-06-09 --ate 2026-06-12  # intervalo
 ```
 ## PERFIL POLÍTICO DO MANDATO
 

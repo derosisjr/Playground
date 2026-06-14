@@ -1,0 +1,60 @@
+name: Diário Oficial — captura diária de atos
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-6"  # 11:00 UTC = 08:00 BRT, seg–sáb (DOM publica de manhã)
+  workflow_dispatch:
+    inputs:
+      data:
+        description: "Edição específica (AAAA-MM-DD). Vazio = últimos dias."
+        required: false
+        default: ""
+      desde:
+        description: "Carga retroativa a partir de (AAAA-MM-DD). Tem prioridade sobre 'data'."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  capturar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: diario-oficial/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r diario-oficial/requirements.txt
+
+      # O .sqlite (controle de edições/atos já vistos) NÃO é versionado — persiste
+      # entre execuções via cache do Actions, garantindo a dedup na planilha.
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v5
+        with:
+          path: diario-oficial/diario.sqlite
+          key: diario-db-${{ github.run_id }}
+          restore-keys: |
+            diario-db-
+
+      - name: Capturar atos e escrever no Sheets
+        env:
+          GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+          DOM_SHEET_ID: ${{ secrets.DOM_SHEET_ID }}
+        run: |
+          if [ -n "${{ github.event.inputs.desde }}" ]; then
+            python diario-oficial/monitor.py --desde "${{ github.event.inputs.desde }}"
+          elif [ -n "${{ github.event.inputs.data }}" ]; then
+            python diario-oficial/monitor.py --data "${{ github.event.inputs.data }}"
+          else
+            python diario-oficial/monitor.py --dias 3
+          fi
