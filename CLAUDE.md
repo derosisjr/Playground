@@ -131,9 +131,9 @@ do Google Sheets** (aba única "Atos do DOM", coluna `Categoria` para filtrar). 
   (🔴/🟡 no topo, com o motivo/base legal e link p/ a planilha) via Gmail SMTP — só quando há atos novos.
   Destinatários: `DOM_BRIEFING_TO` → `DESPESAS_BRIEFING_TO` → `RESPOSTAS_EMAIL_TO` → `GMAIL_TO`.
 - **`.sqlite` no `.gitignore`**, persiste via cache do Actions; `.github/workflows/diario-oficial.yml`
-  roda **todos os dias ~00:17 BRT** (cron `17 3 * * *`, minuto quebrado p/ fugir do congestionamento do
-  topo da hora) com `--dias 3 --email`, e via `workflow_dispatch` (`--data` envia e-mail; `--desde` é
-  backfill sem e-mail). **Só código e referências são versionados** — a saída é o Sheets, não há commit de
+  roda **dias úteis (seg–sex) ~00:17 BRT** (cron `17 3 * * 1-5`, minuto quebrado p/ fugir do
+  congestionamento do topo da hora; o DOM sai no fim da noite anterior e não publica sáb/dom) com
+  `--dias 3 --email`, e via `workflow_dispatch` (`--data` envia e-mail; `--desde` é backfill sem e-mail). **Só código e referências são versionados** — a saída é o Sheets, não há commit de
   dados. Geração de peças (requerimentos) segue na **skill `dom-santos` no Claude web**; cruzar
   favorecido↔Despesas e nomeações/exonerações ficam p/ fases futuras.
 

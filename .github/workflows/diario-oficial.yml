@@ -2,10 +2,12 @@ name: Diário Oficial — captura diária de atos
 
 on:
   schedule:
-    # 03:17 UTC = 00:17 BRT — logo após a meia-noite. Minuto "quebrado" e fora do
-    # topo da hora de propósito: cron na virada de hora (HH:00) é quando o GitHub
-    # Actions mais atrasa por congestionamento. Roda todos os dias.
-    - cron: "17 3 * * *"
+    # 03:17 UTC = 00:17 BRT — logo após a meia-noite (o DOM sai no fim da noite
+    # anterior, então a edição do dia já está disponível). Minuto "quebrado" e fora
+    # do topo da hora de propósito: cron em HH:00 é quando o GitHub Actions mais
+    # atrasa por congestionamento. Seg–sex (1-5): o DOM não publica sáb/dom; o
+    # --dias 3 da segunda cobre qualquer atraso do fim de semana.
+    - cron: "17 3 * * 1-5"
   workflow_dispatch:
     inputs:
       data:
