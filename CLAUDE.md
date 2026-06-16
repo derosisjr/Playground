@@ -107,17 +107,26 @@ Agendamento: passo final do
 ### Monitor do Diário Oficial (`diario-oficial/`)
 Automatiza a varredura diária que os assessores faziam à mão no **Diário Oficial de Santos (DOM)**:
 baixa o PDF da edição (`diariooficial.santos.sp.gov.br/edicoes/inicio/download/AAAA-MM-DD`), extrai e
-**classifica deterministicamente (sem IA/tokens)** os atos de 4 categorias — **Contratos e aditivos,
-Licitações e dispensas, Convênios e fomento, Leis e decretos** — e **anexa os atos novos numa planilha
-do Google Sheets** (aba única "Atos do DOM", coluna `Categoria` para filtrar). Pipeline:
+**classifica deterministicamente (sem IA/tokens)** os atos das categorias-alvo — **Contratos e aditivos,
+Licitações e dispensas, Convênios e fomento (inclui Terceiro Setor: termos de compromisso/PROMICULT),
+Leis e decretos, Orçamento (créditos adicionais) e Fiscal/Tributário (baixa retroativa de inscrição/
+renúncia de receita)** — e **anexa os atos novos numa planilha do Google Sheets** (aba única "Atos do
+DOM", coluna `Categoria` para filtrar). Pessoal (nomeações/exonerações) fica para fase futura. Pipeline:
 `extrator.py` → `classificador.py` → `risco.py` → dedup SQLite → `sheets.py`.
 - **`extrator.py`** resolve o **layout multi-coluna** do DOM: detecta 1 vs 2 colunas pela cobertura de
   tinta na faixa central e separa no *gutter* (o `extract_text` ingênuo intercala as colunas); o **índice**
   do PDF mapeia secretaria→página, dando a **secretaria** de cada ato (unidade que falta na Base de Despesas).
-- **`classificador.py`** detecta atos por âncora **só no início da linha** (mata citações); exige **número**
-  no cabeçalho (mata fragmentos de cláusula); leis/decretos filtrados pelo **ano** (descarta lei antiga
-  citada); dedup por (categoria, número, secretaria). Captura objeto, valor, favorecido, processo, e os
-  campos de risco: `termo` (nº do aditivo), `valor_num`, `retroativo`.
+- **`classificador.py`** detecta atos por âncora **no início da linha** — removendo antes prefixos de
+  cabeçalho (`REPUBLICAÇÃO DO`, `RETIFICAÇÃO DE`, `AUTORIZAÇÃO DE`...) p/ não perder atos republicados —
+  e exige **número** no cabeçalho (mata fragmentos de cláusula); leis/decretos filtrados pelo **ano**.
+  **Homologações de pregão** saem como "COMUNICADO ... HOMOLOGOU" (âncora-sentinela `COMUNICADO` com guarda
+  de verbo de resultado + nº de modalidade); na variante PRODESAN o nº está no "EDITAL" e o objeto/valor no
+  "COMUNICADO" seguinte (fusão dos dois blocos). Atos **sem cabeçalho próprio** (contratação direta por
+  inexigibilidade em despacho; **baixa retroativa de inscrição** — só anos anteriores ao da edição = renúncia)
+  são captados por `_atos_por_frase` no texto corrido. Secretaria vem de `UNIDADE:` → **signatário**
+  ("Secretário Municipal de X") → índice. Crédito aberto por Decreto/Lei não é duplicado (já é a norma).
+  Dedup por (categoria, número, secretaria). Captura objeto, valor, favorecido, processo, e os campos de
+  risco: `termo` (nº do aditivo), `valor_num`, `retroativo`.
 - **`risco.py`** aplica os **gatilhos da skill `dom-santos`** (versionada em `diario-oficial/references/`)
   de forma **determinística, sem IA e sem a Base de Despesas** — só dados do ato + histórico do `diario.sqlite`:
   aditivo ≥3º termo / 2º termo, efeitos retroativos, dispensa/inexig. acima do limite (art. 75), crédito

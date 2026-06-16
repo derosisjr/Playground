@@ -4,9 +4,13 @@ Monitor do Diário Oficial de Santos — captura automática de atos
 ================================================================
 
 Automatiza a varredura diária que os assessores fazem à mão: baixa o PDF do DOM,
-extrai e **classifica deterministicamente** (sem IA) os atos das quatro categorias
-— Contratos/aditivos, Licitações/dispensas, Convênios/fomento e Pessoal/normas —
-e **anexa os atos novos numa planilha do Google Sheets** (uma aba por categoria).
+extrai e **classifica deterministicamente** (sem IA) os atos das categorias-alvo —
+Contratos e aditivos, Licitações e dispensas (inclui homologações publicadas como
+"COMUNICADO"), Convênios e fomento (inclui Terceiro Setor: termos de compromisso),
+Leis e decretos, Orçamento (créditos adicionais) e Fiscal/Tributário (baixa
+retroativa de inscrição/renúncia de receita) — e **anexa os atos novos numa planilha
+do Google Sheets** (aba única "Atos do DOM", coluna Categoria para filtrar).
+Pessoal (nomeações/exonerações) fica fora desta fase.
 
 Pipeline:  extrator.py  →  classificador.py  →  dedup SQLite  →  sheets.py
 
