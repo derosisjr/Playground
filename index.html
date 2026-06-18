@@ -211,6 +211,17 @@
             <span class="lbl">normas indexadas</span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
+
+        <a class="cartao" href="./requerimentos.html">
+          <span class="idx">04</span>
+          <span class="tag">Câmara · Requerimentos</span>
+          <h2>Requerimentos &amp; Respostas</h2>
+          <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
+             número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
+          <div class="stat"><span class="val" id="stat-requerimentos">—</span>
+            <span class="lbl">requerimentos monitorados</span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
       </div>
 
     </main>
@@ -244,6 +255,7 @@
       }).catch(() => { set("stat-despesas", "—"); set("meta-update", "Dados oficiais"); });
       carregar("./proposituras-index.json").then(d => set("stat-proposituras", num(d.length))).catch(() => set("stat-proposituras", "—"));
       carregar("./legis-index.json").then(d => set("stat-legis", num(d.length))).catch(() => set("stat-legis", "—"));
+      carregar("./requerimentos-index.json").then(d => set("stat-requerimentos", num(d.length))).catch(() => set("stat-requerimentos", "—"));
     </script>
   </body>
 </html>
