@@ -17,6 +17,10 @@ on:
         description: "Máx. de itens a processar (vazio = todos)"
         required: false
         default: ""
+      cods:
+        description: "Reprocessar só estes cods (lista por vírgula) — p/ reenviar e-mail perdido"
+        required: false
+        default: ""
       email:
         description: "Enviar e-mail resumo (false p/ backfill silencioso)"
         required: false
@@ -65,13 +69,17 @@ jobs:
           if [ -n "${{ github.event.inputs.limite }}" ]; then
             LIMITE_ARG="--limite ${{ github.event.inputs.limite }}"
           fi
+          CODS_ARG=""
+          if [ -n "${{ github.event.inputs.cods }}" ]; then
+            CODS_ARG="--cods ${{ github.event.inputs.cods }}"
+          fi
           # E-mail ligado por padrão (inclusive no agendamento); só desliga quando
           # o disparo manual passa email=false (ex.: backfill silencioso).
           EMAIL_ARG="--email"
           if [ "${{ github.event.inputs.email }}" = "false" ]; then
             EMAIL_ARG=""
           fi
-          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG $EMAIL_ARG
+          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG $CODS_ARG $EMAIL_ARG
 
       # Exporta a aba "requerimentos" da planilha para o JSON do painel estático e
       # commita no repo (Pages serve o requerimentos-index.json da raiz).

@@ -724,6 +724,10 @@ def main():
                         help="Processa no máximo N itens (0 = todos).")
     parser.add_argument("--forcar", action="store_true",
                         help="Reprocessa mesmo itens cuja Resposta já está preenchida.")
+    parser.add_argument("--cods", default="",
+                        help="Processa apenas estes cods (lista separada por vírgula) e os "
+                             "reprocessa mesmo se já respondidos — útil p/ reenviar um e-mail "
+                             "que se perdeu, sem reprocessar a base inteira.")
     parser.add_argument("--email", action="store_true",
                         help="Envia e-mail resumo das respostas processadas (se houver).")
     parser.add_argument("--sem-log", action="store_true",
@@ -746,6 +750,12 @@ def main():
         itens.extend(novos)
         print(f"  {ano}: {len(encontrados)} itens.", file=sys.stderr)
     print(f"  {len(itens)} itens únicos no total.", file=sys.stderr)
+
+    cods_alvo = {c.strip() for c in args.cods.split(",") if c.strip()}
+    if cods_alvo:
+        itens = [it for it in itens if it["cod"] in cods_alvo]
+        print(f"  Filtrado para {len(itens)} de {len(cods_alvo)} cod(s)-alvo.",
+              file=sys.stderr)
 
     drive = sheets = None
     sheet_id = os.environ.get("SHEET_ID", "")
@@ -792,7 +802,7 @@ def main():
 
             # Item já respondido: só registra de novo se chegou RESPOSTA nova no Drive
             # (sinal robusto, imune ao reformato de data feito pela planilha).
-            if ja_respondido and not resposta_nova and not args.forcar:
+            if ja_respondido and not resposta_nova and not args.forcar and not cods_alvo:
                 continue
 
             rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
