@@ -527,23 +527,43 @@ def _hyperlink(url: str, texto: str, sep: str) -> str:
 
 
 # ── Log diário ────────────────────────────────────────────────────────────────
+def _executar(req, *, tentativas: int = 4, espera: float = 3.0):
+    """Executa `req.execute()` com retry em erros transitórios de rede/SSL.
+
+    A API do Google às vezes derruba a conexão (ssl.SSLEOFError, timeouts),
+    o que abortava a run inteira mesmo após o trabalho útil ter concluído.
+    """
+    import socket
+    import ssl
+    for i in range(tentativas):
+        try:
+            return req.execute()
+        except (ssl.SSLError, socket.error, ConnectionError, TimeoutError) as e:
+            if i == tentativas - 1:
+                raise
+            print(f"  rede instável ({type(e).__name__}: {e}); "
+                  f"retry {i + 2}/{tentativas} em {espera:.0f}s...", file=sys.stderr)
+            time.sleep(espera)
+            espera *= 2
+
+
 def garantir_aba_log(sheets, sheet_id: str) -> None:
     """Cria a aba de log (com cabeçalho) se ela ainda não existir."""
-    meta = sheets.spreadsheets().get(
-        spreadsheetId=sheet_id, fields="sheets.properties.title").execute()
+    meta = _executar(sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties.title"))
     titulos = [s["properties"]["title"] for s in meta.get("sheets", [])]
     if LOG_ABA in titulos:
         return
-    sheets.spreadsheets().batchUpdate(
+    _executar(sheets.spreadsheets().batchUpdate(
         spreadsheetId=sheet_id,
         body={"requests": [{"addSheet": {"properties": {"title": LOG_ABA}}}]},
-    ).execute()
-    sheets.spreadsheets().values().update(
+    ))
+    _executar(sheets.spreadsheets().values().update(
         spreadsheetId=sheet_id,
         range=f"'{LOG_ABA}'!A1",
         valueInputOption="RAW",
         body={"values": [LOG_COLUNAS]},
-    ).execute()
+    ))
 
 
 def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
@@ -551,13 +571,13 @@ def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
         return
     garantir_aba_log(sheets, sheet_id)
     linhas = [[e.get(c, "") for c in LOG_COLUNAS] for e in entradas]
-    sheets.spreadsheets().values().append(
+    _executar(sheets.spreadsheets().values().append(
         spreadsheetId=sheet_id,
         range=f"'{LOG_ABA}'!A1",
         valueInputOption="USER_ENTERED",
         insertDataOption="INSERT_ROWS",
         body={"values": linhas},
-    ).execute()
+    ))
 
 
 # ── E-mail resumo ─────────────────────────────────────────────────────────────
@@ -810,11 +830,20 @@ def main():
           file=sys.stderr)
 
     if not args.dry_run and log_entradas:
+        # Log e e-mail são passos secundários: o trabalho útil (Drive + planilha)
+        # já concluiu acima. Uma falha transitória aqui não deve marcar a run
+        # inteira como falha nem impedir o passo seguinte.
         if not args.sem_log:
-            registrar_log(sheets, sheet_id, log_entradas)
-            print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
+            try:
+                registrar_log(sheets, sheet_id, log_entradas)
+                print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
+            except Exception as e:
+                print(f"  AVISO: falha ao registrar log diário: {e} — seguindo.", file=sys.stderr)
         if args.email:
-            enviar_email(log_entradas, hoje)
+            try:
+                enviar_email(log_entradas, hoje)
+            except Exception as e:
+                print(f"  AVISO: falha ao enviar e-mail resumo: {e} — seguindo.", file=sys.stderr)
 
 
 if __name__ == "__main__":
