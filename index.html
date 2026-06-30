@@ -113,6 +113,8 @@
       .cartao:nth-child(1) { animation-delay: .42s; }
       .cartao:nth-child(2) { animation-delay: .52s; }
       .cartao:nth-child(3) { animation-delay: .62s; }
+      .cartao:nth-child(4) { animation-delay: .72s; }
+      .cartao:nth-child(5) { animation-delay: .82s; }
       .cartao::before {  /* filete dourado superior que cresce no hover */
         content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 46px;
         background: linear-gradient(90deg, var(--gold), var(--gold-bright));
@@ -222,6 +224,17 @@
             <span class="lbl">requerimentos monitorados</span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
+
+        <a class="cartao" href="./regimento.html">
+          <span class="idx">05</span>
+          <span class="tag">Câmara · Regimento Interno</span>
+          <h2>Regimento Interno</h2>
+          <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
+             artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
+          <div class="stat"><span class="val" id="stat-regimento">—</span>
+            <span class="lbl">artigos indexados</span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
       </div>
 
     </main>
@@ -256,6 +269,7 @@
       carregar("./proposituras-index.json").then(d => set("stat-proposituras", num(d.length))).catch(() => set("stat-proposituras", "—"));
       carregar("./legis-index.json").then(d => set("stat-legis", num(d.length))).catch(() => set("stat-legis", "—"));
       carregar("./requerimentos-index.json").then(d => set("stat-requerimentos", num(d.length))).catch(() => set("stat-requerimentos", "—"));
+      carregar("./regimento-index.json").then(d => set("stat-regimento", num(d.length))).catch(() => set("stat-regimento", "—"));
     </script>
   </body>
 </html>

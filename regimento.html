@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regimento Interno — Câmara de Santos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        --juris: #1d6fb8; --juris-bg: #e8f1fa;
+        --doutr: #b8861d; --doutr-bg: #faf3e2;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 1040px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.hero { position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
+          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
+          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+      .hero-in { position: relative; max-width: 1040px; margin: 0 auto; padding: 30px 20px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
+      .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
+        letter-spacing: -0.015em; line-height: 1.05; }
+      .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
+
+      .barra-busca { position: sticky; top: 0; z-index: 5; background: var(--bg);
+        padding: 16px 0 10px; margin-top: 6px; }
+      .busca-wrap { position: relative; }
+      #q { width: 100%; padding: 14px 16px 14px 44px; border: 1px solid var(--line);
+        border-radius: 12px; background: var(--card); font: inherit; font-size: 16px; color: var(--navy); }
+      #q:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+      .busca-wrap::before { content: "⌕"; position: absolute; left: 15px; top: 50%;
+        transform: translateY(-50%); font-size: 20px; color: var(--muted); }
+      .dica { color: var(--muted); font-size: 12px; font-family: "IBM Plex Mono", monospace;
+        margin: 8px 2px 0; display: flex; gap: 14px; flex-wrap: wrap; }
+      .dica kbd { background: #eef1f6; border: 1px solid var(--line); border-radius: 4px;
+        padding: 1px 6px; font-family: inherit; font-size: 11px; }
+      .contagem { color: var(--muted); }
+
+      .lista { display: flex; flex-direction: column; margin-top: 4px; }
+
+      /* Cabecalhos estruturais — fluxo de leitura da lei */
+      .h-titulo { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 19px;
+        color: var(--navy); text-align: center; letter-spacing: .01em;
+        margin: 30px 0 4px; padding-top: 18px; border-top: 2px solid var(--gold); }
+      .lista > .h-titulo:first-child { border-top: none; margin-top: 8px; padding-top: 0; }
+      .h-capitulo { font-family: "Fraunces", serif; font-weight: 600; font-size: 16px;
+        color: var(--navy); text-align: center; margin: 16px 0 2px; }
+      .h-secao { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .04em;
+        text-transform: uppercase; color: var(--muted); text-align: center; margin: 10px 0 2px; }
+
+      .artigo { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 14px 18px; margin: 10px 0; scroll-margin-top: 80px; }
+      .artigo.com-nota { border-left: 3px solid var(--gold); }
+      .art-num { font-family: "IBM Plex Mono", monospace; font-weight: 700; color: var(--navy);
+        white-space: nowrap; margin-right: 2px; }
+      .badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+      .badge.j { color: var(--juris); background: var(--juris-bg); }
+      .badge.d { color: var(--doutr); background: var(--doutr-bg); }
+
+      .bloco { font-size: 15px; line-height: 1.62; margin: 7px 0 0; color: #25303f; }
+      .bloco.caput { margin-top: 0; }
+      .bloco .rot { font-weight: 700; color: var(--navy); }
+      .bloco.inciso, .bloco.alinea { padding-left: 20px; }
+      .bloco.paragrafo { padding-left: 8px; }
+
+      /* Caixa de notas — unico elemento expansivel */
+      .notas-box { margin-top: 12px; }
+      .notas-toggle { display: flex; align-items: center; gap: 10px; width: 100%;
+        background: #faf7ed; border: 1px solid var(--line); border-radius: 8px;
+        padding: 9px 12px; cursor: pointer; font: inherit; text-align: left; color: var(--navy); }
+      .notas-toggle:hover { border-color: var(--gold); background: #f7f1df; }
+      .nt-ico { color: var(--gold); font-size: 16px; }
+      .nt-label { font-family: "Fraunces", serif; font-weight: 600; font-size: 14px; }
+      .notas-toggle .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+      .notas-toggle .chev { margin-left: auto; color: var(--muted); font-size: 12px; transition: transform .2s ease; }
+      .notas-toggle.aberto .chev { transform: rotate(90deg); }
+      .notas { padding: 6px 4px 2px; }
+      .nota { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; margin: 10px 0; }
+      .nota.j { border-color: var(--juris); }
+      .nota.d { border-color: var(--doutr); }
+      .nota-tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+      .nota.j .nota-tag { color: var(--juris); }
+      .nota.d .nota-tag { color: var(--doutr); }
+      .nota-fonte { font-weight: 600; font-size: 13.5px; margin: 2px 0; }
+      .nota-texto { font-size: 13.5px; line-height: 1.55; color: #2b3543; }
+      .nota a { color: var(--juris); font-size: 12.5px; font-weight: 600; text-decoration: none; }
+      .nota a:hover { text-decoration: underline; }
+      .sem-nota { color: var(--muted); font-size: 12.5px; font-style: italic; margin-top: 14px;
+        border-top: 1px dashed var(--line); padding-top: 12px; }
+
+      .vazio { padding: 50px 20px; text-align: center; color: var(--muted); }
+      .mais { display: block; margin: 16px auto 0; padding: 10px 18px; border: 1px solid var(--line);
+        border-radius: 10px; background: var(--card); font: inherit; cursor: pointer; }
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-in">
+        <a href="./index.html" style="display:inline-block;margin:0 0 14px;color:#e3c977;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase">← Início</a>
+        <p class="eyebrow">Gabinete do Vereador — Câmara de Santos</p>
+        <h1>Regimento Interno</h1>
+        <p class="hero-sub">
+          Consulta relâmpago ao Regimento Interno da Câmara de Santos (Resolução nº 16/2019).
+          Busque por número de artigo ou palavra-chave. Onde houver jurisprudência ou doutrina,
+          clique no artigo para abrir a <b>interpretação conforme</b>. Para uso em plenário —
+          confira sempre o texto oficial.
+        </p>
+      </div>
+    </header>
+
+    <div class="shell">
+      <div class="barra-busca">
+        <div class="busca-wrap">
+          <input id="q" type="search" autofocus placeholder="Ex.: 79, quórum, questão de ordem, urgência…" />
+        </div>
+        <div class="dica">
+          <span><kbd>/</kbd> foca a busca</span>
+          <span><kbd>Enter</kbd> abre o 1º resultado</span>
+          <span><kbd>Esc</kbd> limpa</span>
+          <span class="contagem" id="contagem">Carregando…</span>
+        </div>
+      </div>
+
+      <div class="lista" id="lista"></div>
+      <div class="vazio" id="vazio" hidden>Nenhum artigo encontrado.</div>
+      <button class="mais" id="mais" hidden>Mostrar mais</button>
+
+      <p class="rodape">
+        Fonte: Regimento Interno da Câmara Municipal de Santos — Resolução nº 16/2019 (versão
+        compilada). Texto digitalizado por OCR a partir de publicação oficial — de caráter
+        informativo; confira a publicação oficial antes de invocar em sessão. As notas de
+        interpretação conforme são curadas pelo gabinete e não substituem parecer jurídico.
+      </p>
+    </div>
+
+    <script src="./regimento-app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+# OCR do PDF escaneado do Regimento (ocr_para_md.py).
+# Requer tambem o binario do Tesseract instalado (idioma 'por'):
+#   Windows: winget install UB-Mannheim.TesseractOCR  (caminho fixado em ocr_para_md.py)
+# parser.py usa apenas a biblioteca padrao.
+PyMuPDF
+pytesseract
+Pillow

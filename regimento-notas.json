@@ -1,0 +1,25 @@
+{
+  "_leia-me": "Notas de interpretacao conforme, curadas pelo gabinete. Chave = id do artigo (ex.: art-138, art-23-a). Cada nota: tipo ('jurisprudencia' ou 'doutrina'), fonte (citacao), texto (sintese aplicavel), url (opcional). O painel mescla isto com regimento-index.json por id; reparsear o Regimento NAO altera este arquivo. As entradas abaixo sao MODELOS de exemplo — edite/substitua por material verificado.",
+  "art-138": [
+    {
+      "tipo": "doutrina",
+      "fonte": "(EXEMPLO — substituir) Manual de processo legislativo municipal",
+      "texto": "Questao de ordem exige indicacao precisa do dispositivo regimental supostamente violado (caput e § 1º); reclamacao generica, sem apontar a norma, pode ser indeferida de plano pela Presidencia. Use para barrar manobras de obstrucao sem fundamento.",
+      "url": ""
+    },
+    {
+      "tipo": "jurisprudencia",
+      "fonte": "(EXEMPLO — substituir por acordao verificado, ex.: TJSP, Mandado de Seguranca nº ...)",
+      "texto": "Decisao da Presidencia em questao de ordem tem natureza interna corporis e, em regra, nao se sujeita a revisao judicial, salvo afronta direta a Constituicao ou a Lei Organica — argumento util tanto para sustentar quanto para atacar a decisao da Mesa.",
+      "url": ""
+    }
+  ],
+  "art-152": [
+    {
+      "tipo": "doutrina",
+      "fonte": "(EXEMPLO — substituir) Comentarios ao processo legislativo",
+      "texto": "A verificacao de votacao (§ 2º) e direito potestativo do Vereador: pedida, a Presidencia nao pode negar a votacao nominal. Registrar o pedido em ata garante a prova da divergencia quanto ao resultado simbolico proclamado.",
+      "url": ""
+    }
+  ]
+}
