@@ -143,13 +143,6 @@
 
       .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
-      /* sparkline como marca d'água no rodapé do cartão de Despesas */
-      .spark-fundo { position: absolute; left: 0; right: 0; bottom: 0; width: 100%;
-        height: 56px; opacity: .45; pointer-events: none; z-index: -1; }
-      .cartao-alerta::before { background: linear-gradient(90deg, #b42318, #e07b39); }
-      .cartao-alerta:hover { border-color: #b42318; }
-      .cartao-alerta .desc b { color: #b42318; }
-
       .hub-busca { display: inline-flex; align-items: center; gap: 8px; margin-left: auto;
         background: none; border: 0; cursor: pointer; color: #8794a6;
         font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500;
@@ -176,7 +169,6 @@
       .cartao:nth-child(3) { animation-delay: .62s; }
       .cartao:nth-child(4) { animation-delay: .72s; }
       .cartao:nth-child(5) { animation-delay: .82s; }
-      .cartao:nth-child(6) { animation-delay: .92s; }
       .cartao::before {  /* filete dourado superior que cresce no hover */
         content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 46px;
         background: linear-gradient(90deg, var(--gold), var(--gold-bright));
@@ -265,7 +257,6 @@
       <p class="section-tag">Bases de dados</p>
       <div class="grade">
         <a class="cartao" href="./despesas.html">
-          <canvas class="spark-fundo" id="spark-despesas" aria-hidden="true"></canvas>
           <span class="idx">01</span>
           <span class="tag">Prefeitura · Execução orçamentária</span>
           <h2>Radar de Despesas</h2>
@@ -275,16 +266,6 @@
             <span class="lbl">pago monitorado · mandato</span>
             <span class="quando" id="stat-despesas-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
-        </a>
-
-        <a class="cartao cartao-alerta" href="./despesas.html#alertas">
-          <span class="tag">Fiscalização · ao vivo</span>
-          <h2>Alertas fiscais</h2>
-          <p class="desc" id="alerta-desc">Regras automáticas vasculham a despesa em busca do que
-             merece investigação.</p>
-          <div class="stat"><span class="val" id="stat-alertas"><span class="skel"></span></span>
-            <span class="lbl">alertas ativos (alta/média)</span></div>
-          <span class="abrir">Ver alertas <span class="arw">→</span></span>
         </a>
 
         <a class="cartao" href="./proposituras.html">
@@ -405,42 +386,7 @@
       stat(pLegis, "stat-legis", (d) => num(d.length));
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
 
-      // Sparkline do gasto mensal — marca d'água no rodapé do cartão (canvas puro)
-      function sparkline(id, valores) {
-        const cv = el(id);
-        if (!cv || valores.length < 2) return;
-        const dpr = window.devicePixelRatio || 1;
-        const w = cv.clientWidth, h = cv.clientHeight;
-        cv.width = w * dpr; cv.height = h * dpr;
-        const cx = cv.getContext("2d");
-        cx.scale(dpr, dpr);
-        const min = Math.min(...valores), max = Math.max(...valores);
-        const px = (i) => (i / (valores.length - 1)) * w;             // borda a borda
-        const py = (v) => h - 2 - ((v - min) / ((max - min) || 1)) * (h - 10);
-        cx.beginPath();
-        valores.forEach((v, i) => (i ? cx.lineTo(px(i), py(v)) : cx.moveTo(px(i), py(v))));
-        cx.strokeStyle = "rgba(201,168,76,0.85)"; cx.lineWidth = 1.5; cx.stroke();
-        cx.lineTo(w, h); cx.lineTo(0, h); cx.closePath();
-        cx.fillStyle = "rgba(201,168,76,0.14)"; cx.fill();
-        const ult = valores.length - 1;
-        cx.beginPath(); cx.arc(px(ult) - 2, py(valores[ult]), 2.5, 0, 7);
-        cx.fillStyle = "#c9a84c"; cx.fill();
-      }
-
-      // Tiles vivos do bento
-      pDespesas.then(({ dados: d }) => {
-        sparkline("spark-despesas", (d.series_mensais || []).map((s) => s.valor));
-        const lista = d.alertas || [];
-        const ativos = lista.filter((a) => a.severidade === "alta" || a.severidade === "media");
-        set("stat-alertas", String(ativos.length || lista.length));
-        const destaque = lista.find((a) => a.severidade === "alta") || lista[0];
-        if (destaque) {
-          const de = el("alerta-desc");
-          de.innerHTML = "<b>⚠ " + Comum.escapar(destaque.titulo) + "</b> — " +
-            Comum.escapar(destaque.detalhe || "").slice(0, 90) + "…";
-        }
-      }).catch(() => set("stat-alertas", "—"));
-
+      // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
         const pend = r.filter((x) => !x.respondido).length;
         if (pend) set("stat-requerimentos-lbl", `requerimentos monitorados · ${num(pend)} pendentes`);
