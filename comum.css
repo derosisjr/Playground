@@ -14,6 +14,66 @@
   --line: #e2dccd;
 }
 
+/* ── Modo escuro ─────────────────────────────────────────────────────────────
+   O atributo é aplicado no <html> por um script inline no <head> (anti-flash).
+   `html[data-tema=…]` vence os :root locais dos painéis por especificidade. */
+html[data-tema="escuro"] {
+  --paper: #0a1422;
+  --paper-2: #0c1b30;
+  --card: #101f36;
+  --ink: #e8ecf3;
+  --muted: #93a0b3;
+  --line: #22375c;
+  --bg: #0a1422;
+}
+html[data-tema="escuro"] body { background: var(--bg, #0a1422); color: var(--ink); }
+html[data-tema="escuro"] tbody tr:hover { background: #14243d; }
+html[data-tema="escuro"] .tipo-badge,
+html[data-tema="escuro"] .sit-badge { background: #1d3050; color: #cdd6e3; }
+html[data-tema="escuro"] a.pdf, html[data-tema="escuro"] a.det { color: #7ab3ff; }
+html[data-tema="escuro"] .filtros input, html[data-tema="escuro"] .filtros select,
+html[data-tema="escuro"] .btn, html[data-tema="escuro"] .mais {
+  background: var(--card); color: var(--ink); border-color: var(--line);
+}
+html[data-tema="escuro"] .skel {
+  background: linear-gradient(90deg, rgba(201,168,76,0.10) 25%, rgba(201,168,76,0.24) 50%, rgba(201,168,76,0.10) 75%);
+  background-size: 200% 100%;
+}
+html[data-tema="escuro"] footer.rod { background: var(--paper-2); }
+html[data-tema="escuro"] .tab, html[data-tema="escuro"] .chip {
+  background: var(--card); color: var(--ink); border-color: var(--line);
+}
+html[data-tema="escuro"] .tab[aria-selected="true"],
+html[data-tema="escuro"] .chip[aria-pressed="true"],
+html[data-tema="escuro"] .btn.primario {
+  background: var(--gold); color: #071018; border-color: var(--gold);
+}
+html[data-tema="escuro"] .btn.primario:hover { background: var(--gold-bright); }
+html[data-tema="escuro"] .chip .n { background: #1d3050; color: #cdd6e3; }
+html[data-tema="escuro"] .chip[aria-pressed="true"] .n { background: #071018; color: var(--gold-bright); }
+html[data-tema="escuro"] .sev.baixa { background: #1d3050; color: #93a0b3; }
+html[data-tema="escuro"] .sev.alta { background: rgba(180, 35, 24, 0.22); }
+html[data-tema="escuro"] .sev.media { background: rgba(181, 71, 8, 0.22); }
+html[data-tema="escuro"] .pendente { background: #1d3050; color: #93a0b3; }
+html[data-tema="escuro"] .nota-texto { color: #c3cdda; }
+html[data-tema="escuro"] .delta.neg { color: #4ade80; }
+
+/* chevron dos expansíveis (Regimento) */
+.notas-toggle .chev { display: inline-block; transition: transform .25s ease; }
+.notas-toggle.aberto .chev { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .notas-toggle .chev { transition: none; } }
+
+/* ── Microinterações (desligadas com prefers-reduced-motion) ────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  body { transition: background-color .35s ease, color .35s ease; }
+  .stat, .cartao, .tabela-wrap, .box, .filtros input, .filtros select {
+    transition: background-color .35s ease, border-color .35s ease;
+  }
+  .contagem.pulsa { animation: pulso-contagem .45s ease; }
+  @keyframes pulso-contagem { 30% { color: var(--gold); } }
+}
+tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+
 /* ── Topbar de navegação entre painéis ──────────────────────────────────────── */
 .topnav {
   position: sticky; top: 0; z-index: 60;
@@ -82,6 +142,12 @@
 }
 .topnav-busca:hover { color: var(--gold-bright); }
 .topnav-busca:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.topnav-tema {
+  background: none; border: 0; cursor: pointer; color: #8794a6;
+  font-size: 14px; padding: 10px 0 8px 14px; line-height: 1;
+}
+.topnav-tema:hover { color: var(--gold-bright); }
+.topnav-tema:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 
 .paleta-fundo {
   position: fixed; inset: 0; z-index: 100; background: rgba(4, 9, 15, 0.62);

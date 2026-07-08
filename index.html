@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
     <link rel="stylesheet" href="./comum.css" />
@@ -244,6 +245,7 @@
           <span class="crest">R</span>
           <span class="who"><b>Rui de Rosis Jr.</b> &nbsp;·&nbsp; Vereador (PL) &nbsp;·&nbsp; Câmara Municipal de Santos</span>
           <button class="hub-busca" type="button" onclick="Comum.abrirPaleta()" aria-label="Buscar em todas as bases">Buscar <kbd>Ctrl K</kbd></button>
+          <button class="hub-busca hub-tema" type="button" onclick="Comum.alternarTema()" aria-label="Alternar tema claro/escuro" style="margin-left:14px">🌙</button>
         </div>
         <p class="eyebrow">Transparência &amp; Fiscalização</p>
         <h1>Para onde vai o dinheiro do <em>contribuinte</em>.</h1>
@@ -404,6 +406,8 @@
 
       const pDespesas = carregar("./despesas-index.json");
       const pRequerimentos = carregar("./requerimentos-index.json");
+
+      document.querySelector(".hub-tema").textContent = Comum.temaAtual() === "escuro" ? "☀" : "🌙";
 
       const pLegis = carregar("./legis-index.json");
 

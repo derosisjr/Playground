@@ -118,6 +118,8 @@ function renderizarMais() {
   const respondidos = filtradas.filter((i) => i.respondido).length;
   el("contagem").textContent =
     `${filtradas.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} respondido(s) — exibindo ${mostrando.toLocaleString("pt-BR")}`;
+  el("contagem").classList.remove("pulsa"); void el("contagem").offsetWidth;
+  el("contagem").classList.add("pulsa");
 }
 
 function escapar(s) {

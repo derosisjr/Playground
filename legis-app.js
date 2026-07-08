@@ -115,6 +115,8 @@ function renderizarMais() {
   el("mais").hidden = mostrando >= filtradas.length;
   el("contagem").textContent =
     `${filtradas.length.toLocaleString("pt-BR")} norma(s) — exibindo ${mostrando.toLocaleString("pt-BR")}`;
+  el("contagem").classList.remove("pulsa"); void el("contagem").offsetWidth;
+  el("contagem").classList.add("pulsa");
 }
 
 function escapar(s) {

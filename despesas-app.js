@@ -3,9 +3,16 @@
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
                "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const NAVY = "#07111f", GOLD = "#c9a84c";
-const PALETA = ["#0a1628", "#c9a84c", "#475467", "#1d4ed8", "#b54708",
-                "#0f766e", "#7c3aed", "#b42318", "#0891b2", "#65a30d"];
+// cores dos gráficos conscientes do tema (navy puro sumiria no fundo escuro)
+const ESCURO = document.documentElement.dataset.tema === "escuro";
+const NAVY = ESCURO ? "#9fb6d9" : "#07111f", GOLD = "#c9a84c";
+const FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
+const PALETA = [ESCURO ? "#9fb6d9" : "#0a1628", "#c9a84c", "#8d9aad", "#5b8def", "#e08a3c",
+                "#2fa79a", "#a78bfa", "#e0564a", "#38bdf8", "#84cc16"];
+if (window.Chart) {
+  Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
+  Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+}
 
 let DADOS = null;
 let favSort = { col: "valor", dir: "desc" };
@@ -119,7 +126,7 @@ function renderGraficos() {
     data: {
       labels: serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
       datasets: [{
-        data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: "rgba(10,22,40,.08)",
+        data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: FILL_SERIE,
         fill: true, tension: .25, borderWidth: 2,
         pointRadius: anomalo.map(a => a ? 5 : 2),
         pointBackgroundColor: anomalo.map((a, i) =>

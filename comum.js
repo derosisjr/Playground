@@ -42,9 +42,28 @@ window.Comum = (() => {
       return `<a href="./${arq}"${attrs}>${escapar(nome)}</a>`;
     }).join("") +
       '<button type="button" class="topnav-busca" aria-label="Buscar em todas as bases">' +
-      'Buscar <kbd>Ctrl K</kbd></button></div>';
+      'Buscar <kbd>Ctrl K</kbd></button>' +
+      '<button type="button" class="topnav-tema" aria-label="Alternar tema claro/escuro">' +
+      (temaAtual() === "escuro" ? "☀" : "🌙") + "</button></div>";
     document.body.prepend(nav);
     nav.querySelector(".topnav-busca").addEventListener("click", abrirPaleta);
+    nav.querySelector(".topnav-tema").addEventListener("click", alternarTema);
+  }
+
+  // ── Tema claro/escuro ───────────────────────────────────────────────────────
+  // O atributo inicial é aplicado por um snippet inline no <head> (anti-flash);
+  // aqui fica só a troca. Páginas com Chart.js recarregam p/ repintar os gráficos.
+  function temaAtual() {
+    return document.documentElement.dataset.tema === "escuro" ? "escuro" : "claro";
+  }
+  function alternarTema() {
+    const novo = temaAtual() === "escuro" ? "claro" : "escuro";
+    try { localStorage.setItem("tema", novo); } catch (e) { /* modo privado */ }
+    if (window.Chart) { location.reload(); return; }
+    if (novo === "escuro") document.documentElement.dataset.tema = "escuro";
+    else delete document.documentElement.dataset.tema;
+    document.querySelectorAll(".topnav-tema, .hub-tema").forEach((b) =>
+      b.textContent = novo === "escuro" ? "☀" : "🌙");
   }
 
   // ── Estado na URL (links compartilháveis) ───────────────────────────────────
@@ -266,5 +285,6 @@ window.Comum = (() => {
     }
   });
 
-  return { topbar, lerParams, gravarParams, exportarCsv, escapar, abrirPaleta, POP_SANTOS };
+  return { topbar, lerParams, gravarParams, exportarCsv, escapar, abrirPaleta,
+           alternarTema, temaAtual, POP_SANTOS };
 })();

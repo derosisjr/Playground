@@ -3,7 +3,12 @@
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
                "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const NAVY = "#07111f", GOLD = "#c9a84c";
+const ESCURO = document.documentElement.dataset.tema === "escuro";
+const NAVY = ESCURO ? "#9fb6d9" : "#07111f", GOLD = "#c9a84c";
+if (window.Chart) {
+  Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
+  Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+}
 const el = (id) => document.getElementById(id);
 const esc = (s) => (s == null ? "" : String(s)).replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
