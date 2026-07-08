@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
+    <link rel="stylesheet" href="./comum.css" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
@@ -139,7 +140,35 @@
         display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
       .section-tag::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-      .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+      /* Bento: Despesas em destaque (2×2), coluna viva à direita, linha de bases abaixo */
+      .grade { display: grid; gap: 20px; grid-template-columns: repeat(3, 1fr);
+        grid-template-areas:
+          "despesas despesas alerta"
+          "despesas despesas regimento"
+          "proposituras legis requerimentos"; }
+      .c-despesas { grid-area: despesas; }
+      .c-alerta { grid-area: alerta; }
+      .c-regimento { grid-area: regimento; }
+      .c-proposituras { grid-area: proposituras; }
+      .c-legis { grid-area: legis; }
+      .c-requerimentos { grid-area: requerimentos; }
+      @media (max-width: 920px) {
+        .grade { grid-template-columns: 1fr; grid-template-areas:
+          "despesas" "alerta" "proposituras" "legis" "requerimentos" "regimento"; }
+      }
+
+      .spark { width: 100%; height: 54px; margin-top: 16px; display: block; }
+      .cartao-alerta::before { background: linear-gradient(90deg, #b42318, #e07b39); }
+      .cartao-alerta:hover { border-color: #b42318; }
+      .cartao-alerta .desc b { color: #b42318; }
+
+      .hub-busca { display: inline-flex; align-items: center; gap: 8px; margin-left: auto;
+        background: none; border: 0; cursor: pointer; color: #8794a6;
+        font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500;
+        letter-spacing: .14em; text-transform: uppercase; padding: 4px 0; }
+      .hub-busca kbd { font: inherit; font-size: 9.5px; border: 1px solid rgba(201,168,76,.35);
+        border-radius: 4px; padding: 2px 6px; color: var(--gold-bright); }
+      .hub-busca:hover { color: var(--gold-bright); }
 
       .cartao {
         position: relative; display: flex; flex-direction: column; isolation: isolate;
@@ -154,6 +183,7 @@
       .cartao:nth-child(3) { animation-delay: .62s; }
       .cartao:nth-child(4) { animation-delay: .72s; }
       .cartao:nth-child(5) { animation-delay: .82s; }
+      .cartao:nth-child(6) { animation-delay: .92s; }
       .cartao::before {  /* filete dourado superior que cresce no hover */
         content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 46px;
         background: linear-gradient(90deg, var(--gold), var(--gold-bright));
@@ -208,6 +238,7 @@
         <div class="brand">
           <span class="crest">R</span>
           <span class="who"><b>Rui de Rosis Jr.</b> &nbsp;·&nbsp; Vereador (PL) &nbsp;·&nbsp; Câmara Municipal de Santos</span>
+          <button class="hub-busca" type="button" onclick="Comum.abrirPaleta()" aria-label="Buscar em todas as bases">Buscar <kbd>Ctrl K</kbd></button>
         </div>
         <p class="eyebrow">Transparência &amp; Fiscalização</p>
         <h1>Para onde vai o dinheiro do <em>contribuinte</em>.</h1>
@@ -239,19 +270,30 @@
     <main class="shell">
       <p class="section-tag">Bases de dados</p>
       <div class="grade">
-        <a class="cartao" href="./despesas.html">
+        <a class="cartao c-despesas" href="./despesas.html">
           <span class="idx">01</span>
           <span class="tag">Prefeitura · Execução orçamentária</span>
           <h2>Radar de Despesas</h2>
           <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
              automáticos e busca detalhada por favorecido, função e fonte.</p>
+          <canvas class="spark" id="spark-despesas" aria-hidden="true"></canvas>
           <div class="stat"><span class="val" id="stat-despesas"><span class="skel"></span></span>
             <span class="lbl">pago monitorado · mandato</span>
             <span class="quando" id="stat-despesas-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./proposituras.html">
+        <a class="cartao c-alerta cartao-alerta" href="./despesas.html#alertas">
+          <span class="tag">Fiscalização · ao vivo</span>
+          <h2>Alertas fiscais</h2>
+          <p class="desc" id="alerta-desc">Regras automáticas vasculham a despesa em busca do que
+             merece investigação.</p>
+          <div class="stat"><span class="val" id="stat-alertas"><span class="skel"></span></span>
+            <span class="lbl">alertas ativos (alta/média)</span></div>
+          <span class="abrir">Ver alertas <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao c-proposituras" href="./proposituras.html">
           <span class="idx">02</span>
           <span class="tag">Câmara · Proposituras</span>
           <h2>Base de Proposituras</h2>
@@ -263,31 +305,31 @@
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./legis.html">
+        <a class="cartao c-legis" href="./legis.html">
           <span class="idx">03</span>
           <span class="tag">Prefeitura · Legislação</span>
           <h2>Base de Legislação</h2>
           <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
              com link direto para o documento oficial.</p>
           <div class="stat"><span class="val" id="stat-legis"><span class="skel"></span></span>
-            <span class="lbl">normas indexadas</span>
+            <span class="lbl" id="stat-legis-lbl">normas indexadas</span>
             <span class="quando" id="stat-legis-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./requerimentos.html">
+        <a class="cartao c-requerimentos" href="./requerimentos.html">
           <span class="idx">04</span>
           <span class="tag">Câmara · Requerimentos</span>
           <h2>Requerimentos &amp; Respostas</h2>
           <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
              número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
           <div class="stat"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
-            <span class="lbl">requerimentos monitorados</span>
+            <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
             <span class="quando" id="stat-requerimentos-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./regimento.html">
+        <a class="cartao c-regimento" href="./regimento.html">
           <span class="idx">05</span>
           <span class="tag">Câmara · Regimento Interno</span>
           <h2>Regimento Interno</h2>
@@ -307,6 +349,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
+    <script src="./comum.js"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const compacto = (v) => {
@@ -353,12 +396,66 @@
       const pDespesas = carregar("./despesas-index.json");
       const pRequerimentos = carregar("./requerimentos-index.json");
 
+      const pLegis = carregar("./legis-index.json");
+
       stat(pDespesas, "stat-despesas", (d) => compacto(d.totais.geral),
         (d) => d.atualizado_em && new Date(d.atualizado_em));
       stat(pRequerimentos, "stat-requerimentos", (d) => num(d.length));
       stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => num(d.length));
-      stat(carregar("./legis-index.json"), "stat-legis", (d) => num(d.length));
+      stat(pLegis, "stat-legis", (d) => num(d.length));
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
+
+      // Sparkline do gasto mensal (canvas puro, sem lib)
+      function sparkline(id, valores) {
+        const cv = el(id);
+        if (!cv || valores.length < 2) return;
+        const dpr = window.devicePixelRatio || 1;
+        const w = cv.clientWidth, h = cv.clientHeight;
+        cv.width = w * dpr; cv.height = h * dpr;
+        const cx = cv.getContext("2d");
+        cx.scale(dpr, dpr);
+        const min = Math.min(...valores), max = Math.max(...valores);
+        const px = (i) => 2 + (i / (valores.length - 1)) * (w - 4);
+        const py = (v) => h - 3 - ((v - min) / ((max - min) || 1)) * (h - 8);
+        cx.beginPath();
+        valores.forEach((v, i) => (i ? cx.lineTo(px(i), py(v)) : cx.moveTo(px(i), py(v))));
+        cx.strokeStyle = "#c9a84c"; cx.lineWidth = 1.8; cx.stroke();
+        cx.lineTo(px(valores.length - 1), h); cx.lineTo(px(0), h); cx.closePath();
+        cx.fillStyle = "rgba(201,168,76,0.13)"; cx.fill();
+        const ult = valores.length - 1;
+        cx.beginPath(); cx.arc(px(ult), py(valores[ult]), 3, 0, 7);
+        cx.fillStyle = "#c9a84c"; cx.fill();
+      }
+
+      // Tiles vivos do bento
+      pDespesas.then(({ dados: d }) => {
+        sparkline("spark-despesas", (d.series_mensais || []).map((s) => s.valor));
+        const lista = d.alertas || [];
+        const ativos = lista.filter((a) => a.severidade === "alta" || a.severidade === "media");
+        set("stat-alertas", String(ativos.length || lista.length));
+        const destaque = lista.find((a) => a.severidade === "alta") || lista[0];
+        if (destaque) {
+          const de = el("alerta-desc");
+          de.innerHTML = "<b>⚠ " + Comum.escapar(destaque.titulo) + "</b> — " +
+            Comum.escapar(destaque.detalhe || "").slice(0, 90) + "…";
+        }
+      }).catch(() => set("stat-alertas", "—"));
+
+      pRequerimentos.then(({ dados: r }) => {
+        const pend = r.filter((x) => !x.respondido).length;
+        if (pend) set("stat-requerimentos-lbl", `requerimentos monitorados · ${num(pend)} pendentes`);
+      }).catch(() => {});
+
+      pLegis.then(({ dados: L }) => {
+        const leis = L.filter((n) => /^lei/i.test(n.tipo || ""));
+        if (!leis.length) return;
+        const ult = leis.reduce((a, b) => {
+          const na = parseInt(String(a.numero).replace(/\D/g, "")) || 0;
+          const nb = parseInt(String(b.numero).replace(/\D/g, "")) || 0;
+          return (b.ano > a.ano || (b.ano === a.ano && nb > na)) ? b : a;
+        });
+        set("stat-legis-lbl", `normas indexadas · última: Lei ${ult.numero}/${ult.ano}`);
+      }).catch(() => {});
 
       pDespesas.then(({ dados: d }) => {
         const serie = d.series_mensais || [];

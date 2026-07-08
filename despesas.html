@@ -158,6 +158,17 @@
       #fav-tabela td { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
       #fav-tabela td.neg { color: var(--red); }
       #fav-resumo { white-space: normal; }
+
+      /* "Em resumo" — narrativa do export + deltas nos cards */
+      .resumo-box { border-left: 3px solid var(--gold); }
+      .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+        letter-spacing: .18em; text-transform: uppercase; color: var(--gold);
+        font-weight: 600; margin: 0 0 8px; }
+      .resumo-texto { font-size: 15px; line-height: 1.65; margin: 0; max-width: 78ch; }
+      .delta { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600;
+        vertical-align: 3px; margin-left: 2px; white-space: nowrap; }
+      .delta.pos { color: #b42318; }   /* gasto subindo = atenção */
+      .delta.neg { color: #067647; }   /* gasto caindo = alívio ao contribuinte */
     </style>
   </head>
   <body>
@@ -188,6 +199,10 @@
 
       <!-- ── Visão geral ── -->
       <section class="painel ativo" id="painel-geral">
+        <div class="box resumo-box" id="em-resumo" hidden>
+          <p class="resumo-rotulo">Em resumo</p>
+          <p class="resumo-texto"></p>
+        </div>
         <div class="box">
           <h3>Gasto mensal (R$)</h3>
           <canvas id="ch-mensal"></canvas>

@@ -140,6 +140,101 @@ def agregados(conn) -> dict:
     }
 
 
+# ── Resumo narrativo ("Em resumo") ────────────────────────────────────────────
+# Texto determinístico (sem IA) exibido no topo do painel: último mês completo vs
+# média móvel, função que mais variou, acumulado do ano vs mesmo período anterior
+# e alertas ativos. Frases montadas por template — auditável e sem custo de token.
+MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
+              "agosto", "setembro", "outubro", "novembro", "dezembro"]
+MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+
+def _brl_compacto(v: float) -> str:
+    a = abs(v)
+    if a >= 1e9:
+        return ("R$ %.2f" % (v / 1e9)).replace(".", ",") + " bi"
+    if a >= 1e6:
+        return ("R$ %.1f" % (v / 1e6)).replace(".", ",") + " mi"
+    return "R$ " + f"{v:,.0f}".replace(",", ".")
+
+
+def resumo_narrativo(conn, indice: dict) -> dict | None:
+    series = indice.get("series_mensais") or []
+    if len(series) < 3:
+        return None
+
+    # último mês COMPLETO: descarta o mês corrente (parcial) se for o último da série
+    hoje = datetime.now()
+    idx = len(series) - 1
+    if series[idx]["ano"] == hoje.year and series[idx]["mes"] == hoje.month:
+        idx -= 1
+    ref = series[idx]
+
+    # vs média dos até 12 meses anteriores
+    anteriores = series[max(0, idx - 12):idx]
+    media = sum(s["valor"] for s in anteriores) / len(anteriores) if anteriores else None
+    delta_media_pct = round((ref["valor"] - media) / media * 100) if media else None
+
+    # função com maior variação absoluta vs o mês anterior
+    destaque = None
+    if idx >= 1:
+        ant = series[idx - 1]
+        rows = _q(conn, """
+            SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k,
+                   SUM(CASE WHEN ano=? AND mes=? THEN valor ELSE 0 END) atual,
+                   SUM(CASE WHEN ano=? AND mes=? THEN valor ELSE 0 END) anterior
+            FROM pagamentos
+            WHERE (ano=? AND mes=?) OR (ano=? AND mes=?)
+            GROUP BY k""",
+            ref["ano"], ref["mes"], ant["ano"], ant["mes"],
+            ref["ano"], ref["mes"], ant["ano"], ant["mes"])
+        difs = [(r["k"], (r["atual"] or 0) - (r["anterior"] or 0)) for r in rows]
+        if difs:
+            k, d = max(difs, key=lambda x: abs(x[1]))
+            if abs(d) >= 1_000_000:  # só destaca variação relevante
+                nome = re.sub(r"^\d+\s*-\s*", "", k).strip().capitalize()
+                destaque = {"funcao": nome, "delta": round(d, 2)}
+
+    # acumulado do ano (jan..mês de referência) vs mesmo período do ano anterior
+    yoy = None
+    atual = sum(s["valor"] for s in series if s["ano"] == ref["ano"] and s["mes"] <= ref["mes"])
+    passado = sum(s["valor"] for s in series if s["ano"] == ref["ano"] - 1 and s["mes"] <= ref["mes"])
+    if passado:
+        yoy = {"atual": round(atual, 2), "anterior": round(passado, 2),
+               "pct": round((atual - passado) / passado * 100)}
+
+    ativos = sum(1 for a in indice.get("alertas", [])
+                 if a.get("severidade") in ("alta", "media"))
+
+    frases = []
+    f1 = f"Em {MESES_NOME[ref['mes'] - 1]}, a Prefeitura pagou {_brl_compacto(ref['valor'])}"
+    if delta_media_pct is not None and delta_media_pct != 0:
+        f1 += (f" — {abs(delta_media_pct)}% "
+               f"{'acima' if delta_media_pct > 0 else 'abaixo'} da média dos 12 meses anteriores")
+    frases.append(f1 + ".")
+    if destaque:
+        sobe = destaque["delta"] > 0
+        frases.append(f"{destaque['funcao']} teve a maior variação: "
+                      f"{'+' if sobe else '−'}{_brl_compacto(abs(destaque['delta']))} "
+                      f"em relação ao mês anterior.")
+    if yoy:
+        frases.append(f"No acumulado de {ref['ano']} (jan–{MESES_ABREV[ref['mes'] - 1]}), "
+                      f"o pago soma {_brl_compacto(yoy['atual'])}, "
+                      f"{abs(yoy['pct'])}% {'acima' if yoy['pct'] >= 0 else 'abaixo'} "
+                      f"do mesmo período de {ref['ano'] - 1}.")
+    if ativos:
+        frases.append(f"Há {ativos} alertas fiscais ativos de severidade alta ou média.")
+
+    return {
+        "texto": " ".join(frases),
+        "mes_ref": {"ano": ref["ano"], "mes": ref["mes"], "valor": ref["valor"]},
+        "delta_media_pct": delta_media_pct,
+        "funcao_destaque": destaque,
+        "yoy": yoy,
+        "alertas_ativos": ativos,
+    }
+
+
 # ── Alertas fiscais por regras ────────────────────────────────────────────────
 def alertas(conn) -> list[dict]:
     out = []
@@ -468,6 +563,7 @@ def main():
     conn = conectar()
     indice = agregados(conn)
     indice["alertas"] = alertas(conn)
+    indice["resumo"] = resumo_narrativo(conn, indice)
     execucao = montar_execucao(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE

@@ -32,10 +32,14 @@ async function init() {
     return;
   }
   renderStats();
+  renderResumo();
   renderGraficos();
   popularFiltrosAlertas();
   renderAlertas();
   ligarAlertas();
+  // deep-link de busca (paleta ⌘K / links externos): ?q= pré-preenche favorecidos
+  const qIni = new URLSearchParams(location.search).get("q");
+  if (qIni) document.getElementById("q").value = qIni;
   renderFavoridosTabela();
   renderSeletorMeses();
   ligarAbas();
@@ -53,13 +57,27 @@ async function init() {
 }
 
 // ── Cards ────────────────────────────────────────────────────────────────────
+const POP_SANTOS = (window.Comum && Comum.POP_SANTOS) || 433656; // IBGE, Censo 2022
+
+function deltaHTML(pct, rotulo) {
+  if (pct == null) return "";
+  const pos = pct >= 0;
+  return ` <span class="delta ${pos ? "pos" : "neg"}" title="${esc(rotulo)}">` +
+    `${pos ? "▲" : "▼"} ${Math.abs(pct)}%</span>`;
+}
+
 function renderStats() {
-  const t = DADOS.totais, p = DADOS.periodo;
+  const t = DADOS.totais, p = DADOS.periodo, r = DADOS.resumo;
   const anos = Object.keys(t.por_ano || {}).sort();
   const ultimoAno = anos[anos.length - 1];
+  const perCapita = t.geral / POP_SANTOS;
+  const yoy = r?.yoy; // acumulado do ano vs mesmo período do ano anterior
   const cards = [
-    { rotulo: "Total no período", valor: compacto(t.geral), sub: `${p.de} a ${p.ate}` },
-    { rotulo: `Total em ${ultimoAno || "—"}`, valor: compacto(t.por_ano?.[ultimoAno] || 0), sub: "exercício corrente" },
+    { rotulo: "Total no período", valor: compacto(t.geral),
+      sub: `${p.de} a ${p.ate} · ≈ ${brl(perCapita)} por santista` },
+    { rotulo: `Total em ${ultimoAno || "—"}`,
+      valor: compacto(t.por_ano?.[ultimoAno] || 0) + deltaHTML(yoy?.pct, "vs mesmo período do ano anterior"),
+      sub: yoy ? `vs ${compacto(yoy.anterior)} no mesmo período de ${ultimoAno - 1}` : "exercício corrente" },
     { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
     { rotulo: "Favorecidos", valor: t.favorecidos.toLocaleString("pt-BR"), sub: "distintos" },
   ];
@@ -68,24 +86,53 @@ function renderStats() {
      <div class="valor">${c.valor}</div><div class="sub">${c.sub}</div></div>`).join("");
 }
 
+// "Em resumo" — narrativa determinística gerada pelo export (DADOS.resumo)
+function renderResumo() {
+  const box = document.getElementById("em-resumo");
+  if (!box || !DADOS.resumo?.texto) return;
+  box.querySelector(".resumo-texto").textContent = DADOS.resumo.texto;
+  box.hidden = false;
+}
+
 // ── Gráficos ─────────────────────────────────────────────────────────────────
 function eixoReais() {
   return { ticks: { callback: (v) => compacto(v) } };
 }
 
+// Desvio de cada mês vs a média dos até 12 meses anteriores (null = sem base p/ comparar)
+function desviosSerie(serie) {
+  return serie.map((s, i) => {
+    const ant = serie.slice(Math.max(0, i - 12), i);
+    if (ant.length < 3) return null;
+    const media = ant.reduce((t, x) => t + x.valor, 0) / ant.length;
+    return Math.round((s.valor - media) / media * 100);
+  });
+}
+
 function renderGraficos() {
-  // Série mensal
+  // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque
   const serie = DADOS.series_mensais;
+  const desvios = desviosSerie(serie);
+  const anomalo = desvios.map(d => d != null && Math.abs(d) > 25);
   new Chart(document.getElementById("ch-mensal"), {
     type: "line",
     data: {
       labels: serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
       datasets: [{
         data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: "rgba(10,22,40,.08)",
-        fill: true, tension: .25, pointRadius: 2, borderWidth: 2,
+        fill: true, tension: .25, borderWidth: 2,
+        pointRadius: anomalo.map(a => a ? 5 : 2),
+        pointBackgroundColor: anomalo.map((a, i) =>
+          a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : NAVY),
+        pointBorderColor: anomalo.map(a => a ? "#fff" : NAVY),
+        pointBorderWidth: anomalo.map(a => a ? 1.5 : 0),
       }],
     },
-    options: chartOpts({ y: eixoReais() }),
+    options: chartOpts({ y: eixoReais() }, undefined, {
+      afterLabel: (c) => anomalo[c.dataIndex]
+        ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
+        : "",
+    }),
   });
 
   // Top funções (barra horizontal)
@@ -122,12 +169,12 @@ function rotulo(s) {
   return s.length > 38 ? s.slice(0, 36) + "…" : s;
 }
 
-function chartOpts(scales, indexAxis) {
+function chartOpts(scales, indexAxis, tooltipExtra) {
   const o = {
     responsive: true, maintainAspectRatio: false, indexAxis: indexAxis || "x",
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: (c) => brlc(indexAxis === "y" ? c.raw : c.parsed.y) } },
+      tooltip: { callbacks: { label: (c) => brlc(indexAxis === "y" ? c.raw : c.parsed.y), ...(tooltipExtra || {}) } },
     },
     scales: {},
   };
