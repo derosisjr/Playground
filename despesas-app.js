@@ -629,6 +629,11 @@ async function abrirFichaFavorecido(nome, documento) {
   modal.hidden = false;
   document.getElementById("fav-titulo").textContent = nome;
   document.getElementById("fav-doc").textContent = documento || "";
+  // ponte p/ o raio-X (só p/ o top-300, que tem dossiê pré-computado)
+  const raiox = document.getElementById("fav-raiox");
+  const top = (DADOS.top_favorecidos || []).find(f => f.nome === nome && (f.documento || "") === (documento || ""));
+  raiox.hidden = !top?.slug;
+  if (top?.slug) raiox.href = "./favorecido.html?f=" + encodeURIComponent(top.slug);
   document.getElementById("fav-carregando").hidden = false;
   document.getElementById("fav-conteudo").hidden = true;
   try {

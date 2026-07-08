@@ -74,7 +74,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add despesas-index.json despesas/dados
+          git add despesas-index.json despesas/dados favorecidos
           if git diff --quiet --cached; then
             echo "Sem mudancas na base."
           else

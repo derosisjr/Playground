@@ -112,7 +112,9 @@ window.Comum = (() => {
       mapear: (d) => (d.top_favorecidos || []).map((f) => ({
         t: f.nome,
         s: brlCurto(f.valor) + " no mandato",
-        url: "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
+        // com dossiê pré-computado abre o raio-X; sem, cai na busca do painel
+        url: f.slug ? "./favorecido.html?f=" + encodeURIComponent(f.slug)
+                    : "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
         h: norm(f.nome),
       })) },
   ];

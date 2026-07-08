@@ -18,6 +18,7 @@ Uso:
 """
 
 import csv
+import hashlib
 import json
 import os
 import re
@@ -39,6 +40,7 @@ CSV_PATH = os.path.join(AQUI, "despesas.csv")
 XLSX_PATH = os.path.join(AQUI, "despesas.xlsx")
 DADOS_DIR = os.path.join(AQUI, "dados")           # detalhe mensal versionado (consumido pelo painel)
 JSON_PATH = os.path.join(RAIZ, "despesas-index.json")
+FAV_DIR = os.path.join(RAIZ, "favorecidos")       # raio-X por favorecido (versionado; favorecido.html)
 
 COLUNAS = [
     "ano", "mes", "unidade_gestora", "data", "especie", "empenho", "liquidacao",
@@ -233,6 +235,67 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
         "yoy": yoy,
         "alertas_ativos": ativos,
     }
+
+
+# ── Raio-X por favorecido (favorecidos/<slug>.json) ───────────────────────────
+# Um dossiê estático por favorecido do top-N: série mensal própria, por função,
+# últimos pagamentos e alertas — consumido por favorecido.html?f=<slug>.
+def _slug_fav(nome: str, doc: str) -> str:
+    """CNPJ completo vira os 14 dígitos; CPF mascarado/sem doc vira hash curto do par."""
+    dig = re.sub(r"\D", "", doc or "")
+    if dig and "*" not in (doc or ""):
+        return dig
+    return hashlib.md5(f"{nome}|{doc}".encode("utf-8")).hexdigest()[:12]
+
+
+def exportar_favorecidos(conn, indice: dict) -> int:
+    os.makedirs(FAV_DIR, exist_ok=True)
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_pagamentos_fav "
+                 "ON pagamentos(nome_favorecido, documento_favorecido)")
+    tops = indice.get("top_favorecidos") or []
+    validos = set()
+    for rank, f in enumerate(tops, 1):
+        nome, doc = f["nome"], f.get("documento") or ""
+        slug = _slug_fav(nome, doc)
+        f["slug"] = slug           # o painel/paleta usam p/ linkar o raio-X
+        validos.add(slug + ".json")
+
+        serie = [{"ano": r["ano"], "mes": r["mes"], "valor": round(r["s"], 2)}
+                 for r in _q(conn,
+                     "SELECT ano, mes, SUM(valor) s FROM pagamentos "
+                     "WHERE nome_favorecido=? AND documento_favorecido=? "
+                     "GROUP BY ano, mes ORDER BY ano, mes", nome, doc)]
+        por_ano = {}
+        for s in serie:
+            por_ano[str(s["ano"])] = round(por_ano.get(str(s["ano"]), 0) + s["valor"], 2)
+        funcoes = [{"funcao": r["k"], "valor": round(r["s"], 2)}
+                   for r in _q(conn,
+                       "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
+                       "FROM pagamentos WHERE nome_favorecido=? AND documento_favorecido=? "
+                       "GROUP BY k ORDER BY s DESC LIMIT 6", nome, doc)]
+        ultimos = [{"data": r["data"], "valor": round(r["valor"], 2), "funcao": r["funcao"],
+                    "elemento": r["elemento_despesa"], "unidade": r["unidade_gestora"]}
+                   for r in _q(conn,
+                       "SELECT data, valor, funcao, elemento_despesa, unidade_gestora "
+                       "FROM pagamentos WHERE nome_favorecido=? AND documento_favorecido=? "
+                       "ORDER BY data DESC, valor DESC LIMIT 50", nome, doc)]
+        meus_alertas = [a for a in indice.get("alertas", [])
+                        if (a.get("filtro") or {}).get("favorecido") == nome]
+
+        with open(os.path.join(FAV_DIR, slug + ".json"), "w", encoding="utf-8") as fp:
+            json.dump({
+                "nome": nome, "documento": doc, "slug": slug, "rank": rank,
+                "total": f["valor"], "qtd": f["qtd"], "meses": f["meses"],
+                "por_ano": por_ano, "serie_mensal": serie, "por_funcao": funcoes,
+                "ultimos_pagamentos": ultimos, "alertas": meus_alertas,
+                "atualizado_em": indice.get("atualizado_em"),
+            }, fp, ensure_ascii=False, separators=(",", ":"))
+
+    # remove dossiês de quem saiu do top-N
+    for nome_arq in os.listdir(FAV_DIR):
+        if nome_arq.endswith(".json") and nome_arq not in validos:
+            os.remove(os.path.join(FAV_DIR, nome_arq))
+    return len(validos)
 
 
 # ── Alertas fiscais por regras ────────────────────────────────────────────────
@@ -564,6 +627,7 @@ def main():
     indice = agregados(conn)
     indice["alertas"] = alertas(conn)
     indice["resumo"] = resumo_narrativo(conn, indice)
+    n_fav_raiox = exportar_favorecidos(conn, indice)  # também injeta 'slug' nos tops
     execucao = montar_execucao(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE
@@ -581,8 +645,8 @@ def main():
     print(f"Export concluído: {indice['totais']['pagamentos']} pagamentos (visão caixa), "
           f"{len(execucao)} linhas de execução por empenho, "
           f"R$ {indice['totais']['geral']:,.2f}, {len(indice['alertas'])} alertas, "
-          f"{len(indice['meses'])} meses → "
-          f"{os.path.basename(JSON_PATH)}, dados/, {os.path.basename(CSV_PATH)}, {xlsx_msg}.", file=sys.stderr)
+          f"{len(indice['meses'])} meses, {n_fav_raiox} raio-X de favorecidos → "
+          f"{os.path.basename(JSON_PATH)}, dados/, favorecidos/, {os.path.basename(CSV_PATH)}, {xlsx_msg}.", file=sys.stderr)
 
 
 if __name__ == "__main__":

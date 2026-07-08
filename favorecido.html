@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raio-X do favorecido — Despesas de Santos</title>
+    <meta name="description" content="Dossiê de pagamentos da Prefeitura de Santos a um favorecido: série mensal, funções, últimos pagamentos e alertas fiscais." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Raio-X do favorecido — Despesas de Santos" />
+    <meta property="og:description" content="Dossiê de pagamentos da Prefeitura de Santos a um favorecido: série mensal, funções, últimos pagamentos e alertas fiscais." />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="./comum.css" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
+        --bg: #f4f1e9; --red: #b42318;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased; }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 1000px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.hero { position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
+          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+      .hero-in { position: relative; max-width: 1000px; margin: 0 auto; padding: 26px 20px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 10px; }
+      .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); }
+      h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600; margin: 0;
+        font-size: clamp(22px, 3.4vw, 34px); line-height: 1.1; letter-spacing: -0.01em; }
+      .hero-sub { color: #c3cdda; margin: 10px 0 0; font-size: 14px;
+        font-family: "IBM Plex Mono", monospace; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+      .hero-sub .rank { color: var(--gold-bright); }
+
+      .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 16px 18px; margin-top: 18px; }
+      .box h3 { margin: 0 0 12px; font-size: 15px; }
+      .box canvas { max-height: 260px; }
+
+      .alerta { border: 1px solid var(--line); border-left: 4px solid var(--gold);
+        border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: var(--card); }
+      .alerta.alta { border-left-color: var(--red); }
+      .alerta .sev { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .1em; color: var(--red); margin-right: 8px; }
+      .alerta .tit { font-weight: 700; font-size: 14px; }
+      .alerta .det { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      thead th { text-align: left; padding: 9px 10px; color: var(--muted); font-size: 11px;
+        text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+      tbody td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+      td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; text-align: right; }
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.6; }
+      .vazio { padding: 50px 20px; text-align: center; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js"></script>
+    <script>Comum.topbar("despesas.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Raio-X do favorecido · Despesas de Santos</p>
+        <h1 id="fav-nome">Carregando…</h1>
+        <p class="hero-sub">
+          <span id="fav-doc"></span>
+          <span class="rank" id="fav-rank"></span>
+          <span id="fav-atualizado"></span>
+        </p>
+      </div>
+    </header>
+
+    <div class="shell">
+      <div class="vazio" id="carregando">Carregando o dossiê…</div>
+
+      <div id="conteudo" hidden>
+        <div class="stats" id="stats"></div>
+
+        <div class="box">
+          <h3>Pagamentos recebidos por mês (R$)</h3>
+          <canvas id="ch-mensal"></canvas>
+        </div>
+
+        <div class="box">
+          <h3>Em que funções o dinheiro entra (R$)</h3>
+          <canvas id="ch-funcao"></canvas>
+        </div>
+
+        <div class="box" id="box-alertas" hidden>
+          <h3>⚠ Alertas fiscais deste favorecido</h3>
+          <div id="lista-alertas"></div>
+        </div>
+
+        <div class="box">
+          <h3>Últimos pagamentos</h3>
+          <div style="overflow-x:auto">
+            <table class="tabela-resp">
+              <thead><tr><th>Data</th><th>Função</th><th>Elemento</th><th>Unidade</th><th style="text-align:right">Valor</th></tr></thead>
+              <tbody id="corpo-pagamentos"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="rodape">
+          Dossiê pré-computado a partir do Portal da Transparência de Santos (visão caixa/pago).
+          Cobre os 300 maiores favorecidos do mandato. Caráter informativo — confira sempre o portal oficial.
+          <a id="link-painel" href="./despesas.html#favorecidos">Ver no painel de despesas ↗</a>
+        </p>
+      </div>
+    </div>
+
+    <script src="./favorecido-app.js"></script>
+  </body>
+</html>
