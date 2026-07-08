@@ -7,6 +7,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="description" content="Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema, com link para o documento oficial." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Base de Legislação — Santos" />
+    <meta property="og:description" content="Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema, com link para o documento oficial." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/legis.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -54,10 +68,14 @@
         gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
       .tabela-wrap { background: var(--card); border: 1px solid var(--line);
-        border-radius: 14px; overflow: hidden; }
+        /* clip-path no lugar de overflow:hidden — overflow mataria o sticky do thead */
+        border-radius: 14px; clip-path: inset(0 round 14px); }
+      @media (max-width: 760px) {
+        .tabela-wrap { border: none; background: transparent; border-radius: 0; clip-path: none; }
+      }
       table { width: 100%; border-collapse: collapse; font-size: 14px; }
       thead th { background: var(--navy2); color: #fff; text-align: left;
-        padding: 11px 12px; font-weight: 700; position: sticky; top: 0; }
+        padding: 11px 12px; font-weight: 700; position: sticky; top: 39px; /* abaixo da topbar fixa */ }
       tbody td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
       tbody tr:hover { background: #fafbfc; }
       .tipo-badge { display: inline-block; padding: 2px 8px; border-radius: 999px;
@@ -73,9 +91,10 @@
     </style>
   </head>
   <body>
+    <script src="./comum.js"></script>
+    <script>Comum.topbar("legis.html");</script>
     <header class="hero">
       <div class="hero-in">
-        <a href="./index.html" style="display:inline-block;margin:0 0 14px;color:#e3c977;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase">← Início</a>
         <p class="eyebrow">Gabinete do Vereador — Câmara de Santos</p>
         <h1>Base de Legislação Municipal</h1>
         <p class="hero-sub">
@@ -87,6 +106,8 @@
     </header>
 
     <div class="shell">
+      <div class="stats" id="stats"></div>
+
       <div class="filtros">
         <input id="q" type="search" placeholder="Buscar por palavra-chave, ementa ou número..." />
         <select id="tipo"><option value="">Todos os tipos</option></select>
@@ -96,10 +117,13 @@
 
       <div class="barra">
         <span class="contagem" id="contagem">Carregando…</span>
+        <div class="acoes">
+          <button class="btn" id="csv" disabled>Exportar CSV</button>
+        </div>
       </div>
 
       <div class="tabela-wrap">
-        <table>
+        <table class="tabela-resp">
           <thead>
             <tr>
               <th>Tipo</th><th>Número</th><th>Ano</th><th>Data</th>

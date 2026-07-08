@@ -1,0 +1,91 @@
+/* Camada comum do site — tokens, topbar e componentes compartilhados.
+   Carregada por todos os painéis ANTES do <style> local (o local pode refinar). */
+:root {
+  --navy: #060e1a;
+  --navy-2: #0c1b30;
+  --navy-3: #12263f;
+  --gold: #c9a84c;
+  --gold-bright: #e3c977;
+  --paper: #f4f1e9;
+  --paper-2: #ebe6da;
+  --card: #fffdf8;
+  --ink: #0c1626;
+  --muted: #5d6675;
+  --line: #e2dccd;
+}
+
+/* ── Topbar de navegação entre painéis ──────────────────────────────────────── */
+.topnav {
+  position: sticky; top: 0; z-index: 60;
+  background: #04090f;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.35);
+  font-family: "IBM Plex Mono", monospace;
+}
+.topnav-in {
+  max-width: 1180px; margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: stretch; gap: 2px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.topnav-in::-webkit-scrollbar { display: none; }
+.topnav a {
+  color: #8794a6; text-decoration: none; white-space: nowrap;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  padding: 12px 12px 10px; border-bottom: 2px solid transparent;
+  transition: color .2s ease;
+}
+.topnav a:hover { color: var(--gold-bright); }
+.topnav a:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.topnav a.atual { color: var(--gold-bright); border-bottom-color: var(--gold); }
+.topnav a.inicio { color: #cdd6e3; }
+.topnav a.inicio::before { content: "◆ "; color: var(--gold); font-size: 8px; vertical-align: 1px; }
+
+/* ── Cartões de KPI (padrão dos painéis de Despesas/Proposituras) ───────────── */
+.stats {
+  display: grid; gap: 12px; margin: 22px 0 14px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.stat {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; position: relative; overflow: hidden;
+}
+.stat::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--gold);
+}
+.stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; font-weight: 700; }
+.stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+  font-size: 26px; margin-top: 4px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
+.acoes { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--ink);
+}
+.btn:hover { border-color: var(--gold); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Tabela responsiva (aplicar a classe .tabela-resp na <table>) ───────────── */
+@media (max-width: 760px) {
+  .tabela-resp thead { display: none; }
+  .tabela-resp, .tabela-resp tbody, .tabela-resp tr, .tabela-resp td {
+    display: block; width: 100%;
+  }
+  .tabela-resp tbody tr {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 12px; padding: 6px 4px;
+  }
+  .tabela-resp tbody td {
+    border-top: none; padding: 6px 14px; display: flex; gap: 12px;
+    min-width: 0; overflow-wrap: anywhere; word-break: break-word;
+  }
+  .tabela-resp tbody td > * { min-width: 0; }
+  .tabela-resp tbody td::before {
+    content: attr(data-label); flex: 0 0 80px; color: var(--muted);
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding-top: 2px;
+  }
+}

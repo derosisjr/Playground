@@ -40,6 +40,59 @@ function aplicarFiltros() {
   el("corpo").innerHTML = "";
   renderizarMais();
   el("vazio").hidden = filtradas.length > 0;
+  atualizarResumo();
+  el("csv").disabled = filtradas.length === 0;
+  Comum.gravarParams({ q: el("q").value.trim(), ano, status });
+}
+
+// "dd/mm/aaaa" -> Date (null se inválida)
+function dataBR(s) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s || "");
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+}
+
+// Cards de resumo (respeitam o filtro atual)
+function atualizarResumo() {
+  const total = filtradas.length;
+  const respondidos = filtradas.filter((i) => i.respondido).length;
+  const pendentes = total - respondidos;
+  const pct = total ? Math.round((respondidos / total) * 100) : 0;
+
+  // tempo médio de resposta (dias entre sessão e resposta), só dos respondidos
+  const prazos = filtradas
+    .map((i) => {
+      const a = dataBR(i.data_sessao), b = dataBR(i.data_resposta);
+      return a && b ? (b - a) / 864e5 : null;
+    })
+    .filter((d) => d != null && d >= 0);
+  const media = prazos.length
+    ? Math.round(prazos.reduce((s, d) => s + d, 0) / prazos.length)
+    : null;
+
+  const cards = [
+    { rotulo: "Requerimentos", valor: total.toLocaleString("pt-BR"), sub: "no filtro atual" },
+    { rotulo: "Respondidos", valor: `${pct}%`, sub: `${respondidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}` },
+    { rotulo: "Pendentes", valor: pendentes.toLocaleString("pt-BR"), sub: "aguardando o Executivo" },
+    { rotulo: "Tempo médio de resposta", valor: media == null ? "—" : `${media} dias`, sub: "entre a sessão e a resposta" },
+  ];
+  el("stats").innerHTML = cards
+    .map((c) => `<div class="stat">
+        <div class="rotulo">${escapar(c.rotulo)}</div>
+        <div class="valor">${escapar(c.valor)}</div>
+        <div class="sub">${escapar(c.sub)}</div>
+      </div>`)
+    .join("");
+}
+
+// Exporta o resultado filtrado (mesmas colunas da tabela)
+function exportarCSV() {
+  if (!filtradas.length) return;
+  const campos = ["numero", "ano", "assunto", "data_sessao", "data_resposta", "status", "respondido", "url_resposta"];
+  Comum.exportarCsv(
+    `requerimentos-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
+    campos,
+    filtradas.map((i) => campos.map((c) => (c === "respondido" ? (i[c] ? "sim" : "não") : i[c])))
+  );
 }
 
 function linhaHTML(i) {
@@ -47,12 +100,12 @@ function linhaHTML(i) {
     ? `<a class="pdf" href="${escapar(i.url_resposta)}" target="_blank" rel="noopener">Resposta ↗</a>`
     : `<span class="pendente">Pendente</span>`;
   return `<tr>
-    <td class="num">${escapar(i.numero)}</td>
-    <td>${escapar(i.assunto)}</td>
-    <td class="data">${escapar(i.data_sessao)}</td>
-    <td class="data">${escapar(i.data_resposta)}</td>
-    <td class="status">${escapar(i.status)}</td>
-    <td>${resposta}</td>
+    <td data-label="Número" class="num">${escapar(i.numero)}</td>
+    <td data-label="Assunto">${escapar(i.assunto)}</td>
+    <td data-label="Sessão" class="data">${escapar(i.data_sessao)}</td>
+    <td data-label="Resposta em" class="data">${escapar(i.data_resposta)}</td>
+    <td data-label="Situação" class="status">${escapar(i.status)}</td>
+    <td data-label="Resposta">${resposta}</td>
   </tr>`;
 }
 
@@ -85,10 +138,17 @@ async function init() {
     return;
   }
   preencherSelects();
+  // estado vindo da URL (link compartilhável) — antes do primeiro render
+  const p = Comum.lerParams();
+  for (const id of ["q", "ano", "status"]) {
+    const v = p.get(id);
+    if (v) el(id).value = v;
+  }
   ["q", "ano", "status"].forEach((id) =>
     el(id).addEventListener("input", aplicarFiltros)
   );
   el("mais").addEventListener("click", renderizarMais);
+  el("csv").addEventListener("click", exportarCSV);
   aplicarFiltros();
 }
 

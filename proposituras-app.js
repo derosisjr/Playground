@@ -102,6 +102,13 @@ function aplicarFiltros() {
   renderizarMais();
   el("vazio").hidden = filtradas.length > 0;
   el("csv").disabled = filtradas.length === 0;
+  Comum.gravarParams({
+    q: el("q").value.trim(),
+    subtipo: el("subtipo").value,
+    ano: el("ano").value,
+    autor: el("autor").value,
+    local: el("local").value,
+  });
 }
 
 // ── Cards de resumo ─────────────────────────────────────────────────────────
@@ -204,6 +211,12 @@ async function init() {
   }
   preencherSelects();
   montarChips();
+  // estado vindo da URL (link compartilhável) — antes do primeiro render
+  const p = Comum.lerParams();
+  for (const id of ["q", "subtipo", "ano", "autor", "local"]) {
+    const v = p.get(id);
+    if (v) el(id).value = v;
+  }
   ["q", "subtipo", "ano", "autor", "local"].forEach((id) =>
     el(id).addEventListener("input", aplicarFiltros)
   );

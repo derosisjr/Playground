@@ -48,6 +48,7 @@ function aplicarFiltros() {
   el("lista").innerHTML = "";
   renderizarMais();
   el("vazio").hidden = filtrados.length > 0;
+  Comum.gravarParams({ q: bruto });
 }
 
 function notasDoArtigo(id) {
@@ -149,7 +150,13 @@ function ligarEventos() {
 
   el("lista").addEventListener("click", (e) => {
     const btn = e.target.closest(".notas-toggle");
-    if (btn) alternarNotas(btn);
+    if (!btn) return;
+    alternarNotas(btn);
+    // URL compartilhável do artigo aberto
+    const art = btn.closest(".artigo");
+    if (art && btn.getAttribute("aria-expanded") === "true") {
+      history.replaceState(null, "", location.pathname + location.search + "#" + art.id);
+    }
   });
 
   document.addEventListener("keydown", (e) => {
@@ -185,7 +192,25 @@ async function init() {
     NOTAS = {};
   }
   ligarEventos();
+
+  // estado vindo da URL: #art-79 abre direto no artigo; ?q= restaura a busca
+  const hash = decodeURIComponent(location.hash.replace("#", ""));
+  const alvoHash = hash && ARTIGOS.find((a) => a.id === hash);
+  const q = Comum.lerParams().get("q");
+  if (alvoHash) {
+    el("q").value = "art " + alvoHash.numero;
+  } else if (q) {
+    el("q").value = q;
+  }
   aplicarFiltros();
+  if (alvoHash) {
+    const artigo = document.getElementById(alvoHash.id);
+    if (artigo) {
+      artigo.scrollIntoView({ block: "start" });
+      const btn = artigo.querySelector(".notas-toggle");
+      if (btn && btn.getAttribute("aria-expanded") !== "true") alternarNotas(btn);
+    }
+  }
 }
 
 init();

@@ -52,6 +52,43 @@ function aplicarFiltros() {
   el("corpo").innerHTML = "";
   renderizarMais();
   el("vazio").hidden = filtradas.length > 0;
+  atualizarResumo();
+  el("csv").disabled = filtradas.length === 0;
+  Comum.gravarParams({
+    q: el("q").value.trim(), tipo, ano, tema: el("tema").value,
+  });
+}
+
+// Cards de resumo (respeitam o filtro atual)
+function atualizarResumo() {
+  const conta = (t) => filtradas.filter((n) => n.tipo === t).length;
+  const anos = filtradas.map((n) => n.ano).filter(Boolean);
+  const anoMin = anos.length ? Math.min(...anos) : "—";
+  const anoMax = anos.length ? Math.max(...anos) : "—";
+  const cards = [
+    { rotulo: "Normas", valor: filtradas.length.toLocaleString("pt-BR"), sub: "no filtro atual" },
+    { rotulo: "Leis ordinárias", valor: conta("Lei ordinária").toLocaleString("pt-BR"), sub: "no filtro atual" },
+    { rotulo: "Leis complementares", valor: conta("Lei complementar").toLocaleString("pt-BR"), sub: "no filtro atual" },
+    { rotulo: "Período", valor: anoMin === anoMax ? `${anoMin}` : `${anoMin}–${anoMax}`, sub: "ano da norma" },
+  ];
+  el("stats").innerHTML = cards
+    .map((c) => `<div class="stat">
+        <div class="rotulo">${escapar(c.rotulo)}</div>
+        <div class="valor">${escapar(c.valor)}</div>
+        <div class="sub">${escapar(c.sub)}</div>
+      </div>`)
+    .join("");
+}
+
+// Exporta o resultado filtrado (mesmas colunas da tabela)
+function exportarCSV() {
+  if (!filtradas.length) return;
+  const campos = ["tipo", "numero", "ano", "data_norma", "ementa", "tags", "url_pdf"];
+  Comum.exportarCsv(
+    `legislacao-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
+    campos,
+    filtradas.map((n) => campos.map((c) => n[c]))
+  );
 }
 
 function linhaHTML(n) {
@@ -60,13 +97,13 @@ function linhaHTML(n) {
     ? `<div class="tags">${escapar(n.tags)}</div>`
     : "";
   return `<tr>
-    <td><span class="tipo-badge">${escapar(n.tipo)}</span></td>
-    <td class="num">${escapar(n.numero)}</td>
-    <td>${escapar(n.ano)}</td>
-    <td>${escapar(n.data_norma)}</td>
-    <td>${escapar(desc)}${temas}</td>
-    <td class="tags">${escapar(n.tags)}</td>
-    <td><a class="pdf" href="${escapar(n.url_pdf)}" target="_blank" rel="noopener">PDF ↗</a></td>
+    <td data-label="Tipo"><span class="tipo-badge">${escapar(n.tipo)}</span></td>
+    <td data-label="Número" class="num">${escapar(n.numero)}</td>
+    <td data-label="Ano">${escapar(n.ano)}</td>
+    <td data-label="Data">${escapar(n.data_norma)}</td>
+    <td data-label="Ementa">${escapar(desc)}${temas}</td>
+    <td data-label="Temas" class="tags">${escapar(n.tags)}</td>
+    <td data-label="Documento"><a class="pdf" href="${escapar(n.url_pdf)}" target="_blank" rel="noopener">PDF ↗</a></td>
   </tr>`;
 }
 
@@ -98,10 +135,17 @@ async function init() {
     return;
   }
   preencherSelects();
+  // estado vindo da URL (link compartilhável) — antes do primeiro render
+  const p = Comum.lerParams();
+  for (const id of ["q", "tipo", "ano", "tema"]) {
+    const v = p.get(id);
+    if (v) el(id).value = v;
+  }
   ["q", "tipo", "ano", "tema"].forEach((id) =>
     el(id).addEventListener("input", aplicarFiltros)
   );
   el("mais").addEventListener("click", renderizarMais);
+  el("csv").addEventListener("click", exportarCSV);
   aplicarFiltros();
 }
 
