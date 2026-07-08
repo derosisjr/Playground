@@ -85,12 +85,39 @@
         line-height: 1.55; max-width: 58ch; font-weight: 400;
         opacity: 0; animation: rise .8s .3s cubic-bezier(.2,.7,.2,1) forwards; }
 
-      .meta { display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 16px 0 0;
-        font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
-        color: #8794a6; text-transform: uppercase;
+      /* Régua de indicadores fiscais ao vivo (pé do hero) */
+      .regua { display: flex; flex-wrap: wrap; margin: clamp(18px, 2.8vw, 28px) 0 0;
+        border-top: 1px solid rgba(201,168,76,0.22);
         opacity: 0; animation: rise .8s .4s cubic-bezier(.2,.7,.2,1) forwards; }
-      .meta span { display: inline-flex; align-items: center; gap: 8px; }
-      .meta i { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); display: inline-block; font-style: normal; }
+      .ind { display: flex; flex-direction: column; gap: 7px;
+        padding: 13px 30px 2px 0; margin-right: 30px;
+        border-right: 1px solid rgba(201,168,76,0.14); text-decoration: none; }
+      .ind:last-child { border-right: 0; margin-right: 0; }
+      .ind[hidden] { display: none; }
+      .ind-lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px;
+        letter-spacing: .2em; text-transform: uppercase; color: #8794a6; white-space: nowrap; }
+      .ind-val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 17px;
+        line-height: 1.2; color: #fff; letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #ind-alertas .ind-val { color: var(--gold-bright); }
+      a.ind:hover .ind-val, a.ind:focus-visible .ind-val {
+        text-decoration: underline; text-decoration-color: var(--gold);
+        text-decoration-thickness: 1.5px; text-underline-offset: 5px; }
+      @media (max-width: 640px) {
+        .regua { display: grid; grid-template-columns: 1fr 1fr; }
+        .ind { padding-right: 14px; margin-right: 0; }
+        .ind:nth-child(even) { border-right: 0; }
+        .ind:nth-child(n+3) { border-top: 1px solid rgba(201,168,76,0.10); }
+        .ind-val { font-size: 15.5px; }
+      }
+
+      /* Skeleton de carregamento (números ao vivo) */
+      .skel { display: inline-block; width: 4.5em; height: .85em; border-radius: 3px;
+        background: linear-gradient(90deg, rgba(6,14,26,0.07) 25%, rgba(6,14,26,0.14) 50%, rgba(6,14,26,0.07) 75%);
+        background-size: 200% 100%; animation: brilho 1.4s linear infinite; }
+      .ind-val .skel { background: linear-gradient(90deg, rgba(201,168,76,0.14) 25%, rgba(201,168,76,0.32) 50%, rgba(201,168,76,0.14) 75%);
+        background-size: 200% 100%; }
+      @keyframes brilho { to { background-position: -200% 0; } }
 
       /* ── Corpo ────────────────────────────────────────────────────── */
       .shell { max-width: 1120px; margin: 0 auto; width: 100%; flex: 1;
@@ -136,9 +163,15 @@
 
       .stat { margin: 18px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); }
       .stat .val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 27px;
-        line-height: 1; color: var(--ink); letter-spacing: -0.01em; display: block; }
+        line-height: 1; color: var(--ink); letter-spacing: -0.01em; display: block;
+        font-variant-numeric: tabular-nums; }
       .stat .lbl { font-size: 11.5px; color: var(--muted); margin-top: 7px; display: block;
         letter-spacing: .02em; }
+      .stat .quando { font-family: "IBM Plex Mono", monospace; font-size: 10px;
+        letter-spacing: .07em; text-transform: uppercase; color: var(--muted); opacity: .75;
+        margin-top: 6px; display: block; }
+      .stat .quando::before { content: ""; width: 5px; height: 5px; border-radius: 50%;
+        background: var(--gold); display: inline-block; margin-right: 7px; vertical-align: 1px; }
 
       .abrir { display: inline-flex; align-items: center; gap: 9px; margin-top: 16px;
         font-weight: 700; font-size: 13.5px; letter-spacing: .01em; color: var(--ink); }
@@ -153,7 +186,7 @@
       @keyframes rise { to { opacity: 1; transform: none; } }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
-        .brand, .eyebrow, h1, .lede, .meta, .cartao { opacity: 1; transform: none; }
+        .brand, .eyebrow, h1, .lede, .regua, .cartao { opacity: 1; transform: none; }
       }
     </style>
   </head>
@@ -170,10 +203,23 @@
           Painéis públicos que acompanham a despesa da Prefeitura e o que tramita na Câmara —
           a partir de dados oficiais, atualizados automaticamente. Escolha uma base para explorar.
         </p>
-        <div class="meta">
-          <span><i></i>Dados oficiais</span>
-          <span><i></i>Atualização automática</span>
-          <span><i></i><span id="meta-update">Carregando…</span></span>
+        <div class="regua" aria-label="Indicadores fiscais ao vivo">
+          <a class="ind" id="ind-pago" href="./despesas.html">
+            <span class="ind-lbl" id="ind-pago-lbl">Pago no mês</span>
+            <span class="ind-val" id="ind-pago-val"><span class="skel"></span></span>
+          </a>
+          <a class="ind" id="ind-alertas" href="./despesas.html#alertas">
+            <span class="ind-lbl">Alertas fiscais</span>
+            <span class="ind-val" id="ind-alertas-val"><span class="skel"></span></span>
+          </a>
+          <a class="ind" id="ind-req" href="./requerimentos.html">
+            <span class="ind-lbl">Requerimentos respondidos</span>
+            <span class="ind-val" id="ind-req-val"><span class="skel"></span></span>
+          </a>
+          <span class="ind" id="ind-atual">
+            <span class="ind-lbl">Base atualizada</span>
+            <span class="ind-val" id="ind-atual-val"><span class="skel"></span></span>
+          </span>
         </div>
       </div>
     </header>
@@ -187,8 +233,9 @@
           <h2>Radar de Despesas</h2>
           <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
              automáticos e busca detalhada por favorecido, função e fonte.</p>
-          <div class="stat"><span class="val" id="stat-despesas">—</span>
-            <span class="lbl">pago monitorado · mandato</span></div>
+          <div class="stat"><span class="val" id="stat-despesas"><span class="skel"></span></span>
+            <span class="lbl">pago monitorado · mandato</span>
+            <span class="quando" id="stat-despesas-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
@@ -198,8 +245,9 @@
           <h2>Base de Proposituras</h2>
           <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
              autor, situação e palavra-chave, com a tramitação de cada um.</p>
-          <div class="stat"><span class="val" id="stat-proposituras">—</span>
-            <span class="lbl">proposituras indexadas</span></div>
+          <div class="stat"><span class="val" id="stat-proposituras"><span class="skel"></span></span>
+            <span class="lbl">proposituras indexadas</span>
+            <span class="quando" id="stat-proposituras-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
@@ -209,8 +257,9 @@
           <h2>Base de Legislação</h2>
           <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
              com link direto para o documento oficial.</p>
-          <div class="stat"><span class="val" id="stat-legis">—</span>
-            <span class="lbl">normas indexadas</span></div>
+          <div class="stat"><span class="val" id="stat-legis"><span class="skel"></span></span>
+            <span class="lbl">normas indexadas</span>
+            <span class="quando" id="stat-legis-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
@@ -220,8 +269,9 @@
           <h2>Requerimentos &amp; Respostas</h2>
           <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
              número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
-          <div class="stat"><span class="val" id="stat-requerimentos">—</span>
-            <span class="lbl">requerimentos monitorados</span></div>
+          <div class="stat"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
+            <span class="lbl">requerimentos monitorados</span>
+            <span class="quando" id="stat-requerimentos-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
@@ -231,8 +281,9 @@
           <h2>Regimento Interno</h2>
           <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
              artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
-          <div class="stat"><span class="val" id="stat-regimento">—</span>
-            <span class="lbl">artigos indexados</span></div>
+          <div class="stat"><span class="val" id="stat-regimento"><span class="skel"></span></span>
+            <span class="lbl">artigos indexados</span>
+            <span class="quando" id="stat-regimento-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
       </div>
@@ -253,23 +304,68 @@
         return "R$ " + Math.round(v).toLocaleString("pt-BR");
       };
       const num = (n) => n.toLocaleString("pt-BR");
-      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+      const el = (id) => document.getElementById(id);
+      const set = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+
+      // "atualizado hoje / ontem / há N dias"
+      function relativo(dt) {
+        if (!dt || isNaN(dt)) return "";
+        const dias = Math.floor((Date.now() - dt.getTime()) / 864e5);
+        if (dias <= 0) return "atualizado hoje";
+        if (dias === 1) return "atualizado ontem";
+        return "atualizado há " + dias + " dias";
+      }
+
       async function carregar(url) {
         const r = await fetch(url + "?v=" + Date.now());
-        if (!r.ok) throw new Error("falha");
-        return r.json();
+        if (!r.ok) throw new Error("HTTP " + r.status + " em " + url);
+        const mod = r.headers.get("last-modified");
+        return { dados: await r.json(), modificado: mod ? new Date(mod) : null };
       }
-      carregar("./despesas-index.json").then(d => {
-        set("stat-despesas", compacto(d.totais.geral));
-        if (d.atualizado_em) {
-          const dt = new Date(d.atualizado_em);
-          set("meta-update", "Atualizado " + dt.toLocaleDateString("pt-BR"));
-        } else set("meta-update", "Dados do mandato");
-      }).catch(() => { set("stat-despesas", "—"); set("meta-update", "Dados oficiais"); });
-      carregar("./proposituras-index.json").then(d => set("stat-proposituras", num(d.length))).catch(() => set("stat-proposituras", "—"));
-      carregar("./legis-index.json").then(d => set("stat-legis", num(d.length))).catch(() => set("stat-legis", "—"));
-      carregar("./requerimentos-index.json").then(d => set("stat-requerimentos", num(d.length))).catch(() => set("stat-requerimentos", "—"));
-      carregar("./regimento-index.json").then(d => set("stat-regimento", num(d.length))).catch(() => set("stat-regimento", "—"));
+
+      // Popula o número do cartão + a linha de frescor (Last-Modified ou data do próprio JSON).
+      function stat(promessa, id, valorFn, dataFn) {
+        promessa.then(({ dados, modificado }) => {
+          set(id, valorFn(dados));
+          const rel = relativo((dataFn && dataFn(dados)) || modificado);
+          const q = el(id + "-quando");
+          if (q && rel) { q.textContent = rel; q.hidden = false; }
+        }).catch((e) => { console.warn("hub:", e.message || e); set(id, "—"); });
+      }
+
+      // Indicador da régua do hero: preenche e exibe; some se a fonte falhar.
+      function indicador(id, valor) { set(id + "-val", valor); }
+      function esconder(...ids) { ids.forEach((id) => { const e = el(id); if (e) e.hidden = true; }); }
+
+      const pDespesas = carregar("./despesas-index.json");
+      const pRequerimentos = carregar("./requerimentos-index.json");
+
+      stat(pDespesas, "stat-despesas", (d) => compacto(d.totais.geral),
+        (d) => d.atualizado_em && new Date(d.atualizado_em));
+      stat(pRequerimentos, "stat-requerimentos", (d) => num(d.length));
+      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => num(d.length));
+      stat(carregar("./legis-index.json"), "stat-legis", (d) => num(d.length));
+      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
+
+      pDespesas.then(({ dados: d }) => {
+        const serie = d.series_mensais || [];
+        const ult = serie[serie.length - 1];
+        if (ult) {
+          set("ind-pago-lbl", "Pago em " + MESES[ult.mes - 1] + "/" + ult.ano);
+          indicador("ind-pago", compacto(ult.valor));
+        } else esconder("ind-pago");
+        const ativos = (d.alertas || []).filter((a) => a.severidade === "alta" || a.severidade === "media").length;
+        indicador("ind-alertas", ativos ? ativos + " ativos" : "nenhum ativo");
+        if (d.atualizado_em) indicador("ind-atual", new Date(d.atualizado_em).toLocaleDateString("pt-BR"));
+        else esconder("ind-atual");
+      }).catch(() => esconder("ind-pago", "ind-alertas", "ind-atual"));
+
+      pRequerimentos.then(({ dados: r }) => {
+        if (!Array.isArray(r) || !r.length) return esconder("ind-req");
+        const resp = r.filter((x) => x.respondido).length;
+        indicador("ind-req", Math.round((resp / r.length) * 100) + "% · " + resp + " de " + r.length);
+      }).catch(() => esconder("ind-req"));
     </script>
   </body>
 </html>

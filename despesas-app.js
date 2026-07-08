@@ -39,6 +39,9 @@ async function init() {
   renderFavoridosTabela();
   renderSeletorMeses();
   ligarAbas();
+  // deep-link de aba: despesas.html#alertas / #favorecidos / #detalhe
+  const aba = location.hash.replace("#", "");
+  if (["geral", "alertas", "favorecidos", "detalhe"].includes(aba)) selecionarAba(aba);
   ligarBusca();
   ligarOrdenacao();
   ligarModosFav();
