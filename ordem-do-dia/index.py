@@ -29,6 +29,7 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from urllib.parse import urljoin
 import requests
+import fitz  # PyMuPDF
 from bs4 import BeautifulSoup
 import anthropic
 import markdown as md
@@ -184,19 +185,38 @@ Regras:
 - Se não tiver informação suficiente para algum campo, escreva o que for razoável inferir do contexto municipal
 - Nunca deixe campos em branco — use o bom senso político de um assessor experiente
 - **CRÍTICO: Complete TODOS os itens da pauta sem exceção. Se necessário, seja mais conciso nos itens intermediários para garantir que o último item receba a mesma profundidade. Jamais interrompa um item no meio.**
-- Os textos completos dos PDFs (projetos, pareceres, vetos, ofícios) estão anexados como documentos. Baseie a análise no conteúdo real — não apenas na ementa. Cite trechos relevantes para fundamentar o posicionamento.
+- Os textos completos dos PDFs (projetos, pareceres, vetos, ofícios) estão anexados (como texto extraído ou PDF). Baseie a análise no conteúdo real — não apenas na ementa. Cite trechos relevantes para fundamentar o posicionamento.
 - **VETOS DO PREFEITO:** sempre buscar ativamente argumentos jurídicos para a derrubada do veto. Mensagens de veto frequentemente contêm erros de enquadramento legal e argumentação frágil. Em matérias de veto, desconsidere o parecer da CCJ — analise o veto diretamente com base no texto da lei vetada e no ofício do prefeito."""
 
 
 # ── PDF ───────────────────────────────────────────────────────────────────────
-def baixar_pdf_base64(url: str) -> str | None:
+def baixar_pdf(url: str) -> bytes | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=30)
         resp.raise_for_status()
-        return base64.standard_b64encode(resp.content).decode("utf-8")
+        return resp.content
     except Exception as e:
         print(f"  Aviso: não foi possível baixar PDF {url}: {e}", file=sys.stderr)
         return None
+
+
+def extrair_texto_pdf(dados: bytes) -> str | None:
+    """Extrai o texto do PDF localmente (PyMuPDF), poupando tokens de imagem na API.
+
+    Retorna None quando o PDF é escaneado (sem camada de texto útil) — nesse caso
+    o chamador envia o PDF em base64 como bloco document, que a API sabe ler por OCR."""
+    try:
+        with fitz.open(stream=dados, filetype="pdf") as pdf:
+            paginas = [pagina.get_text() for pagina in pdf]
+    except Exception as e:
+        print(f"  Aviso: falha ao extrair texto do PDF: {e}", file=sys.stderr)
+        return None
+    texto = "\n\n".join(paginas).replace("\x00", "")
+    texto = re.sub(r"\n{3,}", "\n\n", texto).strip()
+    # heurística de PDF escaneado: pouquíssimo texto por página
+    if len(texto) < 200 * len(paginas):
+        return None
+    return texto
 
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
@@ -245,7 +265,8 @@ def get_documentos(sessao_id: str) -> list[dict]:
                 if valor:
                     campos[chave] = valor
 
-        # baixa PDFs do rodapé como base64 para envio direto à API do Claude
+        # baixa PDFs do rodapé; texto extraído local vai como texto (barato),
+        # PDF escaneado vai como base64 para a API ler por OCR (caro)
         pdfs: list[dict] = []
         for a in doc.select(".documento_rodape_anexo a[href]"):
             href = a.get("href", "")
@@ -254,8 +275,16 @@ def get_documentos(sessao_id: str) -> list[dict]:
             pdf_url = urljoin(page_url, href)
             label = a.get_text(strip=True) or "Documento"
             print(f"  Baixando PDF: {label}...", file=sys.stderr)
-            data = baixar_pdf_base64(pdf_url)
-            if data:
+            dados = baixar_pdf(pdf_url)
+            if not dados:
+                continue
+            texto = extrair_texto_pdf(dados)
+            if texto:
+                print(f"    texto extraído ({len(texto)} chars)", file=sys.stderr)
+                pdfs.append({"label": label, "texto": texto})
+            else:
+                print("    escaneado → base64", file=sys.stderr)
+                data = base64.standard_b64encode(dados).decode("utf-8")
                 pdfs.append({"label": label, "data": data})
 
         if not titulo:
@@ -288,12 +317,13 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
 
     n_pdfs = sum(len(d.get("pdfs", [])) for d in documentos)
     nota_pdfs = (
-        f"\n\nOs textos completos ({n_pdfs} PDFs) estão anexados como documentos abaixo. "
-        "Baseie a análise no conteúdo real dos documentos, citando trechos quando relevante."
+        f"\n\nOs textos completos ({n_pdfs} documentos) estão anexados abaixo "
+        "(texto extraído ou PDF). Baseie a análise no conteúdo real dos documentos, "
+        "citando trechos quando relevante."
         if n_pdfs else ""
     )
 
-    # monta content array: texto + document blocks
+    # monta content array: prompt + blocos de texto (PDFs extraídos) + document blocks (escaneados)
     content: list[dict] = [
         {
             "type": "text",
@@ -304,25 +334,39 @@ def gerar_briefing(sessao_nome: str, documentos: list[dict]) -> str:
         }
     ]
     blocos_pdf: list[dict] = []
+    n_texto = n_escaneado = total_chars = 0
     for doc in documentos:
         for pdf in doc.get("pdfs", []):
-            blocos_pdf.append({
-                "type": "document",
-                "source": {
-                    "type": "base64",
-                    "media_type": "application/pdf",
-                    "data": pdf["data"],
-                },
-                "title": f"{doc['titulo']} — {pdf['label']}",
-            })
+            if "texto" in pdf:
+                n_texto += 1
+                total_chars += len(pdf["texto"])
+                blocos_pdf.append({
+                    "type": "text",
+                    "text": f"### DOCUMENTO ANEXO: {doc['titulo']} — {pdf['label']}\n\n{pdf['texto']}",
+                })
+            else:
+                n_escaneado += 1
+                blocos_pdf.append({
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": pdf["data"],
+                    },
+                    "title": f"{doc['titulo']} — {pdf['label']}",
+                })
 
-    # cache_control no último bloco: na continuação os PDFs são lidos do cache
-    # (custo de 10% dos tokens de entrada, evitando rate limit)
+    # cache_control no último bloco: no retry pós-429 os anexos são lidos do cache
+    # (custo de 10% dos tokens de entrada)
     if blocos_pdf:
         blocos_pdf[-1]["cache_control"] = {"type": "ephemeral"}
     content.extend(blocos_pdf)
 
-    print(f"Enviando {n_pdfs} PDFs para o Claude...", file=sys.stderr)
+    print(
+        f"Enviando {n_pdfs} anexos para o Claude "
+        f"({n_texto} como texto ≈{total_chars // 4} tokens, {n_escaneado} como PDF base64)...",
+        file=sys.stderr,
+    )
 
     system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
     messages = [{"role": "user", "content": content}]
