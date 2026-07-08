@@ -237,6 +237,24 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
     }
 
 
+# ── Detalhe por ano (retrospectiva.html) ──────────────────────────────────────
+def anos_detalhe(conn) -> dict:
+    """Top funções e favorecidos POR ANO — alimenta a página-história do ano."""
+    out = {}
+    for r in _q(conn, "SELECT DISTINCT ano FROM pagamentos ORDER BY ano"):
+        a = r["ano"]
+        fn = [{"funcao": x["k"], "valor": round(x["s"], 2)}
+              for x in _q(conn,
+                  "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
+                  "FROM pagamentos WHERE ano=? GROUP BY k ORDER BY s DESC LIMIT 8", a)]
+        fav = [{"nome": x["k"], "documento": x["doc"], "valor": round(x["s"], 2)}
+               for x in _q(conn,
+                   "SELECT nome_favorecido k, documento_favorecido doc, SUM(valor) s "
+                   "FROM pagamentos WHERE ano=? GROUP BY k, doc ORDER BY s DESC LIMIT 6", a)]
+        out[str(a)] = {"por_funcao": fn, "top_favorecidos": fav}
+    return out
+
+
 # ── Raio-X por favorecido (favorecidos/<slug>.json) ───────────────────────────
 # Um dossiê estático por favorecido do top-N: série mensal própria, por função,
 # últimos pagamentos e alertas — consumido por favorecido.html?f=<slug>.
@@ -627,6 +645,7 @@ def main():
     indice = agregados(conn)
     indice["alertas"] = alertas(conn)
     indice["resumo"] = resumo_narrativo(conn, indice)
+    indice["anos_detalhe"] = anos_detalhe(conn)
     n_fav_raiox = exportar_favorecidos(conn, indice)  # também injeta 'slug' nos tops
     execucao = montar_execucao(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)

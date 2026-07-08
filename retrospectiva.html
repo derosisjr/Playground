@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O ano em gastos — Prefeitura de Santos</title>
+    <meta name="description" content="A despesa da Prefeitura de Santos contada como história: total do ano, por morador, mês a mês, funções, favorecidos e alertas fiscais." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="O ano em gastos — Prefeitura de Santos" />
+    <meta property="og:description" content="A despesa da Prefeitura de Santos contada como história — do total do ano aos alertas fiscais." />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./comum.css" />
+    <style>
+      :root { --red: #e07b39; }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; color: #eef2f7; font-family: "Manrope", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        background:
+          radial-gradient(120% 90% at 12% -10%, #12263f 0%, transparent 55%),
+          linear-gradient(180deg, #0c1b30 0%, #060e1a 30%, #060e1a 100%);
+        background-attachment: fixed; }
+      body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .35;
+        background-image:
+          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
+          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px); }
+      ::selection { background: var(--gold); color: #060e1a; }
+      a { color: var(--gold-bright); }
+      a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+      .cap { position: relative; min-height: 92vh; display: flex; flex-direction: column;
+        justify-content: center; max-width: 860px; margin: 0 auto; padding: 60px 24px; }
+      .cap[hidden] { display: none; }
+      .cap-num { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .3em;
+        text-transform: uppercase; color: var(--gold); margin-bottom: 22px; display: flex;
+        align-items: center; gap: 14px; }
+      .cap-num::before { content: ""; width: 34px; height: 1px; background: var(--gold); }
+      h1, h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; line-height: 1.05;
+        letter-spacing: -0.015em; margin: 0; }
+      h1 { font-size: clamp(38px, 7vw, 76px); }
+      h2 { font-size: clamp(26px, 4.2vw, 44px); max-width: 18ch; }
+      h1 em, h2 em, .gigante { font-style: normal; color: var(--gold-bright); }
+      .prosa { color: #b9c4d4; font-size: clamp(15px, 1.8vw, 18px); line-height: 1.65;
+        max-width: 54ch; margin: 20px 0 0; }
+      .gigante { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+        font-size: clamp(46px, 9vw, 110px); line-height: 1; letter-spacing: -0.02em;
+        display: block; margin-top: 26px; font-variant-numeric: tabular-nums; }
+      .nota-fonte { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #6b7789;
+        margin-top: 14px; letter-spacing: .04em; }
+
+      /* revelação por scroll */
+      .rev { opacity: 0; transform: translateY(26px);
+        transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+      .vista .rev { opacity: 1; transform: none; }
+      .vista .rev:nth-child(2) { transition-delay: .12s; }
+      .vista .rev:nth-child(3) { transition-delay: .24s; }
+      .vista .rev:nth-child(4) { transition-delay: .36s; }
+
+      #ch-serie { width: 100%; height: 300px; margin-top: 30px; display: block; }
+
+      .barras { margin-top: 34px; display: grid; gap: 16px; }
+      .barra-fn .topo { display: flex; justify-content: space-between; align-items: baseline;
+        gap: 12px; font-size: 14px; margin-bottom: 7px; }
+      .barra-fn .nome { font-weight: 700; }
+      .barra-fn .vlr { font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); white-space: nowrap; }
+      .barra-fn .trilho { height: 12px; background: rgba(201,168,76,0.10); border-radius: 99px; overflow: hidden; }
+      .barra-fn .fill { height: 100%; width: 0; border-radius: 99px;
+        background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+        transition: width 1.1s cubic-bezier(.2,.7,.2,1); }
+      .vista .barra-fn .fill { width: var(--w); }
+
+      .lista-fav { margin: 30px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+      .lista-fav li { display: flex; align-items: baseline; gap: 16px; padding: 13px 4px;
+        border-bottom: 1px solid rgba(201,168,76,0.14); }
+      .lista-fav .pos { font-family: "Fraunces", serif; font-size: 22px; color: var(--gold);
+        flex: none; width: 34px; }
+      .lista-fav .quem { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; }
+      .lista-fav .quem a { color: inherit; text-decoration: none; }
+      .lista-fav .quem a:hover { color: var(--gold-bright); }
+      .lista-fav .qto { font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); white-space: nowrap; }
+
+      .alerta-r { border-left: 3px solid var(--red); padding: 12px 0 12px 18px; margin-top: 18px; }
+      .alerta-r .t { font-weight: 700; font-size: 15.5px; }
+      .alerta-r .d { color: #b9c4d4; font-size: 13.5px; margin-top: 5px; line-height: 1.55; }
+
+      .cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+      .cta a { display: inline-block; padding: 13px 22px; border: 1px solid var(--gold);
+        border-radius: 6px; text-decoration: none; color: var(--gold-bright);
+        font-weight: 700; font-size: 14px; }
+      .cta a:hover { background: rgba(201,168,76,0.12); }
+
+      .seletor-ano { position: fixed; top: 50px; right: 18px; z-index: 20;
+        font-family: "IBM Plex Mono", monospace; }
+      .seletor-ano select { background: #0c1b30; color: #eef2f7; border: 1px solid rgba(201,168,76,0.4);
+        border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 12px; }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .rev, .barra-fn .fill { transition: none !important; }
+        .rev { opacity: 1; transform: none; }
+        .barra-fn .fill { width: var(--w); }
+      }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js"></script>
+    <script>Comum.topbar("despesas.html");</script>
+
+    <div class="seletor-ano">
+      <label class="sr-only" for="ano" style="position:absolute;left:-9999px">Ano</label>
+      <select id="ano" aria-label="Escolher o ano da retrospectiva"></select>
+    </div>
+
+    <section class="cap" id="cap-abre">
+      <div class="rev cap-num">Retrospectiva · Despesas de Santos</div>
+      <h1 class="rev"><span id="t-ano">…</span>. O ano em gastos<br />da Prefeitura de <em>Santos</em>.</h1>
+      <p class="rev prosa" id="t-abre"></p>
+      <span class="rev gigante" id="t-total">R$ —</span>
+      <p class="rev nota-fonte">Fonte: Portal da Transparência de Santos (visão caixa/pago) · role para descer ↓</p>
+    </section>
+
+    <section class="cap" id="cap-capita">
+      <div class="rev cap-num">O que isso significa</div>
+      <h2 class="rev">Isso é <em id="t-capita">—</em> por morador de Santos.</h2>
+      <p class="rev prosa" id="t-capita-sub"></p>
+      <p class="rev nota-fonte">População: 433.656 hab. (IBGE, Censo 2022)</p>
+    </section>
+
+    <section class="cap" id="cap-serie">
+      <div class="rev cap-num">Mês a mês</div>
+      <h2 class="rev">O ritmo do dinheiro saindo do caixa.</h2>
+      <p class="rev prosa" id="t-serie"></p>
+      <canvas id="ch-serie" class="rev" aria-label="Gráfico do gasto mensal do ano"></canvas>
+    </section>
+
+    <section class="cap" id="cap-funcoes" hidden>
+      <div class="rev cap-num">Para onde foi</div>
+      <h2 class="rev">As funções que mais consumiram.</h2>
+      <div class="barras" id="lista-funcoes"></div>
+    </section>
+
+    <section class="cap" id="cap-favorecidos" hidden>
+      <div class="rev cap-num">Para quem foi</div>
+      <h2 class="rev">Os maiores favorecidos do ano.</h2>
+      <ol class="lista-fav rev" id="lista-favorecidos"></ol>
+      <p class="rev nota-fonte">Clique num favorecido para abrir o raio-X completo.</p>
+    </section>
+
+    <section class="cap" id="cap-alertas" hidden>
+      <div class="rev cap-num">O que merece investigação</div>
+      <h2 class="rev"><em id="t-alertas-n">—</em> alertas fiscais ativos.</h2>
+      <p class="rev prosa">Regras automáticas — recorrência, concentração, fracionamento, picos —
+        vasculham cada pagamento. Os destaques de severidade alta:</p>
+      <div class="rev" id="lista-alertas"></div>
+    </section>
+
+    <section class="cap" id="cap-fim">
+      <div class="rev cap-num">Continue fiscalizando</div>
+      <h2 class="rev">O dado é público. A cobrança é o mandato.</h2>
+      <p class="rev prosa">Todos os números desta página saem dos painéis abertos do gabinete —
+        atualizados automaticamente a partir das fontes oficiais.</p>
+      <div class="rev cta">
+        <a href="./despesas.html">Radar de Despesas</a>
+        <a href="./despesas.html#alertas">Alertas fiscais</a>
+        <a href="./index.html">Todas as bases</a>
+      </div>
+    </section>
+
+    <script src="./retrospectiva-app.js"></script>
+  </body>
+</html>
