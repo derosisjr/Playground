@@ -9,18 +9,11 @@ Stack: HTML/CSS/JS vanilla (frontend) + Python (automações).
 
 ### Hub / Página inicial (`index.html`)
 Porta de entrada do site (GitHub Pages serve da raiz). Página estática autocontida (navy/gold,
-sem build) com cartões para os 3 bancos pesquisáveis — **Despesas, Proposituras e Legislação** —
+sem build) com cartões para os bancos pesquisáveis — **Despesas, Proposituras e Legislação** —
 cada um com um número "ao vivo" lido via `fetch` do respectivo `*-index.json` (degrada se falhar).
-Rodapé "Outras ferramentas" linka Pauta e Gastos. Cada painel tem um link "← Início" de volta ao hub.
-
-### Radar de Pauta (`pauta.html` + `app.js`)
-Transforma texto de pauta legislativa em briefing político com classificação por prioridade,
-tags temáticas e sugestão de discurso para plenário. (Antes era o `index.html`; movido para
-`pauta.html` quando o hub virou a página inicial — `app.js`/`styles.css` seguem na raiz.)
-
-### Radar de Gastos (`gastos.html` + `gastos-app.js`)
-Dashboard de análise de gastos municipais a partir de CSV exportado da Prefeitura de Santos.
-Usa Chart.js para visualizações e PapaParse para leitura de CSV.
+Cada painel tem um link "← Início" de volta ao hub. (Os antigos Radar de Pauta e Radar de Gastos
+foram removidos em 2026-07: o Briefing Ordem do Dia e a Base de Despesas cobrem os mesmos casos
+de uso com dados automáticos.)
 
 ### Briefing Ordem do Dia (`ordem-do-dia/index.py`)
 Automação que acessa o site da Câmara, extrai os itens da pauta via scraping e gera
@@ -85,8 +78,8 @@ por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV d
 **mandato (2025→ano corrente, `ANO_INICIAL=2025`)**. **`despesas-index.json`, `despesas/dados/*.json`
 e o código são versionados**; `.sqlite`/`.xlsx`/`.csv` no `.gitignore` — o `.sqlite` persiste via cache
 do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente diariamente (`--forcar`), com
-guarda anti-truncamento (aborta commit se total < 50mi). **Independente** do antigo Radar de Gastos
-(`gastos.html`, por upload de CSV), que segue intacto. Unidade orçamentária real (outra fonte),
+guarda anti-truncamento (aborta commit se total < 50mi). (Substituiu o antigo Radar de Gastos por
+upload de CSV, removido em 2026-07.) Unidade orçamentária real (outra fonte),
 cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futuras.
 
 #### Briefing semanal de despesas (`despesas/briefing.py`)
