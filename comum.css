@@ -99,24 +99,26 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .topnav a.inicio { color: #cdd6e3; }
 .topnav a.inicio::before { content: "◆ "; color: var(--gold); font-size: 8px; vertical-align: 1px; }
 
-/* ── Cartões de KPI (padrão dos painéis de Despesas/Proposituras) ───────────── */
+/* ── Cartões de KPI (padrão dos painéis de Despesas/Proposituras) ─────────────
+   Escopados ao contêiner .stats para não vazar em outros usos de .stat
+   (o hub tem um .stat próprio, sem caixa, dentro dos cartões). */
 .stats {
   display: grid; gap: 12px; margin: 22px 0 14px;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
-.stat {
+.stats .stat {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
   padding: 14px 16px; position: relative; overflow: hidden;
 }
-.stat::before {
+.stats .stat::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: var(--gold);
 }
-.stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em;
+.stats .stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em;
   text-transform: uppercase; font-weight: 700; }
-.stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+.stats .stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600;
   font-size: 26px; margin-top: 4px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
+.stats .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
