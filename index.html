@@ -235,19 +235,19 @@
         <div class="regua" aria-label="Indicadores fiscais ao vivo">
           <a class="ind" id="ind-pago" href="./despesas.html">
             <span class="ind-lbl" id="ind-pago-lbl">Pago no mês</span>
-            <span class="ind-val" id="ind-pago-val"><span class="skel"></span></span>
+            <span class="ind-val" aria-live="polite" id="ind-pago-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-alertas" href="./despesas.html#alertas">
             <span class="ind-lbl">Alertas fiscais</span>
-            <span class="ind-val" id="ind-alertas-val"><span class="skel"></span></span>
+            <span class="ind-val" aria-live="polite" id="ind-alertas-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-req" href="./requerimentos.html">
             <span class="ind-lbl">Requerimentos respondidos</span>
-            <span class="ind-val" id="ind-req-val"><span class="skel"></span></span>
+            <span class="ind-val" aria-live="polite" id="ind-req-val"><span class="skel"></span></span>
           </a>
           <span class="ind" id="ind-atual">
             <span class="ind-lbl">Base atualizada</span>
-            <span class="ind-val" id="ind-atual-val"><span class="skel"></span></span>
+            <span class="ind-val" aria-live="polite" id="ind-atual-val"><span class="skel"></span></span>
           </span>
         </div>
       </div>
@@ -262,7 +262,7 @@
           <h2>Radar de Despesas</h2>
           <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
              automáticos e busca detalhada por favorecido, função e fonte.</p>
-          <div class="stat"><span class="val" id="stat-despesas"><span class="skel"></span></span>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-despesas"><span class="skel"></span></span>
             <span class="lbl">pago monitorado · mandato</span>
             <span class="quando" id="stat-despesas-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
@@ -274,7 +274,7 @@
           <h2>Base de Proposituras</h2>
           <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
              autor, situação e palavra-chave, com a tramitação de cada um.</p>
-          <div class="stat"><span class="val" id="stat-proposituras"><span class="skel"></span></span>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-proposituras"><span class="skel"></span></span>
             <span class="lbl">proposituras indexadas</span>
             <span class="quando" id="stat-proposituras-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
@@ -286,7 +286,7 @@
           <h2>Base de Legislação</h2>
           <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
              com link direto para o documento oficial.</p>
-          <div class="stat"><span class="val" id="stat-legis"><span class="skel"></span></span>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-legis"><span class="skel"></span></span>
             <span class="lbl" id="stat-legis-lbl">normas indexadas</span>
             <span class="quando" id="stat-legis-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
@@ -298,7 +298,7 @@
           <h2>Requerimentos &amp; Respostas</h2>
           <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
              número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
-          <div class="stat"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-requerimentos"><span class="skel"></span></span>
             <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
             <span class="quando" id="stat-requerimentos-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
@@ -310,9 +310,21 @@
           <h2>Regimento Interno</h2>
           <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
              artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
-          <div class="stat"><span class="val" id="stat-regimento"><span class="skel"></span></span>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-regimento"><span class="skel"></span></span>
             <span class="lbl">artigos indexados</span>
             <span class="quando" id="stat-regimento-quando" hidden></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./indicadores.html">
+          <span class="idx">06</span>
+          <span class="tag">Prefeitura · Custo por Resultado</span>
+          <h2>Custo por Resultado</h2>
+          <p class="desc">Quanto Santos gasta por habitante em saúde e educação — e o que o
+             cidadão recebe de volta, comparado a cidades paulistas de porte similar.</p>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-indicadores"><span class="skel"></span></span>
+            <span class="lbl" id="stat-indicadores-lbl">gasto/hab em saúde no último ano</span>
+            <span class="quando" id="stat-indicadores-quando" hidden></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
       </div>
@@ -385,6 +397,12 @@
       stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => num(d.length));
       stat(pLegis, "stat-legis", (d) => num(d.length));
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
+      stat(carregar("./indicadores-index.json"), "stat-indicadores", (d) => {
+        const g = d.temas.saude.gasto_per_capita;
+        const u = g[g.length - 1];
+        set("stat-indicadores-lbl", `gasto/hab em saúde em ${u.ano} · vs 5 cidades`);
+        return compacto(u.santos).replace("R$ ", "R$ ");
+      }, (d) => d.gerado_em && new Date(d.gerado_em));
 
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {

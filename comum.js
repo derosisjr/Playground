@@ -136,6 +136,19 @@ window.Comum = (() => {
                     : "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
         h: norm(f.nome),
       })) },
+    { id: "indicadores", rotulo: "Custo por Resultado", url: "./indicadores-index.json",
+      mapear: (d) => Object.entries(d.temas || {}).flatMap(([slug, t]) =>
+        (t.indicadores || []).map((i) => ({
+          t: i.nome,
+          s: (t.nome + " — Santos vs comparáveis · " + (i.fonte || "")).slice(0, 110),
+          url: "./indicadores.html?tema=" + slug,
+          h: norm([i.nome, t.nome, "indicador custo resultado gasto"].join(" ")),
+        })).concat([{
+          t: "Gasto por habitante em " + t.nome.toLowerCase(),
+          s: "série anual vs cidades de porte similar",
+          url: "./indicadores.html?tema=" + slug,
+          h: norm("gasto per capita habitante " + t.nome),
+        }])) },
   ];
   const cacheFontes = {};     // id -> array de itens (ou "erro")
   let carregouFontes = false;
@@ -243,6 +256,9 @@ window.Comum = (() => {
       else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(sel - 1, 0); marcarSel(); }
       else if (e.key === "Enter" && planos[sel]) { e.preventDefault(); location.href = planos[sel].url; }
       else if (e.key === "Escape") { e.preventDefault(); fecharPaleta(); }
+      // paleta de comandos: o foco fica preso no input (setas navegam, Tab não escapa
+      // do diálogo — sem isso o Tab vazava p/ a página atrás do modal).
+      else if (e.key === "Tab") { e.preventDefault(); }
     });
   }
 
@@ -255,9 +271,12 @@ window.Comum = (() => {
     });
   }
 
+  let focoAnterior = null;  // p/ devolver o foco a quem abriu a paleta
+
   function abrirPaleta() {
     montarPaleta();
     carregarFontes();
+    focoAnterior = document.activeElement;
     paletaFundo.hidden = false;
     document.body.style.overflow = "hidden";
     sel = 0;
@@ -270,6 +289,9 @@ window.Comum = (() => {
     if (!paletaFundo) return;
     paletaFundo.hidden = true;
     document.body.style.overflow = "";
+    // restaura o foco ao elemento que abriu (a11y de teclado/leitor de tela)
+    if (focoAnterior && typeof focoAnterior.focus === "function") focoAnterior.focus();
+    focoAnterior = null;
   }
 
   // Atalhos globais: Ctrl+K / ⌘K sempre; "/" onde não conflita com atalho local
