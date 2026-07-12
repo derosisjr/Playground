@@ -28,9 +28,15 @@
         --gold-bright: #e3c977;
         --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
         --sim: #17805e; --nao: #a33d3d;
+        --tinta: #07111f; /* texto: vira claro no modo escuro */
       }
+      html[data-tema="escuro"] {
+        --tinta: #e8ecf3;
+      }
+      html[data-tema="escuro"] .comecar, html[data-tema="escuro"] .sugestao button {
+        background: var(--gold); color: #071018; }
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--bg); color: var(--navy);
+      body { margin: 0; background: var(--bg); color: var(--tinta);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
       ::selection { background: var(--gold); color: var(--navy); }
       a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible {
@@ -71,7 +77,7 @@
       .botoes .pular { grid-column: 1 / -1; }
       .voto { font: inherit; font-size: 16px; font-weight: 800; padding: 16px 10px;
         border-radius: 12px; border: 2px solid var(--line); background: var(--card);
-        color: var(--navy); cursor: pointer; min-height: 56px; }
+        color: var(--tinta); cursor: pointer; min-height: 56px; }
       .voto.sim { border-color: var(--sim); color: var(--sim); }
       .voto.nao { border-color: var(--nao); color: var(--nao); }
       .voto.pular { border-style: dashed; color: var(--muted); font-weight: 600;
@@ -82,7 +88,7 @@
       .bairro-box { margin: 18px 0 0; }
       .bairro-box label { font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px; }
       .bairro-box select { width: 100%; font: inherit; font-size: 15px; padding: 12px;
-        border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--navy); }
+        border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--tinta); }
       .comecar { width: 100%; margin-top: 16px; font: inherit; font-size: 16px; font-weight: 800;
         padding: 15px; border-radius: 12px; border: none; background: var(--navy);
         color: #fff; cursor: pointer; }
@@ -106,7 +112,7 @@
       .sugestao h2 { font-family: "Fraunces", serif; font-size: 17px; margin: 0 0 8px; }
       .sugestao textarea { width: 100%; min-height: 84px; font: inherit; font-size: 14px;
         border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical;
-        background: var(--bg); color: var(--navy); }
+        background: var(--bg); color: var(--tinta); }
       .sugestao button { margin-top: 10px; font: inherit; font-size: 14px; font-weight: 800;
         padding: 11px 18px; border-radius: 10px; border: none; background: var(--navy);
         color: #fff; cursor: pointer; }

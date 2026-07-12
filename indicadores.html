@@ -29,9 +29,15 @@
         --gold-bright: #e3c977;
         --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
         --ambar: rgba(201, 168, 76, 0.28);
+        --tinta: #07111f; /* texto: vira claro no modo escuro (comum.css não troca --navy) */
       }
+      html[data-tema="escuro"] {
+        --tinta: #e8ecf3;
+      }
+      html[data-tema="escuro"] .pos-chip { background: #1d3050; color: #cdd6e3; }
+      html[data-tema="escuro"] .aba.ativa { background: var(--gold); color: #071018; border-color: var(--gold); }
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--bg); color: var(--navy);
+      body { margin: 0; background: var(--bg); color: var(--tinta);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
       ::selection { background: var(--gold); color: var(--navy); }
       a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -76,7 +82,7 @@
       .controles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
       .controles label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
       .controles select { font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line);
-        border-radius: 8px; background: var(--card); color: var(--navy); }
+        border-radius: 8px; background: var(--card); color: var(--tinta); }
       .grafico-wrap { position: relative; height: 340px; }
       .legenda-tesoura { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
         margin-top: 10px; font-family: "IBM Plex Mono", monospace; }
@@ -97,7 +103,7 @@
       .acoes { display: flex; gap: 10px; margin-top: 14px; }
       .botao { font: inherit; font-size: 13px; font-weight: 700; padding: 9px 16px;
         border: 1px solid var(--line); border-radius: 10px; background: var(--card);
-        color: var(--navy); cursor: pointer; }
+        color: var(--tinta); cursor: pointer; }
       .botao:hover { border-color: var(--gold); }
 
       .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.7; }

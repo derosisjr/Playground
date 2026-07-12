@@ -219,7 +219,9 @@
       Comum.exportarCsv(
         `custo-por-resultado-${tema}.csv`,
         ["Indicador", "Fonte", ...municipios.map((m) => DADOS.comparaveis[m])],
-        linhas.map((l) => [l.nome, l.fonte, ...l.valores.map((v) => v ?? "")])
+        // decimais com vírgula — dialeto Excel pt-BR do exportarCsv
+        linhas.map((l) => [l.nome, l.fonte,
+          ...l.valores.map((v) => v == null ? "" : String(v).replace(".", ","))])
       );
     };
   }
