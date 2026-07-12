@@ -1,0 +1,79 @@
+name: Indicadores — atualização mensal
+
+on:
+  schedule:
+    - cron: "23 4 3 * *"  # dia 3 de cada mês, 04:23 UTC (dados externos mudam devagar)
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Rebaixar todos os anos (ignora controle_carga)?"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: indicadores/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r indicadores/requirements.txt
+
+      # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions.
+      # Se o cache esfriar não tem problema: a carga completa leva ~1 min.
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v5
+        with:
+          path: indicadores/indicadores.sqlite
+          key: indicadores-db-${{ github.run_id }}
+          restore-keys: |
+            indicadores-db-
+
+      - name: Crawl + export
+        env:
+          FORCAR: ${{ github.event.inputs.forcar }}
+        run: |
+          if [ "$FORCAR" = "true" ]; then
+            python indicadores/crawler.py --forcar
+          else
+            python indicadores/crawler.py
+          fi
+          python indicadores/export.py
+
+      # Guarda anti-truncamento: se as fontes externas falharem e o índice
+      # vier sem indicadores, aborta o commit p/ não publicar painel vazio.
+      - name: Commitar index (se houver e for íntegro)
+        run: |
+          OK=$(python -c "
+          import json
+          d = json.load(open('indicadores-index.json', encoding='utf-8'))
+          t = d['temas']
+          print(int(bool(t.get('saude', {}).get('indicadores'))
+                    and bool(t.get('educacao', {}).get('indicadores'))
+                    and len(t['saude'].get('gasto_per_capita', [])) >= 3))")
+          if [ "$OK" != "1" ]; then
+            echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add indicadores-index.json
+          if git diff --quiet --cached; then
+            echo "Sem mudancas nos indicadores."
+          else
+            git commit -m "chore: atualiza base de Indicadores ($(date +%F))"
+            git push
+          fi
