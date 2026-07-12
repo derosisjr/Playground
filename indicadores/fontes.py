@@ -69,7 +69,7 @@ IBGE_CENSO_2022 = ("https://servicodados.ibge.gov.br/api/v3/agregados/9514/"
 _UA = {"User-Agent": "painel-indicadores-camara-santos (github.com/derosisjr/Playground)"}
 
 
-def _get(url, params=None, tentativas=3, timeout=60):
+def _get(url, params=None, tentativas=4, timeout=90):
     """GET com retry simples; devolve o JSON ou levanta a última exceção."""
     ultimo = None
     for i in range(tentativas):
@@ -79,7 +79,7 @@ def _get(url, params=None, tentativas=3, timeout=60):
             return r.json()
         except Exception as e:  # noqa: BLE001 — retry genérico de rede
             ultimo = e
-            time.sleep(3 * (i + 1))
+            time.sleep(8 * (i + 1))
     raise ultimo
 
 

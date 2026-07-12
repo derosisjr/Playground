@@ -127,7 +127,9 @@ def main():
         "SELECT ano FROM controle_carga WHERE fonte='dca'")}
     ano_corrente = date.today().year
 
-    total = 0
+    # Cada fonte falha de forma independente: a base (cache) preserva a carga
+    # anterior e a guarda do workflow impede publicar índice incompleto.
+    total, falhas = 0, []
     if args.fonte in (None, "dca"):
         anos = [args.ano] if args.ano else list(range(ANO_INICIAL, ano_corrente + 1))
         for ano in anos:
@@ -136,19 +138,31 @@ def main():
             if not args.forcar and not args.dry_run \
                     and ano in ja and ano < ano_corrente - 1:
                 continue
-            n = carregar_dca(conn, ano, args.dry_run)
-            print(f"dca {ano}: {n} linhas")
-            total += n
+            try:
+                n = carregar_dca(conn, ano, args.dry_run)
+                print(f"dca {ano}: {n} linhas")
+                total += n
+            except Exception as e:  # noqa: BLE001
+                falhas.append(f"dca {ano}: {e}")
     if args.fonte in (None, "ibge"):
-        n = carregar_ibge(conn, args.dry_run)
-        print(f"ibge (indicadores): {n} linhas")
-        total += n
+        try:
+            n = carregar_ibge(conn, args.dry_run)
+            print(f"ibge (indicadores): {n} linhas")
+            total += n
+        except Exception as e:  # noqa: BLE001
+            falhas.append(f"ibge: {e}")
     if args.fonte in (None, "pop"):
-        n = carregar_populacao(conn, list(range(ANO_INICIAL, ano_corrente + 1)),
-                               args.dry_run)
-        print(f"populacao: {n} linhas")
-        total += n
+        try:
+            n = carregar_populacao(conn, list(range(ANO_INICIAL, ano_corrente + 1)),
+                                   args.dry_run)
+            print(f"populacao: {n} linhas")
+            total += n
+        except Exception as e:  # noqa: BLE001
+            falhas.append(f"populacao: {e}")
 
+    for f in falhas:
+        print(f"AVISO — fonte falhou (base mantém a carga anterior): {f}",
+              file=sys.stderr)
     print(("[dry-run] " if args.dry_run else "") + f"total: {total} linhas")
 
 
