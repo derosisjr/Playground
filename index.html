@@ -320,8 +320,8 @@
           <span class="idx">06</span>
           <span class="tag">Prefeitura · Custo por Resultado</span>
           <h2>Custo por Resultado</h2>
-          <p class="desc">Quanto Santos gasta por habitante em saúde e educação — e o que o
-             cidadão recebe de volta, comparado a cidades paulistas de porte similar.</p>
+          <p class="desc">Saúde, educação e finanças de Santos por habitante — quanto se arrecada,
+             gasta e o que o cidadão recebe, comparado a cidades paulistas e à média do estado.</p>
           <div class="stat"><span class="val" aria-live="polite" id="stat-indicadores"><span class="skel"></span></span>
             <span class="lbl" id="stat-indicadores-lbl">gasto/hab em saúde no último ano</span>
             <span class="quando" id="stat-indicadores-quando" hidden></span></div>
@@ -399,10 +399,18 @@
       stat(pLegis, "stat-legis", (d) => num(d.length));
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
       stat(carregar("./indicadores-index.json"), "stat-indicadores", (d) => {
+        // headline: receita própria/hab (tema fiscal); cai p/ gasto em saúde se faltar
+        const rp = d.temas.fiscal && d.temas.fiscal.indicadores
+          .find((i) => i.slug === "receita_propria_pc");
+        const p = rp && [...rp.serie].reverse().find((x) => x.santos != null);
+        if (p) {
+          set("stat-indicadores-lbl", `arrecadação própria/hab em ${p.ano} · saúde, educação e fiscal`);
+          return compacto(p.santos);
+        }
         const g = d.temas.saude.gasto_per_capita;
         const u = g[g.length - 1];
         set("stat-indicadores-lbl", `gasto/hab em saúde em ${u.ano} · vs 5 cidades`);
-        return compacto(u.santos).replace("R$ ", "R$ ");
+        return compacto(u.santos);
       }, (d) => d.gerado_em && new Date(d.gerado_em));
 
       // Extras dinâmicos nos rótulos dos cartões

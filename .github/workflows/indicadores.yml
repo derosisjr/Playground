@@ -63,6 +63,7 @@ jobs:
           t = d['temas']
           print(int(bool(t.get('saude', {}).get('indicadores'))
                     and bool(t.get('educacao', {}).get('indicadores'))
+                    and bool(t.get('fiscal', {}).get('indicadores'))
                     and len(t['saude'].get('gasto_per_capita', [])) >= 3))")
           if [ "$OK" != "1" ]; then
             echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
