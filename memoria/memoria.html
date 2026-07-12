@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Memória do Gabinete — busca interna</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --gold: #c9a84c; --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        /* carimbos de origem — cores fixas, consistentes com o site */
+        --c-dom: #7a4dbe; --c-req: #1d6fb8; --c-resp: #17805e;
+        --c-prop: #b8861d; --c-brief: #a34d6e;
+      }
+      html[data-tema="escuro"] {
+        --navy: #e8ecf3; --bg: #0a1220; --card: #101c30; --line: #22314a; --muted: #93a1b4;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
+      a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 880px; margin: 0 auto; padding: 26px 20px 60px; }
+      h1 { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; margin: 0; }
+      h1 .interno { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+        text-transform: uppercase; color: var(--gold); vertical-align: super; margin-left: 8px; }
+      .sub { color: var(--muted); font-size: 13px; margin: 6px 0 18px; line-height: 1.5; }
+
+      #q { width: 100%; padding: 13px 16px; border: 1px solid var(--line); border-radius: 10px;
+        background: var(--card); font: inherit; font-size: 16px; color: var(--navy); }
+      #q:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+      .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; align-items: center; }
+      .chip { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+        border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; }
+      .chip.ativo { border-color: currentColor; }
+      .chip[data-o="dom"].ativo { color: var(--c-dom); }
+      .chip[data-o="requerimento"].ativo { color: var(--c-req); }
+      .chip[data-o="resposta_executivo"].ativo { color: var(--c-resp); }
+      .chip[data-o="propositura"].ativo { color: var(--c-prop); }
+      .chip[data-o=""].ativo { color: var(--navy); }
+      .contagem { margin-left: auto; color: var(--muted); font-size: 12px;
+        font-family: "IBM Plex Mono", monospace; }
+
+      .doc { display: grid; grid-template-columns: 118px 1fr; gap: 14px; padding: 13px 4px;
+        border-bottom: 1px solid var(--line); }
+      .carimbo { align-self: start; text-align: center; font-family: "IBM Plex Mono", monospace;
+        font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+        border: 1.5px solid; border-radius: 6px; padding: 5px 6px; line-height: 1.35;
+        transform: rotate(-1.2deg); }
+      .carimbo .dt { display: block; font-weight: 400; opacity: .85; letter-spacing: 0; }
+      .doc[data-o="dom"] .carimbo { color: var(--c-dom); }
+      .doc[data-o="requerimento"] .carimbo { color: var(--c-req); }
+      .doc[data-o="resposta_executivo"] .carimbo { color: var(--c-resp); }
+      .doc[data-o="propositura"] .carimbo { color: var(--c-prop); }
+      .doc h3 { margin: 0 0 3px; font-size: 14.5px; font-weight: 800; }
+      .doc h3 a { color: inherit; text-decoration: none; }
+      .doc h3 a:hover { color: var(--gold); }
+      .trecho { font-size: 13px; line-height: 1.55; color: var(--muted); margin: 0; }
+      mark { background: var(--gold-bright); color: #07111f; border-radius: 2px; padding: 0 1px; }
+      .vazio { padding: 46px 10px; text-align: center; color: var(--muted); }
+      .mais { display: block; margin: 18px auto 0; padding: 9px 18px; border: 1px solid var(--line);
+        border-radius: 10px; background: var(--card); color: var(--navy); font: inherit; cursor: pointer; }
+      .rodape { color: var(--muted); font-size: 11.5px; margin-top: 24px; line-height: 1.6; }
+      kbd { background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+        padding: 1px 6px; font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+      @media (max-width: 560px) { .doc { grid-template-columns: 1fr; gap: 6px; }
+        .carimbo { justify-self: start; transform: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <h1>Memória do Gabinete<span class="interno">uso interno</span></h1>
+      <p class="sub">Tudo que o gabinete produziu e recebeu, num índice só: requerimentos e
+        respostas do Executivo, atos do Diário Oficial, proposituras do mandato.
+        <kbd>/</kbd> foca a busca · <kbd>Esc</kbd> limpa.</p>
+      <input id="q" type="search" autofocus
+        placeholder="Ex.: fila da saúde, iluminação, contrato PRODESAN…" />
+      <div class="filtros" id="filtros">
+        <span class="contagem" id="contagem">Carregando…</span>
+      </div>
+      <div id="lista"></div>
+      <div class="vazio" id="vazio" hidden>Nada encontrado — tente outra palavra
+        (a busca ignora acentos).</div>
+      <button class="mais" id="mais" hidden>Mostrar mais</button>
+      <p class="rodape">Índice gerado por <code>memoria/indexar.py</code> +
+        <code>memoria/export.py</code>. Documento completo: abra o link (Drive exige login
+        do gabinete). Para perguntar em linguagem natural com citações:
+        <code>python memoria/perguntar.py "sua pergunta"</code>.</p>
+    </div>
+    <script src="./memoria-app.js"></script>
+  </body>
+</html>

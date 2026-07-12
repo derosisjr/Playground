@@ -26,3 +26,5 @@ pro-gestao/kit-certificacao/
 pro-gestao/analise.json
 pro-gestao/diagnostico*.json
 indicadores/indicadores.sqlite
+memoria/memoria.sqlite
+memoria/memoria-index.json
