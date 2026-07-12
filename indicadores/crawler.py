@@ -42,6 +42,9 @@ def conectar():
         CREATE TABLE IF NOT EXISTS populacao(
             municipio TEXT, ano INTEGER, valor INTEGER,
             PRIMARY KEY(municipio, ano));
+        CREATE TABLE IF NOT EXISTS fiscal(
+            municipio TEXT, ano INTEGER, conta TEXT, valor REAL,
+            PRIMARY KEY(municipio, ano, conta));
         CREATE TABLE IF NOT EXISTS controle_carga(
             fonte TEXT, ano INTEGER, PRIMARY KEY(fonte, ano));
     """)
@@ -72,25 +75,59 @@ def carregar_dca(conn, ano: int, dry_run=False) -> int:
     return len(linhas)
 
 
-# ── IBGE: indicadores (todos os períodos numa chamada por indicador) ─────────
-def carregar_ibge(conn, dry_run=False) -> int:
+# ── SICONFI/DCA: receita e despesa por categoria (tema fiscal) ───────────────
+def carregar_fiscal(conn, ano: int, dry_run=False) -> int:
     linhas = []
-    for slug in fontes.INDICADORES:
-        dados = fontes.baixar_indicador_ibge(slug)
-        for ind in dados:
-            for res in ind.get("res", []):
-                ibge7 = fontes.IBGE6_PARA_7.get(str(res.get("localidade", "")))
-                if not ibge7:
-                    continue
-                for ano, valor in (res.get("res") or {}).items():
-                    if valor in (None, "-", "...", ".."):
-                        continue
-                    try:
-                        linhas.append((ibge7, int(ano), slug, float(valor)))
-                    except ValueError:
-                        continue
+    for ibge7 in fontes.COMPARAVEIS:
+        contas = fontes.baixar_fiscal(ano, ibge7)
+        for chave, valor in contas.items():
+            linhas.append((ibge7, ano, chave, valor))
     if dry_run:
         for ln in linhas[:12]:
+            print("  fiscal:", ln)
+        return len(linhas)
+    conn.executemany("INSERT OR REPLACE INTO fiscal VALUES (?,?,?,?)", linhas)
+    conn.execute("INSERT OR REPLACE INTO controle_carga VALUES ('fiscal', ?)", (ano,))
+    conn.commit()
+    return len(linhas)
+
+
+# ── IBGE: indicadores (municípios + referência estadual SP) ──────────────────
+def _linhas_ibge(slug, municipios, aceitar):
+    """Lê um indicador IBGE e devolve linhas (municipio, ano, slug, valor).
+    `aceitar(loc)` mapeia a localidade da API p/ o código a gravar (ou None)."""
+    linhas = []
+    for ind in fontes.baixar_indicador_ibge(slug, municipios):
+        for res in ind.get("res", []):
+            cod = aceitar(str(res.get("localidade", "")))
+            if not cod:
+                continue
+            for ano, valor in (res.get("res") or {}).items():
+                if valor in (None, "-", "...", ".."):
+                    continue
+                try:
+                    linhas.append((cod, int(ano), slug, float(valor)))
+                except ValueError:
+                    continue
+    return linhas
+
+
+def carregar_ibge(conn, dry_run=False, incluir_sp=True) -> int:
+    linhas = []
+    for slug in fontes.INDICADORES:
+        # municípios comparáveis
+        linhas += _linhas_ibge(slug, fontes._MUN_PIPE,
+                               lambda loc: fontes.IBGE6_PARA_7.get(loc))
+        # referência estadual (grava municipio="35"); degrada se a API não expõe
+        if incluir_sp:
+            try:
+                linhas += _linhas_ibge(
+                    slug, fontes.UF_SP,
+                    lambda loc: fontes.UF_SP if loc in (fontes.UF_SP, "35") else None)
+            except Exception as e:  # noqa: BLE001 — indicador sem série estadual
+                print(f"  (sem referência SP p/ {slug}: {e})", file=sys.stderr)
+    if dry_run:
+        for ln in linhas[:14]:
             print("  ibge:", ln)
         return len(linhas)
     conn.executemany(
@@ -116,34 +153,44 @@ def carregar_populacao(conn, anos, dry_run=False) -> int:
 
 def main():
     ap = argparse.ArgumentParser(description="Crawler de indicadores (Custo por Resultado)")
-    ap.add_argument("--fonte", choices=["dca", "ibge", "pop"], help="só uma fonte")
-    ap.add_argument("--ano", type=int, help="só um ano (fonte dca)")
+    ap.add_argument("--fonte", choices=["dca", "fiscal", "ibge", "pop"],
+                    help="só uma fonte")
+    ap.add_argument("--ano", type=int, help="só um ano (fontes dca/fiscal)")
     ap.add_argument("--forcar", action="store_true", help="rebaixa anos já carregados")
     ap.add_argument("--dry-run", action="store_true", help="imprime sem gravar")
     args = ap.parse_args()
 
     conn = conectar()
-    ja = {r["ano"] for r in conn.execute(
-        "SELECT ano FROM controle_carga WHERE fonte='dca'")}
+    ja = {f: {r["ano"] for r in conn.execute(
+              "SELECT ano FROM controle_carga WHERE fonte=?", (f,))}
+          for f in ("dca", "fiscal")}
     ano_corrente = date.today().year
+
+    def _anos_a_baixar(fonte):
+        anos = [args.ano] if args.ano else list(range(ANO_INICIAL, ano_corrente + 1))
+        # anos encerrados não mudam; retenta só os 2 últimos (podem ser retificados)
+        return [a for a in anos if args.forcar or args.dry_run
+                or a not in ja[fonte] or a >= ano_corrente - 1]
 
     # Cada fonte falha de forma independente: a base (cache) preserva a carga
     # anterior e a guarda do workflow impede publicar índice incompleto.
     total, falhas = 0, []
     if args.fonte in (None, "dca"):
-        anos = [args.ano] if args.ano else list(range(ANO_INICIAL, ano_corrente + 1))
-        for ano in anos:
-            # DCA de anos encerrados não muda; o dos 2 últimos anos pode
-            # aparecer/ser retificado — sempre retenta esses.
-            if not args.forcar and not args.dry_run \
-                    and ano in ja and ano < ano_corrente - 1:
-                continue
+        for ano in _anos_a_baixar("dca"):
             try:
                 n = carregar_dca(conn, ano, args.dry_run)
                 print(f"dca {ano}: {n} linhas")
                 total += n
             except Exception as e:  # noqa: BLE001
                 falhas.append(f"dca {ano}: {e}")
+    if args.fonte in (None, "fiscal"):
+        for ano in _anos_a_baixar("fiscal"):
+            try:
+                n = carregar_fiscal(conn, ano, args.dry_run)
+                print(f"fiscal {ano}: {n} linhas")
+                total += n
+            except Exception as e:  # noqa: BLE001
+                falhas.append(f"fiscal {ano}: {e}")
     if args.fonte in (None, "ibge"):
         try:
             n = carregar_ibge(conn, args.dry_run)

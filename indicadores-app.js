@@ -59,16 +59,33 @@
 
   function temaAtual() { return DADOS.temas[tema]; }
 
+  // formatadores por tipo de indicador
+  const FMT = {
+    num: (v) => v == null ? "—" : v.toLocaleString("pt-BR"),
+    brl: (v) => v == null ? "—" : "R$ " + Math.round(v).toLocaleString("pt-BR"),
+    pct: (v) => v == null ? "—" : v.toLocaleString("pt-BR") + "%",
+  };
+  const fmt = (formato, v) => (FMT[formato] || FMT.num)(v);
+  // cores estáveis para as linhas por município no modo série
+  const CORES_MUN = ["#c9a84c", "#1d6fb8", "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
+
   function renderTema() {
     const t = temaAtual();
-    // cartão-pergunta: números em negrito
     $("pergunta").hidden = !t.resumo;
     $("pergunta-txt").innerHTML = Comum.escapar(t.resumo)
       .replace(/(R\$ [\d.,]+|[+−-]\d+%|\d+[\d.,]*\s*\(\d{4}\))/g, "<b>$1</b>");
-    $("pergunta-fonte").textContent =
-      "Comparação entre as pontas disponíveis de cada série — fontes no rodapé.";
+    $("pergunta-fonte").textContent = t.modo === "serie"
+      ? "Comparação entre municípios de porte similar — fontes no rodapé."
+      : "Comparação entre as pontas disponíveis de cada série — fontes no rodapé.";
 
-    // seletor de indicador da tesoura
+    // título do cartão do gráfico muda conforme o modo
+    $("titulo-grafico").textContent = t.modo === "serie"
+      ? "Santos frente às comparáveis, ano a ano"
+      : "A tesoura: gasto × resultado";
+    $("sub-grafico").textContent = t.modo === "serie"
+      ? "Cada linha é um município. Santos em destaque — quanto mais alto, maior o valor do indicador no ano."
+      : "As duas séries começam em 100 no primeiro ano. Quando elas se afastam, a área âmbar mostra a distância entre o que se paga e o que se recebe.";
+
     const sel = $("sel-indicador");
     sel.innerHTML = "";
     for (const ind of t.indicadores) {
@@ -84,78 +101,122 @@
     renderTabela();
   }
 
-  // ── A tesoura ──────────────────────────────────────────────────────────────
-  function renderGrafico() {
+  function indSelecionado() {
     const t = temaAtual();
-    const ind = t.indicadores.find((i) => i.slug === $("sel-indicador").value)
+    return t.indicadores.find((i) => i.slug === $("sel-indicador").value)
       || t.indicadores[0];
+  }
+
+  function renderGrafico() {
+    if (temaAtual().modo === "serie") renderSerie();
+    else renderTesoura();
+  }
+
+  // ── A tesoura (saúde/educação): gasto × indicador em base 100, +linha SP ────
+  function renderTesoura() {
+    const t = temaAtual();
+    const ind = indSelecionado();
     if (!ind) return;
 
     const gastoPorAno = new Map(t.gasto_per_capita.map((g) => [g.ano, g.santos]));
     const indPorAno = new Map(ind.serie.filter((p) => p.santos != null)
       .map((p) => [p.ano, p.santos]));
+    const spPorAno = new Map(ind.serie.filter((p) => p.sp != null)
+      .map((p) => [p.ano, p.sp]));
 
     const anos = [...gastoPorAno.keys()].sort((a, b) => a - b);
     const anoBase = anos.find((a) => indPorAno.has(a)) ?? anos[0];
     const baseGasto = gastoPorAno.get(anoBase);
     const baseInd = indPorAno.get(anoBase);
+    const baseSp = spPorAno.get(anoBase);
 
     const sGasto = anos.map((a) => +(gastoPorAno.get(a) / baseGasto * 100).toFixed(1));
     const sInd = anos.map((a) => indPorAno.has(a) && baseInd
       ? +(indPorAno.get(a) / baseInd * 100).toFixed(1) : null);
+    const temSp = baseSp != null && spPorAno.size >= 2;
+    const sSp = anos.map((a) => temSp && spPorAno.has(a)
+      ? +(spPorAno.get(a) / baseSp * 100).toFixed(1) : null);
 
     const sobe = ind.melhor === "maior" ? "melhora" : "piora";
     $("legenda").innerHTML =
       `<span><span class="sw" style="background:${COR.gasto}"></span>Gasto por habitante (base ${anoBase} = 100)</span>` +
       `<span><span class="sw" style="background:${COR.indicador}"></span>${Comum.escapar(ind.nome)} — linha subindo = ${sobe}</span>` +
+      (temSp ? `<span><span class="sw" style="background:${COR.texto}"></span>tendência da média do Estado de SP</span>` : "") +
       `<span><span class="sw" style="background:${COR.ambar};height:10px"></span>distância gasto × resultado</span>`;
 
+    const datasets = [
+      { label: "Gasto por habitante", data: sGasto, borderColor: COR.gasto,
+        backgroundColor: COR.gasto, borderWidth: 3, pointRadius: 3, tension: 0.25 },
+      { label: ind.nome, data: sInd, borderColor: COR.indicador,
+        backgroundColor: COR.ambar, borderWidth: 3, pointRadius: 4, tension: 0.25,
+        spanGaps: true, fill: "-1" },
+    ];
+    if (temSp) {
+      datasets.push({ label: "Média SP (tendência)", data: sSp, borderColor: COR.texto,
+        borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, tension: 0.25,
+        spanGaps: true, fill: false });
+    }
+
+    desenhar(anos, datasets, `índice (${anoBase} = 100)`, (c) => {
+      const ano = anos[c.dataIndex];
+      if (c.datasetIndex === 0)
+        return ` Gasto: ${brl(gastoPorAno.get(ano))}/hab (índice ${c.formattedValue})`;
+      if (c.datasetIndex === 1) {
+        const v = indPorAno.get(ano);
+        return v == null ? null : ` ${ind.nome}: ${fmt(ind.formato, v)} (índice ${c.formattedValue})`;
+      }
+      const v = spPorAno.get(ano);
+      return v == null ? null : ` Média SP: ${fmt(ind.formato, v)}`;
+    });
+  }
+
+  // ── Modo série (fiscal): valores absolutos, uma linha por município ─────────
+  function renderSerie() {
+    const ind = indSelecionado();
+    if (!ind) return;
+    const municipios = ["3548500", ...Object.keys(DADOS.comparaveis)
+      .filter((m) => m !== "3548500")];
+    const anos = ind.serie.map((p) => p.ano);
+    const valorMun = (p, m) => m === "3548500" ? p.santos : (p.comparaveis[m] ?? null);
+
+    const datasets = municipios.map((m, i) => ({
+      label: DADOS.comparaveis[m],
+      data: ind.serie.map((p) => valorMun(p, m)),
+      borderColor: CORES_MUN[i % CORES_MUN.length],
+      backgroundColor: CORES_MUN[i % CORES_MUN.length],
+      borderWidth: m === "3548500" ? 3.5 : 1.5,
+      pointRadius: m === "3548500" ? 3 : 0,
+      tension: 0.25, spanGaps: true,
+    }));
+
+    $("legenda").innerHTML = municipios.map((m, i) =>
+      `<span><span class="sw" style="background:${CORES_MUN[i % CORES_MUN.length]}"></span>${Comum.escapar(DADOS.comparaveis[m])}</span>`
+    ).join("");
+
+    desenhar(anos, datasets, ind.nome, (c) =>
+      ` ${c.dataset.label}: ${fmt(ind.formato, c.parsed.y)}`, ind.formato);
+  }
+
+  // Desenha o gráfico (destrói o anterior). tickFmt opcional formata o eixo Y.
+  function desenhar(labels, datasets, tituloY, tooltipLabel, formatoY) {
     if (grafico) grafico.destroy();
     grafico = new Chart($("grafico"), {
       type: "line",
-      data: {
-        labels: anos,
-        datasets: [
-          {
-            label: "Gasto por habitante",
-            data: sGasto,
-            borderColor: COR.gasto, backgroundColor: COR.gasto,
-            borderWidth: 3, pointRadius: 3, tension: 0.25,
-          },
-          {
-            label: ind.nome,
-            data: sInd,
-            borderColor: COR.indicador, backgroundColor: COR.ambar,
-            borderWidth: 3, pointRadius: 4, tension: 0.25,
-            spanGaps: true,
-            fill: "-1", // sombreia até a série do gasto: a tesoura
-          },
-        ],
-      },
+      data: { labels, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
           legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (c) => {
-                const ano = anos[c.dataIndex];
-                if (c.datasetIndex === 0)
-                  return ` Gasto: ${brl(gastoPorAno.get(ano))}/hab (índice ${c.formattedValue})`;
-                const v = indPorAno.get(ano);
-                return v == null ? null
-                  : ` ${ind.nome}: ${num(v)} (índice ${c.formattedValue})`;
-              },
-            },
-          },
+          tooltip: { callbacks: { label: tooltipLabel } },
         },
         scales: {
           x: { grid: { color: COR.grade }, ticks: { color: COR.texto } },
           y: {
             grid: { color: COR.grade },
-            ticks: { color: COR.texto, callback: (v) => v },
-            title: { display: true, text: `índice (${anoBase} = 100)`, color: COR.texto },
+            ticks: { color: COR.texto,
+              callback: formatoY ? (v) => fmt(formatoY, v) : (v) => v },
+            title: { display: true, text: tituloY, color: COR.texto },
           },
         },
       },
@@ -173,9 +234,9 @@
     if (g) {
       linhas.push({
         nome: `Gasto por habitante (${g.ano})`, fonte: "SICONFI", melhor: null,
+        formato: "brl", sp: null,
         valores: municipios.map((m) =>
           m === "3548500" ? g.santos : g.comparaveis[m] ?? null),
-        formato: brl,
       });
     }
     for (const ind of t.indicadores) {
@@ -183,9 +244,9 @@
       if (!p) continue;
       linhas.push({
         nome: `${ind.nome} (${p.ano})`, fonte: ind.fonte, melhor: ind.melhor,
+        formato: ind.formato, sp: p.sp ?? null,
         valores: municipios.map((m) =>
           m === "3548500" ? p.santos : p.comparaveis[m] ?? null),
-        formato: num,
       });
     }
     return { municipios, linhas };
@@ -200,28 +261,34 @@
 
   function renderTabela() {
     const { municipios, linhas } = linhasTabela();
+    const temSp = linhas.some((l) => l.sp != null);
     const tb = $("tabela");
     let html = "<thead><tr><th>Indicador</th>" + municipios.map((m) =>
-      `<th>${Comum.escapar(DADOS.comparaveis[m])}</th>`).join("") + "</tr></thead><tbody>";
+      `<th>${Comum.escapar(DADOS.comparaveis[m])}</th>`).join("") +
+      (temSp ? "<th>Média SP</th>" : "") + "</tr></thead><tbody>";
     for (const l of linhas) {
       const p = posicaoSantos(l);
       html += `<tr><td>${Comum.escapar(l.nome)}` +
         (p ? `<span class="pos-chip">Santos: ${p.pos}º de ${p.de}</span>` : "") +
         `<br><span class="ano-fonte">${Comum.escapar(l.fonte)}</span></td>` +
         l.valores.map((v, i) =>
-          `<td${i === 0 ? ' class="santos"' : ""}>${v == null ? "—" : l.formato(v)}</td>`
-        ).join("") + "</tr>";
+          `<td${i === 0 ? ' class="santos"' : ""}>${fmt(l.formato, v)}</td>`
+        ).join("") +
+        (temSp ? `<td class="ano-fonte">${l.sp == null ? "—" : fmt(l.formato, l.sp)}</td>` : "") +
+        "</tr>";
     }
     tb.innerHTML = html + "</tbody>";
 
     $("csv").onclick = () => {
       const { municipios, linhas } = linhasTabela();
+      const temSp = linhas.some((l) => l.sp != null);
       Comum.exportarCsv(
         `custo-por-resultado-${tema}.csv`,
-        ["Indicador", "Fonte", ...municipios.map((m) => DADOS.comparaveis[m])],
-        // decimais com vírgula — dialeto Excel pt-BR do exportarCsv
+        ["Indicador", "Fonte", ...municipios.map((m) => DADOS.comparaveis[m]),
+          ...(temSp ? ["Média SP"] : [])],
         linhas.map((l) => [l.nome, l.fonte,
-          ...l.valores.map((v) => v == null ? "" : String(v).replace(".", ","))])
+          ...l.valores.map((v) => v == null ? "" : String(v).replace(".", ",")),
+          ...(temSp ? [l.sp == null ? "" : String(l.sp).replace(".", ",")] : [])])
       );
     };
   }
