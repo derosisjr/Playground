@@ -21,3 +21,8 @@ despesas/despesas.csv
 despesas/_briefing.*
 diario-oficial/diario.sqlite
 diario-oficial/_*
+pro-gestao/coleta-site/
+pro-gestao/kit-certificacao/
+pro-gestao/analise.json
+pro-gestao/diagnostico*.json
+indicadores/indicadores.sqlite
