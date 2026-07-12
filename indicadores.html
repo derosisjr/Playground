@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Custo por Resultado — Santos em indicadores</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <meta name="description" content="Quanto Santos gasta e o que o cidadão recebe: gasto por habitante em saúde e educação cruzado com indicadores de resultado, comparado a cidades paulistas de porte similar." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Custo por Resultado — Santos em indicadores" />
+    <meta property="og:description" content="Quanto Santos gasta e o que o cidadão recebe: gasto por habitante cruzado com indicadores de resultado, comparado a cidades de porte similar." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/indicadores.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        --ambar: rgba(201, 168, 76, 0.28);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 1040px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.hero { position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
+          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
+          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+      .hero-in { position: relative; max-width: 1040px; margin: 0 auto; padding: 30px 20px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
+      .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
+        letter-spacing: -0.015em; line-height: 1.05; }
+      .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
+
+      .abas { display: flex; gap: 8px; margin: 22px 0 0; }
+      .aba { font: inherit; font-weight: 700; font-size: 14px; padding: 10px 20px;
+        border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+        color: var(--muted); cursor: pointer; }
+      .aba.ativa { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+      /* Cartão-pergunta: a tese da página em uma frase, números em destaque */
+      .pergunta { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--gold);
+        border-radius: 12px; padding: 20px 24px; margin: 18px 0 0; }
+      .pergunta p { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 21px;
+        line-height: 1.5; font-weight: 500; }
+      .pergunta b { font-variant-numeric: tabular-nums; }
+      .pergunta .fonte-nota { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        color: var(--muted); margin-top: 10px; display: block; }
+
+      .cartao { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+        padding: 18px 20px; margin: 16px 0 0; }
+      .cartao h2 { margin: 0 0 4px; font-family: "Fraunces", serif; font-size: 17px; font-weight: 600; }
+      .cartao .sub { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
+      .controles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
+      .controles label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+      .controles select { font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--card); color: var(--navy); }
+      .grafico-wrap { position: relative; height: 340px; }
+      .legenda-tesoura { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
+        margin-top: 10px; font-family: "IBM Plex Mono", monospace; }
+      .legenda-tesoura .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px;
+        vertical-align: middle; margin-right: 6px; }
+
+      table.comparaveis { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      table.comparaveis th, table.comparaveis td { padding: 9px 10px; text-align: right;
+        border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+      table.comparaveis th { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+      table.comparaveis th:first-child, table.comparaveis td:first-child { text-align: left; }
+      table.comparaveis td.santos { font-weight: 800; }
+      table.comparaveis .ano-fonte { color: var(--muted); font-size: 11px; font-family: "IBM Plex Mono", monospace; }
+      .pos-chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+        border-radius: 999px; background: #eef1f6; color: var(--muted); margin-left: 8px; }
+
+      .acoes { display: flex; gap: 10px; margin-top: 14px; }
+      .botao { font: inherit; font-size: 13px; font-weight: 700; padding: 9px 16px;
+        border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+        color: var(--navy); cursor: pointer; }
+      .botao:hover { border-color: var(--gold); }
+
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.7; }
+      .tbl-scroll { overflow-x: auto; }
+      @media (max-width: 640px) {
+        h1 { font-size: 27px; }
+        .pergunta p { font-size: 17px; }
+        .grafico-wrap { height: 280px; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js"></script>
+    <script>Comum.topbar("indicadores.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Gabinete do Vereador — Câmara de Santos</p>
+        <h1>Custo por Resultado</h1>
+        <p class="hero-sub">
+          Quanto a Prefeitura gasta por habitante — e o que o cidadão recebe de volta.
+          Gasto liquidado por função (Tesouro/SICONFI) cruzado com indicadores oficiais de
+          resultado, lado a lado com cidades paulistas de porte semelhante.
+        </p>
+      </div>
+    </header>
+
+    <div class="shell">
+      <div class="abas" id="abas" role="tablist"></div>
+      <div class="pergunta" id="pergunta" hidden>
+        <p id="pergunta-txt"></p>
+        <span class="fonte-nota" id="pergunta-fonte"></span>
+      </div>
+
+      <div class="cartao">
+        <h2>A tesoura: gasto × resultado</h2>
+        <p class="sub">As duas séries começam em 100 no primeiro ano. Quando elas se afastam,
+          a área âmbar mostra o tamanho da distância entre o que se paga e o que se recebe.</p>
+        <div class="controles">
+          <label for="sel-indicador">Indicador:</label>
+          <select id="sel-indicador"></select>
+        </div>
+        <div class="grafico-wrap"><canvas id="grafico"></canvas></div>
+        <div class="legenda-tesoura" id="legenda"></div>
+      </div>
+
+      <div class="cartao">
+        <h2>Santos entre as comparáveis <span class="pos-chip" id="pos-geral" hidden></span></h2>
+        <p class="sub">Último ano disponível de cada indicador. Municípios de porte similar
+          (350–550 mil habitantes) do estado de São Paulo.</p>
+        <div class="tbl-scroll"><table class="comparaveis" id="tabela"></table></div>
+        <div class="acoes"><button class="botao" id="csv">Exportar CSV</button></div>
+      </div>
+
+      <p class="rodape" id="rodape">
+        Fontes: gasto liquidado por função — Tesouro Nacional/SICONFI (DCA Anexo I-E), por
+        habitante (população IBGE); mortalidade infantil — IBGE/Registro Civil; IDEB — INEP
+        (rede pública municipal). Valores em reais correntes, sem correção pela inflação.
+        Indicadores mostrados no último ano divulgado por cada fonte — as séries nunca são
+        interpoladas. Painel do mandato do vereador Rui de Rosis Jr. — dados 100% públicos e auditáveis.
+      </p>
+    </div>
+
+    <script src="./indicadores-app.js"></script>
+  </body>
+</html>
