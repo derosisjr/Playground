@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Escuta Pública — Qual a prioridade do seu bairro?</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="description" content="Escuta pública do mandato: vote nas prioridades do seu bairro em menos de 1 minuto — sem cadastro, sem nome, sem telefone." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Escuta Pública — Qual a prioridade do seu bairro?" />
+    <meta property="og:description" content="Vote nas prioridades do seu bairro em menos de 1 minuto — sem cadastro, sem nome, sem telefone." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/consulta.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        --sim: #17805e; --nao: #a33d3d;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 640px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.hero { position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
+          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+      .hero-in { position: relative; max-width: 640px; margin: 0 auto; padding: 26px 20px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 10px; font-weight: 500; }
+      .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 28px; font-weight: 600;
+        letter-spacing: -0.015em; line-height: 1.1; }
+      .hero-sub { color: #c3cdda; margin: 10px 0 0; font-size: 13.5px; line-height: 1.6; }
+
+      .pontos { display: flex; gap: 7px; justify-content: center; margin: 22px 0 4px; }
+      .ponto { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted);
+        background: transparent; }
+      .ponto.feito { background: var(--gold); border-color: var(--gold); }
+      .ponto.atual { border-color: var(--gold); transform: scale(1.25); }
+
+      /* A cédula */
+      .cedula { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 26px 24px 22px; margin: 14px 0 0; min-height: 220px;
+        display: flex; flex-direction: column; }
+      .cedula .num { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        letter-spacing: .14em; color: var(--muted); text-transform: uppercase; margin: 0 0 12px; }
+      .cedula .texto { font-family: "Fraunces", Georgia, serif; font-size: 21px; font-weight: 500;
+        line-height: 1.45; margin: 0; flex: 1; }
+      .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
+      .botoes .pular { grid-column: 1 / -1; }
+      .voto { font: inherit; font-size: 16px; font-weight: 800; padding: 16px 10px;
+        border-radius: 12px; border: 2px solid var(--line); background: var(--card);
+        color: var(--navy); cursor: pointer; min-height: 56px; }
+      .voto.sim { border-color: var(--sim); color: var(--sim); }
+      .voto.nao { border-color: var(--nao); color: var(--nao); }
+      .voto.pular { border-style: dashed; color: var(--muted); font-weight: 600;
+        font-size: 14px; min-height: 44px; padding: 10px; }
+      .voto:active { transform: scale(.98); }
+      .voto[disabled] { opacity: .5; cursor: default; }
+
+      .bairro-box { margin: 18px 0 0; }
+      .bairro-box label { font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px; }
+      .bairro-box select { width: 100%; font: inherit; font-size: 15px; padding: 12px;
+        border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--navy); }
+      .comecar { width: 100%; margin-top: 16px; font: inherit; font-size: 16px; font-weight: 800;
+        padding: 15px; border-radius: 12px; border: none; background: var(--navy);
+        color: #fff; cursor: pointer; }
+      .comecar:hover { background: var(--navy3); }
+
+      /* Fita de consenso (resultados parciais publicados) */
+      .fita { margin-top: 18px; }
+      .fita h2 { font-family: "Fraunces", serif; font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+      .fita .quando { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+      .barra { margin: 12px 0; }
+      .barra .rotulo { font-size: 13.5px; line-height: 1.45; margin-bottom: 5px; }
+      .barra .trilho { height: 14px; border-radius: 7px; background: var(--line);
+        overflow: hidden; display: flex; }
+      .barra .sim { background: var(--sim); height: 100%; }
+      .barra .nao { background: var(--nao); height: 100%; }
+      .barra .num { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        color: var(--muted); margin-top: 3px; }
+
+      .sugestao { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 20px 22px; margin-top: 18px; }
+      .sugestao h2 { font-family: "Fraunces", serif; font-size: 17px; margin: 0 0 8px; }
+      .sugestao textarea { width: 100%; min-height: 84px; font: inherit; font-size: 14px;
+        border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical;
+        background: var(--bg); color: var(--navy); }
+      .sugestao button { margin-top: 10px; font: inherit; font-size: 14px; font-weight: 800;
+        padding: 11px 18px; border-radius: 10px; border: none; background: var(--navy);
+        color: #fff; cursor: pointer; }
+      .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+        background: var(--navy); color: #fff; font-size: 14px; font-weight: 700;
+        padding: 12px 22px; border-radius: 999px; opacity: 0; pointer-events: none;
+        transition: opacity .25s ease; }
+      .toast.ver { opacity: 1; }
+
+      .metodo { color: var(--muted); font-size: 12px; margin-top: 24px; line-height: 1.7;
+        border-top: 1px dashed var(--line); padding-top: 14px; }
+      .encerrada { text-align: center; padding: 40px 10px; color: var(--muted); }
+      @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .voto:active { transform: none; } }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js"></script>
+    <script>Comum.topbar("consulta.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Escuta pública do mandato</p>
+        <h1 id="titulo">Qual a prioridade do seu bairro?</h1>
+        <p class="hero-sub" id="descricao"></p>
+      </div>
+    </header>
+
+    <div class="shell">
+      <div id="inicio">
+        <div class="bairro-box">
+          <label for="bairro">Seu bairro (só para agrupar as respostas):</label>
+          <select id="bairro"></select>
+        </div>
+        <button class="comecar" id="comecar">Começar a votar</button>
+      </div>
+
+      <div id="votacao" hidden>
+        <div class="pontos" id="pontos" aria-hidden="true"></div>
+        <div class="cedula">
+          <p class="num" id="num"></p>
+          <p class="texto" id="texto"></p>
+          <div class="botoes">
+            <button class="voto sim" id="v-sim">Concordo</button>
+            <button class="voto nao" id="v-nao">Discordo</button>
+            <button class="voto pular" id="v-pular">Pular esta</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="fim" hidden>
+        <div class="fita" id="fita"></div>
+        <div class="sugestao">
+          <h2>Falta alguma proposta?</h2>
+          <textarea id="sug-texto" maxlength="500"
+            placeholder="Escreva sua sugestão em até 500 caracteres (sem dados pessoais)"></textarea>
+          <button id="sug-enviar">Enviar sugestão</button>
+        </div>
+      </div>
+
+      <div class="encerrada" id="encerrada" hidden>
+        Esta consulta está encerrada. O relatório com os resultados será publicado aqui.
+      </div>
+
+      <p class="metodo">
+        <b>Como funciona:</b> isto é uma escuta, não um plebiscito — o resultado orienta
+        indicações e emendas do mandato, sem valor deliberativo. Não pedimos nem guardamos
+        nome, telefone ou qualquer dado pessoal; o navegador lembra localmente que você já
+        votou. Os resultados por bairro só são divulgados quando há pelo menos 30 respostas
+        do bairro, para não expor grupos pequenos. Código e metodologia são públicos no
+        repositório do gabinete.
+      </p>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="./consulta-app.js"></script>
+  </body>
+</html>

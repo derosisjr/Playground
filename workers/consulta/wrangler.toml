@@ -1,0 +1,9 @@
+name = "consulta-gabinete"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Criar o namespace uma vez:  npx wrangler kv namespace create CONSULTA_KV
+# e colar o id gerado abaixo. Depois:  npx wrangler secret put CONSULTA_ADMIN_TOKEN
+[[kv_namespaces]]
+binding = "CONSULTA_KV"
+id = "COLE_AQUI_O_ID_DO_NAMESPACE"

@@ -1,0 +1,23 @@
+{
+  "slug": "prioridades-2026",
+  "titulo": "Qual a prioridade do seu bairro?",
+  "descricao": "Escuta pública do mandato: diga com o que a Prefeitura deveria gastar melhor o seu dinheiro. Leva menos de 1 minuto, não pede nome nem telefone.",
+  "periodo": { "inicio": "2026-07-15", "fim": "2026-09-30" },
+  "ativa": true,
+  "propostas": [
+    { "id": "p1", "texto": "Recapeamento e tapa-buraco deveriam ter cronograma público por bairro, com prazos e ordem de prioridade." },
+    { "id": "p2", "texto": "A fila de consultas e exames na rede municipal deveria ser publicada na internet, com tempo médio de espera por especialidade." },
+    { "id": "p3", "texto": "Iluminação pública apagada deveria ter prazo máximo de 48h para reparo, com número de protocolo para cobrar." },
+    { "id": "p4", "texto": "A Prefeitura deveria publicar quanto custa cada evento que patrocina, antes de o evento acontecer." },
+    { "id": "p5", "texto": "As vagas em creche deveriam ter fila única e transparente, consultável pelo responsável na internet." },
+    { "id": "p6", "texto": "Drenagem e prevenção de alagamentos deveriam ter prioridade sobre obras de fachada no orçamento." },
+    { "id": "p7", "texto": "Todo contrato da Prefeitura acima de R$ 1 milhão deveria ter resumo em linguagem simples publicado no site." }
+  ],
+  "bairros": [
+    "Aparecida", "Areia Branca", "Boqueirão", "Campo Grande", "Castelo",
+    "Centro", "Embaré", "Estuário", "Gonzaga", "José Menino", "Macuco",
+    "Marapé", "Morros", "Paquetá", "Ponta da Praia", "Pompéia", "Rádio Clube",
+    "Saboó", "Vila Belmiro", "Vila Mathias", "Zona Noroeste", "Área Continental",
+    "Outro / não moro em Santos"
+  ]
+}
