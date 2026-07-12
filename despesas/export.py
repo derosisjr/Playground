@@ -120,6 +120,11 @@ def agregados(conn) -> dict:
 
     n_fav = _q(conn, "SELECT COUNT(DISTINCT nome_favorecido) n FROM pagamentos")[0]["n"]
 
+    # série mensal desagregada por função (consumida pelo painel de indicadores)
+    serie_funcao = _q(conn,
+        "SELECT ano, mes, COALESCE(NULLIF(funcao,''),'(sem função)') f, SUM(valor) s "
+        "FROM pagamentos GROUP BY ano, mes, f ORDER BY ano, mes, s DESC")
+
     return {
         "atualizado_em": datetime.now().isoformat(timespec="seconds"),
         "periodo": {"de": per(minmax["a"]) if minmax["a"] else None,
@@ -131,6 +136,10 @@ def agregados(conn) -> dict:
             "por_ano": {str(r["ano"]): round(r["s"], 2) for r in anos},
         },
         "series_mensais": [{"ano": r["ano"], "mes": r["mes"], "valor": round(r["s"], 2)} for r in series],
+        "series_mensais_por_funcao": [
+            {"ano": r["ano"], "mes": r["mes"], "funcao": r["f"], "valor": round(r["s"], 2)}
+            for r in serie_funcao
+        ],
         "por_funcao": [{"funcao": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]} for r in por_funcao],
         "por_elemento": [{"elemento": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]} for r in por_elemento],
         "por_fonte": [{"fonte": r["k"], "valor": round(r["s"], 2)} for r in por_fonte],
