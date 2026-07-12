@@ -64,9 +64,11 @@ alternadas). Estrutura:
 
 ### 6. Entregar
 - Salve a edição em **`digestor/edicoes/AAAA-MM-DD.html`**.
-- **Envie por e-mail via Gmail (MCP)** aos destinatários do `fontes.md`, assunto `Radar do Mandato — DD/MM`.
-  **Auto-envio autorizado** (o destinatário é o próprio vereador). Não precisa deixar em rascunho.
-  Exceção: no modo **`--dry-run`/"seco"**, não envie (ver "Modos de execução").
+- **Crie um RASCUNHO de e-mail via Gmail (MCP `create_draft`)** para os destinatários do `fontes.md`,
+  assunto `Radar do Mandato — DD/MM`, corpo = o HTML do digest. **O conector Gmail do Claude não envia,
+  só cria rascunho** — o rascunho fica na pasta Rascunhos para o vereador revisar e enviar. Se não
+  houver nada relevante no dia, não crie rascunho. Exceção: no modo **`--dry-run`/"seco"**, não crie
+  rascunho (ver "Modos de execução").
 
 ### 7. Atualizar o estado e commitar
 - Acrescente os itens enviados a `digestor/vistos.json` (com `hash`, `url`, `data`).
@@ -84,7 +86,7 @@ alternadas). Estrutura:
 - **Custo:** respeite os tetos do `fontes.md`; não estoure o escopo por run.
 
 ## Modos de execução (instruções que a routine pode receber)
-- **Padrão:** pipeline completo, e-mail como rascunho (ou auto-envio, se já autorizado), commit do estado.
+- **Padrão:** pipeline completo, e-mail como **rascunho** (Gmail `create_draft`), commit do estado.
 - **`--dry-run` / "seco":** faça coleta+curadoria, **imprima** o resumo e a lista de candidatos com as
-  notas de relevância, mas **não** envie, **não** salve edição e **não** commite.
-- **"enviar sempre":** envie mesmo com poucos/nenhum item (só o resumo executivo + o que houver).
+  notas de relevância, mas **não** crie rascunho, **não** salve edição e **não** commite.
+- **"criar sempre":** crie o rascunho mesmo com poucos/nenhum item (só o resumo executivo + o que houver).

@@ -87,4 +87,5 @@ transparência e govtech. Resumir o **achado prático** em 1 linha; linkar o ori
 
 - **Para:** rrosis@gmail.com
 - **Assunto:** `Radar do Mandato — {DD/MM}`
-- **Envio:** **auto-envio autorizado** (destinatário é o próprio vereador). Sem etapa de rascunho.
+- **Entrega:** **rascunho no Gmail** (`create_draft`) — o conector Gmail do Claude não envia, só cria
+  rascunho. O digest aparece na pasta **Rascunhos** para o vereador revisar e enviar.
