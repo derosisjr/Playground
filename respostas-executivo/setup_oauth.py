@@ -38,6 +38,9 @@ for _stream in (sys.stdout, sys.stderr):
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
+    # gmail.send: fallback de e-mail via Gmail API (HTTPS) do Monitor do DOM —
+    # o ambiente da rotina /schedule não abre SMTP (porta 587), só HTTPS.
+    "https://www.googleapis.com/auth/gmail.send",
 ]
 AQUI = os.path.dirname(os.path.abspath(__file__))
 CLIENT_SECRET = os.path.join(AQUI, "client_secret.json")

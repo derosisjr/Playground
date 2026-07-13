@@ -41,6 +41,11 @@ Analise a edição de hoje do Diário Oficial de Santos e publique os atos na pl
   ```
   (confirmado na 1ª execução, 2026-07-13: o default NÃO libera HTTPS público qualquer —
   o proxy devolveu 403 para o DOM; `*.googleapis.com` passa no default).
+- **E-mail:** o ambiente da rotina NÃO abre SMTP (porta 587; Errno 97 mesmo com
+  `smtp.gmail.com` na allowlist — só HTTPS via proxy). O `monitor.enviar_email` cai
+  automaticamente para a **Gmail API (HTTPS)**, que exige o escopo `gmail.send` no
+  `GOOGLE_OAUTH_TOKEN` (regenerar com `respostas-executivo/setup_oauth.py`; o remetente
+  passa a ser a conta do token, não `GMAIL_USER`).
 - ⚠️ As variáveis ficam **visíveis em texto** para quem edita o ambiente (sem cofre ainda).
 
 ## Validação

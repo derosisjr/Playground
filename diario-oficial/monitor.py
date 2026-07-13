@@ -250,11 +250,49 @@ def enviar_email(novos: list[dict], sheet_id: str, radar: list[dict] | None = No
     ) or "Sem atos de risco nesta atualização."
     msg.attach(MIMEText(resumo, "plain", "utf-8"))
     msg.attach(MIMEText(montar_email_html(novos, sheet_id, radar), "html", "utf-8"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(user, senha)
-        server.sendmail(user, destinatarios, msg.as_string())
-    print(f"E-mail enviado para {', '.join(destinatarios)}.", file=sys.stderr)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(user, senha)
+            server.sendmail(user, destinatarios, msg.as_string())
+        print(f"E-mail enviado para {', '.join(destinatarios)}.", file=sys.stderr)
+    except OSError as e:
+        # Ambiente da rotina /schedule não abre TCP cru (porta 587) — só HTTPS via
+        # proxy (constatado 2026-07-13: Errno 97). Cai para a Gmail API (HTTPS),
+        # com o mesmo GOOGLE_OAUTH_TOKEN (exige o escopo gmail.send no token).
+        print(f"Aviso: SMTP indisponível ({e}); tentando Gmail API...", file=sys.stderr)
+        _enviar_gmail_api(msg, destinatarios)
+
+
+def _enviar_gmail_api(msg, destinatarios: list[str]) -> None:
+    """Envia a mensagem MIME pela Gmail API (HTTPS). Remetente = conta do token."""
+    import base64
+    import json
+
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+
+    raw_token = os.environ.get("GOOGLE_OAUTH_TOKEN")
+    if raw_token:
+        info = json.loads(raw_token)
+    elif os.path.exists(gsheets.TOKEN_FILE):
+        with open(gsheets.TOKEN_FILE, encoding="utf-8") as f:
+            info = json.load(f)
+    else:
+        raise EnvironmentError("Sem GOOGLE_OAUTH_TOKEN para o fallback Gmail API.")
+    escopos = info.get("scopes", [])
+    if "https://www.googleapis.com/auth/gmail.send" not in escopos:
+        raise EnvironmentError(
+            "Token OAuth sem o escopo gmail.send — regenerar com setup_oauth.py "
+            "(respostas-executivo) e atualizar o token na rotina/secret.")
+    creds = Credentials.from_authorized_user_info(info, escopos)
+    if not creds.valid and creds.refresh_token:
+        creds.refresh(Request())
+    gmail = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    corpo = {"raw": base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")}
+    gmail.users().messages().send(userId="me", body=corpo).execute(num_retries=4)
+    print(f"E-mail enviado via Gmail API para {', '.join(destinatarios)}.", file=sys.stderr)
 
 
 def main():

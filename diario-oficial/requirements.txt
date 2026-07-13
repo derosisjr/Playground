@@ -1,6 +1,9 @@
 requests>=2.32.0
 pdfplumber>=0.11.0
 pymupdf4llm>=1.28.0
+# cffi: dependência indireta (pdfplumber→cryptography) que faltou no ambiente
+# da rotina /schedule (2026-07-13) — fixada explicitamente por isso.
+cffi>=1.16
 google-api-python-client>=2.130.0
 google-auth>=2.30.0
 google-auth-oauthlib>=1.2.0
