@@ -31,3 +31,7 @@ pro-gestao/diagnostico*.json
 indicadores/indicadores.sqlite
 memoria/memoria.sqlite*
 memoria/memoria-index.json
+# projeto à parte (candidato a repo próprio, como o progestao-rpps)
+magda-annichino/
+# cache do pnpm criado por acidente
+.pnpm-store/
