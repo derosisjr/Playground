@@ -1,4 +1,7 @@
-.claude/
+# .claude: só as regras são versionadas — exceto o perfil político (fica só local)
+.claude/*
+!.claude/rules/
+.claude/rules/perfil-politico.md
 *.env
 __pycache__/
 *.pyc
