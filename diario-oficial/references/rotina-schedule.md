@@ -34,8 +34,13 @@ Analise a edição de hoje do Diário Oficial de Santos e publique os atos na pl
     "Atos do DOM (formato antigo)")
   - `GMAIL_USER`, `GMAIL_APP_PASSWORD`
   - `DOM_BRIEFING_TO` (na validação, apontar para o seu e-mail)
-- **Rede:** modo Custom com "Also include default list" marcado + domínio extra: `smtp.gmail.com`
-  (o PDF do DOM e `*.googleapis.com` já passam no default).
+- **Rede:** modo Custom com "Also include default list" marcado + domínios extras:
+  ```
+  diariooficial.santos.sp.gov.br
+  smtp.gmail.com
+  ```
+  (confirmado na 1ª execução, 2026-07-13: o default NÃO libera HTTPS público qualquer —
+  o proxy devolveu 403 para o DOM; `*.googleapis.com` passa no default).
 - ⚠️ As variáveis ficam **visíveis em texto** para quem edita o ambiente (sem cofre ainda).
 
 ## Validação
