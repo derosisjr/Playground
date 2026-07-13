@@ -39,6 +39,7 @@ import os
 import smtplib
 import sqlite3
 import sys
+from html import escape as _esc
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -120,19 +121,22 @@ def linha_planilha(data_edicao: str, ato: dict, sep: str) -> list:
         ato.get("tipo", ""), ato.get("secretaria", ""), ato.get("objeto", ""),
         ato.get("valor", ""), ato.get("favorecido", ""), ato.get("processo", ""),
         ato.get("modalidade", ""), ato.get("vigencia", ""), ato.get("risco", ""),
-        ato.get("motivo", ""),
+        ato.get("motivo", ""), (ato.get("trecho", "") or "")[:200],
     ]
 
 
-def processar_edicao(data_edicao: str) -> list[dict]:
-    """Baixa, extrai e classifica uma edição. [] se a edição não existir."""
+def processar_edicao(data_edicao: str) -> tuple[list[dict], list[dict]]:
+    """Baixa, extrai e classifica uma edição. Devolve (atos, cabeçalhos_não_reconhecidos).
+    ([], []) se a edição não existir."""
     pdf = extrator.baixar_pdf(data_edicao)
     if not pdf:
         print(f"  {data_edicao}: edição não encontrada.", file=sys.stderr)
-        return []
+        return [], []
     paginas = extrator.extrair_edicao(pdf)
     ano = int(data_edicao[:4]) if data_edicao[:4].isdigit() else None
-    return classificador.classificar(paginas, ano_edicao=ano)
+    atos = classificador.classificar(paginas, ano_edicao=ano)
+    radar = classificador.cabecalhos_nao_reconhecidos(paginas)
+    return atos, radar
 
 
 # ── E-mail aos assessores ──────────────────────────────────────────────────────
@@ -142,23 +146,44 @@ _COR_RISCO = {"🔴": "#C0392B", "🟡": "#B7950B", "🟢": "#1E8449"}
 def _linha_email(a: dict, sheet_id: str) -> str:
     cor = _COR_RISCO.get(a.get("risco", ""), "#555")
     url = extrator.url_edicao(a.get("data_edicao", ""))
-    val = a.get("valor", "")
+    val = _esc(a.get("valor", ""))
+    # campos raspados do DOM entram escapados (um '<'/'&' solto quebraria o HTML)
     return (
         "<tr>"
         f"<td style='padding:6px 8px;border-bottom:1px solid #eee;font-size:18px'>{a.get('risco','')}</td>"
-        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{a.get('categoria','')}<br>"
-        f"<span style='color:#888;font-size:12px'>{a.get('tipo','')}</span></td>"
-        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{a.get('secretaria','')}</td>"
-        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{(a.get('objeto','') or '')[:160]}"
-        f"<br><span style='color:#888;font-size:12px'>nº {a.get('numero','')} · "
-        f"<a href='{url}'>edição {a.get('data_edicao','')}</a></span></td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{_esc(a.get('categoria',''))}<br>"
+        f"<span style='color:#888;font-size:12px'>{_esc(a.get('tipo',''))}</span></td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{_esc(a.get('secretaria',''))}</td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee'>{_esc((a.get('objeto','') or '')[:160])}"
+        f"<br><span style='color:#888;font-size:12px'>nº {_esc(a.get('numero',''))} · "
+        f"<a href='{url}'>edição {_esc(a.get('data_edicao',''))}</a></span></td>"
         f"<td style='padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap'>{val}</td>"
-        f"<td style='padding:6px 8px;border-bottom:1px solid #eee;color:{cor}'>{a.get('motivo','')}</td>"
+        f"<td style='padding:6px 8px;border-bottom:1px solid #eee;color:{cor}'>{_esc(a.get('motivo',''))}</td>"
         "</tr>"
     )
 
 
-def montar_email_html(novos: list[dict], sheet_id: str) -> str:
+def _bloco_radar_html(radar: list[dict]) -> str:
+    """Seção discreta com os cabeçalhos não-reconhecidos (melhoria contínua)."""
+    if not radar:
+        return ""
+    itens = "".join(
+        f"<li style='margin:2px 0'>p.{c.get('pagina','')} "
+        f"<span style='color:#888'>({_esc(c.get('data_edicao',''))})</span> — {_esc(c.get('linha',''))}</li>"
+        for c in radar[:15]
+    )
+    return (
+        "<div style='margin-top:22px;padding:12px 14px;background:#F7F4EC;"
+        "border-left:3px solid #C9A84C;border-radius:4px'>"
+        "<p style='margin:0 0 6px;font-weight:600;color:#07111F'>Cabeçalhos não classificados "
+        f"— ajude a melhorar o monitor ({len(radar)})</p>"
+        "<p style='margin:0 0 8px;color:#666;font-size:12px'>Linhas que parecem cabeçalho de ato "
+        "e não foram capturadas. Se alguma for um ato relevante, avise para virar regra.</p>"
+        f"<ul style='margin:0;padding-left:18px;font-size:13px;color:#333'>{itens}</ul></div>"
+    )
+
+
+def montar_email_html(novos: list[dict], sheet_id: str, radar: list[dict] | None = None) -> str:
     n_r = sum(1 for a in novos if a.get("risco") == "🔴")
     n_a = sum(1 for a in novos if a.get("risco") == "🟡")
     # ordena por gravidade (🔴 > 🟡 > 🟢)
@@ -189,6 +214,7 @@ def montar_email_html(novos: list[dict], sheet_id: str) -> str:
     </p>
   </div>
   {bloco_acionaveis}
+  {_bloco_radar_html(radar or [])}
   <p style="margin-top:18px">
     <a href="{sheet_url}" style="background:#0A1628;color:#fff;padding:10px 16px;
        text-decoration:none;border-radius:4px">Abrir a planilha completa</a>
@@ -200,7 +226,7 @@ def montar_email_html(novos: list[dict], sheet_id: str) -> str:
 </div></body></html>"""
 
 
-def enviar_email(novos: list[dict], sheet_id: str) -> None:
+def enviar_email(novos: list[dict], sheet_id: str, radar: list[dict] | None = None) -> None:
     user = os.environ.get("GMAIL_USER")
     senha = os.environ.get("GMAIL_APP_PASSWORD")
     # destinatários: lista própria do DOM → assessores (despesas) → respostas → geral
@@ -223,7 +249,7 @@ def enviar_email(novos: list[dict], sheet_id: str) -> None:
         for a in novos if a.get("risco") in ("🔴", "🟡")
     ) or "Sem atos de risco nesta atualização."
     msg.attach(MIMEText(resumo, "plain", "utf-8"))
-    msg.attach(MIMEText(montar_email_html(novos, sheet_id), "html", "utf-8"))
+    msg.attach(MIMEText(montar_email_html(novos, sheet_id, radar), "html", "utf-8"))
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
         server.login(user, senha)
@@ -269,12 +295,16 @@ def main():
 
     total_novos = 0
     novos_atos: list[dict] = []  # atos novos do run inteiro (para o e-mail)
+    radar_run: list[dict] = []   # cabeçalhos não-reconhecidos do run (para o e-mail)
     for data_edicao in datas:
         if conn and data_edicao in ja and not args.forcar:
             continue
-        atos = processar_edicao(data_edicao)
-        if not atos:
+        atos, radar = processar_edicao(data_edicao)
+        if not atos and not radar:
             continue
+        for c in radar:
+            c["data_edicao"] = data_edicao
+        radar_run.extend(radar)
 
         # avalia risco (usa conn p/ gatilhos cross-edição; no dry-run vai sem histórico)
         for a, r in zip(atos, risco_mod.avaliar(atos, conn)):
@@ -288,6 +318,10 @@ def main():
             for a in atos[:(args.limite or 8)]:
                 print(f"   {a['risco']} [{a['tipo']}] nº {a['numero']} | "
                       f"{a['secretaria'][:20]} | {a['objeto'][:40]} | {a['motivo'][:60]}")
+            if radar:
+                print(f"   -- {len(radar)} cabeçalho(s) não-reconhecido(s) (radar) --")
+                for c in radar[:15]:
+                    print(f"      p{c['pagina']}: {c['linha']}")
             continue
 
         # dedup via SQLite → linhas novas para a aba única
@@ -320,7 +354,7 @@ def main():
 
     if args.email and not args.dry_run:
         if novos_atos:
-            enviar_email(novos_atos, sheet_id)
+            enviar_email(novos_atos, sheet_id, radar_run)
         else:
             print("Sem atos novos — e-mail não enviado.", file=sys.stderr)
 

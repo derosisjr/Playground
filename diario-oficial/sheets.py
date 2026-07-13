@@ -34,6 +34,9 @@ COLUNAS = [
     "Edição", "Página", "Categoria", "Tipo", "Secretaria", "Objeto", "Valor",
     "Favorecido/Contratada", "Processo", "Modalidade", "Vigência",
     "Risco", "Motivo do risco",
+    # "Trecho" = ~200 caracteres do ato como saiu no DOM, p/ a equipe conferir cada
+    # linha contra o diário sem abrir o PDF (auditoria).
+    "Trecho",
 ]
 
 
@@ -70,21 +73,25 @@ def separador_formula(sheets, sheet_id: str) -> str:
 
 
 def garantir_aba(sheets, sheet_id: str) -> None:
-    """Cria a aba única (com cabeçalho) se ela ainda não existir."""
+    """Cria a aba única (com cabeçalho) se não existir; se existir, garante que o
+    cabeçalho está atualizado (ex.: acréscimo da coluna 'Trecho') sem mexer nos dados."""
     meta = sheets.spreadsheets().get(
         spreadsheetId=sheet_id, fields="sheets.properties").execute()
     existentes = {s["properties"]["title"] for s in meta.get("sheets", [])}
-    if ABA in existentes:
-        return
-    sheets.spreadsheets().batchUpdate(
-        spreadsheetId=sheet_id,
-        body={"requests": [{"addSheet": {"properties": {"title": ABA}}}]},
-    ).execute()
-    sheets.spreadsheets().values().update(
-        spreadsheetId=sheet_id, range=f"'{ABA}'!A1",
-        valueInputOption="RAW", body={"values": [COLUNAS]},
-    ).execute()
-    print(f"  Aba criada: {ABA}", file=sys.stderr)
+    if ABA not in existentes:
+        sheets.spreadsheets().batchUpdate(
+            spreadsheetId=sheet_id,
+            body={"requests": [{"addSheet": {"properties": {"title": ABA}}}]},
+        ).execute()
+        print(f"  Aba criada: {ABA}", file=sys.stderr)
+    # (re)escreve o cabeçalho se estiver ausente/desatualizado — só a linha 1.
+    atual = sheets.spreadsheets().values().get(
+        spreadsheetId=sheet_id, range=f"'{ABA}'!1:1").execute().get("values", [[]])
+    if not atual or atual[0] != COLUNAS:
+        sheets.spreadsheets().values().update(
+            spreadsheetId=sheet_id, range=f"'{ABA}'!A1",
+            valueInputOption="RAW", body={"values": [COLUNAS]},
+        ).execute()
 
 
 def hyperlink(url: str, texto: str, sep: str) -> str:

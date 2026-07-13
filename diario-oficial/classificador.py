@@ -49,7 +49,9 @@ ANCORAS: list[tuple[str, str, re.Pattern]] = [
     ("Licitações e dispensas", "Concorrência",        re.compile(r"\bCONCORRENCIA\b")),
     ("Licitações e dispensas", "Aviso de licitação",  re.compile(r"\bAVISO DE LICITACAO\b")),
     ("Licitações e dispensas", "Edital",              re.compile(r"\bEDITAL DE (?:LICITACAO|PREGAO|CONCORRENCIA|CREDENCIAMENTO)\b")),
-    ("Licitações e dispensas", "Edital",              re.compile(r"\bAVISO DE EDITAL\b")),
+    # "AVISO DE EDITAL"/"AVISO DE ABERTURA DE EDITAL" = abertura de certame → tipo próprio
+    # (a equipe pediu para distinguir os avisos de abertura na coluna Tipo).
+    ("Licitações e dispensas", "Aviso de edital",     re.compile(r"\bAVISO DE (?:ABERTURA DE )?EDITAL\b")),
     ("Licitações e dispensas", "Credenciamento",      re.compile(r"\bCREDENCIAMENTO\b")),
     # formas verbais e nominais: HOMOLOGAÇÃO/HOMOLOGOU/HOMOLOGA, RATIFICAÇÃO/RATIFICOU.
     ("Licitações e dispensas", "Homologação",         re.compile(r"\bHOMOLOG")),
@@ -63,6 +65,7 @@ ANCORAS: list[tuple[str, str, re.Pattern]] = [
     # compromisso" — fica nesta categoria p/ herdar os gatilhos de OSC do risco.py.
     ("Convênios e fomento", "Termo de compromisso",   re.compile(r"\b(?:EXTRATO DE )?TERMO DE COMPROMISSO\b")),
     ("Convênios e fomento", "Acordo de cooperação",   re.compile(r"\bACORDO DE COOPERACAO\b")),
+    ("Convênios e fomento", "Termo de cooperação",    re.compile(r"\b(?:EXTRATO DE )?TERMO DE COOPERACAO\b")),
     ("Convênios e fomento", "Chamamento público",     re.compile(r"\bEDITAL DE CHAMAMENTO\b")),
     ("Convênios e fomento", "Chamamento público",     re.compile(r"\bCHAMAMENTO PUBLICO\b")),
     # orçamento: créditos adicionais (suplementar/especial/extraordinário). O ato
@@ -78,6 +81,10 @@ ANCORAS: list[tuple[str, str, re.Pattern]] = [
     ("Leis e decretos", "Lei complementar",           re.compile(r"\bLEI COMPLEMENTAR N")),
     ("Leis e decretos", "Lei",                        re.compile(r"\bLEI N[O\d]")),
     ("Leis e decretos", "Decreto",                    re.compile(r"\bDECRETO N")),
+    # Portarias NORMATIVAS (autorização de uso, remanejamento de dotação, alteração de
+    # portaria...). As de PESSOAL (nomeação/exoneração, sufixo -P-DEGEPAT) são filtradas
+    # em classificar() — ver _RE_PORTARIA_PESSOAL.
+    ("Leis e decretos", "Portaria",                   re.compile(r"\bPORTARIA N")),
     # SENTINELA (sempre por último): resultados de licitação que a Prefeitura publica
     # sob o título "COMUNICADO" + verbo ("HOMOLOGOU", "REVOGOU"...). Só vira ato se o
     # bloco trouxer verbo de resultado + nº de modalidade (ver guarda em classificar).
@@ -86,11 +93,13 @@ ANCORAS: list[tuple[str, str, re.Pattern]] = [
 ]
 
 # Verbos de resultado de licitação → tipo do ato (no bloco do COMUNICADO/cabeçalho).
+# INDEFERI antes de DEFERI: "INDEFERIU" contém a subcadeia "DEFERI".
 _RE_RESULTADO = re.compile(
-    r"\b(HOMOLOG|ADJUDIC|RATIFIC|REVOG|ANUL|FRACASS|DESERT|SUSPEN)", re.I)
+    r"\b(HOMOLOG|ADJUDIC|RATIFIC|REVOG|ANUL|FRACASS|DESERT|SUSPEN|INDEFERI|DEFERI)", re.I)
 _TIPO_RESULTADO = [
     ("REVOG", "Revogação"), ("ANUL", "Anulação"), ("SUSPEN", "Suspensão"),
     ("FRACASS", "Licitação fracassada"), ("DESERT", "Licitação deserta"),
+    ("INDEFERI", "Indeferimento de recurso"), ("DEFERI", "Deferimento de recurso"),
     # homologação é o ato decisivo: vence "adjudicado" quando ambos aparecem no bloco.
     ("HOMOLOG", "Homologação"), ("RATIFIC", "Ratificação"), ("ADJUDIC", "Adjudicação"),
 ]
@@ -128,6 +137,12 @@ _RE_NUM_NORMA = re.compile(
 _RE_CONTRAT_DIRETA = re.compile(
     r"PROCESSO\s+N?[ºO°]?\s*:?\s*([\d./\-]+)\s+AUTORIZ\w*\s+A?\s*CONTRATA[ÇC][ÃA]O\s+"
     r"DIRETA\s+POR\s+(INEXIGIBILIDADE|DISPENSA)", re.I)
+# Ratificação de dispensa/inexigibilidade em despacho ("Processo nº X - RATIFICO a
+# dispensa por inexigibilidade..."/"Ratifico a dispensa de licitação..."). O cabeçalho
+# não é uma âncora (a linha começa por "Processo nº"), então entra por frase.
+_RE_RATIFICA_DISPENSA = re.compile(
+    r"PROCESSO\s+(?:DIGITAL\s+)?N?[ºO°]?\s*:?\s*([\d./\-]+)\s*[-–]?\s*RATIFIC\w*\s+A?\s*"
+    r"(?:A\s+)?DISPENSA(\s+POR\s+INEXIGIBILIDADE)?(?:\s+DE\s+LICITA[ÇC][ÃA]O)?", re.I)
 
 # Baixa retroativa de inscrição municipal (renúncia de receita): só interessa quando
 # o efeito retroage a EXERCÍCIO/ANO anterior ao da edição (a maioria é do ano corrente).
@@ -154,17 +169,37 @@ def _atos_por_frase(paginas: list[dict], ano_edicao: int | None) -> list[dict]:
     """Atos sem cabeçalho-âncora, detectados por frase no texto corrido da página."""
     out: list[dict] = []
     for pg in paginas:
-        txt = _desfaz_hifen(pg["texto"].splitlines())
+        linhas = [l for l in pg["texto"].splitlines()
+                  if not _RE_CABECALHO_PAGINA.match(l.strip())]
+        txt = _desfaz_hifen(linhas)
         sec = pg["secretaria"]
         pagina = pg["pagina"]
+
+        def _sec_do_despacho(pos: int) -> str:
+            # despachos não trazem "UNIDADE:" e o índice pode errar a seção quando 2+
+            # secretarias dividem a página — resolve pelo signatário logo após o ato.
+            return _secretaria_assinante(txt[pos:pos + 500]) or _padroniza_secretaria(sec)
+
         # contratação direta por inexigibilidade/dispensa (despacho)
         for m in _RE_CONTRAT_DIRETA.finditer(txt):
             proc, modo = m.group(1), m.group(2).lower()
             tipo = "Inexigibilidade" if "inexig" in modo else "Dispensa"
             out.append(_ato_base(
-                "Licitações e dispensas", tipo, proc, sec, pagina, processo=proc,
+                "Licitações e dispensas", tipo, proc, _sec_do_despacho(m.end()), pagina,
+                processo=proc,
                 objeto=f"Autorização de contratação direta por {modo} — sem indicação "
                        "de objeto, valor ou contratada na publicação.",
+                trecho=m.group(0)[:300]))
+        # ratificação de dispensa/inexigibilidade em despacho ("Processo nº X - RATIFICO
+        # a dispensa por inexigibilidade..."). Alto valor fiscal, sem cabeçalho próprio.
+        for m in _RE_RATIFICA_DISPENSA.finditer(txt):
+            proc = m.group(1)
+            tipo = "Inexigibilidade" if m.group(2) else "Dispensa"
+            out.append(_ato_base(
+                "Licitações e dispensas", tipo, proc, _sec_do_despacho(m.end()), pagina,
+                processo=proc,
+                objeto=f"Ratificação de dispensa{' por inexigibilidade' if m.group(2) else ''} "
+                       "de licitação em despacho — conferir objeto/valor/contratada no ato.",
                 trecho=m.group(0)[:300]))
         # baixa retroativa de inscrição municipal (renúncia) — só anos anteriores
         for m in _RE_BAIXA_RETRO.finditer(txt):
@@ -208,13 +243,23 @@ _RE_VALOR_QUALQUER = re.compile(r"R\$\s?[\d.]+,\d{2}")
 _RE_VALOR_DESPESA = re.compile(
     r"(?:VALOR\s+(?:TOTAL\s+)?DA\s+DESPESA|IMPORT[ÂA]NCIA\s+DE)\s*:?\s*(R\$\s?[\d.]+,\d{2})", re.I)
 # Número do ato — extraído SÓ da linha-gatilho (evita pegar um "Nº" solto fundo
-# no bloco, que gerava números errados). Duas formas:
-#   "Nº 019/2026", "N° 15023/2026", "Nº 11.242"  → _RE_NUM_ROT
+# no bloco, que gerava números errados). Formas cobertas (o DOM varia muito):
+#   "Nº 019/2026", "N° 15023/2026", "Nº 11.242", "Nº: 012/2026" (dois-pontos),
+#   "N.º 100" (ponto), "nº 3524-2026" (hífen) → _RE_NUM_ROT
 #   "EDITAL 017/2026", "LICITAÇÃO 009/2026" (sem Nº) → _RE_NUM_TIPO
-_RE_NUM_ROT = re.compile(r"\bN[ºO°]\s*([\d.]+/?\d{0,4})", re.I)
+_RE_NUM_ROT = re.compile(r"\bN[ºO°.][ºO°.]?\s*[:.]?\s*(\d[\d./-]*\d|\d)", re.I)
 _RE_NUM_TIPO = re.compile(
     r"\b(?:EDITAL|LICITA[ÇC][ÃA]O|LEIL[ÃA]O|CONCORR[ÊE]NCIA|PREG[ÃA]O|DISPENSA|"
     r"CHAMAMENTO|CREDENCIAMENTO)\b[^/\d]{0,30}?(\d[\d.]{0,8}/20\d\d)", re.I)
+# Nº do aditivo, quando o cabeçalho é "EXTRATO DE ADITIVO" e o nº vem no rótulo
+# "Aditivo nº: 012/2026" na linha de baixo (não confundir com "Licitação nº 001/2026").
+_RE_NUM_ADITIVO = re.compile(r"\bADITIVO\s+N[ºO°.][ºO°.]?\s*[:.]?\s*(\d[\d./-]*\d|\d)", re.I)
+# Resgate do nº pela modalidade no corpo, p/ avisos de edital sem nº no cabeçalho
+# (ex.: "Modalidade: Pregão Eletrônico nº 016/2026").
+_RE_NUM_MODALIDADE = re.compile(
+    r"\b(?:PREG[ÃA]O(?:\s+ELETR[ÔO]NICO|\s+PRESENCIAL)?|CONCORR[ÊE]NCIA|"
+    r"TOMADA DE PRE[ÇC]OS|LEIL[ÃA]O|CONCURSO)\b[^/\d]{0,25}?"
+    r"N[ºO°.][ºO°.]?\s*[:.]?\s*(\d[\d./-]*\d)", re.I)
 _RE_ANO_NUM = re.compile(r"/\s*(20\d\d)\b")  # ano embutido no número (".../2024")
 
 
@@ -270,12 +315,61 @@ _RE_FUNDAMENTO = re.compile(
 
 LIMITE_LINHAS_BLOCO = 45  # teto de segurança p/ um bloco de ato
 
-# Leis/decretos: o ano no cabeçalho deve ser o da edição. Uma "Lei Complementar
-# nº 752, DE ... 2009" citada como base legal numa tabela de pessoal é descartada;
-# a norma realmente publicada hoje é do ano corrente.
-_TIPOS_NORMA = {"Lei", "Lei complementar", "Decreto"}
+# Leis/decretos/portarias: o ano no cabeçalho deve ser o da edição. Uma "Lei
+# Complementar nº 752, DE ... 2009" citada como base legal numa tabela de pessoal é
+# descartada; a norma realmente publicada hoje é do ano corrente.
+_TIPOS_NORMA = {"Lei", "Lei complementar", "Decreto", "Portaria"}
+# Portarias de PESSOAL (fora desta fase): nomeação/exoneração etc. Detectadas pelo
+# sufixo do protocolo (-P-DEGEPAT) OU por verbo de pessoal no início do corpo.
+_RE_PORTARIA_PESSOAL = re.compile(
+    r"-P-DEGEPAT|\bDEGEPAT\b|\b(?:EXONERA|NOMEIA|APOSENTA|READAPTA|REINTEGRA|"
+    r"DEMITE|DESLIGA|CONCEDE\s+APOSENTADORIA|COLOCA[R]?\s+[ÀA]\s+DISPOSI)", re.I)
 # Ano do ato no cabeçalho: "Nº 11.242 / 2026" ou "..., DE 11 DE JUNHO DE 2026".
 _RE_ANO_HEADING = re.compile(r"(?:/\s*|DE\s+)(20\d\d)\b", re.I)
+# Linha que é só a data do ato ("DE 16 DE JUNHO DE 2026") — pulada na ementa.
+_SO_DATA = re.compile(r"^DE\s+\d{1,2}\s+DE\s+\w+\s+DE\s+\d{4}\.?$", re.I)
+# Data como PREFIXO da 1ª linha da ementa ("DE 16 DE JUNHO DE 2026 REGULAMENTA A...").
+_RE_DATA_PREFIXO = re.compile(r"^DE\s+\d{1,2}\s+DE\s+\w+\s+DE\s+\d{4}\.?\s*", re.I)
+
+
+def _linha_caixa_alta(ln: str) -> bool:
+    """True se a linha é um cabeçalho em CAIXA-ALTA (sem letras minúsculas) — discrimina
+    o cabeçalho/ementa do corpo do ato (caixa mista). Os indicadores ordinais 'º'/'ª'
+    contam como minúscula em Python, então são removidos ('Nº 712' não reprova a linha)."""
+    ln = ln.replace("º", "").replace("ª", "").replace("°", "")
+    return any(c.isupper() for c in ln) and not any(c.islower() for c in ln)
+
+
+def _parece_nome(ln: str) -> bool:
+    """True se a linha parece o nome do signatário (2–6 palavras alfabéticas, sem
+    dígitos/moeda) — usado p/ podar o nome do fim da ementa da norma."""
+    s = ln.strip().rstrip(",").strip()
+    palavras = s.split()
+    if not (2 <= len(palavras) <= 6) or "R$" in s:
+        return False
+    return all(re.fullmatch(r"[A-Za-zÀ-ÿ.'’]+", p) for p in palavras)
+
+
+def _ementa_norma(linhas: list[str]) -> str:
+    """Ementa de Lei/Decreto/Portaria: as linhas CAIXA-ALTA após a linha de data, até
+    o preâmbulo (1ª linha em caixa mista, 'DECRETA:'/'RESOLVE:'). Poda o nome do
+    signatário eventualmente colado no fim. `linhas` = fluxo do cabeçalho p/ frente."""
+    j = 1  # pula o cabeçalho ("DECRETO Nº X / 2026")
+    while j < len(linhas) and _SO_DATA.match(_norm_busca(linhas[j]).strip()):
+        j += 1
+    ementa: list[str] = []
+    for ln in linhas[j:]:
+        if not _linha_caixa_alta(ln):
+            break  # preâmbulo (caixa mista) — fim da ementa
+        if re.match(r"^(?:DECRETA|RESOLVE|PORTARIA)\s*:", _norm_busca(ln)):
+            break
+        ementa.append(ln)
+    # tira o nome do signatário colado no fim — só quando vem DEPOIS do ponto final da
+    # ementa (senão poda "DÁ OUTRAS PROVIDÊNCIAS.", que também "parece nome").
+    while len(ementa) >= 2 and _parece_nome(ementa[-1]) and ementa[-2].rstrip().endswith("."):
+        ementa.pop()
+    txt = re.sub(r"\s+", " ", _desfaz_hifen(ementa)).strip(" .:-")
+    return _RE_DATA_PREFIXO.sub("", txt).strip(" .:-")  # data às vezes gruda na ementa
 
 
 def _ano_norma(linha0: str, prox: str) -> int | None:
@@ -286,6 +380,15 @@ def _ano_norma(linha0: str, prox: str) -> int | None:
     return max(anos) if anos else None
 
 
+# Cabeçalho/rodapé de página ("7 Diário Oficial de Santos", "Diário Oficial de Santos
+# • 54", "17 de junho de 2026") que o extrator às vezes intercala no meio do texto —
+# poluía blocos e cortava ementas. Removido do fluxo antes de classificar.
+_RE_CABECALHO_PAGINA = re.compile(
+    r"^\d{1,3}\s+Di[áa]rio Oficial de Santos$"
+    r"|^Di[áa]rio Oficial de Santos\s*[•·]?\s*\d{1,3}$"
+    r"|^\d{1,2}\s+de\s+\w+\s+de\s+\d{4}$", re.I)
+
+
 def _norm_busca(s: str) -> str:
     """Maiúsculas sem acento — só para casar âncoras (não muda o texto extraído)."""
     import unicodedata
@@ -294,11 +397,13 @@ def _norm_busca(s: str) -> str:
 
 
 def _desfaz_hifen(linhas: list[str]) -> str:
-    """Junta o bloco numa string, colando palavras quebradas por '-' no fim da linha."""
+    """Junta o bloco numa string, colando palavras quebradas por '-' no fim da linha.
+    Cobre MAIÚSCULAS (o DOM quebra 'DIS-PENSA', 'HOMOLO-GOU', 'IMPORTÂN-CIA') — sem
+    isso as âncoras/regex em caixa-alta não casavam."""
     txt = []
     for ln in linhas:
         ln = ln.rstrip()
-        if txt and re.search(r"[a-zà-ÿ]-$", txt[-1]):
+        if txt and re.search(r"[A-Za-zÀ-ÿ]-$", txt[-1]):
             txt[-1] = txt[-1][:-1] + ln.lstrip()
         else:
             txt.append(ln)
@@ -405,8 +510,11 @@ _SEC_POR_NOME = {}
 for _v in set(_CANON_SECRETARIAS.values()):
     _nuc = re.sub(r"^SECRETARIA D[AEO]S?\s+", "", _norm_busca(_v)).strip()
     _SEC_POR_NOME[_nuc] = _v
+# "Municipal" é opcional: o DOM assina tanto "Secretário Municipal de X" quanto
+# "Secretário de X" (ex.: Turismo, Comércio e Empreendedorismo). O núcleo capturado
+# precisa resolver p/ uma secretaria conhecida (_SEC_POR_NOME), o que barra prosa solta.
 _RE_SEC_ASSINANTE = re.compile(
-    r"Secret[áa]ri[oa]\s+Municipal\s+d[aeo]\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ,]{3,55})", re.I)
+    r"Secret[áa]ri[oa]\s+(?:Municipal\s+)?d[aeo]\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ,]{3,55})", re.I)
 
 
 def _secretaria_assinante(bloco: str) -> str:
@@ -427,6 +535,64 @@ def _secretaria_assinante(bloco: str) -> str:
             break
         nome = nome.rsplit(" ", 1)[0]
     return ""
+
+
+# Cabeçalhos de ÓRGÃO/ENTIDADE que aparecem NO MEIO da página. O índice mapeia só 1
+# seção por página; quando 2+ órgãos dividem a página (CAPEP e COHAB na p.70; CET na
+# p.67), o 2º era herdado errado do índice. Detectados como linha(s) TODA-MAIÚSCULA
+# (o corpo do ato cita o mesmo nome em caixa mista, que não casa). Nome canônico à dir.
+_SECOES_ORGAO: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"COMPANHIA DE HABITACAO DA BAIXADA SANTISTA"), "COHAB Santista"),
+    (re.compile(r"COMPANHIA DE ENGENHARIA DE TRAFEGO"), "CET-Santos"),
+    (re.compile(r"CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO"), "CAPEP"),
+    (re.compile(r"INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES"), "IPREV"),
+    (re.compile(r"\bPRODESAN\b|PROGRESSO E DESENVOLVIMENTO DE SANTOS"), "PRODESAN"),
+    (re.compile(r"FUNDACAO ARQUIVO E MEMORIA DE SANTOS|\bFAMS\b"), "FAMS"),
+    (re.compile(r"CONSELHO MUNICIPAL DE SAUDE"), "Conselho Municipal de Saúde"),
+    (re.compile(r"CAMARA MUNICIPAL DE SANTOS"), "Câmara Municipal"),
+]
+# Cabeçalho de secretaria municipal ("SECRETARIA DE X") — quebra em 1–3 linhas e é
+# seguido por "ATOS D[AEO] ..." (o que o distingue da assinatura "SECRETÁRIA DE X").
+_RE_SEC_HEADER = re.compile(r"^SECRETARIA\s+D[AEO]S?\s+(.+)$")
+_RE_ATOS_HEADER = re.compile(r"^ATOS\s+D[AEO]\b")
+
+
+def _refinar_secretarias(fluxo: list[tuple[int, str, str]]) -> list[str]:
+    """Para cada linha do fluxo, devolve a secretaria refinando o índice (baseline por
+    página) com os cabeçalhos de órgão/secretaria detectados no meio da página. A cada
+    troca de página o baseline volta ao índice (evita vazar um órgão p/ a página seguinte)."""
+    n = len(fluxo)
+    out: list[str] = [""] * n
+    pagina_atual = None
+    sec_atual = ""
+    for idx in range(n):
+        pagina, sec_indice, ln = fluxo[idx]
+        if pagina != pagina_atual:          # nova página → volta ao baseline do índice
+            pagina_atual, sec_atual = pagina, sec_indice
+        if _linha_caixa_alta(ln):
+            # cabeçalhos quebram em 1–3 linhas caixa-alta ("COMPANHIA DE | ENGENHARIA
+            # DE | TRÁFEGO"); junta-as até o sub-cabeçalho "ATOS D..." ou o corpo.
+            bloco = [ln]
+            j = idx + 1
+            while (j < n and j - idx < 4 and _linha_caixa_alta(fluxo[j][2])
+                   and not _RE_ATOS_HEADER.match(_norm_busca(fluxo[j][2]))):
+                bloco.append(fluxo[j][2])
+                j += 1
+            blocon = _norm_busca(" ".join(bloco))
+            achou = next((nome for rx, nome in _SECOES_ORGAO if rx.search(blocon)), None)
+            if achou:
+                sec_atual = achou
+            else:
+                # secretaria municipal: "SECRETARIA DE X" seguida de "ATOS D..." (o que
+                # a distingue da assinatura "SECRETÁRIA DE X" ao fim de um ato).
+                m = _RE_SEC_HEADER.match(blocon)
+                seguido_atos = j < n and _RE_ATOS_HEADER.match(_norm_busca(fluxo[j][2]))
+                if m and seguido_atos:
+                    nuc = _SEC_POR_NOME.get(m.group(1).strip())
+                    if nuc:
+                        sec_atual = nuc
+        out[idx] = sec_atual or sec_indice
+    return out
 
 
 def _limpa_favorecido(fav: str) -> str:
@@ -462,8 +628,13 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
     fluxo: list[tuple[int, str, str]] = []
     for pg in paginas:
         for ln in pg["texto"].splitlines():
-            if ln.strip():
+            s = ln.strip()
+            if s and not _RE_CABECALHO_PAGINA.match(s):
                 fluxo.append((pg["pagina"], pg["secretaria"], ln))
+    # refina a secretaria de cada linha (índice é grosso: 1 seção/página; aqui
+    # detectamos os cabeçalhos de órgão/secretaria que aparecem no meio da página).
+    sec_ref = _refinar_secretarias(fluxo)
+    fluxo = [(pag, sec_ref[i], ln) for i, (pag, _, ln) in enumerate(fluxo)]
 
     # posições das âncoras
     marcos: list[tuple[int, str, str]] = []  # (idx, categoria, tipo)
@@ -515,9 +686,23 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
             numero = (mnorma.group(1).strip(".") if mnorma
                       else _campo(ROTULOS["processo"], bloco))
         else:
+            numero = ""
+            # Avisos de edital/licitação: o nº do certame vem pela MODALIDADE no corpo
+            # ("Modalidade: Pregão Eletrônico nº 016/2026" — caso da CET). Resolve ANTES
+            # do fallback genérico, que pegaria a "Lei Complementar nº 123/2006" citada.
+            if tipo in ("Aviso de edital", "Edital", "Aviso de licitação"):
+                mm = _RE_NUM_MODALIDADE.search(bloco)
+                if mm:
+                    numero = mm.group(1).strip(".")
             # número a partir do cabeçalho (linha-gatilho + até 2 linhas seguintes —
             # alguns avisos põem o "Processo nº ..." na linha de baixo).
-            numero = _numero(linha0, " ".join(linhas_bloco[:3]))
+            if not numero:
+                numero = _numero(linha0, " ".join(linhas_bloco[:3]))
+            # Aditivo: preferir o rótulo "Aditivo nº X" (não o "Licitação nº" do bloco).
+            if tipo == "Termo aditivo":
+                ma = _RE_NUM_ADITIVO.search(" ".join(linhas_bloco[:4]))
+                if ma:
+                    numero = ma.group(1).strip(".")
             # Resultados de licitação põem o nº fundo no bloco (ex.: "homologou ...
             # Pregão nº 13005/2026") — alarga a janela p/ o bloco inteiro.
             if not numero and (tipo in _TIPOS_RESULTADO or categoria == "Fiscal/Tributário"):
@@ -530,11 +715,15 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
         if not numero:
             continue
 
-        # Lei/decreto: manter só a norma do ano corrente (descarta citação de lei antiga).
+        # Lei/decreto/portaria: manter só a norma do ano corrente (descarta citação
+        # de norma antiga usada como base legal).
         if tipo in _TIPOS_NORMA:
             prox = fluxo[i + 1][2] if i + 1 < len(fluxo) else ""
             ano_ato = _ano_norma(linha0, prox)
             if ano_ato is None or (ano_edicao and ano_ato < ano_edicao):
+                continue
+            # Portaria de PESSOAL (nomeação/exoneração etc.) fica fora desta fase.
+            if tipo == "Portaria" and _RE_PORTARIA_PESSOAL.search(bloco_norm):
                 continue
         # Licitações/convênios: número de ano anterior é republicação/citação → descarta.
         # (resultados de licitação ficam de fora: o nº é o do pregão, que pode ser de
@@ -569,11 +758,14 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
         mfun = _RE_FUNDAMENTO.search(bloco)
 
         objeto = _campo(ROTULOS["objeto"], bloco)
-        # Leis/decretos não têm rótulo "OBJETO:" — a ementa vem logo após o
-        # cabeçalho "TIPO Nº X, DE DD DE MÊS DE AAAA.". Usa-a como objeto.
-        if not objeto and categoria == "Leis e decretos":
-            ementa = _RE_EMENTA.sub("", bloco, count=1).strip(" .")
-            objeto = re.sub(r"\s+", " ", ementa)[:300]
+        # Leis/decretos/portarias não têm rótulo "OBJETO:" — a ementa vem em CAIXA-ALTA
+        # após a linha de data. Lida direto do fluxo (não do `bloco`, que a âncora
+        # "ABRE CRÉDITO" pode truncar num decreto de crédito, deixando só a data).
+        if categoria == "Leis e decretos":
+            janela_norma = [fluxo[j][2] for j in range(i, min(i + LIMITE_LINHAS_BLOCO, len(fluxo)))]
+            ementa = _ementa_norma(janela_norma)
+            if ementa:
+                objeto = ementa[:300]
         # Crédito orçamentário: a própria linha-âncora ("Abre crédito suplementar na
         # importância de R$ ...") é a descrição — usa o bloco a partir do cabeçalho.
         if not objeto and categoria == "Orçamento":
@@ -599,6 +791,12 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
         objeto = _limpa_objeto(objeto)
 
         valor = (mval.group(0) if mval else "").replace(" ", " ")
+        # trecho p/ auditoria: o bloco como saiu do DOM; nas normas o `bloco` é truncado
+        # pela âncora seguinte, então lê uma janela maior direto do fluxo.
+        if categoria == "Leis e decretos":
+            trecho = _desfaz_hifen([fluxo[j][2] for j in range(i, min(i + 10, len(fluxo)))])
+        else:
+            trecho = bloco
         atos.append({
             "categoria": categoria,
             "tipo": tipo,
@@ -615,7 +813,7 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
             "fundamentacao": (mfun.group(1).strip() if mfun else ""),
             "termo": _termo(bloco),
             "retroativo": bool(_RE_RETRO.search(bloco)),
-            "trecho": bloco[:300],
+            "trecho": trecho[:300],
         })
 
     # Atos sem cabeçalho-âncora (contratação direta em despacho, baixa retroativa de
@@ -627,3 +825,60 @@ def classificar(paginas: list[dict], ano_edicao: int | None = None) -> list[dict
         vistos.add(chave)
         atos.append(ato)
     return atos
+
+
+# ── Radar de não-reconhecidos (melhoria contínua) ──────────────────────────────
+# Linhas que PARECEM cabeçalho de ato (tipo de documento + número) mas não casaram
+# nenhuma âncora NEM ficaram dentro de um bloco já capturado. A equipe revisa o radar
+# no e-mail e aponta o que virar âncora nova. Foca nos tipos que podem esconder um
+# ato-alvo com formato inesperado (não lista CONTRATO, que é campo do EXTRATO).
+_RE_RADAR_DOC = re.compile(
+    r"^(?:EXTRATO|AVISO|EDITAL|TERMO|CONV[ÊE]NIO|ACORDO|ORDEM DE|APOSTILAMENTO|"
+    r"INSTRU[ÇC][ÃA]O NORMATIVA|DELIBERA[ÇC][ÃA]O|RESOLU[ÇC][ÃA]O|COMUNICADO|"
+    r"HOMOLOGA|RATIFICA|DISPENSA|INEXIGIBILIDADE|CHAMAMENTO|CREDENCIAMENTO|"
+    r"PREG[ÃA]O|CONCORR[ÊE]NCIA)\b")
+# Ruído (fiscalização/pessoal) que não é ato-alvo — fora do radar.
+_RE_RADAR_RUIDO = re.compile(
+    r"INTIMA|NOTIFICA|CONVOCA|ADVERT|AUTO DE INFRA|\bMULTA\b|DEGEPAT|CONCURSO|"
+    r"COFISNOT|SEFIS")
+# Contexto de intimação/notificação nas linhas seguintes (edital de fiscalização).
+_RE_RADAR_CTX = re.compile(r"NOTIFICA|INTIMA|TORNA\s+P[ÚU]BLICO|INTIMAD|LAVRAD")
+
+
+def cabecalhos_nao_reconhecidos(paginas: list[dict]) -> list[dict]:
+    """Cabeçalhos em CAIXA-ALTA (tipo de documento + número) que NÃO casaram âncora
+    nem ficaram dentro de um bloco de ato capturado — insumo p/ evoluir o classificador.
+    Exclui avisos de intimação/notificação e ruído de pessoal. Dedup por prefixo."""
+    fluxo: list[tuple[int, str]] = []
+    for pg in paginas:
+        for ln in pg["texto"].splitlines():
+            s = ln.strip()
+            if s and not _RE_CABECALHO_PAGINA.match(s):
+                fluxo.append((pg["pagina"], ln))
+    # linhas já "consumidas" por um bloco de ato (âncora + corpo até a próxima âncora)
+    marcos = [i for i, (_, ln) in enumerate(fluxo) if _achar_ancora(_norm_busca(ln))]
+    consumidas: set[int] = set()
+    for pos, i in enumerate(marcos):
+        prox = marcos[pos + 1] if pos + 1 < len(marcos) else len(fluxo)
+        consumidas.update(range(i, min(prox, i + LIMITE_LINHAS_BLOCO)))
+
+    out: list[dict] = []
+    vistos: set[str] = set()
+    for idx, (pag, ln) in enumerate(fluxo):
+        if idx in consumidas:
+            continue
+        s = ln.strip()
+        if not (10 <= len(s) <= 90) or not _linha_caixa_alta(s):
+            continue
+        sn = _norm_busca(s)
+        if not _RE_RADAR_DOC.match(sn) or not re.search(r"\d", sn) or _RE_RADAR_RUIDO.search(sn):
+            continue
+        vizinho = _norm_busca(" ".join(fluxo[k][1] for k in range(idx, min(idx + 3, len(fluxo)))))
+        if _RE_RADAR_CTX.search(vizinho):
+            continue
+        chave = sn[:40]
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        out.append({"pagina": pag, "linha": s})
+    return out
