@@ -89,10 +89,25 @@ def _para_email(ato: dict) -> dict:
 
 def main():
     p = argparse.ArgumentParser(description="Publica atos classificados pela IA na planilha do DOM")
-    p.add_argument("json_path", help="Arquivo JSON com os atos (contrato da skill dom-santos).")
+    p.add_argument("json_path", nargs="?", help="Arquivo JSON com os atos (contrato da skill dom-santos).")
     p.add_argument("--dry-run", action="store_true", help="Não grava; imprime o que faria.")
     p.add_argument("--sem-email", action="store_true", help="Grava sem enviar e-mail.")
+    p.add_argument("--listar-edicoes", action="store_true",
+                   help="Só imprime as datas de edição já presentes na planilha (pré-check "
+                        "da rotina: edição já processada não precisa ser analisada de novo).")
     args = p.parse_args()
+
+    if args.listar_edicoes:
+        sheet_id = os.environ.get("DOM_SHEET_ID", "")
+        if not sheet_id:
+            sys.exit("Defina DOM_SHEET_ID.")
+        sheets = gsheets.conectar_sheets()
+        gsheets.garantir_aba(sheets, sheet_id)
+        datas = sorted({l.get("Data DO", "") for l in gsheets.ler_existentes(sheets, sheet_id)} - {""})
+        print("\n".join(datas))
+        return
+    if not args.json_path:
+        p.error("informe o JSON de atos (ou use --listar-edicoes)")
 
     with open(args.json_path, encoding="utf-8") as f:
         atos = json.load(f)
