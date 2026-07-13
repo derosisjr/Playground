@@ -28,15 +28,14 @@ TOKEN_FILE = os.path.join(
 )
 
 ABA = "Atos do DOM"
-# Ordem pensada para leitura/filtro: Categoria e Tipo na frente; identificação e
-# conteúdo no meio; página/edição/carimbo no fim.
+# Formato da planilha da skill dom-santos (decisão 2026-07-13): mesmas colunas e
+# ordem que a skill monta no Claude web. "Data DO" leva o hyperlink da edição;
+# "Status" é coluna de trabalho da equipe (o publicador grava "Novo" e nunca reescreve).
 COLUNAS = [
-    "Edição", "Página", "Categoria", "Tipo", "Secretaria", "Objeto", "Valor",
-    "Favorecido/Contratada", "Processo", "Modalidade", "Vigência",
-    "Risco", "Motivo do risco",
-    # "Trecho" = ~200 caracteres do ato como saiu no DOM, p/ a equipe conferir cada
-    # linha contra o diário sem abrir o PDF (auditoria).
-    "Trecho",
+    "Nº", "Data DO", "Categoria", "Tipo de Ato", "Órgão/Secretaria",
+    "Objeto/Resumo", "Valor (R$)", "Partes Envolvidas", "Base Legal",
+    "Nível Atenção", "Observações/Irregularidades", "Ação Sugerida",
+    "Status", "Página DO",
 ]
 
 
@@ -72,9 +71,38 @@ def separador_formula(sheets, sheet_id: str) -> str:
         return ","
 
 
+ABA_ANTIGA = "Atos do DOM (formato antigo)"
+
+
 def garantir_aba(sheets, sheet_id: str) -> None:
-    """Cria a aba única (com cabeçalho) se não existir; se existir, garante que o
-    cabeçalho está atualizado (ex.: acréscimo da coluna 'Trecho') sem mexer nos dados."""
+    """Cria a aba única (com cabeçalho) se não existir. Se existir com cabeçalho de
+    FORMATO diferente (migração p/ o formato da skill, 2026-07), a aba é ARQUIVADA
+    (renomeada p/ ABA_ANTIGA, preservando o histórico) e uma nova é criada — reescrever
+    só a linha 1 deixaria os dados antigos desalinhados sob rótulos errados."""
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties").execute()
+    props = {s["properties"]["title"]: s["properties"] for s in meta.get("sheets", [])}
+
+    if ABA in props:
+        atual = sheets.spreadsheets().values().get(
+            spreadsheetId=sheet_id, range=f"'{ABA}'!1:1").execute().get("values", [[]])
+        if atual and atual[0] == COLUNAS:
+            return  # já no formato novo
+        if atual and atual[0] and ABA_ANTIGA not in props:
+            sheets.spreadsheets().batchUpdate(
+                spreadsheetId=sheet_id,
+                body={"requests": [{"updateSheetProperties": {
+                    "properties": {"sheetId": props[ABA]["sheetId"], "title": ABA_ANTIGA},
+                    "fields": "title",
+                }}]},
+            ).execute()
+            print(f"  Aba '{ABA}' arquivada como '{ABA_ANTIGA}' (formato antigo).",
+                  file=sys.stderr)
+        elif atual and atual[0]:
+            raise RuntimeError(
+                f"A aba '{ABA}' tem formato antigo e '{ABA_ANTIGA}' já existe — "
+                "resolver manualmente antes de gravar.")
+
     meta = sheets.spreadsheets().get(
         spreadsheetId=sheet_id, fields="sheets.properties").execute()
     existentes = {s["properties"]["title"] for s in meta.get("sheets", [])}
@@ -84,14 +112,10 @@ def garantir_aba(sheets, sheet_id: str) -> None:
             body={"requests": [{"addSheet": {"properties": {"title": ABA}}}]},
         ).execute()
         print(f"  Aba criada: {ABA}", file=sys.stderr)
-    # (re)escreve o cabeçalho se estiver ausente/desatualizado — só a linha 1.
-    atual = sheets.spreadsheets().values().get(
-        spreadsheetId=sheet_id, range=f"'{ABA}'!1:1").execute().get("values", [[]])
-    if not atual or atual[0] != COLUNAS:
-        sheets.spreadsheets().values().update(
-            spreadsheetId=sheet_id, range=f"'{ABA}'!A1",
-            valueInputOption="RAW", body={"values": [COLUNAS]},
-        ).execute()
+    sheets.spreadsheets().values().update(
+        spreadsheetId=sheet_id, range=f"'{ABA}'!A1",
+        valueInputOption="RAW", body={"values": [COLUNAS]},
+    ).execute()
 
 
 def hyperlink(url: str, texto: str, sep: str) -> str:
@@ -107,3 +131,53 @@ def anexar_linhas(sheets, sheet_id: str, linhas: list[list]) -> None:
         valueInputOption="USER_ENTERED", insertDataOption="INSERT_ROWS",
         body={"values": linhas},
     ).execute(num_retries=4)
+
+
+def _sheet_gid(sheets, sheet_id: str) -> int:
+    """gid numérico da aba única (necessário p/ insertDimension)."""
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties").execute()
+    for s in meta.get("sheets", []):
+        if s["properties"]["title"] == ABA:
+            return s["properties"]["sheetId"]
+    raise LookupError(f"Aba '{ABA}' não encontrada.")
+
+
+def inserir_no_topo(sheets, sheet_id: str, linhas: list[list]) -> None:
+    """Insere linhas logo ABAIXO do cabeçalho (linha 2), empurrando o histórico
+    para baixo — as inserções mais novas ficam sempre no topo da planilha.
+    `inheritFromBefore=False` faz as linhas novas herdarem a formatação das de
+    baixo (dados), não do cabeçalho."""
+    if not linhas:
+        return
+    gid = _sheet_gid(sheets, sheet_id)
+    sheets.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={"requests": [{"insertDimension": {
+            "range": {"sheetId": gid, "dimension": "ROWS",
+                      "startIndex": 1, "endIndex": 1 + len(linhas)},
+            "inheritFromBefore": False,
+        }}]},
+    ).execute(num_retries=4)
+    sheets.spreadsheets().values().update(
+        spreadsheetId=sheet_id, range=f"'{ABA}'!A2",
+        valueInputOption="USER_ENTERED", body={"values": linhas},
+    ).execute(num_retries=4)
+
+
+def ler_existentes(sheets, sheet_id: str) -> list[dict]:
+    """Lê todas as linhas de dados da aba e devolve dicts {coluna: valor} —
+    insumo da dedup do publicar.py (a planilha é a fonte da verdade)."""
+    resp = sheets.spreadsheets().values().get(
+        spreadsheetId=sheet_id, range=f"'{ABA}'!A1:Z",
+        valueRenderOption="UNFORMATTED_VALUE",
+    ).execute(num_retries=4)
+    valores = resp.get("values", [])
+    if len(valores) < 2:
+        return []
+    cab = [str(c) for c in valores[0]]
+    return [
+        {cab[i]: (str(l[i]) if i < len(l) and l[i] is not None else "")
+         for i in range(len(cab))}
+        for l in valores[1:]
+    ]

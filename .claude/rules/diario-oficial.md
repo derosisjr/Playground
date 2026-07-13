@@ -5,6 +5,43 @@ paths:
 
 # Monitor do Diário Oficial (`diario-oficial/`)
 
+## Pipeline NOVO — rotina /schedule com IA (2026-07, em validação)
+
+A classificação determinística (abaixo) ficava aquém da skill `dom-santos`; o caminho novo
+usa a **cota da assinatura Max** (rotina Claude Code em nuvem via /schedule — sem API key):
+
+```
+dom_md.py (PDF→MD limpo) → skill dom-santos (MD→JSON) → publicar.py (JSON→Sheets topo + e-mail)
+```
+
+- **`dom_md.py`** baixa a edição (reusa `extrator.baixar_pdf`) e converte com **`pymupdf4llm`**
+  (diagnóstico 2026-07-13: +30k chars e 194×170 âncoras vs heurística de coluna; capturou
+  TERMOS DE COMPROMISSO que o `extrator.py` perdia). MD com front-matter + `## Página N — SECRETARIA`
+  (índice via `extrator.parsear_indice`); limpa `U+FFFD` e masthead. Saída em arquivo temporário —
+  **não versionar dados**.
+- **`.claude/skills/dom-santos/SKILL.md`** (skill no repo, entra no clone da rotina): classifica os
+  atos das categorias-alvo e avalia risco pelos gatilhos de `references/criterios-risco.md`,
+  devolvendo JSON no contrato do publicador.
+- **`publicar.py`**: dedup **pela planilha** (fonte da verdade — a rotina não persiste nada entre
+  execuções; chave `Data DO|Categoria|Tipo de Ato|Nº|Órgão`), **insere no TOPO** (linha 2,
+  🔴 > 🟡 > 🟢), grava `Status="Novo"` (coluna de trabalho da equipe, nunca sobrescrita) e envia o
+  e-mail (reusa `monitor.enviar_email`) por último, só se houver ato novo.
+- **Planilha no formato da skill** (14 colunas, `sheets.COLUNAS`): `Nº · Data DO · Categoria ·
+  Tipo de Ato · Órgão/Secretaria · Objeto/Resumo · Valor (R$) · Partes Envolvidas · Base Legal ·
+  Nível Atenção · Observações/Irregularidades · Ação Sugerida · Status · Página DO`.
+- **Config da rotina** (fora do repo): env `GOOGLE_OAUTH_TOKEN`, `DOM_SHEET_ID`, `GMAIL_USER`,
+  `GMAIL_APP_PASSWORD`, `DOM_BRIEFING_TO`; allowlist Custom + `smtp.gmail.com` (googleapis e HTTPS
+  público já entram no default). Rotinas não leem secrets do Actions.
+- Enquanto em validação, o caminho determinístico (workflow `diario-oficial.yml`) roda em paralelo
+  numa planilha de teste; `classificador.py`/`risco.py` ficam como fallback.
+
+```bash
+python diario-oficial/dom_md.py --data 2026-06-12 --out /tmp/ed.md   # PDF→MD
+python diario-oficial/publicar.py atos.json --dry-run                # conferir sem gravar
+```
+
+## Pipeline determinístico (legado, fallback)
+
 Automatiza a varredura diária que os assessores faziam à mão no **Diário Oficial de Santos (DOM)**:
 baixa o PDF da edição (`diariooficial.santos.sp.gov.br/edicoes/inicio/download/AAAA-MM-DD`), extrai e
 **classifica deterministicamente (sem IA/tokens)** os atos das categorias-alvo — **Contratos e aditivos,

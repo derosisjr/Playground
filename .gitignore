@@ -1,6 +1,7 @@
-# .claude: só as regras são versionadas — exceto o perfil político (fica só local)
+# .claude: só regras e skills são versionadas — exceto o perfil político (fica só local)
 .claude/*
 !.claude/rules/
+!.claude/skills/
 .claude/rules/perfil-politico.md
 *.env
 __pycache__/
