@@ -120,6 +120,20 @@ def agregados(conn) -> dict:
 
     n_fav = _q(conn, "SELECT COUNT(DISTINCT nome_favorecido) n FROM pagamentos")[0]["n"]
 
+    # serviço da dívida (consumido pelo painel de Endividamento): grupos
+    # 32 = juros e encargos, 46 = amortização/refinanciamento (rótulos variam;
+    # o código no prefixo do grupo é estável). Credores agrupados por documento
+    # (o nome tem grafias divergentes: acento, espaço final).
+    FILTRO_DIVIDA = ("(grupo_despesa LIKE '32%' OR grupo_despesa LIKE '46%')")
+    divida_anos = _q(conn,
+        f"SELECT ano, SUBSTR(grupo_despesa,1,2) g, SUM(valor) s FROM pagamentos "
+        f"WHERE {FILTRO_DIVIDA} GROUP BY ano, g ORDER BY ano")
+    divida_credores = _q(conn,
+        f"SELECT COALESCE(NULLIF(documento_favorecido,''), nome_favorecido) doc, "
+        f"MAX(TRIM(nome_favorecido)) k, SUM(valor) s, COUNT(*) n FROM pagamentos "
+        f"WHERE {FILTRO_DIVIDA} AND nome_favorecido NOT LIKE '%IPAM%' "
+        f"GROUP BY doc ORDER BY s DESC LIMIT 10")
+
     # série mensal desagregada por função (consumida pelo painel de indicadores)
     serie_funcao = _q(conn,
         "SELECT ano, mes, COALESCE(NULLIF(funcao,''),'(sem função)') f, SUM(valor) s "
@@ -148,6 +162,17 @@ def agregados(conn) -> dict:
             {"nome": r["k"], "documento": r["doc"], "valor": round(r["s"], 2),
              "qtd": r["n"], "meses": r["meses"]} for r in favorecidos
         ],
+        "servico_divida": {
+            "por_ano": [
+                {"ano": r["ano"],
+                 "tipo": "juros" if r["g"] == "32" else "amortizacao",
+                 "valor": round(r["s"], 2)} for r in divida_anos
+            ],
+            "credores": [
+                {"nome": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]}
+                for r in divida_credores
+            ],
+        },
     }
 
 

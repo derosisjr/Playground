@@ -316,8 +316,20 @@
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./indicadores.html">
+        <a class="cartao" href="./endividamento.html">
           <span class="idx">06</span>
+          <span class="tag">Prefeitura · Dívida pública</span>
+          <h2>Semáforo Fiscal</h2>
+          <p class="desc">A dívida da Prefeitura e os limites da Lei de Responsabilidade Fiscal
+             em um relance — evolução, precatórios e despesa com pessoal, direto do Tesouro Nacional.</p>
+          <div class="stat"><span class="val" aria-live="polite" id="stat-endividamento"><span class="skel"></span></span>
+            <span class="lbl" id="stat-endividamento-lbl">dívida consolidada</span>
+            <span class="quando" id="stat-endividamento-quando" hidden></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./indicadores.html">
+          <span class="idx">07</span>
           <span class="tag">Prefeitura · Custo por Resultado</span>
           <h2>Custo por Resultado</h2>
           <p class="desc">Saúde, educação e finanças de Santos por habitante — quanto se arrecada,
@@ -398,6 +410,12 @@
       stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => num(d.length));
       stat(pLegis, "stat-legis", (d) => num(d.length));
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
+      stat(carregar("./endividamento-index.json"), "stat-endividamento", (d) => {
+        const fora = (d.semaforo || []).filter((m) => m.cor !== "verde").length;
+        set("stat-endividamento-lbl", "dívida consolidada · " + (d.ultimo ? d.ultimo.rotulo : "") +
+          (fora ? ` · ${fora} limite(s) em atenção` : " · limites da LRF ok"));
+        return compacto(d.totais.divida);
+      }, (d) => d.atualizado_em && new Date(d.atualizado_em));
       stat(carregar("./indicadores-index.json"), "stat-indicadores", (d) => {
         // headline: receita própria/hab (tema fiscal); cai p/ gasto em saúde se faltar
         const rp = d.temas.fiscal && d.temas.fiscal.indicadores

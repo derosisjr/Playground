@@ -8,6 +8,7 @@ window.Comum = (() => {
   const PAGINAS = [
     ["index.html", "Início", "inicio"],
     ["despesas.html", "Despesas", ""],
+    ["endividamento.html", "Endividamento", ""],
     ["proposituras.html", "Proposituras", ""],
     ["legis.html", "Legislação", ""],
     ["requerimentos.html", "Requerimentos", ""],
@@ -136,6 +137,19 @@ window.Comum = (() => {
                     : "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
         h: norm(f.nome),
       })) },
+    { id: "endividamento", rotulo: "Endividamento", url: "./endividamento-index.json",
+      mapear: (d) => (d.semaforo || []).map((m) => ({
+        t: m.nome,
+        s: (m.pct != null ? m.pct.toLocaleString("pt-BR") + "% da RCL · " : "") +
+           (m.cor === "verde" ? "dentro do limite" : m.cor === "amarelo" ? "zona de alerta" : "acima do limite"),
+        url: "./endividamento.html#semaforo",
+        h: norm([m.nome, "divida endividamento lrf semaforo fiscal rcl limite", m.base_legal].join(" ")),
+      })).concat([{
+        t: "Dívida consolidada de Santos",
+        s: d.totais && d.totais.divida ? brlCurto(d.totais.divida) + " · " + (d.ultimo ? d.ultimo.rotulo : "") : "evolução e limites da LRF",
+        url: "./endividamento.html",
+        h: norm("divida consolidada endividamento precatorios rcl santos"),
+      }]) },
     { id: "indicadores", rotulo: "Custo por Resultado", url: "./indicadores-index.json",
       mapear: (d) => Object.entries(d.temas || {}).flatMap(([slug, t]) =>
         (t.indicadores || []).map((i) => ({

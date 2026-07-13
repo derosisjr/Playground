@@ -37,6 +37,7 @@ trabalhar nos arquivos correspondentes):
 |---|---|---|
 | Camada comum + Hub | `comum.css`/`comum.js`, `index.html` e padrões dos painéis | `.claude/rules/site-frontend.md` |
 | Base de Despesas | Execução da despesa da Prefeitura (crawler+painel+briefing) | `.claude/rules/despesas.md` |
+| Painel de Endividamento | Dívida e limites da LRF via SICONFI/RGF (crawler+painel) | `.claude/rules/endividamento.md` |
 | Monitor do Diário Oficial | Varredura diária do DOM → Google Sheets + e-mail | `.claude/rules/diario-oficial.md` |
 | Briefing Ordem do Dia | Pauta da Câmara → briefing com Claude API por e-mail | `.claude/rules/ordem-do-dia.md` |
 | Respostas do Executivo | Respostas a requerimentos → Drive + Sheets + painel | `.claude/rules/respostas-executivo.md` |

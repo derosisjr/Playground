@@ -1,0 +1,35 @@
+{
+  "_comentario": "Dívida das empresas públicas de Santos — CURADORIA MANUAL, anual. Fora do RGF/SICONFI (empresas com contabilidade societária própria, Lei 6.404). Fonte: balanços patrimoniais auditados publicados por cada empresa. Atualizar quando sair o balanço do exercício seguinte.",
+  "atualizado_em": "2026-07-13",
+  "empresas": [
+    {
+      "sigla": "PRODESAN",
+      "nome": "Progresso e Desenvolvimento de Santos S/A",
+      "exercicio": 2025,
+      "passivo_total": 278984934,
+      "passivo_exercicio_anterior": 378008270,
+      "patrimonio_liquido": -156527951,
+      "componentes": [
+        { "nome": "Dívida com a Prefeitura de Santos — Termo 43/2011 (parcelamentos federais garantidos pelo município, Lei mun. 2.739/2010)", "valor": 191184500 },
+        { "nome": "Parcelamento PGFN — débitos previdenciários (curto + longo prazo)", "valor": 34796809 },
+        { "nome": "Tributos diferidos", "valor": 24427368 },
+        { "nome": "Obrigações tributárias, trabalhistas, judiciais e fornecedores", "valor": 28576257 }
+      ],
+      "nota": "Patrimônio líquido negativo e prejuízos acumulados de R$ 256,1 mi. O passivo caiu R$ 99 mi em 2025 por renegociação com a PGFN (transação individual com desconto). A maior parte da dívida (69%) é com a própria Prefeitura, que desde 2010 garante e amortiza os parcelamentos federais da empresa.",
+      "fonte": "Demonstrações Financeiras 31/12/2025 (auditadas) + Notas Explicativas",
+      "url": "https://www.prodesan.com.br/transparencia/demonstracoes-contabeis/"
+    }
+  ],
+  "pendentes": [
+    {
+      "sigla": "CET",
+      "nome": "Companhia de Engenharia de Tráfego de Santos",
+      "motivo": "O portal de transparência municipal (egov) publica só execução (licitações, contratos, folha); o balanço patrimonial não está disponível em formato estruturado — localizar publicação no DOM ou site próprio."
+    },
+    {
+      "sigla": "COHAB Santista",
+      "nome": "Companhia de Habitação da Baixada Santista",
+      "motivo": "Mesma situação da CET: balanço não localizado em formato aberto no portal municipal."
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+name: Endividamento — atualização mensal
+
+on:
+  schedule:
+    - cron: "41 4 5 * *"  # dia 5 de cada mês, 04:41 UTC (RGF é quadrimestral)
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Rebaixar todos os quadrimestres (ignora controle_carga)?"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: endividamento/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r endividamento/requirements.txt
+
+      # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions.
+      # Se o cache esfriar não tem problema: a carga completa leva ~2 min.
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v5
+        with:
+          path: endividamento/endividamento.sqlite
+          key: endividamento-db-${{ github.run_id }}
+          restore-keys: |
+            endividamento-db-
+
+      - name: Crawl + export
+        env:
+          FORCAR: ${{ github.event.inputs.forcar }}
+        run: |
+          if [ "$FORCAR" = "true" ]; then
+            python endividamento/crawler.py --forcar
+          else
+            python endividamento/crawler.py
+          fi
+          python endividamento/export.py
+
+      # Guarda anti-truncamento: o export já aborta com RCL implausível ou
+      # semáforo incompleto; aqui checa a série antes de publicar.
+      - name: Commitar index (se houver e for íntegro)
+        run: |
+          OK=$(python -c "
+          import json
+          d = json.load(open('endividamento-index.json', encoding='utf-8'))
+          print(int(len(d.get('serie', [])) >= 10
+                    and len(d.get('semaforo', [])) == 3
+                    and (d['totais'].get('rcl') or 0) > 1e9))")
+          if [ "$OK" != "1" ]; then
+            echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add endividamento-index.json
+          if git diff --quiet --cached; then
+            echo "Sem mudancas no endividamento."
+          else
+            git commit -m "chore: atualiza Painel de Endividamento ($(date +%F))"
+            git push
+          fi

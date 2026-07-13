@@ -29,6 +29,7 @@ pro-gestao/kit-certificacao/
 pro-gestao/analise.json
 pro-gestao/diagnostico*.json
 indicadores/indicadores.sqlite
+endividamento/endividamento.sqlite
 memoria/memoria.sqlite*
 memoria/memoria-index.json
 # projeto à parte (candidato a repo próprio, como o progestao-rpps)
