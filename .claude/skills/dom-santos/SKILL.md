@@ -44,8 +44,8 @@ convocação de servidor, licenças urbanísticas rotineiras.
 ## Avaliação de risco (Nível Atenção)
 
 Aplique os gatilhos do `criterios-risco.md`:
-- 🔴 quando casar gatilho vermelho (cite em `observacoes` o gatilho, a **base legal** e a
-  **ação sugerida** da tabela — ex.: "3º termo aditivo (art. 125, Lei 14.133/21) → Requerimento");
+- 🔴 quando casar gatilho vermelho (diga em `observacoes` **qual gatilho casou**, de forma
+  curta — ex.: "3º termo aditivo ao mesmo contrato"; sem base legal nem ação sugerida);
 - 🟡 quando casar gatilho amarelo ou houver indício que mereça monitoramento;
 - 🟢 caso regular. Os gatilhos não são exaustivos: use juízo de consultor — padrão suspeito é 🟡/🔴
   mesmo sem gatilho listado, explicando o porquê.
@@ -68,13 +68,13 @@ Gravar um JSON (UTF-8) — lista de objetos, um por ato, com EXATAMENTE estas ch
     "valor": "R$ 1.234.567,89",
     "partes": "EMPRESA X LTDA (CNPJ 00.000.000/0001-00)",
     "nivel_atencao": "🔴",
-    "observacoes": "3º termo aditivo ao mesmo contrato (art. 125, Lei 14.133/21) → Requerimento",
+    "observacoes": "3º termo aditivo ao mesmo contrato",
     "pagina": 24
   }
 ]
 ```
 
 Regras: `numero` vazio ("") se o ato não tiver número; `valor` vazio se não houver; `nivel_atencao`
-é sempre um de 🔴/🟡/🟢; `observacoes` vazio quando 🟢 sem ressalva (quando 🔴/🟡, inclua base legal
-e ação sugerida no próprio texto); `pagina` é o número impresso (o do `## Página N`). Não inclua
-atos fora das categorias-alvo.
+é sempre um de 🔴/🟡/🟢; `observacoes` curto e factual — só o motivo do risco, sem base legal nem
+ação sugerida — e vazio quando 🟢 sem ressalva; `pagina` é o número impresso (o do `## Página N`).
+Não inclua atos fora das categorias-alvo.
