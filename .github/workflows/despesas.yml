@@ -54,8 +54,11 @@ jobs:
       # baixa os meses faltantes (2025→corrente). Se quente, não faz nada.
       # Etapa 2: re-baixa o ano corrente (--forcar) p/ pegar pagamentos novos.
       - name: Crawl incremental + export
+        env:
+          # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+          ANO_INPUT: ${{ github.event.inputs.ano }}
         run: |
-          ANO="${{ github.event.inputs.ano }}"
+          ANO="$ANO_INPUT"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
           python despesas/crawler.py                 # preenche meses faltantes do mandato
           python despesas/crawler.py --ano "$ANO" --forcar
@@ -91,11 +94,12 @@ jobs:
           DESPESAS_BRIEFING_TO: ${{ secrets.DESPESAS_BRIEFING_TO }}
           RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
+          TESTE: ${{ github.event.inputs.email_teste }}
+          FORCAR_BRIEFING: ${{ github.event.inputs.forcar_briefing }}
         run: |
-          TESTE="${{ github.event.inputs.email_teste }}"
           # e-mail de teste sobrepõe os destinatários só nesta execução
           [ -n "$TESTE" ] && export DESPESAS_BRIEFING_TO="$TESTE"
-          if [ -n "$TESTE" ] || [ "$(date +%u)" = "1" ] || [ "${{ github.event.inputs.forcar_briefing }}" = "true" ]; then
+          if [ -n "$TESTE" ] || [ "$(date +%u)" = "1" ] || [ "$FORCAR_BRIEFING" = "true" ]; then
             python despesas/briefing.py
           else
             echo "Fora de segunda e sem --forcar_briefing: briefing nao enviado."

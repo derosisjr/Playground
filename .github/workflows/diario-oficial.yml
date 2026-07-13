@@ -69,17 +69,21 @@ jobs:
           DESPESAS_BRIEFING_TO: ${{ secrets.DESPESAS_BRIEFING_TO }}
           RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
+          # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+          TESTE: ${{ github.event.inputs.email_teste }}
+          FORCAR_INPUT: ${{ github.event.inputs.forcar }}
+          DESDE: ${{ github.event.inputs.desde }}
+          DATA: ${{ github.event.inputs.data }}
         run: |
           # e-mail de teste sobrepõe os destinatários só nesta execução
-          TESTE="${{ github.event.inputs.email_teste }}"
           [ -n "$TESTE" ] && export DOM_BRIEFING_TO="$TESTE"
           # --forcar reprocessa edição já registrada (recaptura com regras novas)
           FORCAR=""
-          [ -n "${{ github.event.inputs.forcar }}" ] && FORCAR="--forcar"
-          if [ -n "${{ github.event.inputs.desde }}" ]; then
-            python diario-oficial/monitor.py --desde "${{ github.event.inputs.desde }}" $FORCAR
-          elif [ -n "${{ github.event.inputs.data }}" ]; then
-            python diario-oficial/monitor.py --data "${{ github.event.inputs.data }}" --email $FORCAR
+          [ -n "$FORCAR_INPUT" ] && FORCAR="--forcar"
+          if [ -n "$DESDE" ]; then
+            python diario-oficial/monitor.py --desde "$DESDE" $FORCAR
+          elif [ -n "$DATA" ]; then
+            python diario-oficial/monitor.py --data "$DATA" --email $FORCAR
           else
             python diario-oficial/monitor.py --dias 3 --email
           fi

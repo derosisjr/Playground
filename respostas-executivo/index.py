@@ -582,16 +582,17 @@ def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
 
 # ── E-mail resumo ─────────────────────────────────────────────────────────────
 def montar_email_html(entradas: list[dict], data: str) -> str:
+    from html import escape as _esc  # campos raspados entram escapados no HTML
     linhas = ""
     for e in entradas:
         linhas += (
             "<tr>"
-            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Tipo']}</td>"
-            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Número']}</td>"
-            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Assunto']}</td>"
-            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{e['Data da resposta']}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Tipo'])}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Número'])}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Assunto'])}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Data da resposta'])}</td>"
             f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>"
-            f"<a href='{e['LinkUrl']}'>abrir pasta</a></td>"
+            f"<a href='{_esc(e['LinkUrl'])}'>abrir pasta</a></td>"
             "</tr>"
         )
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>

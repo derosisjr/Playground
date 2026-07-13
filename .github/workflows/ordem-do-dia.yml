@@ -35,10 +35,12 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
+          # input sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+          SESSAO_ID: ${{ github.event.inputs.sessao_id }}
         run: |
           SESSAO_ARG=""
-          if [ -n "${{ github.event.inputs.sessao_id }}" ]; then
-            SESSAO_ARG="--sessao ${{ github.event.inputs.sessao_id }}"
+          if [ -n "$SESSAO_ID" ]; then
+            SESSAO_ARG="--sessao $SESSAO_ID"
           fi
           python ordem-do-dia/index.py $SESSAO_ARG --email --output ordem-do-dia/ultimo-briefing.md
 

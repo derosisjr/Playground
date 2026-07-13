@@ -37,11 +37,15 @@ jobs:
         run: pip install -r legis/requirements.txt
 
       - name: Crawl incremental + export
+        env:
+          # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+          ANO_INPUT: ${{ github.event.inputs.ano }}
+          FORCAR_INPUT: ${{ github.event.inputs.forcar }}
         run: |
-          ANO="${{ github.event.inputs.ano }}"
+          ANO="$ANO_INPUT"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
           FORCAR=""
-          [ "${{ github.event.inputs.forcar }}" = "true" ] && FORCAR="--forcar"
+          [ "$FORCAR_INPUT" = "true" ] && FORCAR="--forcar"
           python legis/crawler.py --ano "$ANO" $FORCAR
           python legis/export.py
 

@@ -47,12 +47,16 @@ jobs:
             proposituras-db-
 
       - name: Crawl incremental + export
+        env:
+          # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+          ANO_INPUT: ${{ github.event.inputs.ano }}
+          FORCAR_INPUT: ${{ github.event.inputs.forcar }}
         run: |
-          ANO="${{ github.event.inputs.ano }}"
+          ANO="$ANO_INPUT"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
           # Padrão: --forcar (re-coleta o ano corrente p/ manter situação/tramitação atualizadas)
           FORCAR="--forcar"
-          [ "${{ github.event.inputs.forcar }}" = "false" ] && FORCAR=""
+          [ "$FORCAR_INPUT" = "false" ] && FORCAR=""
           python proposituras/crawler.py --ano "$ANO" $FORCAR
           python proposituras/export.py
 
