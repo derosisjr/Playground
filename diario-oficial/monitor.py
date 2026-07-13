@@ -119,9 +119,8 @@ def linha_planilha(data_edicao: str, ato: dict, sep: str) -> list:
     return [
         ato.get("numero", ""), data_cell, ato.get("categoria", ""),
         ato.get("tipo", ""), ato.get("secretaria", ""), ato.get("objeto", ""),
-        ato.get("valor", ""), ato.get("favorecido", ""), "",
-        ato.get("risco", ""), ato.get("motivo", ""), "",
-        "Novo", ato.get("pagina", ""),
+        ato.get("valor", ""), ato.get("favorecido", ""),
+        ato.get("risco", ""), ato.get("motivo", ""), ato.get("pagina", ""),
     ]
 
 

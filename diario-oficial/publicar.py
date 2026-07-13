@@ -70,9 +70,9 @@ def linha_planilha(ato: dict, sep: str) -> list:
     return [
         ato.get("numero", ""), data_cell, ato.get("categoria", ""),
         ato.get("tipo_ato", ""), ato.get("orgao", ""), ato.get("objeto", ""),
-        ato.get("valor", ""), ato.get("partes", ""), ato.get("base_legal", ""),
+        ato.get("valor", ""), ato.get("partes", ""),
         ato.get("nivel_atencao", ""), ato.get("observacoes", ""),
-        ato.get("acao_sugerida", ""), "Novo", ato.get("pagina", ""),
+        ato.get("pagina", ""),
     ]
 
 

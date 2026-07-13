@@ -28,14 +28,15 @@ TOKEN_FILE = os.path.join(
 )
 
 ABA = "Atos do DOM"
-# Formato da planilha da skill dom-santos (decisão 2026-07-13): mesmas colunas e
-# ordem que a skill monta no Claude web. "Data DO" leva o hyperlink da edição;
-# "Status" é coluna de trabalho da equipe (o publicador grava "Novo" e nunca reescreve).
+# Formato enxuto (decisão 2026-07-13, após revisão da 1ª carga): Base Legal,
+# Ação Sugerida e Status foram removidas (a base legal vai citada dentro de
+# Observações). "Data DO" leva o hyperlink da edição. "Nº" fica OCULTA na
+# planilha (garantir_aba esconde a coluna A) mas continua gravada: é parte da
+# chave de dedup — sem ela, dois atos do mesmo tipo/órgão/dia colidiriam.
 COLUNAS = [
     "Nº", "Data DO", "Categoria", "Tipo de Ato", "Órgão/Secretaria",
-    "Objeto/Resumo", "Valor (R$)", "Partes Envolvidas", "Base Legal",
-    "Nível Atenção", "Observações/Irregularidades", "Ação Sugerida",
-    "Status", "Página DO",
+    "Objeto/Resumo", "Valor (R$)", "Partes Envolvidas",
+    "Nível Atenção", "Observações/Irregularidades", "Página DO",
 ]
 
 
@@ -115,6 +116,20 @@ def garantir_aba(sheets, sheet_id: str) -> None:
     sheets.spreadsheets().values().update(
         spreadsheetId=sheet_id, range=f"'{ABA}'!A1",
         valueInputOption="RAW", body={"values": [COLUNAS]},
+    ).execute()
+    _ocultar_coluna_numero(sheets, sheet_id)
+
+
+def _ocultar_coluna_numero(sheets, sheet_id: str) -> None:
+    """Esconde a coluna A (Nº): a equipe não precisa vê-la, mas ela sustenta a dedup."""
+    gid = _sheet_gid(sheets, sheet_id)
+    sheets.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={"requests": [{"updateDimensionProperties": {
+            "range": {"sheetId": gid, "dimension": "COLUMNS",
+                      "startIndex": 0, "endIndex": 1},
+            "properties": {"hiddenByUser": True}, "fields": "hiddenByUser",
+        }}]},
     ).execute()
 
 
