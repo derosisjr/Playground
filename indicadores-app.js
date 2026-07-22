@@ -4,18 +4,29 @@
 (function () {
   "use strict";
 
-  const ESCURO = document.documentElement.dataset.tema === "escuro";
-  const COR = {
-    gasto: "#c9a84c",
-    indicador: ESCURO ? "#7fb3e3" : "#1d6fb8",
-    ambar: "rgba(201,168,76,0.25)",
-    grade: ESCURO ? "rgba(255,255,255,0.08)" : "rgba(7,17,31,0.07)",
-    texto: ESCURO ? "#c3cdda" : "#5d6675",
-  };
+  // cores conscientes do tema claro/escuro; recalculadas no "temamudou"
+  // (não confundir com o `tema` do painel = saúde/educação)
+  let COR;
+  function definirCores() {
+    const escuro = document.documentElement.dataset.tema === "escuro";
+    COR = {
+      gasto: "#c9a84c",
+      indicador: escuro ? "#7fb3e3" : "#1d6fb8",
+      ambar: "rgba(201,168,76,0.25)",
+      grade: escuro ? "rgba(255,255,255,0.08)" : "rgba(7,17,31,0.07)",
+      texto: escuro ? "#c3cdda" : "#5d6675",
+    };
+  }
+  definirCores();
 
   let DADOS = null;
   let tema = "saude";
   let grafico = null;
+
+  window.addEventListener("temamudou", () => {
+    definirCores();
+    if (DADOS) renderGrafico();
+  });
 
   const $ = (id) => document.getElementById(id);
   const brl = (v) => "R$ " + Math.round(v).toLocaleString("pt-BR");
@@ -32,9 +43,9 @@
         renderTema();
       })
       .catch(() => {
-        $("pergunta").hidden = false;
-        $("pergunta-txt").textContent =
-          "Não foi possível carregar os dados. Tente novamente mais tarde.";
+        // #abas é seguro para o retry: renderAbas() o reconstrói no sucesso
+        Comum.estadoErro("abas",
+          "Não foi possível carregar os dados dos indicadores. Verifique a conexão.", init);
       });
   }
 

@@ -181,8 +181,10 @@ async function init() {
     if (!r.ok) throw new Error("HTTP " + r.status);
     ARTIGOS = await r.json();
   } catch (e) {
-    el("contagem").textContent =
-      "Não foi possível carregar regimento-index.json. Rode regimento/parser.py para gerá-lo.";
+    el("contagem").textContent = "";
+    // #lista é seguro para o retry: o render a reconstrói no sucesso
+    Comum.estadoErro("lista",
+      "Não foi possível carregar o Regimento. Verifique a conexão.", init);
     return;
   }
   try {

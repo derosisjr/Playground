@@ -55,18 +55,19 @@ window.Comum = (() => {
 
   // ── Tema claro/escuro ───────────────────────────────────────────────────────
   // O atributo inicial é aplicado por um snippet inline no <head> (anti-flash);
-  // aqui fica só a troca. Páginas com Chart.js recarregam p/ repintar os gráficos.
+  // aqui fica só a troca. Páginas com Chart.js escutam "temamudou" e repintam
+  // os gráficos em memória — sem reload, preservando rolagem e aba ativa.
   function temaAtual() {
     return document.documentElement.dataset.tema === "escuro" ? "escuro" : "claro";
   }
   function alternarTema() {
     const novo = temaAtual() === "escuro" ? "claro" : "escuro";
     try { localStorage.setItem("tema", novo); } catch (e) { /* modo privado */ }
-    if (window.Chart) { location.reload(); return; }
     if (novo === "escuro") document.documentElement.dataset.tema = "escuro";
     else delete document.documentElement.dataset.tema;
     document.querySelectorAll(".topnav-tema, .hub-tema").forEach((b) =>
       b.textContent = novo === "escuro" ? "☀" : "🌙");
+    window.dispatchEvent(new CustomEvent("temamudou", { detail: { escuro: novo === "escuro" } }));
   }
 
   // ── Estado na URL (links compartilháveis) ───────────────────────────────────
@@ -95,6 +96,32 @@ window.Comum = (() => {
     a.download = nomeArquivo;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // ── Toast (aviso passageiro, no lugar de alert()) ───────────────────────────
+  let toastEl = null, toastTimer = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement("div");
+      toastEl.className = "toast-comum";
+      toastEl.setAttribute("role", "status");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add("ver");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("ver"), 2600);
+  }
+
+  // ── Estado de erro padrão com "Tentar de novo" ──────────────────────────────
+  // alvo: elemento ou id; aoTentar: callback que refaz a carga (ex.: init).
+  function estadoErro(alvo, mensagem, aoTentar) {
+    const el = typeof alvo === "string" ? document.getElementById(alvo) : alvo;
+    if (!el) return;
+    el.hidden = false;
+    el.innerHTML = `<div class="estado-erro" role="alert"><p>${escapar(mensagem)}</p>` +
+      '<button type="button" class="btn">Tentar de novo</button></div>';
+    el.querySelector("button").addEventListener("click", aoTentar);
   }
 
   // ── Acessibilidade de gráficos ──────────────────────────────────────────────
@@ -240,14 +267,21 @@ window.Comum = (() => {
     const q = paletaInput.value;
     const grupos = buscarPaleta(q);
     planos = [];
+    // aviso honesto quando alguma base falhou (antes era omitida em silêncio)
+    const falhas = FONTES.filter((f) => cacheFontes[f.id] === "erro").map((f) => f.rotulo);
+    const avisoFalhas = falhas.length
+      ? `<div class="paleta-vazio paleta-falhas">⚠ Fora do ar agora: ${escapar(falhas.join(", "))}.</div>`
+      : "";
     if (!norm(q).trim()) {
       paletaRes.innerHTML = '<div class="paleta-vazio">Digite para buscar em Despesas, ' +
         "Proposituras, Legislação, Requerimentos, Regimento, Endividamento e Indicadores.<br>" +
-        'Dica: <b>art 79</b> abre o artigo direto.</div>';
+        'Dica: <b>art 79</b> abre o artigo direto.</div>' + avisoFalhas;
+      atualizarAtivo();
       return;
     }
     if (!grupos.length) {
-      paletaRes.innerHTML = '<div class="paleta-vazio">Nada encontrado nas bases do site.</div>';
+      paletaRes.innerHTML = '<div class="paleta-vazio">Nada encontrado nas bases do site.</div>' + avisoFalhas;
+      atualizarAtivo();
       return;
     }
     let html = "";
@@ -257,13 +291,21 @@ window.Comum = (() => {
       for (const h of g.hits) {
         const i = planos.length;
         planos.push(h);
-        html += `<a class="paleta-item${i === sel ? " sel" : ""}" href="${escapar(h.url)}" ` +
+        html += `<a class="paleta-item${i === sel ? " sel" : ""}" id="paleta-op-${i}" href="${escapar(h.url)}" ` +
           `data-i="${i}" role="option" aria-selected="${i === sel}">` +
           `<span class="pi-t">${escapar(h.t)}</span>` +
           (h.s ? `<span class="pi-s">${escapar(h.s)}</span>` : "") + "</a>";
       }
     }
-    paletaRes.innerHTML = html;
+    paletaRes.innerHTML = html + avisoFalhas;
+    atualizarAtivo();
+  }
+
+  // combobox: aponta o leitor de tela para a opção ativa sem mover o foco
+  function atualizarAtivo() {
+    if (!paletaInput) return;
+    if (planos.length) paletaInput.setAttribute("aria-activedescendant", "paleta-op-" + sel);
+    else paletaInput.removeAttribute("aria-activedescendant");
   }
 
   function montarPaleta() {
@@ -274,8 +316,10 @@ window.Comum = (() => {
     paletaFundo.innerHTML =
       '<div class="paleta" role="dialog" aria-modal="true" aria-label="Busca em todas as bases">' +
       '<input class="paleta-q" type="search" autocomplete="off" spellcheck="false" ' +
+      'role="combobox" aria-expanded="true" aria-haspopup="listbox" ' +
+      'aria-controls="paleta-listbox" aria-autocomplete="list" ' +
       'placeholder="Buscar em tudo: favorecido, lei, projeto, art. 79…" />' +
-      '<div class="paleta-res" role="listbox"></div>' +
+      '<div class="paleta-res" id="paleta-listbox" role="listbox" aria-label="Resultados"></div>' +
       '<div class="paleta-dicas"><span>↑↓ navegar</span><span>↵ abrir</span><span>esc fechar</span></div>' +
       "</div>";
     document.body.appendChild(paletaFundo);
@@ -308,6 +352,7 @@ window.Comum = (() => {
       a.setAttribute("aria-selected", String(ativo));
       if (ativo) a.scrollIntoView({ block: "nearest" });
     });
+    atualizarAtivo();
   }
 
   let focoAnterior = null;  // p/ devolver o foco a quem abriu a paleta
@@ -346,6 +391,14 @@ window.Comum = (() => {
     }
   });
 
+  // ── PWA: service worker (offline com a última versão vista) ─────────────────
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .catch(() => { /* contexto sem suporte: o site segue normal, só sem offline */ });
+    });
+  }
+
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, POP_SANTOS };
+           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, POP_SANTOS };
 })();

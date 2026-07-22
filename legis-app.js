@@ -132,8 +132,9 @@ async function init() {
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     NORMAS = await resp.json();
   } catch (e) {
-    el("contagem").textContent =
-      "Não foi possível carregar legis-index.json. Rode legis/export.py para gerá-lo.";
+    el("contagem").textContent = "";
+    Comum.estadoErro("stats",
+      "Não foi possível carregar a base de legislação. Verifique a conexão.", init);
     return;
   }
   preencherSelects();

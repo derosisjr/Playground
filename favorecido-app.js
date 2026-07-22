@@ -3,12 +3,23 @@
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
                "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const ESCURO = document.documentElement.dataset.tema === "escuro";
-const NAVY = ESCURO ? "#9fb6d9" : "#07111f", GOLD = "#c9a84c";
-if (window.Chart) {
-  Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
-  Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+// cores conscientes do tema; recalculadas no "temamudou" (repinta sem reload)
+let ESCURO, NAVY;
+const GOLD = "#c9a84c";
+function definirCores() {
+  ESCURO = document.documentElement.dataset.tema === "escuro";
+  NAVY = ESCURO ? "#9fb6d9" : "#07111f";
+  if (window.Chart) {
+    Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
+    Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+  }
 }
+definirCores();
+let DOSSIE = null;
+window.addEventListener("temamudou", () => {
+  definirCores();
+  if (DOSSIE) renderGraficosFav(DOSSIE);
+});
 const el = (id) => document.getElementById(id);
 const esc = (s) => (s == null ? "" : String(s)).replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -29,26 +40,12 @@ function falha(msg) {
     ' <br><br><a href="./despesas.html#favorecidos">← Voltar ao painel de despesas</a>';
 }
 
-function render(d) {
-  document.title = `${d.nome} — Raio-X do favorecido`;
-  el("fav-nome").textContent = d.nome;
-  el("fav-doc").textContent = d.documento || "documento não informado";
-  el("fav-rank").textContent = `#${d.rank} entre os favorecidos do mandato`;
-  if (d.atualizado_em)
-    el("fav-atualizado").textContent = "atualizado " + new Date(d.atualizado_em).toLocaleDateString("pt-BR");
-
-  // cards
-  const anos = Object.keys(d.por_ano || {}).sort();
-  const ultimoAno = anos[anos.length - 1];
-  const cards = [
-    { rotulo: "Total no mandato", valor: compacto(d.total), sub: `${(d.qtd || 0).toLocaleString("pt-BR")} pagamentos` },
-    { rotulo: `Em ${ultimoAno || "—"}`, valor: compacto(d.por_ano?.[ultimoAno] || 0), sub: "exercício corrente" },
-    { rotulo: "Presença", valor: `${d.meses || 0} meses`, sub: "com pagamento recebido" },
-    { rotulo: "Alertas fiscais", valor: String((d.alertas || []).length), sub: "envolvendo este favorecido" },
-  ];
-  el("stats").innerHTML = cards.map((c) =>
-    `<div class="stat"><div class="rotulo">${esc(c.rotulo)}</div>
-     <div class="valor">${esc(c.valor)}</div><div class="sub">${esc(c.sub)}</div></div>`).join("");
+// gráficos separados do resto do render: o "temamudou" repinta só esta parte
+function renderGraficosFav(d) {
+  ["ch-mensal", "ch-funcao"].forEach((id) => {
+    const c = Chart.getChart(id);
+    if (c) c.destroy();
+  });
 
   // gráfico mensal
   const serie = d.serie_mensal || [];
@@ -82,6 +79,31 @@ function render(d) {
   Comum.chartAcessivel("ch-funcao",
     "Distribuição do valor recebido por função de governo.",
     ["Função", "Recebido"], fn.map((f) => [f.funcao, compacto(f.valor)]));
+}
+
+function render(d) {
+  DOSSIE = d;
+  document.title = `${d.nome} — Raio-X do favorecido`;
+  el("fav-nome").textContent = d.nome;
+  el("fav-doc").textContent = d.documento || "documento não informado";
+  el("fav-rank").textContent = `#${d.rank} entre os favorecidos do mandato`;
+  if (d.atualizado_em)
+    el("fav-atualizado").textContent = "atualizado " + new Date(d.atualizado_em).toLocaleDateString("pt-BR");
+
+  // cards
+  const anos = Object.keys(d.por_ano || {}).sort();
+  const ultimoAno = anos[anos.length - 1];
+  const cards = [
+    { rotulo: "Total no mandato", valor: compacto(d.total), sub: `${(d.qtd || 0).toLocaleString("pt-BR")} pagamentos` },
+    { rotulo: `Em ${ultimoAno || "—"}`, valor: compacto(d.por_ano?.[ultimoAno] || 0), sub: "exercício corrente" },
+    { rotulo: "Presença", valor: `${d.meses || 0} meses`, sub: "com pagamento recebido" },
+    { rotulo: "Alertas fiscais", valor: String((d.alertas || []).length), sub: "envolvendo este favorecido" },
+  ];
+  el("stats").innerHTML = cards.map((c) =>
+    `<div class="stat"><div class="rotulo">${esc(c.rotulo)}</div>
+     <div class="valor">${esc(c.valor)}</div><div class="sub">${esc(c.sub)}</div></div>`).join("");
+
+  renderGraficosFav(d);
 
   // alertas
   const alertas = d.alertas || [];

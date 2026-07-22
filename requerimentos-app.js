@@ -135,8 +135,9 @@ async function init() {
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     ITENS = await resp.json();
   } catch (e) {
-    el("contagem").textContent =
-      "Não foi possível carregar requerimentos-index.json. Rode respostas-executivo/export.py para gerá-lo.";
+    el("contagem").textContent = "";
+    Comum.estadoErro("stats",
+      "Não foi possível carregar os requerimentos. Verifique a conexão.", init);
     return;
   }
   preencherSelects();

@@ -7,9 +7,11 @@
     <title>Escuta Pública — Qual a prioridade do seu bairro?</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <meta name="description" content="Escuta pública do mandato: vote nas prioridades do seu bairro em menos de 1 minuto — sem cadastro, sem nome, sem telefone." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
@@ -21,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -66,7 +68,7 @@
       .ponto.atual { border-color: var(--gold); transform: scale(1.25); }
 
       /* A cédula */
-      .cedula { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      .cedula { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
         padding: 26px 24px 22px; margin: 14px 0 0; min-height: 220px;
         display: flex; flex-direction: column; }
       .cedula .num { font-family: "IBM Plex Mono", monospace; font-size: 11px;
@@ -76,7 +78,7 @@
       .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
       .botoes .pular { grid-column: 1 / -1; }
       .voto { font: inherit; font-size: 16px; font-weight: 800; padding: 16px 10px;
-        border-radius: 12px; border: 2px solid var(--line); background: var(--card);
+        border-radius: var(--r-md); border: 2px solid var(--line); background: var(--card);
         color: var(--tinta); cursor: pointer; min-height: 56px; }
       .voto.sim { border-color: var(--sim); color: var(--sim); }
       .voto.nao { border-color: var(--nao); color: var(--nao); }
@@ -88,9 +90,9 @@
       .bairro-box { margin: 18px 0 0; }
       .bairro-box label { font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px; }
       .bairro-box select { width: 100%; font: inherit; font-size: 15px; padding: 12px;
-        border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--tinta); }
+        border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--tinta); }
       .comecar { width: 100%; margin-top: 16px; font: inherit; font-size: 16px; font-weight: 800;
-        padding: 15px; border-radius: 12px; border: none; background: var(--navy);
+        padding: 15px; border-radius: var(--r-md); border: none; background: var(--navy);
         color: #fff; cursor: pointer; }
       .comecar:hover { background: var(--navy3); }
 
@@ -107,14 +109,14 @@
       .barra .num { font-family: "IBM Plex Mono", monospace; font-size: 11px;
         color: var(--muted); margin-top: 3px; }
 
-      .sugestao { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      .sugestao { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
         padding: 20px 22px; margin-top: 18px; }
       .sugestao h2 { font-family: "Fraunces", serif; font-size: 17px; margin: 0 0 8px; }
       .sugestao textarea { width: 100%; min-height: 84px; font: inherit; font-size: 14px;
-        border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical;
+        border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px; resize: vertical;
         background: var(--bg); color: var(--tinta); }
       .sugestao button { margin-top: 10px; font: inherit; font-size: 14px; font-weight: 800;
-        padding: 11px 18px; border-radius: 10px; border: none; background: var(--navy);
+        padding: 11px 18px; border-radius: var(--r-sm); border: none; background: var(--navy);
         color: #fff; cursor: pointer; }
       .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
         background: var(--navy); color: #fff; font-size: 14px; font-weight: 700;
@@ -124,7 +126,7 @@
 
       .metodo { color: var(--muted); font-size: 12px; margin-top: 24px; line-height: 1.7;
         border-top: 1px dashed var(--line); padding-top: 14px; }
-      .aviso-teste { border: 1px solid var(--gold); border-left-width: 4px; border-radius: 10px;
+      .aviso-teste { border: 1px solid var(--gold); border-left-width: 4px; border-radius: var(--r-sm);
         background: var(--card); padding: 12px 16px; margin-top: 20px; font-size: 13.5px;
         line-height: 1.6; }
       .aviso-teste[hidden] { display: none; }
@@ -133,7 +135,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js"></script>
+    <script src="./comum.js?v=2"></script>
     <script>Comum.topbar("consulta.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -195,6 +197,6 @@
     </div>
 
     <div class="toast" id="toast" role="status"></div>
-    <script src="./consulta-app.js"></script>
+    <script src="./consulta-app.js?v=2"></script>
   </body>
 </html>

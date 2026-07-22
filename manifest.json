@@ -1,0 +1,15 @@
+{
+  "name": "Gabinete Rui de Rosis Jr. — Transparência e Fiscalização",
+  "short_name": "Transparência Santos",
+  "description": "Painéis de fiscalização do gabinete: despesas, endividamento, proposituras, legislação, requerimentos e regimento da Câmara de Santos.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1e9",
+  "theme_color": "#07111f",
+  "icons": [
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

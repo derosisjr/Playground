@@ -7,6 +7,8 @@
     <title>Raio-X do favorecido — Despesas de Santos</title>
     <meta name="description" content="Dossiê de pagamentos da Prefeitura de Santos a um favorecido: série mensal, funções, últimos pagamentos e alertas fiscais." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
@@ -17,9 +19,9 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./comum.css" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
@@ -51,13 +53,13 @@
         font-family: "IBM Plex Mono", monospace; display: flex; flex-wrap: wrap; gap: 8px 18px; }
       .hero-sub .rank { color: var(--gold-bright); }
 
-      .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
         padding: 16px 18px; margin-top: 18px; }
       .box h3 { margin: 0 0 12px; font-size: 15px; }
       .box canvas { max-height: 260px; }
 
       .alerta { border: 1px solid var(--line); border-left: 4px solid var(--gold);
-        border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: var(--card); }
+        border-radius: var(--r-sm); padding: 12px 14px; margin-top: 10px; background: var(--card); }
       .alerta.alta { border-left-color: var(--red); }
       .alerta .sev { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: .1em; color: var(--red); margin-right: 8px; }
@@ -74,7 +76,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js"></script>
+    <script src="./comum.js?v=2"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -127,6 +129,6 @@
       </div>
     </div>
 
-    <script src="./favorecido-app.js"></script>
+    <script src="./favorecido-app.js?v=2"></script>
   </body>
 </html>

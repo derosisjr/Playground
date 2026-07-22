@@ -203,8 +203,9 @@ async function init() {
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     PROPS = await resp.json();
   } catch (e) {
-    el("contagem").textContent =
-      "Não foi possível carregar proposituras-index.json. Rode proposituras/export.py para gerá-lo.";
+    el("contagem").textContent = "";
+    Comum.estadoErro("stats",
+      "Não foi possível carregar as proposituras. Verifique a conexão.", init);
     return;
   }
   preencherSelects();

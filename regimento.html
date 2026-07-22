@@ -7,9 +7,11 @@
     <title>Regimento Interno — Câmara de Santos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <meta name="description" content="Consulta relâmpago ao Regimento Interno da Câmara de Santos por artigo ou palavra-chave, com jurisprudência e doutrina anotadas." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
@@ -21,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -58,7 +60,7 @@
         padding: 16px 0 10px; margin-top: 6px; }
       .busca-wrap { position: relative; }
       #q { width: 100%; padding: 14px 16px 14px 44px; border: 1px solid var(--line);
-        border-radius: 12px; background: var(--card); font: inherit; font-size: 16px; color: var(--navy); }
+        border-radius: var(--r-md); background: var(--card); font: inherit; font-size: 16px; color: var(--navy); }
       #q:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
       .busca-wrap::before { content: "⌕"; position: absolute; left: 15px; top: 50%;
         transform: translateY(-50%); font-size: 20px; color: var(--muted); }
@@ -80,7 +82,7 @@
       .h-secao { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .04em;
         text-transform: uppercase; color: var(--muted); text-align: center; margin: 10px 0 2px; }
 
-      .artigo { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      .artigo { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
         padding: 14px 18px; margin: 10px 0; scroll-margin-top: 80px; }
       .artigo.com-nota { border-left: 3px solid var(--gold); }
       .art-num { font-family: "IBM Plex Mono", monospace; font-weight: 700; color: var(--navy);
@@ -98,7 +100,7 @@
       /* Caixa de notas — unico elemento expansivel */
       .notas-box { margin-top: 12px; }
       .notas-toggle { display: flex; align-items: center; gap: 10px; width: 100%;
-        background: #faf7ed; border: 1px solid var(--line); border-radius: 8px;
+        background: #faf7ed; border: 1px solid var(--line); border-radius: var(--r-sm);
         padding: 9px 12px; cursor: pointer; font: inherit; text-align: left; color: var(--navy); }
       .notas-toggle:hover { border-color: var(--gold); background: #f7f1df; }
       .nt-ico { color: var(--gold); font-size: 16px; }
@@ -122,12 +124,12 @@
 
       .vazio { padding: 50px 20px; text-align: center; color: var(--muted); }
       .mais { display: block; margin: 16px auto 0; padding: 10px 18px; border: 1px solid var(--line);
-        border-radius: 10px; background: var(--card); font: inherit; cursor: pointer; }
+        border-radius: var(--r-sm); background: var(--card); font: inherit; cursor: pointer; }
       .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.6; }
     </style>
   </head>
   <body>
-    <script src="./comum.js"></script>
+    <script src="./comum.js?v=2"></script>
     <script>Comum.topbar("regimento.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -167,6 +169,6 @@
       </p>
     </div>
 
-    <script src="./regimento-app.js"></script>
+    <script src="./regimento-app.js?v=2"></script>
   </body>
 </html>

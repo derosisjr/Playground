@@ -7,10 +7,12 @@
     <title>Semáforo Fiscal — Endividamento da Prefeitura de Santos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <meta name="description" content="A dívida da Prefeitura de Santos em um relance: semáforo dos limites da Lei de Responsabilidade Fiscal, evolução da dívida, precatórios e despesa com pessoal — dados oficiais do Tesouro Nacional." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
@@ -22,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -86,7 +88,7 @@
       /* ── Semáforo Fiscal — assinatura do painel ─────────────────────── */
       .semaforo { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
       .mostrador { display: grid; grid-template-columns: 44px 1fr; background: var(--card);
-        border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+        border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
       /* trilho do farol: 3 lâmpadas empilhadas; a do estado atual acende */
       .farol { background: var(--navy); display: flex; flex-direction: column;
         align-items: center; justify-content: center; gap: 10px; padding: 14px 0; }
@@ -131,7 +133,7 @@
       .m-rodape b { color: inherit; }
 
       /* "Em resumo" */
-      .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+      .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
       .box canvas { height: 300px !important; width: 100% !important; }
       .resumo-box { border-left: 3px solid var(--gold); margin-top: 16px; }
@@ -144,7 +146,7 @@
       @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
 
       /* tabela quadrimestral */
-      .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; }
+      .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); overflow-x: auto; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       thead th { background: var(--navy2); color: #fff; text-align: right; padding: 10px 12px; font-weight: 700; white-space: nowrap; }
       thead th:first-child { text-align: left; }
@@ -185,7 +187,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js"></script>
+    <script src="./comum.js?v=2"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -211,7 +213,10 @@
         <b>Amarelo</b>: acima do nível de alerta da LRF. <b>Vermelho</b>: limite legal estourado.
       </p>
       <div class="semaforo" id="semaforo-cards">
-        <div class="vazio">Carregando o semáforo…</div>
+        <div class="skel" style="height:230px" aria-hidden="true"></div>
+        <div class="skel" style="height:230px" aria-hidden="true"></div>
+        <div class="skel" style="height:230px" aria-hidden="true"></div>
+        <span class="sr-only">Carregando o semáforo…</span>
       </div>
       <div class="box resumo-box" id="em-resumo" hidden>
         <p class="resumo-rotulo">Em resumo</p>
@@ -311,6 +316,6 @@
       </p>
     </div>
 
-    <script src="./endividamento-app.js?v=1"></script>
+    <script src="./endividamento-app.js?v=2"></script>
   </body>
 </html>

@@ -1,20 +1,32 @@
 // Semáforo Fiscal — painel de endividamento (vanilla + Chart.js)
 // Consome endividamento-index.json (gerado por endividamento/export.py).
 
-const ESCURO = document.documentElement.dataset.tema === "escuro";
-// dourado mais escuro no tema claro: a linha fina precisa de contraste ≥3:1
-const NAVY = ESCURO ? "#9fb6d9" : "#07111f", GOLD = ESCURO ? "#c9a84c" : "#967c2f";
-const FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
-// status nos gráficos (linhas de limite/alerta) — mesmos tokens do CSS
-const COR_LIMITE = ESCURO ? "#f87171" : "#b42318";
-const COR_ALERTA = ESCURO ? "#fbbf24" : "#b54708";
-const COR_VERDE = ESCURO ? "#4ade80" : "#067647";
-if (window.Chart) {
-  Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
-  Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+// cores conscientes do tema; recalculadas no "temamudou" (repinta sem reload)
+let ESCURO, NAVY, GOLD, FILL_SERIE, COR_LIMITE, COR_ALERTA, COR_VERDE;
+function definirCores() {
+  ESCURO = document.documentElement.dataset.tema === "escuro";
+  // dourado mais escuro no tema claro: a linha fina precisa de contraste ≥3:1
+  NAVY = ESCURO ? "#9fb6d9" : "#07111f";
+  GOLD = ESCURO ? "#c9a84c" : "#967c2f";
+  FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
+  // status nos gráficos (linhas de limite/alerta) — mesmos tokens do CSS
+  COR_LIMITE = ESCURO ? "#f87171" : "#b42318";
+  COR_ALERTA = ESCURO ? "#fbbf24" : "#b54708";
+  COR_VERDE = ESCURO ? "#4ade80" : "#067647";
+  if (window.Chart) {
+    Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
+    Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+  }
 }
+definirCores();
+window.addEventListener("temamudou", () => {
+  definirCores();
+  if (DADOS) renderGraficos();
+  if (SD) desenharServicoDivida();
+});
 
 let DADOS = null;
+let SD = null;   // bloco servico_divida do despesas-index.json (cacheado p/ repintar)
 
 // ── Formatação ───────────────────────────────────────────────────────────────
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -36,9 +48,8 @@ async function init() {
     if (!r.ok) throw new Error("HTTP " + r.status);
     DADOS = await r.json();
   } catch (e) {
-    document.getElementById("semaforo-cards").innerHTML =
-      '<div class="vazio">Não foi possível carregar os dados do painel. ' +
-      "Tente recarregar a página; se persistir, a fonte pode estar fora do ar.</div>";
+    Comum.estadoErro("semaforo-cards",
+      "Não foi possível carregar os dados do painel. Se persistir, a fonte pode estar fora do ar.", init);
     document.getElementById("dados-vivos").hidden = true;
     return;
   }
@@ -139,6 +150,11 @@ function opts(fmtY, comLegenda) {
 
 function renderGraficos() {
   if (!window.Chart) return;
+  // rerender (troca de tema): solta os charts anteriores antes de recriar
+  ["ch-divida", "ch-dcl-pct", "ch-pessoal", "ch-precatorios", "ch-caixa"].forEach(id => {
+    const c = Chart.getChart(id);
+    if (c) c.destroy();
+  });
   const S = DADOS.serie || [];
   const labels = S.map(rotuloQ);
   const n = S.length;
@@ -273,15 +289,25 @@ function nomeCredor(s) {
 }
 
 async function renderServicoDivida() {
-  let sd;
   try {
     const r = await fetch("./despesas-index.json?v=" + Date.now());
     if (!r.ok) throw new Error("HTTP " + r.status);
-    sd = (await r.json()).servico_divida;
+    const sd = (await r.json()).servico_divida;
     if (!sd || !sd.credores || !sd.credores.length) return;
+    SD = sd;
   } catch (e) { return; }  // sem a base de despesas, a seção simplesmente não aparece
   document.getElementById("sec-servico").hidden = false;
-  if (!window.Chart) return;
+  desenharServicoDivida();
+}
+
+// desenho separado da carga: o "temamudou" repinta usando o SD cacheado
+function desenharServicoDivida() {
+  if (!window.Chart || !SD) return;
+  ["ch-credores", "ch-servico-ano"].forEach(id => {
+    const c = Chart.getChart(id);
+    if (c) c.destroy();
+  });
+  const sd = SD;
 
   // Credores (barra horizontal)
   const cred = sd.credores.filter(c => c.valor >= 1e5).slice(0, 8);

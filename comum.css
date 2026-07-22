@@ -12,6 +12,10 @@
   --ink: #0c1626;
   --muted: #5d6675;
   --line: #e2dccd;
+  /* escala de raios — controles (sm), caixas/cartões (md), modais (lg) */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 16px;
 }
 
 /* ── Modo escuro ─────────────────────────────────────────────────────────────
@@ -75,6 +79,36 @@ p { text-wrap: pretty; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
+/* ── Skeleton de carregamento (base clara; a variante escura sobrescreve) ───── */
+.skel {
+  background: linear-gradient(90deg, rgba(7,17,31,0.06) 25%, rgba(7,17,31,0.13) 50%, rgba(7,17,31,0.06) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--r-sm);
+  animation: skel-onda 1.3s linear infinite;
+}
+@keyframes skel-onda { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+/* ── Estado de erro com "tentar de novo" (Comum.estadoErro) ─────────────────── */
+.stats > .estado-erro { grid-column: 1 / -1; } /* ocupa a linha inteira na grade de KPIs */
+.estado-erro {
+  border: 1px solid var(--line); border-left: 4px solid var(--gold);
+  border-radius: var(--r-md); background: var(--card);
+  padding: 16px 18px; margin: 14px 0;
+}
+.estado-erro p { margin: 0 0 10px; font-size: 14px; line-height: 1.55; color: var(--ink); }
+
+/* ── Toast (Comum.toast) ────────────────────────────────────────────────────── */
+.toast-comum {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+  background: var(--navy); color: #fff; font-size: 14px; font-weight: 700;
+  padding: 12px 22px; border-radius: 999px; z-index: 120;
+  opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  max-width: min(92vw, 480px); text-align: center;
+}
+.toast-comum.ver { opacity: 1; }
+html[data-tema="escuro"] .toast-comum { background: var(--gold); color: #071018; }
+
 /* chevron dos expansíveis (Regimento) */
 .notas-toggle .chev { display: inline-block; transition: transform .25s ease; }
 .notas-toggle.aberto .chev { transform: rotate(90deg); }
@@ -104,6 +138,13 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
 .topnav-in::-webkit-scrollbar { display: none; }
+/* pista de que há mais itens na rolagem (a scrollbar fica oculta) */
+@media (max-width: 900px) {
+  .topnav-in {
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
+  }
+}
 .topnav a {
   color: #8794a6; text-decoration: none; white-space: nowrap;
   font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
@@ -124,7 +165,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 .stats .stat {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 14px 16px; position: relative; overflow: hidden;
 }
 .stats .stat::before {
@@ -141,7 +182,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
 .acoes { display: flex; gap: 8px; }
 .btn {
-  padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--ink);
 }
 .btn:hover { border-color: var(--gold); }
@@ -176,7 +217,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .paleta-fundo[hidden] { display: none; }
 .paleta {
   width: 100%; max-width: 640px; background: var(--card, #fffdf8);
-  border: 1px solid var(--gold); border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--gold); border-radius: var(--r-md); overflow: hidden;
   box-shadow: 0 30px 90px -20px rgba(4, 9, 15, 0.65);
   display: flex; flex-direction: column; max-height: min(65vh, 560px);
 }
@@ -214,7 +255,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
     display: block; width: 100%;
   }
   .tabela-resp tbody tr {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
     margin-bottom: 12px; padding: 6px 4px;
   }
   .tabela-resp tbody td {

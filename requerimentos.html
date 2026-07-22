@@ -7,9 +7,11 @@
     <title>Requerimentos & Respostas — Câmara de Santos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <meta name="description" content="Requerimentos do mandato e as respostas do Executivo, com busca por número, assunto e ano." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
@@ -21,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -63,14 +65,14 @@
       @media (max-width: 820px) { .filtros { grid-template-columns: 1fr 1fr; } }
       .filtros input, .filtros select {
         width: 100%; padding: 11px 12px; border: 1px solid var(--line);
-        border-radius: 10px; background: var(--card); font: inherit; color: var(--navy); }
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy); }
       .filtros input:focus, .filtros select:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
       .barra { display: flex; align-items: center; justify-content: space-between;
         gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
       .tabela-wrap { background: var(--card); border: 1px solid var(--line);
         /* clip-path no lugar de overflow:hidden — overflow mataria o sticky do thead */
-        border-radius: 14px; clip-path: inset(0 round 14px); }
+        border-radius: var(--r-md); clip-path: inset(0 round var(--r-md)); }
       @media (max-width: 760px) {
         .tabela-wrap { border: none; background: transparent; border-radius: 0; clip-path: none; }
       }
@@ -89,11 +91,11 @@
       .vazio { padding: 40px; text-align: center; color: var(--muted); }
       .rodape { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.5; }
       .mais { display: block; margin: 14px auto 0; padding: 10px 18px; border: 1px solid var(--line);
-        border-radius: 10px; background: var(--card); font: inherit; cursor: pointer; }
+        border-radius: var(--r-sm); background: var(--card); font: inherit; cursor: pointer; }
     </style>
   </head>
   <body>
-    <script src="./comum.js"></script>
+    <script src="./comum.js?v=2"></script>
     <script>Comum.topbar("requerimentos.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -108,7 +110,12 @@
     </header>
 
     <div class="shell">
-      <div class="stats" id="stats"></div>
+      <div class="stats" id="stats">
+        <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
+        <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
+        <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
+        <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
+      </div>
 
       <div class="filtros">
         <input id="q" type="search" placeholder="Buscar por número, assunto ou palavra-chave..." />
@@ -149,6 +156,6 @@
       </p>
     </div>
 
-    <script src="./requerimentos-app.js"></script>
+    <script src="./requerimentos-app.js?v=2"></script>
   </body>
 </html>

@@ -3,16 +3,26 @@
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
                "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-// cores dos gráficos conscientes do tema (navy puro sumiria no fundo escuro)
-const ESCURO = document.documentElement.dataset.tema === "escuro";
-const NAVY = ESCURO ? "#9fb6d9" : "#07111f", GOLD = "#c9a84c";
-const FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
-const PALETA = [ESCURO ? "#9fb6d9" : "#0a1628", "#c9a84c", "#8d9aad", "#5b8def", "#e08a3c",
-                "#2fa79a", "#a78bfa", "#e0564a", "#38bdf8", "#84cc16"];
-if (window.Chart) {
-  Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
-  Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+// cores dos gráficos conscientes do tema (navy puro sumiria no fundo escuro);
+// recalculadas no evento "temamudou" do Comum — os charts repintam sem reload
+let ESCURO, NAVY, FILL_SERIE, PALETA;
+const GOLD = "#c9a84c";
+function definirCores() {
+  ESCURO = document.documentElement.dataset.tema === "escuro";
+  NAVY = ESCURO ? "#9fb6d9" : "#07111f";
+  FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
+  PALETA = [ESCURO ? "#9fb6d9" : "#0a1628", "#c9a84c", "#8d9aad", "#5b8def", "#e08a3c",
+            "#2fa79a", "#a78bfa", "#e0564a", "#38bdf8", "#84cc16"];
+  if (window.Chart) {
+    Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
+    Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
+  }
 }
+definirCores();
+window.addEventListener("temamudou", () => {
+  definirCores();
+  if (DADOS) renderGraficos();
+});
 
 let DADOS = null;
 let favSort = { col: "valor", dir: "desc" };
@@ -34,8 +44,8 @@ async function init() {
     const r = await fetch("./despesas-index.json?v=" + Date.now());
     DADOS = await r.json();
   } catch (e) {
-    document.getElementById("stats").innerHTML =
-      '<div class="stat"><div class="rotulo">Erro</div><div class="sub">Não foi possível carregar despesas-index.json. Rode o export.</div></div>';
+    Comum.estadoErro("stats",
+      "Não foi possível carregar os dados de despesas. Verifique a conexão.", init);
     return;
   }
   renderStats();
@@ -117,6 +127,11 @@ function desviosSerie(serie) {
 }
 
 function renderGraficos() {
+  // rerender (troca de tema): solta os charts anteriores antes de recriar
+  ["ch-mensal", "ch-funcao", "ch-fonte", "ch-unidade"].forEach(id => {
+    const c = Chart.getChart(id);
+    if (c) c.destroy();
+  });
   // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque
   const serie = DADOS.series_mensais;
   const desvios = desviosSerie(serie);
@@ -523,7 +538,7 @@ function ligarDetalhe() {
 
 async function carregarDetalhe() {
   const sel = mesesSelecionados();
-  if (!sel.length) { alert("Selecione ao menos um mês."); return; }
+  if (!sel.length) { Comum.toast("Selecione ao menos um mês."); return; }
   const res = document.getElementById("det-resultado");
   const carregando = document.getElementById("det-carregando");
   res.hidden = true; carregando.hidden = false;
@@ -629,7 +644,7 @@ function baixarCsv(campos, rows, nomeArquivo) {
 }
 
 function exportarDetCsv() {
-  if (!detFiltradas.length) { alert("Nada para exportar."); return; }
+  if (!detFiltradas.length) { Comum.toast("Nada para exportar."); return; }
   baixarCsv(detCampos, detFiltradas, "despesas-detalhe.csv");
 }
 
@@ -748,7 +763,7 @@ function ligarFicha() {
   document.getElementById("fav-anterior").addEventListener("click", () => { favFicha.pag--; renderFicha(); });
   document.getElementById("fav-proxima").addEventListener("click", () => { favFicha.pag++; renderFicha(); });
   document.getElementById("fav-csv").addEventListener("click", () => {
-    if (!favFicha.rows.length) { alert("Nada para exportar."); return; }
+    if (!favFicha.rows.length) { Comum.toast("Nada para exportar."); return; }
     const nomeArq = "favorecido-" + soDigitos(favFicha.doc || favFicha.nome).slice(0, 20) + ".csv";
     baixarCsv(favFicha.campos, favFicha.rows, nomeArq);
   });
