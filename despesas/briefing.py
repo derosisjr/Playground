@@ -35,6 +35,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import export  # mesmo diretório: reusa conectar(), alertas(), _q()
+from formato import brl, compacto, pct, eh_ente_publico  # formatação/classificação únicas
 
 for _s in (sys.stdout, sys.stderr):
     try:
@@ -49,30 +50,6 @@ TOP = 10
 
 
 # ── Formatação ────────────────────────────────────────────────────────────────
-def brl(v) -> str:
-    return "R$ " + f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def compacto(v) -> str:
-    v = v or 0
-    a = abs(v)
-    if a >= 1e9:
-        return "R$ " + f"{v/1e9:.2f}".replace(".", ",") + " bi"
-    if a >= 1e6:
-        return "R$ " + f"{v/1e6:.1f}".replace(".", ",") + " mi"
-    if a >= 1e3:
-        return "R$ " + f"{v/1e3:.0f}".replace(".", ",") + " mil"
-    return brl(v)
-
-
-def pct(novo, velho) -> str:
-    if not velho:
-        return "—"
-    p = 100 * (novo - velho) / velho
-    seta = "▲" if p > 0 else ("▼" if p < 0 else "•")
-    return f"{seta} {abs(p):.0f}%"
-
-
 def data_br(iso: str) -> str:
     try:
         return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -80,36 +57,9 @@ def data_br(iso: str) -> str:
         return iso or ""
 
 
-# ── Classificação "ente público" × "fornecedores/terceiros" ───────────────────
-# Repasses/retenções a entes públicos (municipais, estaduais e federais) têm
-# natureza distinta de um pagamento a fornecedor — não é despesa de "compra".
-# Nada é filtrado; só separado em tabelas próprias. Heurística por nome do
-# favorecido (sem acento, maiúsculo).
-PUBLICO_KW = [
-    "MUNICIPIO", "PREFEITURA", "CAMARA MUNICIPAL",
-    "INSTITUTO DE PREVIDENCIA", "PREVIDENCIA SOCIAL DOS SERVIDORES", "IPREMM",
-    "CAIXA DE ASSIST", "CAPEP",
-    "FUNDACAO ARQUIVO E MEMORIA", "FUNDACAO PARQUE TECNOLOGICO",
-    "FUNDACAO PRO-ESPORTE", "FUPES",
-    "INSS", "INSTITUTO NACIONAL DO SEGURO",
-    "CAIXA ECONOMICA FEDERAL", "MINISTERIO", "FAZENDA NACIONAL",
-    "RECEITA FEDERAL", "SECRETARIA DA RECEITA", "TESOURO NACIONAL",
-    "GOVERNO DO ESTADO", "ESTADO DE SAO PAULO", "FAZENDA DO ESTADO",
-    "FUNDO DE GARANTIA", "FGTS", "PASEP",
-]
-
-
-def _semac(s) -> str:
-    import unicodedata
-    s = "" if s is None else str(s)
-    return "".join(c for c in unicodedata.normalize("NFD", s)
-                   if unicodedata.category(c) != "Mn").upper()
-
-
-def eh_publico(nome) -> bool:
-    n = _semac(nome)
-    return any(kw in n for kw in PUBLICO_KW)
-
+# Repasses/retenções a entes públicos têm natureza distinta de pagamento a
+# fornecedor. Nada é filtrado; só separado em tabelas próprias. A heurística
+# (por nome do favorecido) é a única de formato.eh_ente_publico.
 
 # ── Coleta dos dados da semana ────────────────────────────────────────────────
 def coletar(conn, dias: int, defasagem: int) -> dict:
@@ -155,8 +105,8 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
     todos_fav = q(
         "SELECT nome_favorecido k, ROUND(SUM(valor),2) s, COUNT(*) n FROM pagamentos "
         "WHERE data BETWEEN ? AND ? GROUP BY nome_favorecido ORDER BY s DESC", ini, fim)
-    fav_publico = [r for r in todos_fav if eh_publico(r["k"])]
-    fav_demais = [r for r in todos_fav if not eh_publico(r["k"])]
+    fav_publico = [r for r in todos_fav if eh_ente_publico(r["k"])]
+    fav_demais = [r for r in todos_fav if not eh_ente_publico(r["k"])]
     total_publico = round(sum(r["s"] for r in fav_publico), 2)
     total_demais = round(sum(r["s"] for r in fav_demais), 2)
     pagamentos = q(
@@ -180,6 +130,7 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
         "total_publico": total_publico, "total_demais": total_demais,
         "pagamentos": pagamentos, "funcoes": funcoes, "empenhos": empenhos,
         "alertas": export.alertas(conn),
+        "execucao": export.execucao_agregada(conn)["por_ano"].get(str(ano)),
     }
 
 
@@ -260,6 +211,22 @@ def montar_html(d: dict) -> str:
                        [[(esc(r["k"]), "left"), (str(r["n"]), "right"), (brl(r["s"]), "right")]
                         for r in linhas]) if linhas else ""
 
+    # execução do exercício (tríade do export): taxa só quando a base do ano é íntegra
+    exe = d.get("execucao")
+    if exe:
+        pedacos = [f"empenhado <strong>{compacto(exe['empenhado'])}</strong>",
+                   f"liquidado <strong>{compacto(exe['liquidado'])}</strong>",
+                   f"pago <strong>{compacto(exe['pago'])}</strong>"]
+        if exe.get("taxa_pagamento") is not None:
+            pedacos.append(f"dos empenhos do ano, <strong>{exe['taxa_liquidacao']:.0f}%</strong> "
+                           f"liquidado e <strong>{exe['taxa_pagamento']:.0f}%</strong> pago")
+        bloco_exe = (
+            f'<div style="margin:16px 0 0;padding:12px 14px;background:#fff;'
+            f'border:1px solid {LINE};border-radius:10px;font-size:13px;color:{NAVY}">'
+            f'<strong>Execução {d["ano"]}:</strong> ' + " · ".join(pedacos) + '</div>')
+    else:
+        bloco_exe = ""
+
     sem = d["semana"] or 1
     split = (
         f'<div style="margin:24px 0 0;padding:12px 14px;background:#fff;'
@@ -303,6 +270,7 @@ def montar_html(d: dict) -> str:
   </td></tr>
   <tr><td style="padding:20px 24px">
     <table width="100%" cellspacing="8" cellpadding="0"><tr>{cards}</tr></table>
+    {bloco_exe}
     {bloco_alertas}
     {t_fun}
     {t_fav}
@@ -331,6 +299,16 @@ def montar_texto(d: dict) -> str:
         f"Pago na semana: {brl(d['semana'])} ({pct(d['semana'], d['media_semanal'])} vs. média semanal)",
         f"Mês {d['mes_nome']}: {brl(d['mes_atual'])} | Acumulado {d['ano']}: {brl(d['ano_atual'])}",
         f"Fornecedores/terceiros: {brl(d['total_demais'])} | Entes públicos: {brl(d['total_publico'])}",
+    ]
+    exe = d.get("execucao")
+    if exe:
+        linha_exe = (f"Execução {d['ano']}: empenhado {brl(exe['empenhado'])} | "
+                     f"liquidado {brl(exe['liquidado'])} | pago {brl(exe['pago'])}")
+        if exe.get("taxa_pagamento") is not None:
+            linha_exe += (f" | {exe['taxa_liquidacao']:.0f}% liq. / "
+                          f"{exe['taxa_pagamento']:.0f}% pago dos empenhos do ano")
+        linhas.append(linha_exe)
+    linhas += [
         "",
         "Maiores fornecedores e terceiros da semana:",
     ]

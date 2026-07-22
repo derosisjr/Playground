@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <meta name="description" content="Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e busca por favorecido, função e fonte." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -81,6 +82,8 @@
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
       .box canvas { height: 300px !important; width: 100% !important; }
+      #box-mapa canvas { height: 400px !important; }
+      @media (max-width: 560px) { #box-mapa canvas { height: 320px !important; } }
 
       /* ── Filtros ──────────────────────────────────────────────────── */
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
@@ -159,6 +162,33 @@
       #fav-tabela td.neg { color: var(--red); }
       #fav-resumo { white-space: normal; }
 
+      /* ── "De cada R$ 100" (didático) ──────────────────────────────── */
+      .r100-linha { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 74px;
+        gap: 10px; align-items: center; margin: 7px 0; font-size: 13px; }
+      .r100-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .r100-barra { height: 14px; border-radius: 999px; background: var(--line); overflow: hidden; }
+      .r100-fill { height: 100%; background: var(--gold); border-radius: 999px; min-width: 2px; }
+      .r100-vlr { font-family: "IBM Plex Mono", monospace; font-weight: 600; text-align: right; white-space: nowrap; }
+      @media (max-width: 560px) { .r100-linha { grid-template-columns: 1fr 74px; }
+        .r100-barra { grid-column: 1 / -1; } }
+
+      /* ── Glossário ("Entenda os termos") ──────────────────────────── */
+      details.entenda { background: var(--card); border: 1px solid var(--line);
+        border-radius: var(--r-md); padding: 0 16px; margin-bottom: 16px; }
+      details.entenda summary { cursor: pointer; font-weight: 800; font-size: 14px;
+        padding: 14px 0; list-style: none; }
+      details.entenda summary::before { content: "+"; display: inline-block; width: 18px;
+        color: var(--gold); font-weight: 800; }
+      details.entenda[open] summary::before { content: "–"; }
+      details.entenda dl { margin: 0 0 14px; }
+      details.entenda dt { font-weight: 700; font-size: 13px; margin-top: 10px; }
+      details.entenda dd { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+      .box-toggle { display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+      .box-toggle h3 { margin: 0; }
+      .box-toggle .btn { padding: 5px 10px; font-size: 12px; }
+
       /* "Em resumo" — narrativa do export + deltas nos cards */
       .resumo-box { border-left: 3px solid var(--gold); }
       .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
@@ -212,12 +242,78 @@
           <h3>Gasto mensal (R$)</h3>
           <canvas id="ch-mensal"></canvas>
         </div>
+        <div class="box" id="box-execucao" hidden>
+          <h3>Execução do orçamento — empenhado, liquidado e pago por mês</h3>
+          <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
+          <canvas id="ch-execucao"></canvas>
+        </div>
+        <details class="entenda">
+          <summary>Entenda os termos deste painel</summary>
+          <dl>
+            <dt>Empenho (empenhado)</dt>
+            <dd>A reserva do dinheiro: a Prefeitura se compromete a pagar por um bem ou serviço.
+              É o primeiro estágio da despesa — compromisso assumido, não dinheiro gasto.</dd>
+            <dt>Liquidação (liquidado)</dt>
+            <dd>A conferência da entrega: o serviço foi prestado ou o produto entregue, e a
+              Prefeitura atesta que pode pagar.</dd>
+            <dt>Pagamento (pago)</dt>
+            <dd>O dinheiro saindo do caixa para o favorecido. É a visão usada na maior parte
+              deste painel.</dd>
+            <dt>Restos a pagar</dt>
+            <dd>Despesa empenhada num ano e paga em outro. Estoque alto pode indicar
+              dificuldade de caixa.</dd>
+            <dt>Extra-orçamentário</dt>
+            <dd>Saída sem empenho: retenções, consignações e repasses (ex.: imposto retido do
+              salário do servidor e recolhido à Receita).</dd>
+            <dt>Função</dt>
+            <dd>A grande área do gasto (Saúde, Educação, Urbanismo…). É o recorte usado como
+              proxy de secretaria — o portal não informa a unidade orçamentária.</dd>
+            <dt>Fonte de recurso</dt>
+            <dd>De onde vem o dinheiro: recursos próprios do município, transferências do SUS,
+              convênios etc.</dd>
+          </dl>
+        </details>
         <div class="grid2">
-          <div class="box"><h3>Top funções</h3><canvas id="ch-funcao"></canvas></div>
+          <div class="box">
+            <div class="box-toggle">
+              <h3>Top funções</h3>
+              <div class="acoes" id="fn-vista" role="group" aria-label="Unidade do gráfico de funções">
+                <button class="btn primario" data-vista="reais" type="button">R$</button>
+                <button class="btn" data-vista="pct" type="button">% do total</button>
+                <button class="btn" data-vista="capita" type="button">Por santista</button>
+              </div>
+            </div>
+            <canvas id="ch-funcao"></canvas>
+          </div>
           <div class="box"><h3>Por fonte de recurso</h3><canvas id="ch-fonte"></canvas></div>
+        </div>
+        <div class="box" id="box-mapa" hidden>
+          <div class="box-toggle">
+            <h3>Mapa do gasto — clique numa área para abrir</h3>
+            <div class="acoes" id="mapa-trilha" aria-label="Nível do mapa do gasto"></div>
+          </div>
+          <canvas id="ch-mapa"></canvas>
+          <p class="contagem" style="margin:10px 0 0">
+            Função → subfunção → elemento de despesa. Toque num retângulo de elemento para ver o
+            nome completo; a tabela equivalente está disponível para leitores de tela.
+          </p>
+        </div>
+        <div class="box" id="box-r100" hidden>
+          <h3>De cada R$ 100 pagos, para onde foi o dinheiro</h3>
+          <div id="r100-linhas"></div>
+          <p class="contagem" style="margin:10px 0 0" id="r100-nota"></p>
         </div>
         <div class="box">
           <h3>Por unidade gestora</h3><canvas id="ch-unidade"></canvas>
+        </div>
+        <div class="box" id="box-pares" hidden>
+          <div class="box-toggle">
+            <h3>Santos × cidades pares — gasto por habitante</h3>
+            <select id="pares-funcao" aria-label="Função para comparar" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color:var(--navy)"></select>
+          </div>
+          <p class="resumo-texto" id="pares-frase" style="font-size:14px;margin:0 0 10px"></p>
+          <canvas id="ch-pares"></canvas>
+          <p class="contagem" id="pares-nota" style="margin:10px 0 0"></p>
         </div>
       </section>
 
@@ -370,6 +466,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=7"></script>
+    <script src="./despesas-app.js?v=8"></script>
   </body>
 </html>

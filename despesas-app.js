@@ -51,6 +51,10 @@ async function init() {
   renderStats();
   renderResumo();
   renderGraficos();
+  renderR100();
+  ligarVistaFuncao();
+  initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
+  initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
   popularFiltrosAlertas();
   renderAlertas();
   ligarAlertas();
@@ -70,7 +74,11 @@ async function init() {
   ligarFicha();
 
   const at = DADOS.atualizado_em ? new Date(DADOS.atualizado_em).toLocaleString("pt-BR") : "";
-  document.getElementById("atualizado").textContent = at ? "Atualizado em " + at + "." : "";
+  const ate = DADOS.dados_ate
+    ? " O portal publica com defasagem: pagamentos até " +
+      new Date(DADOS.dados_ate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR") + "."
+    : "";
+  document.getElementById("atualizado").textContent = (at ? "Atualizado em " + at + "." : "") + ate;
 }
 
 // ── Cards ────────────────────────────────────────────────────────────────────
@@ -128,7 +136,7 @@ function desviosSerie(serie) {
 
 function renderGraficos() {
   // rerender (troca de tema): solta os charts anteriores antes de recriar
-  ["ch-mensal", "ch-funcao", "ch-fonte", "ch-unidade"].forEach(id => {
+  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade"].forEach(id => {
     const c = Chart.getChart(id);
     if (c) c.destroy();
   });
@@ -157,16 +165,11 @@ function renderGraficos() {
     }),
   });
 
-  // Top funções (barra horizontal)
-  const fn = DADOS.por_funcao.slice(0, 10);
-  new Chart(document.getElementById("ch-funcao"), {
-    type: "bar",
-    data: {
-      labels: fn.map(f => rotulo(f.funcao)),
-      datasets: [{ data: fn.map(f => f.valor), backgroundColor: GOLD }],
-    },
-    options: chartOpts({ x: eixoReais() }, "y"),
-  });
+  // Execução: empenhado × liquidado × pago por mês (tríade coletada pelo crawler)
+  renderExecucao();
+
+  // Top funções (barra horizontal, com vista R$ / % / per capita)
+  renderFuncao();
 
   // Por fonte (donut top 8)
   const ft = DADOS.por_fonte.slice(0, 8);
@@ -192,15 +195,320 @@ function renderGraficos() {
     ["Mês", "Pago", "Desvio vs média 12m"],
     serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor),
       desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]));
-  Comum.chartAcessivel("ch-funcao",
-    `Dez funções com maior gasto no período. Primeira: ${fn[0] ? fn[0].funcao + ", " + compacto(fn[0].valor) : "—"}.`,
-    ["Função", "Pago"], fn.map(f => [f.funcao, compacto(f.valor)]));
   Comum.chartAcessivel("ch-fonte",
     "Distribuição do gasto pago por fonte de recurso (oito maiores).",
     ["Fonte", "Pago"], ft.map(f => [f.fonte, compacto(f.valor)]));
   Comum.chartAcessivel("ch-unidade",
     `Gasto pago por unidade gestora. Primeira: ${un[0] ? un[0].unidade + ", " + compacto(un[0].valor) : "—"}.`,
     ["Unidade gestora", "Pago"], un.map(u => [u.unidade, compacto(u.valor)]));
+
+  if (ARVORE) renderMapa();   // repinta na troca de tema
+  if (PARES) renderPares();
+}
+
+// Tríade empenhado/liquidado/pago por mês + taxas de execução do exercício.
+// Some quando o índice ainda não traz o bloco "execucao" (JSON antigo).
+function renderExecucao() {
+  const exe = DADOS.execucao;
+  const box = document.getElementById("box-execucao");
+  if (!exe?.serie?.length) { if (box) box.hidden = true; return; }
+  box.hidden = false;
+
+  const anos = Object.keys(exe.por_ano || {}).sort();
+  const ultimo = anos[anos.length - 1];
+  const taxas = exe.por_ano?.[ultimo] || {};
+  const partes = [];
+  if (taxas.taxa_pagamento != null)
+    partes.push(`Dos empenhos de ${ultimo}: ${Math.round(taxas.taxa_liquidacao)}% liquidado · ` +
+                `${Math.round(taxas.taxa_pagamento)}% pago`);
+  if (taxas.restos)
+    partes.push(`restos a pagar quitados em ${ultimo}: ${compacto(taxas.restos)}`);
+  document.getElementById("exe-taxas").textContent = partes.join(" · ");
+
+  const s = exe.serie;
+  const labels = s.map(x => `${MESES[x.mes]}/${String(x.ano).slice(2)}`);
+  new Chart(document.getElementById("ch-execucao"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Empenhado", data: s.map(x => x.empenhado), borderColor: PALETA[2],
+          borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .25 },
+        { label: "Liquidado", data: s.map(x => x.liquidado), borderColor: GOLD,
+          borderWidth: 2, pointRadius: 0, tension: .25 },
+        { label: "Pago", data: s.map(x => x.pago), borderColor: NAVY,
+          backgroundColor: FILL_SERIE, fill: true, borderWidth: 2.5, pointRadius: 0, tension: .25 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { boxWidth: 18, font: { size: 12 } } },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}` } },
+      },
+      scales: { y: eixoReais() },
+    },
+  });
+
+  Comum.chartAcessivel("ch-execucao",
+    "Empenhado (compromisso assumido), liquidado (entrega atestada) e pago (dinheiro que saiu) " +
+    "em cada mês. " + (partes.length ? partes.join("; ") + "." : ""),
+    ["Mês", "Empenhado", "Liquidado", "Pago"],
+    s.map((x, i) => [labels[i], compacto(x.empenhado), compacto(x.liquidado), compacto(x.pago)]));
+}
+
+// Top funções com três vistas: R$ absoluto, % do total e por habitante (padrão
+// dos melhores portais — todo número em três escalas). Rerenderizado pelo toggle.
+let fnVista = "reais";
+
+function renderFuncao() {
+  const antigo = Chart.getChart("ch-funcao");
+  if (antigo) antigo.destroy();
+  const fn = DADOS.por_funcao.slice(0, 10);
+  const total = DADOS.totais?.geral || 1;
+  const conv = fnVista === "pct" ? (v) => 100 * v / total
+    : fnVista === "capita" ? (v) => v / POP_SANTOS : (v) => v;
+  const fmt = fnVista === "pct" ? (v) => v.toFixed(1).replace(".", ",") + "% do total"
+    : (v) => brlc(v);
+  const tick = fnVista === "pct" ? (v) => v + "%"
+    : fnVista === "capita" ? (v) => brl(v) : (v) => compacto(v);
+
+  new Chart(document.getElementById("ch-funcao"), {
+    type: "bar",
+    data: {
+      labels: fn.map(f => rotulo(f.funcao)),
+      datasets: [{ data: fn.map(f => conv(f.valor)), backgroundColor: GOLD }],
+    },
+    options: chartOpts({ x: { ticks: { callback: tick } } }, "y", {
+      label: (c) => fmt(c.raw),
+      afterLabel: (c) => fnVista === "reais" ? "" : compacto(fn[c.dataIndex].valor) + " no total",
+    }),
+  });
+
+  const rotuloVista = fnVista === "pct" ? "% do total pago"
+    : fnVista === "capita" ? "valor por habitante (IBGE 2022)" : "total pago";
+  Comum.chartAcessivel("ch-funcao",
+    `Dez funções com maior gasto no período, em ${rotuloVista}. ` +
+    `Primeira: ${fn[0] ? fn[0].funcao + ", " + fmt(conv(fn[0].valor)) : "—"}.`,
+    ["Função", rotuloVista], fn.map(f => [f.funcao, fmt(conv(f.valor))]));
+}
+
+function ligarVistaFuncao() {
+  document.querySelectorAll("#fn-vista button").forEach(b =>
+    b.addEventListener("click", () => {
+      fnVista = b.dataset.vista;
+      document.querySelectorAll("#fn-vista button").forEach(x =>
+        x.classList.toggle("primario", x.dataset.vista === fnVista));
+      renderFuncao();
+    }));
+}
+
+// "De cada R$ 100 pagos" — tradução do total em escala humana (barras proporcionais)
+function renderR100() {
+  const box = document.getElementById("box-r100");
+  const fns = DADOS.por_funcao || [];
+  const total = DADOS.totais?.geral;
+  if (!box || !fns.length || !total) return;
+  const top = fns.slice(0, 8);
+  const outros = total - top.reduce((s, f) => s + f.valor, 0);
+  const itens = top.map(f => ({ nome: nomeFuncao(f.funcao), v: 100 * f.valor / total }));
+  if (outros > 0) itens.push({ nome: "Demais áreas", v: 100 * outros / total });
+  const max = Math.max(...itens.map(i => i.v));
+  document.getElementById("r100-linhas").innerHTML = itens.map(i => `
+    <div class="r100-linha">
+      <span class="r100-nome" title="${esc(i.nome)}">${esc(i.nome)}</span>
+      <span class="r100-barra" aria-hidden="true"><span class="r100-fill" style="width:${(100 * i.v / max).toFixed(1)}%"></span></span>
+      <span class="r100-vlr">R$ ${i.v.toFixed(2).replace(".", ",")}</span>
+    </div>`).join("");
+  document.getElementById("r100-nota").textContent =
+    `Distribuição do total pago no período (${compacto(total)}) por função de governo.`;
+  box.hidden = false;
+}
+
+// ── Mapa do gasto (treemap com drill-down função → subfunção → elemento) ─────
+// Consome despesas/arvore.json (gerado pelo export). Degrada em silêncio se o
+// arquivo ou o plugin de treemap (CDN) faltarem — a barra de funções cobre o caso.
+let ARVORE = null;
+let mapaPath = [];   // [] = funções · [i] = subfunções da função i · [i,j] = elementos
+
+async function initMapa() {
+  try {
+    Chart.registry.getController("treemap");   // lança se o plugin não carregou
+    const r = await fetch("./despesas/arvore.json?v=" + (DADOS.atualizado_em || ""));
+    if (!r.ok) throw new Error(r.status);
+    ARVORE = await r.json();
+  } catch (e) { return; }
+  document.getElementById("box-mapa").hidden = false;
+  renderMapa();
+}
+
+function nivelMapa() {
+  if (mapaPath.length === 0)
+    return { nos: ARVORE.arvore, rotulo: "Todas as áreas", nivel: "função" };
+  const fn = ARVORE.arvore[mapaPath[0]];
+  if (mapaPath.length === 1)
+    return { nos: fn.f, rotulo: nomeFuncao(fn.n), nivel: "subfunção" };
+  const sf = fn.f[mapaPath[1]];
+  return { nos: sf.f, rotulo: nomeFuncao(sf.n), nivel: "elemento" };
+}
+
+function renderMapa() {
+  const antigo = Chart.getChart("ch-mapa");
+  if (antigo) antigo.destroy();
+  const { nos, rotulo: nomeNivel, nivel } = nivelMapa();
+  const itens = nos.map((x, i) => ({ n: x.n, v: x.v, i })).filter(x => x.v > 0);
+  const total = itens.reduce((s, x) => s + x.v, 0) || 1;
+  const max = Math.max(...itens.map(x => x.v));
+  const corTexto = ESCURO ? "#eef2f8" : "#07111f";
+
+  new Chart(document.getElementById("ch-mapa"), {
+    type: "treemap",
+    data: {
+      datasets: [{
+        tree: itens, key: "v",
+        spacing: 2, borderWidth: 0, borderRadius: 3,
+        backgroundColor: (c) => {
+          if (!c.raw?._data) return "transparent";
+          const a = 0.35 + 0.6 * Math.sqrt(c.raw._data.v / max);
+          return `rgba(201, 168, 76, ${Math.min(a, 0.95).toFixed(2)})`;
+        },
+        labels: {
+          display: true, color: corTexto, overflow: "hidden",
+          font: [{ size: 12, weight: 600 }, { size: 11 }],
+          formatter: (c) => c.raw?._data
+            ? [nomeFuncao(c.raw._data.n).slice(0, 26), compacto(c.raw._data.v)] : "",
+        },
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      onClick: (e, elems, chart) => {
+        if (!elems.length) return;
+        const dado = chart.data.datasets[0].data[elems[0].index]?._data;
+        if (!dado) return;
+        const original = nos[dado.i];
+        if (mapaPath.length < 2 && original?.f?.length) {
+          mapaPath.push(dado.i);
+          renderMapa();
+        } else {
+          Comum.toast(`${original.n} — ${brlc(original.v)}`);
+        }
+      },
+      onHover: (e, elems) => { e.native.target.style.cursor = elems.length ? "pointer" : "default"; },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (its) => its[0]?.raw?._data?.n || "",
+            label: (c) => `${brlc(c.raw._data.v)} · ${(100 * c.raw._data.v / total).toFixed(1)}% deste nível`,
+          },
+        },
+      },
+    },
+  });
+
+  // trilha (breadcrumb) clicável
+  const trilha = [{ nome: "Todas as áreas", path: [] }];
+  if (mapaPath.length >= 1)
+    trilha.push({ nome: nomeFuncao(ARVORE.arvore[mapaPath[0]].n), path: [mapaPath[0]] });
+  if (mapaPath.length === 2)
+    trilha.push({ nome: nomeFuncao(ARVORE.arvore[mapaPath[0]].f[mapaPath[1]].n),
+                  path: mapaPath.slice() });
+  document.getElementById("mapa-trilha").innerHTML = trilha.map((t, i) => {
+    const atual = i === trilha.length - 1;
+    return `<button class="btn${atual ? " primario" : ""}" type="button" data-path="${t.path.join(",")}"
+      ${atual ? 'aria-current="true"' : ""}>${esc(t.nome)}</button>`;
+  }).join("");
+  document.getElementById("mapa-trilha").querySelectorAll("button").forEach(b =>
+    b.addEventListener("click", () => {
+      mapaPath = b.dataset.path ? b.dataset.path.split(",").map(Number) : [];
+      renderMapa();
+    }));
+
+  Comum.chartAcessivel("ch-mapa",
+    `Mapa do gasto por ${nivel} — nível atual: ${nomeNivel}. ` +
+    `Maior item: ${itens[0] ? nomeFuncao(itens[0].n) + ", " + compacto(itens[0].v) : "—"}.`,
+    [nivel === "elemento" ? "Elemento de despesa" : nivel === "subfunção" ? "Subfunção" : "Função", "Pago"],
+    itens.map(x => [x.n, compacto(x.v)]));
+}
+
+// ── Santos × cidades pares (benchmark SICONFI/DCA, per capita) ───────────────
+// Consome despesas/benchmark.json (gerado por benchmark.py). Some se faltar.
+let PARES = null;
+let paresFuncao = "";   // função selecionada (chave completa "10 - Saúde")
+
+async function initPares() {
+  try {
+    const r = await fetch("./despesas/benchmark.json?v=" + (DADOS.atualizado_em || ""));
+    if (!r.ok) throw new Error(r.status);
+    PARES = await r.json();
+  } catch (e) { return; }
+  const santos = PARES.cidades.find(c => c.ibge === 3548500);
+  if (!santos) return;
+  // opções: funções de Santos por valor desc + "Todas as funções"
+  const funcoes = Object.entries(santos.por_funcao)
+    .sort((a, b) => b[1].pago - a[1].pago).map(([k]) => k);
+  const sel = document.getElementById("pares-funcao");
+  sel.innerHTML = '<option value="">Todas as funções (total)</option>' +
+    funcoes.map(f => `<option value="${esc(f)}">${esc(nomeFuncao(f))}</option>`).join("");
+  sel.addEventListener("change", () => { paresFuncao = sel.value; renderPares(); });
+  document.getElementById("box-pares").hidden = false;
+  renderPares();
+}
+
+function valorPares(cidade) {
+  if (paresFuncao) return (cidade.por_funcao[paresFuncao]?.pago || 0) / cidade.pop;
+  return Object.values(cidade.por_funcao).reduce((s, f) => s + (f.pago || 0), 0) / cidade.pop;
+}
+
+function renderPares() {
+  const antigo = Chart.getChart("ch-pares");
+  if (antigo) antigo.destroy();
+  const cidades = PARES.cidades.map(c => ({ nome: c.nome, ibge: c.ibge, v: valorPares(c) }))
+    .sort((a, b) => b.v - a.v);
+  const rotuloF = paresFuncao ? nomeFuncao(paresFuncao) : "todas as funções";
+
+  new Chart(document.getElementById("ch-pares"), {
+    type: "bar",
+    data: {
+      labels: cidades.map(c => c.nome),
+      datasets: [{
+        data: cidades.map(c => c.v),
+        backgroundColor: cidades.map(c => c.ibge === 3548500 ? GOLD : (ESCURO ? "#3d4c63" : "#c7cdd8")),
+      }],
+    },
+    options: chartOpts({ x: { ticks: { callback: (v) => brl(v) } } }, "y", {
+      label: (c) => `${brlc(c.raw)} por habitante/ano`,
+    }),
+  });
+
+  // frase determinística: Santos vs mediana dos pares
+  const santos = cidades.find(c => c.ibge === 3548500);
+  const pares = cidades.filter(c => c.ibge !== 3548500).map(c => c.v).sort((a, b) => a - b);
+  const frase = document.getElementById("pares-frase");
+  if (santos && pares.length >= 3) {
+    const m = pares.length % 2 ? pares[(pares.length - 1) / 2]
+      : (pares[pares.length / 2 - 1] + pares[pares.length / 2]) / 2;
+    const dif = Math.round(100 * (santos.v - m) / m);
+    frase.textContent = `Em ${rotuloF} (${PARES.exercicio}), Santos gastou ${brl(santos.v)} ` +
+      `por habitante — ${Math.abs(dif)}% ${dif >= 0 ? "acima" : "abaixo"} da mediana das cidades pares (${brl(m)}).`;
+  } else frase.textContent = "";
+
+  document.getElementById("pares-nota").textContent =
+    `Fonte: ${PARES.fonte}, exercício ${PARES.exercicio} · população: ${PARES.populacao_fonte}. ` +
+    "Competência anual consolidada (inclui administração indireta) — os valores não coincidem " +
+    "com a visão de caixa do painel, que usa o portal municipal.";
+
+  Comum.chartAcessivel("ch-pares",
+    `Gasto por habitante em ${rotuloF}, exercício ${PARES.exercicio}: Santos comparada a cinco cidades ` +
+    `paulistas. ${frase.textContent}`,
+    ["Cidade", "R$ por habitante"], cidades.map(c => [c.nome, brl(c.v)]));
+}
+
+// "04 - ADMINISTRAÇÃO" → "Administração" (rótulo amigável p/ blocos didáticos)
+function nomeFuncao(s) {
+  const nice = String(s || "").replace(/^\d+\s*-\s*/, "").trim();
+  return nice ? nice.charAt(0) + nice.slice(1).toLowerCase() : "—";
 }
 
 function rotulo(s) {
@@ -290,6 +598,9 @@ const ehCpf = (doc) => !!doc && !doc.includes("/") && doc.includes("*");
 let favModo = "todos";        // "todos" | "pj" (CNPJ) | "pf" (CPF)
 let favElemento = "";         // filtro de elemento de despesa ("" = todos)
 let favMemo = { chave: null, lista: [] };  // cache do agregado do detalhe
+let PF_RESUMO = null;         // dados/pf-resumo.json (agregado leve do modo PF)
+let PF_FALHOU = false;        // fetch do pf-resumo falhou → usar detalhe completo
+let ELEMENTOS = null;         // dados/elementos.json (opções do filtro por tipo)
 const FAV_LOTE = 60;          // linhas por lote na lista (o "Mostrar mais")
 let favVisiveis = FAV_LOTE;
 
@@ -331,7 +642,9 @@ function fonteFav() {
     if (favModo === "pj") return all.filter(f => (f.documento || "").includes("/"));
     return all;
   }
-  // PF (sem elemento) ou qualquer modo com elemento: agrega do detalhe.
+  // PF sem elemento: agregado leve pré-computado (dados/pf-resumo.json).
+  if (favModo === "pf" && !favElemento && PF_RESUMO) return PF_RESUMO;
+  // Qualquer modo com elemento (ou PF sem o índice leve): agrega do detalhe.
   if (!FAV_DETALHE) return [];
   const chave = favModo + "|" + favElemento;
   if (favMemo.chave !== chave) favMemo = { chave, lista: agregarFavDetalhe(predTipoFav(), favElemento || null) };
@@ -377,16 +690,21 @@ function renderFavoridosTabela() {
     (linhas.length > visiveis.length ? ` · exibindo ${visiveis.length}` : "");
 }
 
-// Popula o select de elemento de despesa com APENAS os elementos que aparecem
-// para o tipo de documento selecionado (CPF/CNPJ/Todos), do detalhe de execução.
+// Popula o select de elemento de despesa para o tipo selecionado. Fonte leve:
+// dados/elementos.json (pré-computado). Fallback: deriva do detalhe completo.
 function popularElementosFav() {
-  if (!FAV_DETALHE) return;
-  const pred = predTipoFav();
-  const iE = FAV_DETALHE.campos.indexOf("elemento_despesa");
-  const iD = FAV_DETALHE.campos.indexOf("documento_favorecido");
-  const vals = [...new Set(FAV_DETALHE.rows
-    .filter(r => r[iE] && pred(r[iD]))
-    .map(r => r[iE]))].sort((a, b) => a.localeCompare(b));
+  let vals = null;
+  if (ELEMENTOS) {
+    vals = ELEMENTOS[favModo === "pf" ? "pf" : favModo === "pj" ? "pj" : "todos"] || [];
+  } else if (FAV_DETALHE) {
+    const pred = predTipoFav();
+    const iE = FAV_DETALHE.campos.indexOf("elemento_despesa");
+    const iD = FAV_DETALHE.campos.indexOf("documento_favorecido");
+    vals = [...new Set(FAV_DETALHE.rows
+      .filter(r => r[iE] && pred(r[iD]))
+      .map(r => r[iE]))].sort((a, b) => a.localeCompare(b));
+  }
+  if (!vals) return;
   const sel = document.getElementById("f-elemento-fav");
   // se o elemento escolhido não existe para este tipo, volta para "todos"
   if (favElemento && !vals.includes(favElemento)) favElemento = "";
@@ -395,16 +713,36 @@ function popularElementosFav() {
   sel.value = favElemento;
 }
 
-// Recalcula a lista ativa, carregando o detalhe quando o modo/elemento exigem.
+// Recalcula a lista ativa. Caminhos leves primeiro (pf-resumo/elementos.json);
+// o detalhe completo (~20 MB) só quando um ELEMENTO é filtrado.
 async function atualizarFav() {
-  const precisaDetalhe = favElemento || favModo === "pf";
+  if (favModo === "pf" && !favElemento && !PF_RESUMO && !PF_FALHOU) {
+    document.getElementById("contagem").textContent = "Carregando…";
+    try {
+      const r = await fetch("./despesas/dados/pf-resumo.json?v=" + (DADOS.atualizado_em || ""));
+      if (!r.ok) throw new Error(r.status);
+      PF_RESUMO = (await r.json()).itens || [];
+    } catch (e) { PF_FALHOU = true; }   // sem o índice leve → cai no detalhe completo
+  }
+  const precisaDetalhe = favElemento || (favModo === "pf" && !PF_RESUMO);
   if (precisaDetalhe && !FAV_DETALHE) {
     document.getElementById("contagem").textContent = "Carregando…";
     try { await carregarTodoDetalhe(); }
     catch (e) { document.getElementById("contagem").textContent = "Falha ao carregar o detalhe."; return; }
   }
-  if (FAV_DETALHE) popularElementosFav();
+  popularElementosFav();
   renderFavoridosTabela();
+}
+
+async function carregarElementosLeve() {
+  if (ELEMENTOS) return;
+  try {
+    const r = await fetch("./despesas/dados/elementos.json?v=" + (DADOS.atualizado_em || ""));
+    if (!r.ok) throw new Error(r.status);
+    ELEMENTOS = await r.json();
+  } catch (e) {
+    await carregarTodoDetalhe();   // fallback: detalhe completo
+  }
 }
 
 function ligarModosFav() {
@@ -417,9 +755,9 @@ function ligarModosFav() {
       atualizarFav();
     }));
   const sel = document.getElementById("f-elemento-fav");
-  // Carrega o detalhe ao abrir o select pela 1ª vez, para listar os elementos.
+  // Popula as opções ao abrir o select pela 1ª vez (arquivo leve, não os ~20 MB).
   sel.addEventListener("mousedown", () => {
-    if (!FAV_DETALHE) carregarTodoDetalhe().then(popularElementosFav);
+    if (!ELEMENTOS && !FAV_DETALHE) carregarElementosLeve().then(popularElementosFav);
   });
   sel.addEventListener("change", () => { favElemento = sel.value; favVisiveis = FAV_LOTE; atualizarFav(); });
 }
@@ -543,8 +881,7 @@ async function carregarDetalhe() {
   const carregando = document.getElementById("det-carregando");
   res.hidden = true; carregando.hidden = false;
   try {
-    const partes = await Promise.all(sel.map(c =>
-      fetch("./" + c.dataset.arquivo + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())));
+    const partes = await carregarPartes(sel.map(c => c.dataset.arquivo));
     detCampos = partes[0].campos;
     detRows = partes.flatMap(p => p.linhas);
     detNorm = detRows.map(r => semAcento(r.join(" ")));
@@ -654,16 +991,45 @@ const FAV_COLS = ["data", "unidade_gestora", "tipo", "funcao", "elemento_despesa
                   "empenho", "empenhado", "liquidado", "pago"];
 const FAV_PAGINA = 50;
 let FAV_DETALHE = null;   // { campos, rows } — todos os meses concatenados (cacheado)
+let FAV_INDICE = null;    // dados/indice-favorecidos.json (favorecido → meses); "erro" = sem índice
 let favFicha = { nome: "", doc: "", campos: [], rows: [], sort: { idx: 0, dir: "desc" }, pag: 1 };
+
+// Cache por arquivo mensal: a ficha baixa só os meses do favorecido e o
+// Detalhamento/`carregarTodoDetalhe` reaproveitam o que já veio.
+const DET_PARTES = new Map();
+async function carregarPartes(arquivos) {
+  const faltam = arquivos.filter(a => !DET_PARTES.has(a));
+  await Promise.all(faltam.map(a =>
+    fetch("./" + a + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())
+      .then(p => DET_PARTES.set(a, p))));
+  return arquivos.map(a => DET_PARTES.get(a));
+}
 
 async function carregarTodoDetalhe() {
   if (FAV_DETALHE) return FAV_DETALHE;
-  const meses = DADOS.meses || [];
-  const partes = await Promise.all(meses.map(m =>
-    fetch("./" + m.arquivo + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())));
+  const partes = await carregarPartes((DADOS.meses || []).map(m => m.arquivo));
   FAV_DETALHE = { campos: partes[0]?.campos || [], rows: partes.flatMap(p => p.linhas) };
   popularElementosFav();
   return FAV_DETALHE;
+}
+
+// mesma chave do export (_chave_fav): dígitos do documento; sem doc → nome sem acento
+const chaveFavorecido = (nome, doc) => soDigitos(doc || "") || semAcento(nome || "");
+
+// Meses (arquivos) onde o favorecido aparece, via índice leve. null = não sei → todos.
+async function arquivosDoFavorecido(nome, documento) {
+  if (!FAV_INDICE) {
+    try {
+      const r = await fetch("./despesas/dados/indice-favorecidos.json?v=" + (DADOS.atualizado_em || ""));
+      if (!r.ok) throw new Error(r.status);
+      FAV_INDICE = await r.json();
+    } catch (e) { FAV_INDICE = "erro"; }
+  }
+  if (FAV_INDICE === "erro" || !FAV_INDICE.fav) return null;
+  const meses = FAV_INDICE.fav[chaveFavorecido(nome, documento)];
+  if (!meses) return null;   // fora do índice (ex.: presente em quase todos os meses)
+  const quer = new Set(meses);
+  return (DADOS.meses || []).filter(m => quer.has(m.ano * 100 + m.mes)).map(m => m.arquivo);
 }
 
 async function abrirFichaFavorecido(nome, documento) {
@@ -679,7 +1045,19 @@ async function abrirFichaFavorecido(nome, documento) {
   document.getElementById("fav-carregando").hidden = false;
   document.getElementById("fav-conteudo").hidden = true;
   try {
-    const { campos, rows } = await carregarTodoDetalhe();
+    let campos, rows;
+    if (FAV_DETALHE) {
+      ({ campos, rows } = FAV_DETALHE);        // já está tudo em memória
+    } else {
+      const arquivos = await arquivosDoFavorecido(nome, documento);
+      if (arquivos) {
+        const partes = await carregarPartes(arquivos);   // só os meses do favorecido
+        campos = partes[0]?.campos || [];
+        rows = partes.flatMap(p => p.linhas);
+      } else {
+        ({ campos, rows } = await carregarTodoDetalhe()); // fallback: tudo
+      }
+    }
     const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido");
     const linhas = rows.filter(r => r[iN] === nome && r[iD] === documento);
     favFicha = { nome, doc: documento, campos, rows: linhas,

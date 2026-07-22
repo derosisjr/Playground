@@ -31,16 +31,44 @@ por empenho, e inclui o que não casa (`Restos a pagar` = empenho de exercício 
 `Extra-orçamentário` = pagamento sem empenho) para não esconder nada; grava um arquivo por mês de
 competência em `despesas/dados/AAAA-MM.json` (compacto `{campos, linhas}`, arrays-of-arrays; manifesto
 na chave `meses`, campos em `campos_detalhe`) — **estes `dados/*.json` SÃO versionados** (Pages serve
-sob demanda). `despesas.html`+`despesas-app.js` é o painel (vanilla + Chart.js via CDN) com abas
-Visão geral/Alertas/Favorecidos (base pago) e **Detalhamento** (execução por empenho: seleciona 1+
+sob demanda); (c) **bloco `execucao`** no índice — tríade agregada (série mensal empenhado/liquidado/
+pago + restos/extra) e **taxas de execução por ano do empenho**, publicadas SÓ quando a base do ano é
+íntegra: empenhos globais (folha/previdência) emitidos em dez do exercício anterior ficam fora da base
+(entram só como anulação/reforço, às vezes com soma NEGATIVA) → pago casado > empenhado → o ano ganha
+`empenho_incompleto: true` em vez de taxa >100% enganosa; (d) **`despesas/arvore.json`** — hierarquia
+função→subfunção→elemento (top-10 + "Demais" por subfunção) p/ o treemap; (e) **índices leves** em
+`dados/` (`elementos.json`, `pf-resumo.json`, `indice-favorecidos.json` = favorecido→meses, chave =
+dígitos do doc; quem aparece em quase todos os meses fica fora) — evitam baixar os ~20 MB de detalhe:
+a ficha baixa só os meses do favorecido e o modo PF usa o agregado pronto (mediana = 2 meses/
+favorecido). `despesas/formato.py` é a camada comum do módulo: `brl`/`compacto`/`pct` e
+**`eh_ente_publico()`** (heurística única export+briefing; exceções privadas AFIP/FIPE/FGV listadas
+lá). `despesas.html`+`despesas-app.js` é o painel (vanilla + Chart.js e plugin
+`chartjs-chart-treemap` via CDN) com abas Visão geral/Alertas/Favorecidos (base pago) e
+**Detalhamento** (execução por empenho: seleciona 1+
 meses ou ano inteiro, tabela com empenhado/liquidado/pago, busca sem acento, **filtros estruturados**
-por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). Carga padrão =
+por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). A Visão geral tem
+gráfico da tríade + taxas, glossário `<details>`, toggle R$/% do total/per capita nas funções, bloco
+"De cada R$ 100", **treemap com drill-down** (função→subfunção→elemento, breadcrumb; degrada p/ a
+barra de funções se plugin/arvore.json faltarem) e **benchmark per capita vs cidades pares** — tudo
+degradável se o respectivo JSON faltar. Carga padrão =
 **mandato (2025→ano corrente, `ANO_INICIAL=2025`)**. **`despesas-index.json`, `despesas/dados/*.json`
 e o código são versionados**; `.sqlite`/`.xlsx`/`.csv` no `.gitignore` — o `.sqlite` persiste via cache
 do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente diariamente (`--forcar`), com
-guarda anti-truncamento (aborta commit se total < 50mi). (Substituiu o antigo Radar de Gastos por
-upload de CSV, removido em 2026-07.) Unidade orçamentária real (outra fonte),
+guarda anti-truncamento (aborta commit se total < 4 bi) e **testes** (`despesas/tests/`, pytest —
+parsing SOAP, agregações, regras de alerta; rodam no workflow antes do crawl). (Substituiu o antigo
+Radar de Gastos por upload de CSV, removido em 2026-07.) Unidade orçamentária real (outra fonte),
 cruzamento favorecido↔licitações e IA sobre os alertas ficam para fases futuras.
+
+## Benchmark cidades pares (`despesas/benchmark.py`)
+
+Compara a despesa **por função** de Santos com pares paulistas (Jundiaí, Piracicaba, Mogi das
+Cruzes, Bauru + São José dos Campos) na **DCA Anexo I-E do SICONFI** (mesma API
+`apidatalake.tesouro.gov.br` do endividamento; competência anual consolidada — NÃO bate com a visão
+caixa do painel). Gera `despesas/benchmark.json` (versionado, ~8 KB) com pago/liquidado por função e
+**populações do Censo 2022 embutidas** (atenção: Santos = 418.608 no Censo; o resto do site usa a
+constante `Comum.POP_SANTOS` = 433.656). O painel divide por habitante e narra "X% acima/abaixo da
+mediana dos pares". Workflow próprio (`benchmark-despesas.yml`, cron mensal dia 6 — a DCA sai ~abril;
+recua um exercício se o atual não estiver publicado p/ ≥4 entes).
 
 ## Briefing semanal de despesas (`despesas/briefing.py`)
 
@@ -84,4 +112,15 @@ python despesas/export.py
 # Despesas — briefing semanal (preview sem enviar)
 python despesas/briefing.py --dry-run
 python despesas/briefing.py --salvar despesas/_briefing.html  # abrir no navegador
+
+# Despesas — testes (parsing, agregações, alertas)
+python -m pytest despesas/tests -q
+
+# Benchmark cidades pares (SICONFI/DCA) — conferir sem gravar
+python despesas/benchmark.py --dry-run
 ```
+
+**Cuidado ao testar localmente:** `export.py` sobrescreve artefatos VERSIONADOS
+(`despesas-index.json`, `dados/`, `favorecidos/`, `arvore.json`) com o `.sqlite` local — que costuma
+estar desatualizado (o fresco vive no cache do Actions). Depois de testar, `git restore` neles e
+apague os gerados não rastreados; o workflow diário regenera tudo com a base fresca.
