@@ -169,6 +169,23 @@ function renderGraficos() {
     data: { labels: un.map(u => rotulo(u.unidade)), datasets: [{ data: un.map(u => u.valor), backgroundColor: NAVY }] },
     options: chartOpts({ x: eixoReais() }, "y"),
   });
+
+  // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
+  const ult = serie[serie.length - 1];
+  Comum.chartAcessivel("ch-mensal",
+    `Total pago por mês. Último mês (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}. Pontos fora do padrão são detalhados na aba Alertas.`,
+    ["Mês", "Pago", "Desvio vs média 12m"],
+    serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor),
+      desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]));
+  Comum.chartAcessivel("ch-funcao",
+    `Dez funções com maior gasto no período. Primeira: ${fn[0] ? fn[0].funcao + ", " + compacto(fn[0].valor) : "—"}.`,
+    ["Função", "Pago"], fn.map(f => [f.funcao, compacto(f.valor)]));
+  Comum.chartAcessivel("ch-fonte",
+    "Distribuição do gasto pago por fonte de recurso (oito maiores).",
+    ["Fonte", "Pago"], ft.map(f => [f.fonte, compacto(f.valor)]));
+  Comum.chartAcessivel("ch-unidade",
+    `Gasto pago por unidade gestora. Primeira: ${un[0] ? un[0].unidade + ", " + compacto(un[0].valor) : "—"}.`,
+    ["Unidade gestora", "Pago"], un.map(u => [u.unidade, compacto(u.valor)]));
 }
 
 function rotulo(s) {
@@ -258,6 +275,8 @@ const ehCpf = (doc) => !!doc && !doc.includes("/") && doc.includes("*");
 let favModo = "todos";        // "todos" | "pj" (CNPJ) | "pf" (CPF)
 let favElemento = "";         // filtro de elemento de despesa ("" = todos)
 let favMemo = { chave: null, lista: [] };  // cache do agregado do detalhe
+const FAV_LOTE = 60;          // linhas por lote na lista (o "Mostrar mais")
+let favVisiveis = FAV_LOTE;
 
 // predicado de tipo de documento conforme o modo
 function predTipoFav() {
@@ -325,19 +344,22 @@ function renderFavoridosTabela() {
 
   const corpo = document.getElementById("corpo-fav");
   document.getElementById("fav-vazio").hidden = linhas.length > 0;
-  corpo.innerHTML = linhas.map(f => `
+  const visiveis = linhas.slice(0, favVisiveis);
+  corpo.innerHTML = visiveis.map(f => `
     <tr class="fav-row" style="cursor:pointer" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}">
-      <td>${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}</div>` : ""}</td>
-      <td class="r num">${brlc(f.valor)}</td>
-      <td class="r num">${f.qtd}</td>
-      <td class="r num">${f.meses}</td>
+      <td data-label="Favorecido">${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}</div>` : ""}</td>
+      <td data-label="Valor total" class="r num">${brlc(f.valor)}</td>
+      <td data-label="Pagamentos" class="r num">${f.qtd}</td>
+      <td data-label="Meses" class="r num">${f.meses}</td>
     </tr>`).join("");
   corpo.querySelectorAll(".fav-row").forEach(tr =>
     tr.addEventListener("click", () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc)));
+  document.getElementById("fav-mais").hidden = linhas.length <= favVisiveis;
   const rotuloModo = favModo === "pf" ? "pessoa(s) física(s)"
     : favModo === "pj" ? "empresa(s)" : "favorecido(s)";
   document.getElementById("contagem").textContent =
-    `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor`;
+    `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor` +
+    (linhas.length > visiveis.length ? ` · exibindo ${visiveis.length}` : "");
 }
 
 // Popula o select de elemento de despesa com APENAS os elementos que aparecem
@@ -376,6 +398,7 @@ function ligarModosFav() {
       favModo = b.dataset.modo;
       document.querySelectorAll("#fav-modos button").forEach(x =>
         x.classList.toggle("primario", x.dataset.modo === favModo));
+      favVisiveis = FAV_LOTE;
       atualizarFav();
     }));
   const sel = document.getElementById("f-elemento-fav");
@@ -383,7 +406,7 @@ function ligarModosFav() {
   sel.addEventListener("mousedown", () => {
     if (!FAV_DETALHE) carregarTodoDetalhe().then(popularElementosFav);
   });
-  sel.addEventListener("change", () => { favElemento = sel.value; atualizarFav(); });
+  sel.addEventListener("change", () => { favElemento = sel.value; favVisiveis = FAV_LOTE; atualizarFav(); });
 }
 
 // ── Abas / interações ────────────────────────────────────────────────────────
@@ -398,7 +421,14 @@ function selecionarAba(nome) {
   document.getElementById("painel-" + nome).classList.add("ativo");
 }
 function ligarBusca() {
-  document.getElementById("q").addEventListener("input", renderFavoridosTabela);
+  document.getElementById("q").addEventListener("input", () => {
+    favVisiveis = FAV_LOTE;
+    renderFavoridosTabela();
+  });
+  document.getElementById("fav-mais").addEventListener("click", () => {
+    favVisiveis += FAV_LOTE;
+    renderFavoridosTabela();
+  });
 }
 function ligarOrdenacao() {
   document.querySelectorAll("th[data-sort]").forEach(th =>
@@ -406,6 +436,7 @@ function ligarOrdenacao() {
       const col = th.dataset.sort;
       favSort.dir = favSort.col === col && favSort.dir === "desc" ? "asc" : "desc";
       favSort.col = col;
+      favVisiveis = FAV_LOTE;
       renderFavoridosTabela();
     }));
 }
@@ -592,20 +623,9 @@ function renderDetTabela() {
   document.getElementById("det-proxima").disabled = detPagina >= totalPag;
 }
 
-// Monta e baixa um CSV (`;`, BOM, CRLF) a partir de campos (chaves) + linhas (arrays).
+// Baixa um CSV do detalhe (rótulos amigáveis no cabeçalho; dialeto Excel pt-BR do Comum).
 function baixarCsv(campos, rows, nomeArquivo) {
-  const sep = ";";
-  const escaparCsv = (v) => {
-    const s = String(v ?? "");
-    return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const linhas = [campos.map(c => DET_LABELS[c] || c).join(sep)];
-  for (const r of rows) linhas.push(r.map(escaparCsv).join(sep));
-  const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = nomeArquivo; a.click();
-  URL.revokeObjectURL(url);
+  Comum.exportarCsv(nomeArquivo, campos.map(c => DET_LABELS[c] || c), rows);
 }
 
 function exportarDetCsv() {

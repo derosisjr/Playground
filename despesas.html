@@ -62,14 +62,7 @@
         letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
 
-      .stats { display: grid; gap: 12px; margin: 22px 0 14px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-      .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-        padding: 14px 16px; position: relative; overflow: hidden; }
-      .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
-      .stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
-      .stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 24px; margin-top: 4px; line-height: 1.1; }
-      .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* cartões de KPI (.stats/.stat) vêm do comum.css */
 
       /* ── Abas ─────────────────────────────────────────────────────── */
       .tabs { display: flex; gap: 6px; margin: 8px 0 18px; flex-wrap: wrap; }
@@ -141,6 +134,10 @@
       #det-tabela td.r { text-align: right; }
       #det-tabela td.neg { color: var(--red); }
       .rodape { color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.5; }
+      /* afford de rolagem horizontal das tabelas largas — só no mobile */
+      .dica-scroll { display: none; color: var(--muted); font-size: 12px;
+        font-family: "IBM Plex Mono", monospace; margin: 0 0 6px; }
+      @media (max-width: 760px) { .dica-scroll { display: block; } }
       .barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
 
@@ -250,11 +247,11 @@
           <select id="f-elemento-fav"><option value="">Elemento de despesa (todos)</option></select>
         </div>
         <div class="barra">
-          <span class="contagem" id="contagem">—</span>
+          <span class="contagem" id="contagem" aria-live="polite">—</span>
           <span class="contagem" style="color:var(--muted)">Clique num favorecido para ver os pagamentos.</span>
         </div>
         <div class="tabela-wrap">
-          <table>
+          <table class="tabela-resp">
             <thead>
               <tr>
                 <th data-sort="nome">Favorecido</th>
@@ -266,6 +263,9 @@
             <tbody id="corpo-fav"></tbody>
           </table>
           <div class="vazio" id="fav-vazio" hidden>Nenhum favorecido encontrado.</div>
+        </div>
+        <div class="barra" style="justify-content:center;margin-top:12px">
+          <button class="btn" id="fav-mais" type="button" hidden>Mostrar mais</button>
         </div>
       </section>
 
@@ -297,9 +297,10 @@
             <select id="f-grupo_despesa"><option value="">Grupo de despesa (todos)</option></select>
           </div>
           <div class="barra">
-            <span class="contagem" id="det-contagem">—</span>
+            <span class="contagem" id="det-contagem" aria-live="polite">—</span>
             <span class="contagem" id="det-soma"></span>
           </div>
+          <p class="dica-scroll" aria-hidden="true">→ deslize a tabela para ver todas as colunas</p>
           <div class="tabela-wrap" style="overflow-x:auto">
             <table id="det-tabela">
               <thead><tr id="det-cabecalho"></tr></thead>
@@ -344,6 +345,7 @@
               <span class="contagem" id="fav-resumo"></span>
               <button class="btn" id="fav-csv" type="button">Exportar CSV</button>
             </div>
+            <p class="dica-scroll" aria-hidden="true">→ deslize a tabela para ver todas as colunas</p>
             <div class="tabela-wrap" style="overflow-x:auto">
               <table id="fav-tabela">
                 <thead><tr id="fav-cabecalho"></tr></thead>

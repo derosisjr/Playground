@@ -109,6 +109,16 @@
       /* medidor 0 → limite, com marca no nível de alerta */
       .medidor { position: relative; height: 8px; border-radius: 999px; background: var(--line);
         margin: 12px 0 6px; overflow: visible; }
+      /* bullet chart: faixas de referência graduadas no trilho (ok → atenção),
+         com o nível de alerta vindo do próprio RGF via --alerta-pos (inline).
+         Navegador sem color-mix cai no trilho liso var(--line) acima. */
+      @supports (background: color-mix(in oklab, red 10%, transparent)) {
+        .medidor {
+          background: linear-gradient(90deg,
+            color-mix(in oklab, var(--verde) 16%, transparent) 0 var(--alerta-pos, 100%),
+            color-mix(in oklab, var(--amarelo) 22%, transparent) var(--alerta-pos, 100%) 100%);
+        }
+      }
       .medidor .preench { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; min-width: 3px; }
       .mostrador.verde .preench { background: var(--verde); }
       .mostrador.amarelo .preench { background: var(--amarelo); }

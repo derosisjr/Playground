@@ -173,19 +173,15 @@ function renderizarMais() {
   el("contagem").classList.add("pulsa");
 }
 
-// ── Exportar CSV do resultado filtrado ──────────────────────────────────────
+// ── Exportar CSV do resultado filtrado (dialeto Excel pt-BR via Comum) ──────
 function exportarCSV() {
   if (!filtradas.length) return;
   const cols = ["subtipo", "numero", "ano", "data_propositura", "autor", "ementa", "local_atual", "url_detalhes", "url_pdf"];
-  const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-  const linhas = [cols.join(",")];
-  for (const p of filtradas) linhas.push(cols.map((c) => esc(p[c])).join(","));
-  const blob = new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `proposituras-filtro-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  Comum.exportarCsv(
+    `proposituras-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
+    cols,
+    filtradas.map((p) => cols.map((c) => p[c]))
+  );
 }
 
 function limparFiltros() {

@@ -200,6 +200,11 @@
   // Desenha o gráfico (destrói o anterior). tickFmt opcional formata o eixo Y.
   function desenhar(labels, datasets, tituloY, tooltipLabel, formatoY) {
     if (grafico) grafico.destroy();
+    // equivalente acessível: uma coluna por série, gerado dos mesmos datasets
+    Comum.chartAcessivel("grafico", `Série anual — ${tituloY}.`,
+      ["Ano", ...datasets.map((d) => d.label)],
+      labels.map((a, i) => [a, ...datasets.map((d) =>
+        d.data[i] == null ? "—" : (formatoY ? fmt(formatoY, d.data[i]) : d.data[i]))]));
     grafico = new Chart($("grafico"), {
       type: "line",
       data: { labels, datasets },

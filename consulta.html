@@ -124,6 +124,10 @@
 
       .metodo { color: var(--muted); font-size: 12px; margin-top: 24px; line-height: 1.7;
         border-top: 1px dashed var(--line); padding-top: 14px; }
+      .aviso-teste { border: 1px solid var(--gold); border-left-width: 4px; border-radius: 10px;
+        background: var(--card); padding: 12px 16px; margin-top: 20px; font-size: 13.5px;
+        line-height: 1.6; }
+      .aviso-teste[hidden] { display: none; }
       .encerrada { text-align: center; padding: 40px 10px; color: var(--muted); }
       @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .voto:active { transform: none; } }
     </style>
@@ -140,6 +144,11 @@
     </header>
 
     <div class="shell">
+      <div class="aviso-teste" id="aviso-teste" hidden>
+        <b>Fase de testes:</b> a apuração central ainda não está no ar — por enquanto seu
+        voto fica salvo apenas neste aparelho e não é enviado. A consulta oficial será
+        anunciada aqui.
+      </div>
       <div id="inicio">
         <div class="bairro-box">
           <label for="bairro">Seu bairro (só para agrupar as respostas):</label>

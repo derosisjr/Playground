@@ -75,6 +75,14 @@ function render(d) {
       scales: { x: eixoReais } },
   });
 
+  // equivalentes acessíveis (tabela oculta + descrição por gráfico)
+  Comum.chartAcessivel("ch-mensal",
+    `Pagamentos recebidos por mês. Total no mandato: ${compacto(d.total)}.`,
+    ["Mês", "Recebido"], serie.map((s) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor)]));
+  Comum.chartAcessivel("ch-funcao",
+    "Distribuição do valor recebido por função de governo.",
+    ["Função", "Recebido"], fn.map((f) => [f.funcao, compacto(f.valor)]));
+
   // alertas
   const alertas = d.alertas || [];
   if (alertas.length) {

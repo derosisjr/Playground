@@ -210,6 +210,9 @@ async function init() {
       const btn = artigo.querySelector(".notas-toggle");
       if (btn && btn.getAttribute("aria-expanded") !== "true") alternarNotas(btn);
     }
+  } else if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    // foco automático só com mouse/teclado — em touch abriria o teclado e pularia a página
+    el("q").focus();
   }
 }
 

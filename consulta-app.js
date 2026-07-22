@@ -38,6 +38,8 @@
   }
 
   function init() {
+    // sem worker no ar, deixar claro que o voto ainda não é enviado (honestidade > fachada)
+    if (!WORKER_URL) $("aviso-teste").hidden = false;
     fetch(`./consulta/consultas/${CONSULTA}.json?v=` + Date.now())
       .then((r) => r.json())
       .then((d) => {
@@ -111,9 +113,12 @@
         renderFita(c, alvo || $("encerrada"));
       })
       .catch(() => {
-        if (alvo) alvo.innerHTML =
-          "<h2>Obrigado por participar!</h2><p class='quando'>Os resultados " +
-          "parciais serão publicados aqui conforme a apuração.</p>";
+        if (alvo) alvo.innerHTML = WORKER_URL
+          ? "<h2>Obrigado por participar!</h2><p class='quando'>Os resultados " +
+            "parciais serão publicados aqui conforme a apuração.</p>"
+          : "<h2>Obrigado por testar!</h2><p class='quando'>Fase de testes: suas " +
+            "respostas ficaram salvas só neste aparelho. Quando a consulta oficial " +
+            "abrir, os votos passam a ser enviados e apurados.</p>";
       });
   }
 

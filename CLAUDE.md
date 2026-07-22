@@ -24,6 +24,10 @@ via GitHub Actions).
 - Mudanças cirúrgicas: toque só no que o pedido exige. Não "melhore" código,
   comentários ou formatação vizinhos; remova só o que a sua mudança deixou
   órfão, não código morto pré-existente.
+  - Exceção: trabalho de **consolidação declarado como tal** (promover código
+    duplicado à camada comum, unificar tokens/utilitários) pode tocar muitos
+    arquivos de uma vez — desde que a fase faça só isso e cada página seja
+    testada. Sem essa válvula, "cirúrgico" vira fábrica de duplicação.
 - Antes de declarar pronto, rode/teste e mostre a evidência.
 - Sem dado concreto, diga "não sei" ou marque [Verificar] — nunca apresente
   inferência como fato.

@@ -60,19 +60,7 @@
         letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
 
-      /* ── Cards de estatística ─────────────────────────────────────── */
-      .stats { display: grid; gap: 12px; margin: 22px 0 14px;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-      .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-        padding: 14px 16px; position: relative; overflow: hidden; }
-      .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-        background: var(--gold); }
-      .stat .rotulo { color: var(--muted); font-size: 11px; letter-spacing: .08em;
-        text-transform: uppercase; font-weight: 700; }
-      .stat .valor { font-family: "IBM Plex Mono", monospace; font-weight: 600;
-        font-size: 26px; margin-top: 4px; line-height: 1.1; }
-      .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* cartões de KPI (.stats/.stat) vêm do comum.css */
 
       /* ── Chips de subtipo ─────────────────────────────────────────── */
       .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
@@ -174,7 +162,7 @@
       </div>
 
       <div class="barra">
-        <span class="contagem" id="contagem">Carregando…</span>
+        <span class="contagem" id="contagem" aria-live="polite">Carregando…</span>
         <div class="acoes">
           <button class="btn" id="limpar" type="button">Limpar filtros</button>
           <button class="btn" id="csv" type="button">Exportar CSV</button>

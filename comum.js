@@ -13,6 +13,8 @@ window.Comum = (() => {
     ["legis.html", "Legislação", ""],
     ["requerimentos.html", "Requerimentos", ""],
     ["regimento.html", "Regimento", ""],
+    ["indicadores.html", "Indicadores", ""],
+    ["consulta.html", "Escuta Pública", ""],
   ];
   let paginaAtual = null;
 
@@ -93,6 +95,29 @@ window.Comum = (() => {
     a.download = nomeArquivo;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // ── Acessibilidade de gráficos ──────────────────────────────────────────────
+  // Canvas é invisível para leitor de tela (padrão USWDS): dá role="img" +
+  // descrição conclusiva e anexa uma tabela equivalente visualmente oculta,
+  // gerada do MESMO array que alimenta o gráfico.
+  function chartAcessivel(canvas, descricao, cabecalhos, linhas) {
+    const c = typeof canvas === "string" ? document.getElementById(canvas) : canvas;
+    if (!c || !c.parentNode) return;
+    c.setAttribute("role", "img");
+    c.setAttribute("aria-label", descricao);
+    const marca = c.id || c.getAttribute("aria-label") || "";
+    const ant = c.parentNode.querySelector(`table.sr-only[data-de="${marca}"]`);
+    if (ant) ant.remove(); // rerender (troca de filtro/ano) não duplica a tabela
+    const t = document.createElement("table");
+    t.className = "sr-only";
+    t.dataset.de = marca;
+    t.innerHTML = "<caption>" + escapar(descricao) + "</caption><thead><tr>" +
+      cabecalhos.map((h) => '<th scope="col">' + escapar(h) + "</th>").join("") +
+      "</tr></thead><tbody>" +
+      linhas.map((r) => "<tr>" + r.map((v) => "<td>" + escapar(v) + "</td>").join("") + "</tr>").join("") +
+      "</tbody></table>";
+    c.insertAdjacentElement("afterend", t);
   }
 
   // ── Busca universal (⌘K / Ctrl+K / "/") ─────────────────────────────────────
@@ -217,12 +242,12 @@ window.Comum = (() => {
     planos = [];
     if (!norm(q).trim()) {
       paletaRes.innerHTML = '<div class="paleta-vazio">Digite para buscar em Despesas, ' +
-        "Proposituras, Legislação, Requerimentos e Regimento.<br>" +
+        "Proposituras, Legislação, Requerimentos, Regimento, Endividamento e Indicadores.<br>" +
         'Dica: <b>art 79</b> abre o artigo direto.</div>';
       return;
     }
     if (!grupos.length) {
-      paletaRes.innerHTML = '<div class="paleta-vazio">Nada encontrado nas 5 bases.</div>';
+      paletaRes.innerHTML = '<div class="paleta-vazio">Nada encontrado nas bases do site.</div>';
       return;
     }
     let html = "";
@@ -322,5 +347,5 @@ window.Comum = (() => {
   });
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, abrirPaleta,
-           alternarTema, temaAtual, POP_SANTOS };
+           alternarTema, temaAtual, chartAcessivel, POP_SANTOS };
 })();

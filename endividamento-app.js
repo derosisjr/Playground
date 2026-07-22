@@ -98,7 +98,7 @@ function renderSemaforo() {
         <p class="m-nome">${esc(m.nome)}</p>
         <p class="m-pergunta">${esc(m.pergunta || "")}</p>
         <div class="m-pct">${esc(pct(m.pct))}<small> da RCL${negativo ? " · caixa maior que a dívida" : ""}</small></div>
-        <div class="medidor" aria-hidden="true">
+        <div class="medidor" aria-hidden="true" style="--alerta-pos:${marcaAlerta.toFixed(1)}%">
           <span class="preench" style="width:${(uso * 100).toFixed(1)}%"></span>
           <span class="marca" style="left:${marcaAlerta.toFixed(1)}%" title="Nível de alerta: ${esc(pct(m.alerta))}"></span>
           <span class="marca lim" style="left:100%" title="Limite legal: ${esc(pct(m.limite))}"></span>
@@ -200,6 +200,30 @@ function renderGraficos() {
     ] },
     options: opts(compacto, true),
   });
+
+  // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
+  const u = S[S.length - 1] || {};
+  const vc = (v) => (v != null ? compacto(v) : "—");
+  Comum.chartAcessivel("ch-divida",
+    `Dívida bruta e líquida por quadrimestre. Em ${u.rotulo || "—"}: bruta ${vc(u.dc)}, líquida ${vc(u.dcl)}.`,
+    ["Quadrimestre", "Dívida bruta", "Dívida líquida"],
+    S.map(p => [p.rotulo, vc(p.dc), vc(p.dcl)]));
+  Comum.chartAcessivel("ch-dcl-pct",
+    `Dívida consolidada líquida em percentual da RCL, contra o limite legal de 120% e o alerta de 108%. Em ${u.rotulo || "—"}: ${pct(u.dcl_pct)}.`,
+    ["Quadrimestre", "DCL/RCL"],
+    S.map(p => [p.rotulo, pct(p.dcl_pct)]));
+  Comum.chartAcessivel("ch-pessoal",
+    `Despesa com pessoal em percentual da RCL, contra o limite legal de 54% e o alerta de 48,6%. Em ${u.rotulo || "—"}: ${pct(u.pessoal_pct)}.`,
+    ["Quadrimestre", "Pessoal/RCL"],
+    S.map(p => [p.rotulo, pct(p.pessoal_pct)]));
+  Comum.chartAcessivel("ch-precatorios",
+    `Precatórios vencidos e não pagos por quadrimestre. Em ${u.rotulo || "—"}: ${vc(u.precatorios)}.`,
+    ["Quadrimestre", "Precatórios vencidos"],
+    S.map(p => [p.rotulo, vc(p.precatorios)]));
+  Comum.chartAcessivel("ch-caixa",
+    `Caixa bruto contra restos a pagar por quadrimestre. Em ${u.rotulo || "—"}: caixa ${vc(u.caixa_bruta)}, restos a pagar ${vc(u.rp)}.`,
+    ["Quadrimestre", "Caixa bruto", "Restos a pagar"],
+    S.map(p => [p.rotulo, vc(p.caixa_bruta), vc(p.rp)]));
 }
 
 // ── Dívida das estatais (curadoria anual — endividamento/estatais.json) ─────
@@ -294,6 +318,16 @@ async function renderServicoDivida() {
       scales: { y: { ticks: { callback: (v) => compacto(v) } } },
     },
   });
+
+  Comum.chartAcessivel("ch-credores",
+    "Maiores credores do serviço da dívida no mandato (juros e amortização pagos).",
+    ["Credor", "Pago no mandato"],
+    cred.map(c => [nomeCredor(c.nome), compacto(c.valor)]));
+  const vJuros = serie("juros"), vAmort = serie("amortizacao");
+  Comum.chartAcessivel("ch-servico-ano",
+    "Juros e encargos contra amortização pagos por ano.",
+    ["Ano", "Juros e encargos", "Amortização"],
+    anos.map((a, i) => [a, compacto(vJuros[i]), compacto(vAmort[i])]));
 }
 
 // ── Tabela + CSV ─────────────────────────────────────────────────────────────
