@@ -20,7 +20,11 @@ e `json_pagamentos` (pago) — todos `?ano=&mes=`, **um mês por requisição**;
 `json.loads`). Cada estágio vai para sua tabela (`empenhos`/`liquidacoes`/`pagamentos`); a dedup é por
 **`hash` MD5 das colunas-chave** (`INSERT OR IGNORE` → recarga idempotente); `controle_carga`
 registra (fonte, ano, mês) já baixados. **Atenção:** os campos `empenho`/`liquidacao`/`pagamento` são
-**números de documento**, não valores — o valor de cada estágio é a coluna `valor`. **A API NÃO expõe
+**números de documento**, não valores — o valor de cada estágio é a coluna `valor`.
+**A API devolve misturada a entidade-demo da plataforma Portal TP** ("PREFEITURA MUNICIPAL
+DEMONSTRAÇÃO", dados de um município de Rondônia — R$ 696 mi em 2025 detectados no levantamento de
+2026-07): o crawler descarta na coleta (`UG_EXCLUIR="DEMONSTRA"`) e **expurga do cache** a cada
+execução (`expurgar_demo()` em `abrir_db`). Se a Prefeitura corrigir a API, o filtro vira inócuo. **A API NÃO expõe
 unidade orçamentária (secretaria)**; o único campo de unidade é `unidade_gestora` (a entidade:
 Prefeitura, CAPEP, IPS, fundações). O recorte por órgão usa **`funcao`** como proxy de área/secretaria.
 `despesas/export.py` gera: (a) **`despesas-index.json` AGREGADO** na visão de **caixa/pago**

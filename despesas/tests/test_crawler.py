@@ -65,6 +65,34 @@ def test_valor_invalido_vira_zero(monkeypatch):
     assert crawler.coletar_mes("empenhos", 2026, 1)[0]["valor"] == 0.0
 
 
+def test_coletar_mes_descarta_entidade_demonstracao(monkeypatch):
+    demo = dict(ITEM_API, unidade_gestora="PREFEITURA MUNICIPAL DEMONSTRAÇÃO",
+                nome_favorecido="ECORONDÔNIA AMBIENTAL S/A")
+    monkeypatch.setattr(crawler, "_http_get",
+                        lambda url, params: SimpleNamespace(content=_resposta_soap([ITEM_API, demo])))
+    itens = crawler.coletar_mes("empenhos", 2025, 1)
+    assert len(itens) == 1
+    assert itens[0]["unidade_gestora"] == "PREFEITURA MUNICIPAL DE SANTOS"
+
+
+def test_expurgar_demo_limpa_cache():
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(crawler._schema())
+    cols = ["hash"] + crawler._cols("pagamentos")
+    base = {c: "" for c in cols}
+    base.update({"ano": 2025, "mes": 1, "valor": 10.0})
+    for i, ug in enumerate(["PREFEITURA MUNICIPAL DE SANTOS",
+                            "PREFEITURA MUNICIPAL DEMONSTRAÇÃO"]):
+        row = dict(base, hash=f"h{i}", unidade_gestora=ug)
+        conn.execute(f"INSERT INTO pagamentos ({','.join(cols)}) "
+                     f"VALUES ({','.join('?' * len(cols))})", [row[c] for c in cols])
+    assert crawler.expurgar_demo(conn) == 1
+    sobra = conn.execute("SELECT unidade_gestora FROM pagamentos").fetchall()
+    assert sobra == [("PREFEITURA MUNICIPAL DE SANTOS",)]
+    assert crawler.expurgar_demo(conn) == 0   # idempotente
+
+
 def test_data_iso():
     assert crawler._data_iso("2026-03-07T00:00:00") == "2026-03-07"
     assert crawler._data_iso(None) == ""

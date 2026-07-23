@@ -61,6 +61,12 @@ FONTE = "Prefeitura Municipal de Santos"
 ANO_INICIAL = 2025        # 1º ano do mandato
 PAUSA = 0.4               # cortesia entre requisições (s)
 
+# A API de Santos devolve, misturada, a entidade-demonstração da plataforma
+# Portal TP ("PREFEITURA MUNICIPAL DEMONSTRAÇÃO" — dados de um município de
+# Rondônia, R$ 696 mi 2025-01→2025-10; levantamento 2026-07). Não é despesa de
+# Santos: descartamos na coleta e expurgamos o que já entrou no cache.
+UG_EXCLUIR = "DEMONSTRA"
+
 # Campos comuns a todos os estágios (base do registro)
 COMUNS = [
     "ano", "mes", "unidade_gestora", "data", "especie", "empenho",
@@ -157,7 +163,11 @@ def coletar_mes(fonte: str, ano: int, mes: int) -> list[dict]:
         return []
     cols = _cols(fonte)
     itens = []
+    descartados = 0
     for d in json.loads(bruto):
+        if UG_EXCLUIR in (d.get("unidade_gestora") or "").upper():
+            descartados += 1
+            continue
         try:
             valor = round(float(d.get("valor")), 2) if d.get("valor") is not None else 0.0
         except (TypeError, ValueError):
@@ -171,6 +181,8 @@ def coletar_mes(fonte: str, ano: int, mes: int) -> list[dict]:
             "|".join(str(item.get(c, "")) for c in cfg["chave"]).encode("utf-8")
         ).hexdigest()
         itens.append(item)
+    if descartados:
+        print(f"  {descartados} registros da entidade-demonstração descartados.", file=sys.stderr)
     return itens
 
 
@@ -178,7 +190,24 @@ def coletar_mes(fonte: str, ano: int, mes: int) -> list[dict]:
 def abrir_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(_schema())
+    expurgar_demo(conn)
     return conn
+
+
+def expurgar_demo(conn: sqlite3.Connection) -> int:
+    """Remove da base os registros da entidade-demonstração já gravados em
+    cargas antigas (o cache do Actions persiste entre execuções). Idempotente."""
+    total = 0
+    for cfg in STREAMS.values():
+        cur = conn.execute(
+            f"DELETE FROM {cfg['tabela']} WHERE UPPER(unidade_gestora) LIKE ?",
+            (f"%{UG_EXCLUIR}%",))
+        total += cur.rowcount
+    if total:
+        conn.commit()
+        print(f"Expurgo: {total} registros da entidade-demonstração removidos do cache.",
+              file=sys.stderr)
+    return total
 
 
 def carregados(conn: sqlite3.Connection) -> set[tuple[str, int, int]]:
