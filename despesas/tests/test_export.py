@@ -190,6 +190,48 @@ def test_exportar_arvore_agrupa_cauda(tmp_path, monkeypatch):
     assert soma == d["arvore"][0]["f"][0]["v"]    # nada se perde no agrupamento
 
 
+def test_exportar_estagios(tmp_path, monkeypatch):
+    monkeypatch.setattr(export, "ESTAGIOS_DIR", str(tmp_path))
+    conn = cenario_execucao()
+    rows = export.montar_execucao(conn)
+    n = export.exportar_estagios(conn, rows)
+    assert n >= 2
+
+    # partição: E1 (empenho jan/2025) vive no arquivo do período do empenho
+    jan = json.load(open(tmp_path / "2025-01.json", encoding="utf-8"))
+    k = "PREFEITURA MUNICIPAL DE SANTOS|0000100/2025"
+    assert k in jan
+    # espécie omitida quando "Original" (tupla de 4); explícita nas anulações
+    fases = [(e[0], e[3], e[4] if len(e) > 4 else "Original") for e in jan[k]["e"]]
+    assert ("E", -20_000.0, "Anulação") in fases
+    assert ("E", 100_000.0, "Original") in fases
+    assert ("L", 60_000.0, "Original") in fases
+    assert ("P", 50_000.0, "Original") in fases
+    assert all(len(e) == 4 for e in jan[k]["e"] if (len(e) < 5))  # compactação ativa
+
+    # restos a pagar: a chave do empenho antigo vive no mês do PAGAMENTO,
+    # com os próprios pagamentos como eventos
+    abr = json.load(open(tmp_path / "2025-04.json", encoding="utf-8"))
+    kr = "PREFEITURA MUNICIPAL DE SANTOS|0000009/2024"
+    assert kr in abr
+    assert [e[0] for e in abr[kr]["e"]] == ["P"]
+
+    # extra-orçamentário (sem nº de empenho) fica FORA dos estágios
+    for arq in tmp_path.glob("*.json"):
+        d = json.load(open(arq, encoding="utf-8"))
+        assert not any(ch.endswith("|") for ch in d)
+
+
+def test_exportar_estagios_tipo_empenho(tmp_path, monkeypatch):
+    monkeypatch.setattr(export, "ESTAGIOS_DIR", str(tmp_path))
+    conn = db()
+    add(conn, "empenhos", 2025, 1, 10_000.0, empenho="0000300/2025", tipo_empenho="Global")
+    rows = export.montar_execucao(conn)
+    export.exportar_estagios(conn, rows)
+    d = json.load(open(tmp_path / "2025-01.json", encoding="utf-8"))
+    assert d["PREFEITURA MUNICIPAL DE SANTOS|0000300/2025"]["t"] == "Global"
+
+
 def test_indices_leves(tmp_path, monkeypatch):
     monkeypatch.setattr(export, "DADOS_DIR", str(tmp_path))
     conn = cenario_execucao()

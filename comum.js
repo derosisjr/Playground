@@ -188,7 +188,12 @@ window.Comum = (() => {
         url: f.slug ? "./favorecido.html?f=" + encodeURIComponent(f.slug)
                     : "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
         h: norm(f.nome),
-      })) },
+      })).concat([{
+        t: "Detalhamento de despesas (execução por empenho)",
+        s: "consulta com filtros, ficha do empenho e link citável",
+        url: "./despesas.html#detalhe",
+        h: norm("detalhamento despesas empenho liquidacao pagamento consulta lancamentos documentos"),
+      }]) },
     { id: "endividamento", rotulo: "Endividamento", url: "./endividamento-index.json",
       mapear: (d) => (d.semaforo || []).map((m) => ({
         t: m.nome,

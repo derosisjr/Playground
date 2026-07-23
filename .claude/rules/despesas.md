@@ -40,13 +40,29 @@ função→subfunção→elemento (top-10 + "Demais" por subfunção) p/ o treem
 `dados/` (`elementos.json`, `pf-resumo.json`, `indice-favorecidos.json` = favorecido→meses, chave =
 dígitos do doc; quem aparece em quase todos os meses fica fora) — evitam baixar os ~20 MB de detalhe:
 a ficha baixa só os meses do favorecido e o modo PF usa o agregado pronto (mediana = 2 meses/
-favorecido). `despesas/formato.py` é a camada comum do módulo: `brl`/`compacto`/`pct` e
+favorecido); (f) **`dados/estagios/AAAA-MM.json`** (~25 MB somados, baixado 1 arquivo por ficha) —
+documentos de estágio por empenho no padrão CGU/ITP: chave `"UG|empenho"` →
+`{t: tipo_empenho, e: [[fase E/L/P, nº doc, data, valor(, espécie)]]}`, espécie omitida quando
+"Original" (anulações/reforços explícitos, valores negativos); particionado pelo MESMO mês da linha
+de detalhe. `despesas/formato.py` é a camada comum do módulo: `brl`/`compacto`/`pct` e
 **`eh_ente_publico()`** (heurística única export+briefing; exceções privadas AFIP/FIPE/FGV listadas
 lá). `despesas.html`+`despesas-app.js` é o painel (vanilla + Chart.js e plugin
 `chartjs-chart-treemap` via CDN) com abas Visão geral/Alertas/Favorecidos (base pago) e
-**Detalhamento** (execução por empenho: seleciona 1+
-meses ou ano inteiro, tabela com empenhado/liquidado/pago, busca sem acento, **filtros estruturados**
-por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). A Visão geral tem
+**Detalhamento** — o coração da ferramenta (padrões
+Checkbook NYC/USAspending/CGU, reforma 2026-07): seleciona 1+ meses ou ano inteiro (carga com
+progresso), **estado completo na URL** (`dm/dq/df/del/dmin/dord/dgrp/dmet/dcols/emp…` via
+`Comum.gravarParams` — toda consulta é um link citável que auto-carrega), busca sem acento com
+debounce, **8 filtros-select com facetas contadas** (cross-filter, opção zerada desabilita) + faixa
+de valor, **chips removíveis** dos filtros ativos, **métrica ativa** (empenhado/liquidado/pago
+governa destaque/ordenação/faixa), **gerenciador de colunas** (9 padrão de 15, localStorage),
+**agrupar com subtotais** (favorecido/função/elemento/fonte/unidade/mês, expansível; CSV do modo
+agrupado exporta subtotais), thead sticky, `aria-sort`+teclado nos th, abas com
+tabpanel+setas (APG), mobile em cards `data-label`, bloco de confiança com fonte+explicação de
+restos/extra+links p/ o JSON bruto, e **linha clicável → ficha do empenho** (modal padrão CGU:
+classificação completa, favorecido→raio-X, tríade e "Documentos relacionados" com cada
+liquidação/pagamento/anulação vindos de `dados/estagios/`; deep-link `?emp=UG|nº`). Pontes:
+treemap (folha) e alerta `pico_elemento` desembocam no Detalhamento filtrado; paleta Ctrl+K tem
+entrada direta. A Visão geral tem
 gráfico da tríade + taxas, glossário `<details>`, série mensal com **média móvel 3 m**, toggle
 R$/% do total/per capita nas funções, **comparativo ano×ano por função** (mesmo período jan–M, do
 `series_mensais_por_funcao` + `resumo.mes_ref`), bloco "De cada R$ 100", **recibo do contribuinte**

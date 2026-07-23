@@ -73,6 +73,10 @@ async function init() {
   ligarModosFav();
   ligarDetalhe();
   ligarFicha();
+  ligarFichaEmpenho();
+  // consulta citável: ?dm=… restaura meses+filtros do Detalhamento e auto-carrega
+  const pURL = Comum.lerParams();
+  if (pURL.get("dm")) aplicarEstadoURL(pURL);
 
   const at = DADOS.atualizado_em ? new Date(DADOS.atualizado_em).toLocaleString("pt-BR") : "";
   const ate = DADOS.dados_ate
@@ -503,6 +507,9 @@ function renderMapa() {
         if (mapaPath.length < 2 && original?.f?.length) {
           mapaPath.push(dado.i);
           renderMapa();
+        } else if (mapaPath.length === 2 && original.n !== "Demais elementos") {
+          // folha (elemento) → Detalhamento filtrado por função+elemento
+          irParaDetalhe({ funcao: ARVORE.arvore[mapaPath[0]].n, elemento_despesa: original.n });
         } else {
           Comum.toast(`${original.n} — ${brlc(original.v)}`);
         }
@@ -687,7 +694,12 @@ function renderAlertas() {
   cont.querySelectorAll(".alerta").forEach(el => {
     el.addEventListener("click", async () => {
       const fav = el.getAttribute("data-fav");
-      if (!fav) return;
+      if (!fav) {
+        // alertas sem favorecido (ex.: pico de elemento) desembocam no Detalhamento
+        const elemento = el.getAttribute("data-elemento");
+        if (elemento) irParaDetalhe({ elemento_despesa: elemento });
+        return;
+      }
       const modo = el.getAttribute("data-modo");
       const elemento = el.getAttribute("data-elemento");
       selecionarAba("favorecidos");
@@ -876,14 +888,32 @@ function ligarModosFav() {
   sel.addEventListener("change", () => { favElemento = sel.value; favVisiveis = FAV_LOTE; atualizarFav(); });
 }
 
-// ── Abas / interações ────────────────────────────────────────────────────────
+// ── Abas / interações (padrão ARIA APG: tabpanel + navegação por setas) ──────
 function ligarAbas() {
-  document.querySelectorAll(".tab").forEach(t =>
-    t.addEventListener("click", () => selecionarAba(t.dataset.tab)));
+  const abas = [...document.querySelectorAll(".tab")];
+  abas.forEach((t, i) => {
+    t.id = t.id || "tab-" + t.dataset.tab;
+    t.setAttribute("aria-controls", "painel-" + t.dataset.tab);
+    t.addEventListener("click", () => selecionarAba(t.dataset.tab));
+    t.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      e.preventDefault();
+      const prox = abas[(i + (e.key === "ArrowRight" ? 1 : -1) + abas.length) % abas.length];
+      prox.focus();
+      selecionarAba(prox.dataset.tab);
+    });
+  });
+  document.querySelectorAll(".painel").forEach(p => {
+    p.setAttribute("role", "tabpanel");
+    p.setAttribute("aria-labelledby", "tab-" + p.id.replace("painel-", ""));
+  });
 }
 function selecionarAba(nome) {
-  document.querySelectorAll(".tab").forEach(t =>
-    t.setAttribute("aria-selected", t.dataset.tab === nome));
+  document.querySelectorAll(".tab").forEach(t => {
+    const ativa = t.dataset.tab === nome;
+    t.setAttribute("aria-selected", ativa);
+    t.tabIndex = ativa ? 0 : -1;
+  });
   document.querySelectorAll(".painel").forEach(p => p.classList.remove("ativo"));
   document.getElementById("painel-" + nome).classList.add("ativo");
 }
@@ -909,6 +939,10 @@ function ligarOrdenacao() {
 }
 
 // ── Detalhamento (íntegra pesquisável, carga por mês sob demanda) ─────────────
+// Padrões adotados da pesquisa (Checkbook NYC / USAspending / CGU / Socrata):
+// estado na URL (consulta citável), chips de filtros ativos, facetas com
+// contagem, faixa de valor, colunas configuráveis, agrupamento com subtotais,
+// métrica ativa (empenhado/liquidado/pago) e ficha do empenho por linha.
 const DET_LABELS = {
   data: "Data", unidade_gestora: "Unidade gestora", tipo: "Tipo",
   nome_favorecido: "Favorecido", documento_favorecido: "CPF/CNPJ",
@@ -918,17 +952,87 @@ const DET_LABELS = {
   empenhado: "Empenhado", liquidado: "Liquidado", pago: "Pago",
 };
 const DET_NUM = new Set(["empenhado", "liquidado", "pago"]);  // colunas de valor
-const DET_FILTROS = ["tipo", "unidade_gestora", "funcao", "fonte_recurso", "grupo_despesa"];
-const DET_PAGINA = 100;
+const DET_FILTROS = ["tipo", "unidade_gestora", "funcao", "subfuncao", "programa",
+                     "elemento_despesa", "fonte_recurso", "grupo_despesa"];
+// chaves curtas na URL (prefixo d p/ não colidir com o ?q= dos Favorecidos)
+const DET_URL = { tipo: "dt", unidade_gestora: "du", funcao: "df", subfuncao: "dsf",
+                  programa: "dpr", elemento_despesa: "del", fonte_recurso: "dfr",
+                  grupo_despesa: "dg" };
+const DET_COLS_PADRAO = ["data", "nome_favorecido", "unidade_gestora", "funcao",
+                         "elemento_despesa", "empenho", "empenhado", "liquidado", "pago"];
+const DET_GRUPOS = { nome_favorecido: "favorecido", funcao: "função",
+                     elemento_despesa: "elemento", fonte_recurso: "fonte",
+                     unidade_gestora: "unidade gestora", mes: "mês" };
+const DET_PAGINA = 100;       // linhas por página (modo plano)
+const DET_PAG_GRUPO = 50;     // grupos por página (modo agrupado)
 let detCampos = [];
 let detRows = [];        // todas as linhas carregadas (arrays)
 let detNorm = [];        // texto normalizado (sem acento, minúsculo) por linha, p/ busca
+const detArquivoDaLinha = new WeakMap();  // linha → dados/AAAA-MM.json de origem
 let detFiltradas = [];
+let detSomas = { empenhado: 0, liquidado: 0, pago: 0 };  // memoizado por filtragem
+let detGrupos = [];      // modo agrupado: [{chave, n, empenhado, liquidado, pago, linhas}]
+let detExpandidos = new Set();
 
 // remove acentos e baixa caixa — busca tolerante a acentuação (dados em PT-BR)
 const semAcento = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-let detSort = { idx: 0, dir: "asc" };
+let detSort = { col: "pago", dir: "desc" };
 let detPagina = 1;
+let detMetrica = "pago";      // métrica ativa (padrão SIGA): governa destaque/ordenação/faixa
+let detGrupo = "";            // "" = tabela plana; senão, coluna de agrupamento
+let detVisiveis = (() => {    // colunas exibidas (gerenciador + localStorage)
+  try {
+    const s = JSON.parse(localStorage.getItem("despesas_det_cols"));
+    if (Array.isArray(s) && s.length) return s;
+  } catch (e) { /* primeira visita */ }
+  return DET_COLS_PADRAO.slice();
+})();
+
+// ── Estado na URL (consulta citável — padrão Checkbook/CGU) ──────────────────
+function estadoDetalhe() {
+  const est = {
+    dm: mesesSelecionados().map(c => c.value).join(","),
+    dq: document.getElementById("det-q").value.trim(),
+    dmin: document.getElementById("det-vmin").value,
+    dmax: document.getElementById("det-vmax").value,
+    dord: `${detSort.col}:${detSort.dir}`,
+    dpg: detPagina > 1 ? String(detPagina) : "",
+    dgrp: detGrupo,
+    dmet: detMetrica !== "pago" ? detMetrica : "",
+    dcols: detVisiveis.join(",") === DET_COLS_PADRAO.join(",") ? "" : detVisiveis.join(","),
+  };
+  for (const c of DET_FILTROS) est[DET_URL[c]] = document.getElementById("f-" + c).value;
+  return est;
+}
+
+function sincronizarURL(extra) {
+  const atual = Comum.lerParams();
+  const obj = {};
+  if (atual.get("q")) obj.q = atual.get("q");            // deep-link dos Favorecidos
+  Object.assign(obj, estadoDetalhe(), extra || {});
+  if (obj.dord === "pago:desc") obj.dord = "";           // default fica fora da URL
+  Comum.gravarParams(obj);
+}
+
+// aplica o estado vindo da URL (chamado no init quando há dm=) — auto-carrega
+async function aplicarEstadoURL(p) {
+  const meses = (p.get("dm") || "").split(",").filter(Boolean);
+  const chks = [...document.querySelectorAll("#meses-grid input")];
+  chks.forEach(c => c.checked = meses.includes(c.value) ||
+    meses.some(m => /^\d{4}$/.test(m) && c.value.startsWith(m + "-")));
+  atualizarSelInfo();
+  if (!chks.some(c => c.checked)) return;
+  selecionarAba("detalhe");
+  await carregarDetalhe({
+    q: p.get("dq") || "",
+    filtros: Object.fromEntries(DET_FILTROS.map(c => [c, p.get(DET_URL[c]) || ""])),
+    vmin: p.get("dmin") || "", vmax: p.get("dmax") || "",
+    ord: p.get("dord") || "", pg: +(p.get("dpg") || 1),
+    grp: p.get("dgrp") || "", met: p.get("dmet") || "pago",
+    cols: (p.get("dcols") || "").split(",").filter(Boolean),
+    emp: p.get("emp") || "",
+  });
+}
 
 function renderSeletorMeses() {
   const meses = DADOS.meses || [];
@@ -974,119 +1078,411 @@ function atualizarSelInfo() {
     : "Nenhum mês selecionado.";
 }
 
+// Ponte agregado→transação (padrão Checkbook): marca todos os meses, aplica os
+// filtros pedidos e cai na aba já carregando. Usada pelo treemap e por alertas.
+function irParaDetalhe(filtros) {
+  document.querySelectorAll("#meses-grid input").forEach(c => c.checked = true);
+  atualizarSelInfo();
+  selecionarAba("detalhe");
+  location.hash = "detalhe";
+  carregarDetalhe({
+    q: "", filtros: { ...Object.fromEntries(DET_FILTROS.map(c => [c, ""])), ...filtros },
+    vmin: "", vmax: "", ord: "", pg: 1, grp: "", met: detMetrica, cols: [], emp: "",
+  });
+}
+
+let detDebounce = null;
+function refiltrar() {              // debounce ~150 ms (busca a cada tecla em 57k linhas)
+  clearTimeout(detDebounce);
+  detDebounce = setTimeout(() => { detPagina = 1; filtrarDetalhe(); }, 150);
+}
+
 function ligarDetalhe() {
   document.getElementById("det-limpar").addEventListener("click", () => {
     document.querySelectorAll("#meses-grid input").forEach(c => c.checked = false);
     atualizarSelInfo();
   });
-  document.getElementById("det-carregar").addEventListener("click", carregarDetalhe);
-  document.getElementById("det-q").addEventListener("input", () => { detPagina = 1; filtrarDetalhe(); });
+  document.getElementById("det-carregar").addEventListener("click", () => carregarDetalhe());
+  document.getElementById("det-q").addEventListener("input", refiltrar);
   DET_FILTROS.forEach(c => document.getElementById("f-" + c)
     .addEventListener("change", () => { detPagina = 1; filtrarDetalhe(); }));
+  ["det-vmin", "det-vmax"].forEach(id =>
+    document.getElementById(id).addEventListener("input", refiltrar));
+  document.getElementById("det-grupo").addEventListener("change", (e) => {
+    detGrupo = e.target.value; detPagina = 1; detExpandidos.clear(); filtrarDetalhe();
+  });
+  document.querySelectorAll("#det-metrica button").forEach(b =>
+    b.addEventListener("click", () => {
+      detMetrica = b.dataset.met;
+      document.querySelectorAll("#det-metrica button").forEach(x =>
+        x.classList.toggle("primario", x.dataset.met === detMetrica));
+      detSort = { col: detMetrica, dir: "desc" };
+      detPagina = 1;
+      montarCabecalho();
+      filtrarDetalhe();
+    }));
   document.getElementById("det-csv").addEventListener("click", exportarDetCsv);
-  document.getElementById("det-anterior").addEventListener("click", () => { detPagina--; renderDetTabela(); });
-  document.getElementById("det-proxima").addEventListener("click", () => { detPagina++; renderDetTabela(); });
+  document.getElementById("det-link").addEventListener("click", async () => {
+    sincronizarURL();
+    try {
+      await navigator.clipboard.writeText(location.href);
+      Comum.toast("Link desta consulta copiado.");
+    } catch (e) { Comum.toast("Copie o link na barra de endereço."); }
+  });
+  document.getElementById("det-anterior").addEventListener("click", () => { detPagina--; renderDetTabela(); sincronizarURL(); });
+  document.getElementById("det-proxima").addEventListener("click", () => { detPagina++; renderDetTabela(); sincronizarURL(); });
+  // glossário fica na Visão geral: troca de aba e abre o <details> no lugar certo
+  document.getElementById("det-glossario-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    selecionarAba("geral");
+    const g = document.querySelector("details.entenda");
+    if (g) { g.open = true; g.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  });
+  ligarColunas();
 }
 
-async function carregarDetalhe() {
+// Gerenciador de colunas ("Colunas ▾"): default enxuto aprovado; CSV exporta tudo.
+function ligarColunas() {
+  const caixa = document.getElementById("det-cols-lista");
+  caixa.innerHTML = Object.keys(DET_LABELS).map(c => `
+    <label class="mes-chk"><input type="checkbox" value="${c}"
+      ${detVisiveis.includes(c) ? "checked" : ""} />${DET_LABELS[c]}</label>`).join("");
+  caixa.querySelectorAll("input").forEach(ch => ch.addEventListener("change", () => {
+    const marcadas = [...caixa.querySelectorAll("input:checked")].map(x => x.value);
+    if (!marcadas.length) { ch.checked = true; Comum.toast("Mantenha ao menos uma coluna."); return; }
+    detVisiveis = Object.keys(DET_LABELS).filter(c => marcadas.includes(c));  // ordem canônica
+    try { localStorage.setItem("despesas_det_cols", JSON.stringify(detVisiveis)); } catch (e) {}
+    montarCabecalho();
+    renderDetTabela();
+    sincronizarURL();
+  }));
+  document.getElementById("det-cols-reset").addEventListener("click", () => {
+    detVisiveis = DET_COLS_PADRAO.slice();
+    try { localStorage.removeItem("despesas_det_cols"); } catch (e) {}
+    ligarColunas(); montarCabecalho(); renderDetTabela(); sincronizarURL();
+  });
+}
+
+async function carregarDetalhe(estado) {
   const sel = mesesSelecionados();
   if (!sel.length) { Comum.toast("Selecione ao menos um mês."); return; }
   const res = document.getElementById("det-resultado");
   const carregando = document.getElementById("det-carregando");
   res.hidden = true; carregando.hidden = false;
+  carregando.textContent = "Carregando…";
   try {
-    const partes = await carregarPartes(sel.map(c => c.dataset.arquivo));
+    let feitos = 0;
+    const arquivos = sel.map(c => c.dataset.arquivo);
+    const partes = await carregarPartes(arquivos, () => {
+      feitos += 1;
+      carregando.textContent = `Baixando ${feitos}/${sel.length} mês(es)…`;
+    });
     detCampos = partes[0].campos;
-    detRows = partes.flatMap(p => p.linhas);
+    detRows = [];
+    partes.forEach((p, k) => p.linhas.forEach(r => {
+      detRows.push(r);
+      detArquivoDaLinha.set(r, arquivos[k]);   // p/ a ficha achar o estagios/ do mês
+    }));
     detNorm = detRows.map(r => semAcento(r.join(" ")));
-    // ordena por pago desc por padrão
-    detSort = { idx: detCampos.indexOf("pago"), dir: "desc" };
-    montarCabecalho();
     popularFiltros();
-    detPagina = 1;
-    document.getElementById("det-q").value = "";
-    DET_FILTROS.forEach(c => document.getElementById("f-" + c).value = "");
+    if (estado) {                       // consulta vinda da URL: restaura tudo
+      document.getElementById("det-q").value = estado.q;
+      DET_FILTROS.forEach(c => { document.getElementById("f-" + c).value = estado.filtros[c] || ""; });
+      document.getElementById("det-vmin").value = estado.vmin;
+      document.getElementById("det-vmax").value = estado.vmax;
+      detMetrica = ["empenhado", "liquidado", "pago"].includes(estado.met) ? estado.met : "pago";
+      detGrupo = estado.grp in DET_GRUPOS ? estado.grp : "";
+      if (estado.cols.length) detVisiveis = Object.keys(DET_LABELS).filter(c => estado.cols.includes(c));
+      const [col, dir] = (estado.ord || "").split(":");
+      detSort = DET_LABELS[col] ? { col, dir: dir === "asc" ? "asc" : "desc" }
+                                : { col: detMetrica, dir: "desc" };
+      detPagina = Math.max(1, estado.pg || 1);
+    } else {                            // carga manual: começa limpa
+      detSort = { col: detMetrica, dir: "desc" };
+      detPagina = 1;
+      document.getElementById("det-q").value = "";
+      DET_FILTROS.forEach(c => document.getElementById("f-" + c).value = "");
+      document.getElementById("det-vmin").value = "";
+      document.getElementById("det-vmax").value = "";
+    }
+    document.getElementById("det-grupo").value = detGrupo;
+    document.querySelectorAll("#det-metrica button").forEach(x =>
+      x.classList.toggle("primario", x.dataset.met === detMetrica));
+    ligarColunas();
+    montarCabecalho();
     filtrarDetalhe();
+    // dados abertos: link para o JSON bruto de cada mês carregado
+    document.getElementById("det-json-links").innerHTML = arquivos.slice(0, 3)
+      .map(a => `<a href="./${a}" target="_blank" rel="noopener">${a.split("/").pop()}</a>`)
+      .join(" · ") + (arquivos.length > 3 ? ` e mais ${arquivos.length - 3} em despesas/dados/` : "");
     carregando.hidden = true; res.hidden = false;
+    if (estado?.emp) abrirFichaEmpenho(null, estado.emp);   // ficha deep-linkada
   } catch (e) {
     carregando.hidden = false;
     carregando.textContent = "Falha ao carregar os dados do período.";
   }
 }
 
+// Facetas com contagem (cross-filter): cada select conta as linhas que restariam
+// sob TODOS os demais filtros; opções com 0 ficam desabilitadas (menos a ativa).
 function popularFiltros() {
   DET_FILTROS.forEach(campo => {
     const i = detCampos.indexOf(campo);
     const sel = document.getElementById("f-" + campo);
-    const rotulo = sel.options[0].text;  // preserva o "(todos)"
+    const rotulo = sel.dataset.rotulo || sel.options[0].text;
+    sel.dataset.rotulo = rotulo;
     const vals = [...new Set(detRows.map(r => r[i]).filter(v => v != null && v !== ""))]
       .sort((a, b) => String(a).localeCompare(String(b)));
+    const atual = sel.value;
     sel.innerHTML = `<option value="">${esc(rotulo)}</option>` +
       vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    sel.value = atual;
+  });
+}
+
+function atualizarFacetas() {
+  DET_FILTROS.forEach(campo => {
+    const i = detCampos.indexOf(campo);
+    const sel = document.getElementById("f-" + campo);
+    const base = linhasFiltradas({ ignorar: campo });
+    const contagem = new Map();
+    for (const r of base) {
+      const v = r[i];
+      if (v != null && v !== "") contagem.set(v, (contagem.get(v) || 0) + 1);
+    }
+    for (const op of sel.options) {
+      if (!op.value) continue;
+      const n = contagem.get(op.value) || 0;
+      op.textContent = `${op.value} (${n.toLocaleString("pt-BR")})`;
+      op.disabled = n === 0 && sel.value !== op.value;
+    }
+  });
+}
+
+// Uma passada de filtro; `ignorar` exclui um select (p/ contagem de facetas).
+function linhasFiltradas(opts) {
+  const ignorar = opts?.ignorar;
+  const termos = semAcento(document.getElementById("det-q").value || "").split(/\s+/).filter(Boolean);
+  const fixos = DET_FILTROS
+    .filter(c => c !== ignorar)
+    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
+    .filter(([, v]) => v !== "");
+  const iMet = detCampos.indexOf(detMetrica);
+  const vmin = parseFloat(document.getElementById("det-vmin").value);
+  const vmax = parseFloat(document.getElementById("det-vmax").value);
+  const temMin = !isNaN(vmin), temMax = !isNaN(vmax);
+  return detRows.filter((r, i) => {
+    if (!fixos.every(([idx, v]) => r[idx] === v)) return false;
+    if (temMin && (r[iMet] ?? 0) < vmin) return false;
+    if (temMax && (r[iMet] ?? 0) > vmax) return false;
+    if (termos.length) { const hay = detNorm[i]; return termos.every(t => hay.includes(t)); }
+    return true;
   });
 }
 
 function montarCabecalho() {
   const tr = document.getElementById("det-cabecalho");
-  tr.innerHTML = detCampos.map((c, i) => {
-    const seta = detSort.idx === i ? (detSort.dir === "asc" ? " ▲" : " ▼") : "";
-    const cls = DET_NUM.has(c) ? ' class="r"' : "";
-    return `<th data-idx="${i}"${cls}>${DET_LABELS[c] || c}${seta}</th>`;
+  tr.innerHTML = detVisiveis.map(c => {
+    const ordenada = detSort.col === c;
+    const seta = ordenada ? (detSort.dir === "asc" ? " ▲" : " ▼") : "";
+    const aria = ordenada ? ` aria-sort="${detSort.dir === "asc" ? "ascending" : "descending"}"` : "";
+    const destaque = c === detMetrica ? " met-ativa" : "";
+    const cls = ` class="${DET_NUM.has(c) ? "r" : ""}${destaque}"`;
+    return `<th data-col="${c}"${cls}${aria} tabindex="0" role="columnheader" ` +
+      `aria-label="Ordenar por ${DET_LABELS[c]}">${DET_LABELS[c]}${seta}</th>`;
   }).join("");
-  tr.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
-    const i = +th.dataset.idx;
-    detSort.dir = detSort.idx === i && detSort.dir === "asc" ? "desc" : "asc";
-    detSort.idx = i;
+  const ordenar = (th) => {
+    const c = th.dataset.col;
+    detSort.dir = detSort.col === c && detSort.dir === "desc" ? "asc" : "desc";
+    detSort.col = c;
+    detPagina = 1;
+    montarCabecalho();
     filtrarDetalhe();
-  }));
+  };
+  tr.querySelectorAll("th").forEach(th => {
+    th.addEventListener("click", () => ordenar(th));
+    th.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); }
+    });
+  });
 }
 
 function filtrarDetalhe() {
-  const termos = semAcento(document.getElementById("det-q").value || "").split(/\s+/).filter(Boolean);
-  // filtros estruturados ativos: [idxColuna, valor]
-  const fixos = DET_FILTROS
-    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
-    .filter(([, v]) => v !== "");
-  detFiltradas = detRows.filter((r, i) => {
-    if (!fixos.every(([idx, v]) => r[idx] === v)) return false;
-    if (termos.length) { const hay = detNorm[i]; return termos.every(t => hay.includes(t)); }
-    return true;
-  });
-  const i = detSort.idx, dir = detSort.dir === "asc" ? 1 : -1;
-  const numerico = DET_NUM.has(detCampos[i]);
+  detFiltradas = linhasFiltradas();
+  // somas memoizadas (1× por filtragem, não por render)
+  detSomas = { empenhado: 0, liquidado: 0, pago: 0 };
+  const idx = { empenhado: detCampos.indexOf("empenhado"),
+                liquidado: detCampos.indexOf("liquidado"),
+                pago: detCampos.indexOf("pago") };
+  for (const r of detFiltradas) {
+    detSomas.empenhado += r[idx.empenhado] ?? 0;
+    detSomas.liquidado += r[idx.liquidado] ?? 0;
+    detSomas.pago += r[idx.pago] ?? 0;
+  }
+  const i = detCampos.indexOf(detSort.col), dir = detSort.dir === "asc" ? 1 : -1;
+  const numerico = DET_NUM.has(detSort.col);
   detFiltradas.sort((a, b) => {
     let va = a[i], vb = b[i];
     if (numerico) return ((va ?? 0) - (vb ?? 0)) * dir;
     return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
   });
+  if (detGrupo) montarGrupos(idx);
+  atualizarFacetas();
+  renderChips();
   renderDetTabela();
+  sincronizarURL();
+}
+
+// Agrupamento com subtotais (pivô-lite Socrata): 1 dimensão, grupos ordenados
+// pela métrica ativa, expansíveis para as linhas.
+function montarGrupos(idx) {
+  const porChave = new Map();
+  const iG = detGrupo === "mes" ? detCampos.indexOf("data") : detCampos.indexOf(detGrupo);
+  for (const r of detFiltradas) {
+    const bruto = detGrupo === "mes" ? String(r[iG] || "").slice(0, 7) : (r[iG] ?? "");
+    const chave = bruto === "" ? "(vazio)" : bruto;
+    let g = porChave.get(chave);
+    if (!g) { g = { chave, n: 0, empenhado: 0, liquidado: 0, pago: 0, linhas: [] }; porChave.set(chave, g); }
+    g.n += 1;
+    g.empenhado += r[idx.empenhado] ?? 0;
+    g.liquidado += r[idx.liquidado] ?? 0;
+    g.pago += r[idx.pago] ?? 0;
+    g.linhas.push(r);
+  }
+  detGrupos = [...porChave.values()].sort((a, b) => b[detMetrica] - a[detMetrica]);
+}
+
+// chips dos filtros ativos (padrão USAspending): × individual + limpar tudo
+function renderChips() {
+  const box = document.getElementById("det-chips");
+  const chips = [];
+  const q = document.getElementById("det-q").value.trim();
+  if (q) chips.push({ id: "q", texto: `busca: "${q}"` });
+  DET_FILTROS.forEach(c => {
+    const v = document.getElementById("f-" + c).value;
+    if (v) chips.push({ id: c, texto: `${DET_LABELS[c]}: ${v.length > 34 ? v.slice(0, 32) + "…" : v}` });
+  });
+  const vmin = document.getElementById("det-vmin").value;
+  const vmax = document.getElementById("det-vmax").value;
+  if (vmin || vmax)
+    chips.push({ id: "faixa", texto: `${DET_LABELS[detMetrica]} ${vmin ? "≥ " + compacto(+vmin) : ""}${vmin && vmax ? " e " : ""}${vmax ? "≤ " + compacto(+vmax) : ""}` });
+
+  box.innerHTML = chips.map(ch =>
+    `<button class="chip" type="button" data-chip="${esc(ch.id)}"
+       aria-label="Remover filtro ${esc(ch.texto)}">${esc(ch.texto)} ✕</button>`).join("") +
+    (chips.length > 1 ? '<button class="chip chip-limpar" type="button" data-chip="*">Limpar tudo</button>' : "");
+  box.hidden = chips.length === 0;
+  box.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    const alvo = b.dataset.chip;
+    if (alvo === "*" || alvo === "q") document.getElementById("det-q").value = alvo === "q" ? "" : document.getElementById("det-q").value;
+    if (alvo === "*") {
+      document.getElementById("det-q").value = "";
+      DET_FILTROS.forEach(c => document.getElementById("f-" + c).value = "");
+      document.getElementById("det-vmin").value = "";
+      document.getElementById("det-vmax").value = "";
+    } else if (alvo === "faixa") {
+      document.getElementById("det-vmin").value = "";
+      document.getElementById("det-vmax").value = "";
+    } else if (alvo !== "q") {
+      document.getElementById("f-" + alvo).value = "";
+    }
+    detPagina = 1;
+    filtrarDetalhe();
+  }));
 }
 
 function renderDetTabela() {
+  if (detGrupo) return renderDetGrupos();
   const totalPag = Math.max(1, Math.ceil(detFiltradas.length / DET_PAGINA));
   detPagina = Math.min(Math.max(1, detPagina), totalPag);
   const ini = (detPagina - 1) * DET_PAGINA;
   const pagina = detFiltradas.slice(ini, ini + DET_PAGINA);
-  const numIdx = new Set([...DET_NUM].map(c => detCampos.indexOf(c)));
 
   const corpo = document.getElementById("det-corpo");
   document.getElementById("det-vazio").hidden = detFiltradas.length > 0;
-  corpo.innerHTML = pagina.map(r => "<tr>" + r.map((v, i) => {
-    if (numIdx.has(i)) {
-      if (v == null) return `<td class="r" style="color:var(--muted)">—</td>`;
-      return `<td class="r num${v < 0 ? " neg" : ""}">${brlc(v)}</td>`;
-    }
-    return `<td title="${esc(v ?? "")}">${esc(v ?? "")}</td>`;
-  }).join("") + "</tr>").join("");
+  corpo.innerHTML = pagina.map((r, j) => {
+    const tds = detVisiveis.map(c => celulaDet(r, c)).join("");
+    return `<tr class="det-linha" data-i="${ini + j}" tabindex="0" ` +
+      `aria-label="Abrir ficha do empenho ${esc(r[detCampos.indexOf("empenho")] || "")}">${tds}</tr>`;
+  }).join("");
+  corpo.querySelectorAll(".det-linha").forEach(tr => {
+    tr.addEventListener("click", () => abrirFichaEmpenho(detFiltradas[+tr.dataset.i]));
+    tr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") abrirFichaEmpenho(detFiltradas[+tr.dataset.i]);
+    });
+  });
+  renderRodapeTabela(totalPag, `${detFiltradas.length.toLocaleString("pt-BR")} linha(s)`);
+}
 
-  const soma = (campo) => detFiltradas.reduce((s, r) => s + (r[detCampos.indexOf(campo)] ?? 0), 0);
-  document.getElementById("det-contagem").textContent =
-    `${detFiltradas.length.toLocaleString("pt-BR")} linha(s)`;
+function celulaDet(r, c) {
+  const v = r[detCampos.indexOf(c)];
+  const destaque = c === detMetrica ? " met-ativa" : "";
+  if (DET_NUM.has(c)) {
+    if (v == null) return `<td class="r${destaque}" data-label="${DET_LABELS[c]}" style="color:var(--muted)">—</td>`;
+    return `<td class="r num${v < 0 ? " neg" : ""}${destaque}" data-label="${DET_LABELS[c]}">${brlc(v)}</td>`;
+  }
+  return `<td data-label="${DET_LABELS[c]}" title="${esc(v ?? "")}">${esc(v ?? "")}</td>`;
+}
+
+function renderDetGrupos() {
+  const totalPag = Math.max(1, Math.ceil(detGrupos.length / DET_PAG_GRUPO));
+  detPagina = Math.min(Math.max(1, detPagina), totalPag);
+  const ini = (detPagina - 1) * DET_PAG_GRUPO;
+  const pagina = detGrupos.slice(ini, ini + DET_PAG_GRUPO);
+  const span = detVisiveis.length;
+
+  const corpo = document.getElementById("det-corpo");
+  document.getElementById("det-vazio").hidden = detGrupos.length > 0;
+  corpo.innerHTML = pagina.map(g => {
+    const aberto = detExpandidos.has(g.chave);
+    let html = `<tr class="det-grupo" data-chave="${esc(g.chave)}" tabindex="0" role="button"
+        aria-expanded="${aberto}">
+      <td colspan="${span}" data-label="${esc(DET_GRUPOS[detGrupo] || "grupo")}">
+        <span class="grp-seta" aria-hidden="true">${aberto ? "▾" : "▸"}</span>
+        <strong>${esc(g.chave)}</strong>
+        <span class="grp-meta">${g.n.toLocaleString("pt-BR")} doc(s) ·
+          Empenhado ${compacto(g.empenhado)} · Liquidado ${compacto(g.liquidado)} ·
+          Pago ${compacto(g.pago)}</span>
+      </td></tr>`;
+    if (aberto) {
+      html += g.linhas.map(r =>
+        `<tr class="det-linha det-sub" data-emp="${esc(r[detCampos.indexOf("unidade_gestora")])}|${esc(r[detCampos.indexOf("empenho")])}">` +
+        detVisiveis.map(c => celulaDet(r, c)).join("") + "</tr>").join("");
+    }
+    return html;
+  }).join("");
+  corpo.querySelectorAll(".det-grupo").forEach(tr => {
+    const alternar = () => {
+      const ch = tr.dataset.chave;
+      detExpandidos.has(ch) ? detExpandidos.delete(ch) : detExpandidos.add(ch);
+      renderDetTabela();
+    };
+    tr.addEventListener("click", alternar);
+    tr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); }
+    });
+  });
+  corpo.querySelectorAll(".det-sub").forEach(tr =>
+    tr.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const [ug, emp] = tr.dataset.emp.split("|");
+      const iU = detCampos.indexOf("unidade_gestora"), iE = detCampos.indexOf("empenho");
+      abrirFichaEmpenho(detFiltradas.find(r => r[iU] === ug && r[iE] === emp));
+    }));
+  renderRodapeTabela(totalPag,
+    `${detGrupos.length.toLocaleString("pt-BR")} grupo(s) · ${detFiltradas.length.toLocaleString("pt-BR")} linha(s)`);
+}
+
+function renderRodapeTabela(totalPag, contagem) {
+  document.getElementById("det-contagem").textContent = contagem;
   document.getElementById("det-soma").textContent =
-    `Empenhado ${brlc(soma("empenhado"))} · Liquidado ${brlc(soma("liquidado"))} · Pago ${brlc(soma("pago"))}`;
+    `Empenhado ${brlc(detSomas.empenhado)} · Liquidado ${brlc(detSomas.liquidado)} · Pago ${brlc(detSomas.pago)}`;
   document.getElementById("det-pagina").textContent = `Página ${detPagina} de ${totalPag}`;
   document.getElementById("det-anterior").disabled = detPagina <= 1;
   document.getElementById("det-proxima").disabled = detPagina >= totalPag;
+  document.getElementById("det-sr").textContent =
+    `${contagem}, ordenado por ${DET_LABELS[detSort.col]}, ` +
+    `${detSort.dir === "asc" ? "crescente" : "decrescente"}.`;
 }
 
 // Baixa um CSV do detalhe (rótulos amigáveis no cabeçalho; dialeto Excel pt-BR do Comum).
@@ -1096,7 +1492,134 @@ function baixarCsv(campos, rows, nomeArquivo) {
 
 function exportarDetCsv() {
   if (!detFiltradas.length) { Comum.toast("Nada para exportar."); return; }
+  if (detGrupo) {   // modo agrupado: exporta os subtotais
+    Comum.exportarCsv("despesas-agrupado.csv",
+      [DET_GRUPOS[detGrupo] || "grupo", "Documentos", "Empenhado", "Liquidado", "Pago"],
+      detGrupos.map(g => [g.chave, g.n, g.empenhado.toFixed(2), g.liquidado.toFixed(2), g.pago.toFixed(2)]));
+    return;
+  }
   baixarCsv(detCampos, detFiltradas, "despesas-detalhe.csv");
+}
+
+// ── Ficha do empenho (modal, padrão CGU: documento + estágios vinculados) ────
+const ESTAGIOS_CACHE = new Map();   // arquivo estagios/AAAA-MM.json → dicionário
+const FASE_NOME = { E: "Empenho", L: "Liquidação", P: "Pagamento" };
+
+async function abrirFichaEmpenho(row, chaveURL) {
+  if (!row && chaveURL) {           // deep-link ?emp=UG|numero
+    const [ug, emp] = chaveURL.split("|");
+    const iU = detCampos.indexOf("unidade_gestora"), iE = detCampos.indexOf("empenho");
+    row = detRows.find(r => r[iU] === ug && r[iE] === emp);
+    if (!row) { Comum.toast("Empenho não encontrado nos meses carregados."); return; }
+  }
+  if (!row) return;
+  const v = (c) => row[detCampos.indexOf(c)];
+  const chave = `${v("unidade_gestora")}|${v("empenho")}`;
+
+  const modal = document.getElementById("emp-modal");
+  modal.hidden = false;
+  document.getElementById("emp-titulo").textContent =
+    v("empenho") ? `Empenho ${v("empenho")}` : v("tipo");
+  document.getElementById("emp-sub").textContent = v("unidade_gestora");
+  document.getElementById("emp-tipo-linha").textContent =
+    v("tipo") !== "Empenho" ? v("tipo") : "";
+
+  // favorecido com ponte p/ o raio-X (slug do top-300 ou rota por documento)
+  const fav = document.getElementById("emp-fav");
+  const top = (DADOS.top_favorecidos || []).find(f =>
+    f.nome === v("nome_favorecido") && (f.documento || "") === (v("documento_favorecido") || ""));
+  fav.textContent = `${v("nome_favorecido")} ${v("documento_favorecido") ? "· " + v("documento_favorecido") : ""}`;
+  fav.href = top?.slug
+    ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
+    : "./favorecido.html?doc=" + encodeURIComponent(v("documento_favorecido") || "") +
+      "&nome=" + encodeURIComponent(v("nome_favorecido") || "");
+
+  document.getElementById("emp-classif").innerHTML =
+    ["funcao", "subfuncao", "programa", "elemento_despesa", "fonte_recurso", "grupo_despesa", "data"]
+      .filter(c => v(c))
+      .map(c => `<div class="emp-li"><dt>${DET_LABELS[c]}</dt><dd>${esc(v(c))}</dd></div>`).join("");
+
+  document.getElementById("emp-triade").textContent =
+    `Empenhado ${v("empenhado") == null ? "—" : brlc(v("empenhado"))} · ` +
+    `Liquidado ${v("liquidado") == null ? "—" : brlc(v("liquidado"))} · ` +
+    `Pago ${brlc(v("pago") ?? 0)}`;
+
+  const corpo = document.getElementById("emp-eventos");
+  const carregando = document.getElementById("emp-carregando");
+  corpo.innerHTML = "";
+  document.getElementById("emp-eventos-box").hidden = true;
+  carregando.hidden = false;
+  carregando.textContent = "Carregando os documentos de estágio…";
+
+  let eventos = null, tipoEmp = "";
+  if (v("tipo") === "Extra-orçamentário" || !v("empenho")) {
+    eventos = [["P", "—", v("data") || "", v("pago") ?? 0]];
+  } else {
+    const arquivo = (detArquivoDaLinha.get(row) || "").replace("despesas/dados/", "despesas/dados/estagios/");
+    try {
+      if (!ESTAGIOS_CACHE.has(arquivo)) {
+        const r = await fetch("./" + arquivo + "?v=" + (DADOS.atualizado_em || ""));
+        if (!r.ok) throw new Error(r.status);
+        ESTAGIOS_CACHE.set(arquivo, await r.json());
+      }
+      const o = ESTAGIOS_CACHE.get(arquivo)?.[chave];
+      if (o) { eventos = o.e; tipoEmp = o.t || ""; }
+    } catch (e) { /* sem estágios publicados ainda → degrada abaixo */ }
+  }
+
+  document.getElementById("emp-tipo").textContent = tipoEmp ? `Tipo: ${tipoEmp}` : "";
+  if (eventos) {
+    corpo.innerHTML = eventos.map(ev => {
+      const [fase, doc, data, valor] = ev;
+      const especie = ev[4] || "Original";
+      const badge = especie !== "Original"
+        ? ` <span class="emp-especie${especie === "Anulação" ? " anulacao" : ""}">${esc(especie)}</span>` : "";
+      return `<tr>
+        <td data-label="Fase">${FASE_NOME[fase] || fase}${badge}</td>
+        <td data-label="Nº documento">${esc(doc || "—")}</td>
+        <td data-label="Data">${esc(data || "—")}</td>
+        <td data-label="Valor" class="r num${valor < 0 ? " neg" : ""}">${brlc(valor)}</td>
+      </tr>`;
+    }).join("");
+    carregando.hidden = true;
+    document.getElementById("emp-eventos-box").hidden = false;
+    fichaEmpAtual = { chave, eventos };
+  } else {
+    carregando.textContent =
+      "Documentos de estágio ainda não publicados para este empenho — mostrando só o resumo acima.";
+    fichaEmpAtual = { chave, eventos: [] };
+  }
+  sincronizarURL({ emp: chave });
+}
+
+let fichaEmpAtual = { chave: "", eventos: [] };
+
+function fecharFichaEmpenho() {
+  document.getElementById("emp-modal").hidden = true;
+  sincronizarURL({ emp: "" });
+}
+
+function ligarFichaEmpenho() {
+  document.getElementById("emp-fechar").addEventListener("click", fecharFichaEmpenho);
+  document.getElementById("emp-modal").addEventListener("click", (e) => {
+    if (e.target.id === "emp-modal") fecharFichaEmpenho();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("emp-modal").hidden) fecharFichaEmpenho();
+  });
+  document.getElementById("emp-link").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      Comum.toast("Link da ficha copiado.");
+    } catch (e) { Comum.toast("Copie o link na barra de endereço."); }
+  });
+  document.getElementById("emp-csv").addEventListener("click", () => {
+    if (!fichaEmpAtual.eventos.length) { Comum.toast("Nada para exportar."); return; }
+    Comum.exportarCsv("empenho-" + fichaEmpAtual.chave.split("|")[1].replace(/\W/g, "-") + ".csv",
+      ["Fase", "Nº documento", "Data", "Valor", "Espécie"],
+      fichaEmpAtual.eventos.map(ev =>
+        [FASE_NOME[ev[0]] || ev[0], ev[1], ev[2], ev[3].toFixed(2), ev[4] || "Original"]));
+  });
 }
 
 // ── Ficha do favorecido (modal) ──────────────────────────────────────────────
@@ -1111,11 +1634,12 @@ let favFicha = { nome: "", doc: "", campos: [], rows: [], sort: { idx: 0, dir: "
 // Cache por arquivo mensal: a ficha baixa só os meses do favorecido e o
 // Detalhamento/`carregarTodoDetalhe` reaproveitam o que já veio.
 const DET_PARTES = new Map();
-async function carregarPartes(arquivos) {
+async function carregarPartes(arquivos, aoBaixar) {
   const faltam = arquivos.filter(a => !DET_PARTES.has(a));
+  arquivos.filter(a => DET_PARTES.has(a)).forEach(() => aoBaixar && aoBaixar());
   await Promise.all(faltam.map(a =>
     fetch("./" + a + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())
-      .then(p => DET_PARTES.set(a, p))));
+      .then(p => { DET_PARTES.set(a, p); if (aoBaixar) aoBaixar(); })));
   return arquivos.map(a => DET_PARTES.get(a));
 }
 

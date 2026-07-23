@@ -41,6 +41,7 @@ DB_PATH = os.path.join(AQUI, "despesas.sqlite")
 CSV_PATH = os.path.join(AQUI, "despesas.csv")
 XLSX_PATH = os.path.join(AQUI, "despesas.xlsx")
 DADOS_DIR = os.path.join(AQUI, "dados")           # detalhe mensal versionado (consumido pelo painel)
+ESTAGIOS_DIR = os.path.join(DADOS_DIR, "estagios")  # documentos de estágio por empenho (ficha)
 JSON_PATH = os.path.join(RAIZ, "despesas-index.json")
 FAV_DIR = os.path.join(RAIZ, "favorecidos")       # raio-X por favorecido (versionado; favorecido.html)
 ARVORE_PATH = os.path.join(AQUI, "arvore.json")   # hierarquia função→subfunção→elemento (treemap)
@@ -860,6 +861,70 @@ def exportar_detalhe_mensal(rows: list[dict]) -> list[dict]:
     return manifesto
 
 
+# ── Documentos de estágio por empenho (ficha do empenho, padrão CGU/ITP) ──────
+# dados/estagios/AAAA-MM.json — particionado pelo MESMO mês da linha de detalhe,
+# então a ficha baixa exatamente 1 arquivo. Chave "UG|empenho" →
+#   {"t": tipo_empenho (omitido se vazio),
+#    "e": [[fase, nº_doc, data, valor(, especie)], ...]}
+# fase: "E"=empenho, "L"=liquidação, "P"=pagamento. A espécie só aparece quando
+# NÃO é "Original" (Anulação/Reforço — valores negativos/positivos, padrão
+# "Evento" TCE-SP); tupla de 4 itens = Original. Linhas Restos a pagar recebem
+# os próprios pagamentos; Extra-orçamentárias (sem nº de empenho) ficam fora —
+# a ficha usa a própria linha.
+def exportar_estagios(conn, rows: list[dict]) -> int:
+    eventos: dict[str, dict] = {}
+
+    def chave(ug, emp):
+        return f"{ug}|{emp}"
+
+    def evento(fase, doc, data, valor, especie):
+        ev = [fase, doc or "", data or "", round(valor, 2)]
+        if especie and especie != "Original":
+            ev.append(especie)
+        return ev
+
+    for r in _q(conn, "SELECT unidade_gestora ug, empenho emp, data, valor, especie, "
+                      "tipo_empenho FROM empenhos"):
+        o = eventos.setdefault(chave(r["ug"], r["emp"]), {"e": []})
+        if r["tipo_empenho"]:
+            o["t"] = r["tipo_empenho"]
+        o["e"].append(evento("E", r["emp"], r["data"], r["valor"], r["especie"]))
+    for r in _q(conn, "SELECT unidade_gestora ug, empenho emp, liquidacao doc, data, "
+                      "valor, especie FROM liquidacoes WHERE empenho IS NOT NULL AND empenho <> ''"):
+        eventos.setdefault(chave(r["ug"], r["emp"]), {"e": []})["e"].append(
+            evento("L", r["doc"], r["data"], r["valor"], r["especie"]))
+    for r in _q(conn, "SELECT unidade_gestora ug, empenho emp, pagamento doc, data, "
+                      "valor, especie FROM pagamentos WHERE empenho IS NOT NULL AND empenho <> ''"):
+        eventos.setdefault(chave(r["ug"], r["emp"]), {"e": []})["e"].append(
+            evento("P", r["doc"], r["data"], r["valor"], r["especie"]))
+
+    for o in eventos.values():
+        o["e"].sort(key=lambda ev: (ev[2], "ELP".index(ev[0]) if ev[0] in "ELP" else 9))
+
+    # partição: cada mês recebe as chaves cujas linhas de detalhe vivem nele
+    os.makedirs(ESTAGIOS_DIR, exist_ok=True)
+    por_mes: dict[int, dict] = {}
+    for r in rows:
+        if r["tipo"] == "Extra-orçamentário" or not r.get("empenho"):
+            continue
+        k = chave(r["unidade_gestora"], r["empenho"])
+        if k in eventos:
+            por_mes.setdefault(r["_periodo"], {})[k] = eventos[k]
+
+    validos = {f"{p // 100}-{p % 100:02d}.json" for p in por_mes}
+    for nome in os.listdir(ESTAGIOS_DIR):
+        if nome.endswith(".json") and nome not in validos:
+            os.remove(os.path.join(ESTAGIOS_DIR, nome))
+
+    total = 0
+    for periodo, mapa in sorted(por_mes.items()):
+        arquivo = f"{periodo // 100}-{periodo % 100:02d}.json"
+        with open(os.path.join(ESTAGIOS_DIR, arquivo), "w", encoding="utf-8") as f:
+            json.dump(mapa, f, ensure_ascii=False, separators=(",", ":"))
+        total += len(mapa)
+    return total
+
+
 # ── Índices leves (evitam baixar os ~20 MB de detalhe no painel) ──────────────
 # Três arquivos pequenos em despesas/dados/:
 #   elementos.json          opções do filtro de elemento por tipo de documento
@@ -942,6 +1007,7 @@ def main():
     execucao = montar_execucao(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)
     exportar_indices_leves(execucao)
+    n_estagios = exportar_estagios(conn, execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE
     with open(JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(indice, f, ensure_ascii=False, separators=(",", ":"))
@@ -958,7 +1024,7 @@ def main():
           f"{len(execucao)} linhas de execução por empenho, "
           f"R$ {indice['totais']['geral']:,.2f}, {len(indice['alertas'])} alertas, "
           f"{len(indice['meses'])} meses, {n_fav_raiox} raio-X de favorecidos, "
-          f"árvore com {n_arvore} funções → "
+          f"árvore com {n_arvore} funções, estágios de {n_estagios} empenhos → "
           f"{os.path.basename(JSON_PATH)}, dados/, favorecidos/, {os.path.basename(CSV_PATH)}, {xlsx_msg}.", file=sys.stderr)
 
 

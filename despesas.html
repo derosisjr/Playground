@@ -120,6 +120,69 @@
       .sev.baixa { background: #eef1f6; color: var(--slate); }
 
       /* ── Detalhamento ─────────────────────────────────────────────── */
+      .det-acoes-topo { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px;
+        margin: 0 0 12px; align-items: start; }
+      .det-acoes-topo input[type="search"] { width: 100%; padding: 11px 12px;
+        border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card);
+        font: inherit; color: var(--navy); }
+      .det-acoes-topo input[type="search"]:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+      @media (max-width: 700px) { .det-acoes-topo { grid-template-columns: 1fr 1fr; } }
+      .det-filtros8 { grid-template-columns: repeat(4, 1fr); }
+      @media (max-width: 980px) { .det-filtros8 { grid-template-columns: 1fr 1fr; } }
+      .det-toolbar { align-items: center; gap: 10px 22px; }
+      .det-toolbar select { padding: 8px 10px; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy); }
+      .det-toolbar .btn { padding: 6px 11px; font-size: 12.5px; }
+      .det-faixa input { width: 110px; padding: 8px 10px; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy);
+        font-family: "IBM Plex Mono", monospace; }
+      /* chips de filtros ativos (padrão USAspending) */
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+      .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+        border: 1px solid var(--gold); border-radius: 999px; background: var(--card);
+        color: var(--navy); font: inherit; font-size: 12.5px; cursor: pointer; max-width: 100%; }
+      .chip:hover { background: rgba(201,168,76,.12); }
+      .chip.chip-limpar { border-color: var(--line); color: var(--muted); }
+      /* dropdown do gerenciador de colunas */
+      .cols-drop { position: relative; }
+      .cols-drop summary { list-style: none; display: inline-block; }
+      .cols-drop summary::-webkit-details-marker { display: none; }
+      .cols-caixa { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+        background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+        padding: 12px; width: 250px; box-shadow: 0 12px 30px rgba(7,17,31,.18); }
+      .cols-caixa #det-cols-lista { display: grid; gap: 6px; margin-bottom: 10px;
+        max-height: 300px; overflow: auto; }
+      /* cabeçalho fixo dentro do próprio contêiner de rolagem */
+      .det-scroll { max-height: 75vh; overflow: auto; }
+      .det-scroll thead th { position: sticky; top: 0; z-index: 5; }
+      /* métrica ativa destacada + linhas clicáveis + grupos */
+      #det-tabela th.met-ativa, #det-tabela td.met-ativa { background: rgba(201,168,76,.10); }
+      #det-tabela thead th.met-ativa { background: var(--navy3); }
+      .det-linha { cursor: pointer; }
+      .det-linha:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+      tr.det-grupo { cursor: pointer; background: color-mix(in srgb, var(--card) 92%, var(--gold)); }
+      tr.det-grupo td { font-size: 13.5px; }
+      tr.det-grupo .grp-seta { color: var(--gold); margin-right: 8px; font-weight: 800; }
+      tr.det-grupo .grp-meta { color: var(--muted); margin-left: 10px;
+        font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+      tr.det-sub td:first-child { padding-left: 26px; }
+      .det-confianca { color: var(--muted); font-size: 12.5px; line-height: 1.6; margin: 14px 2px 0; }
+      /* mobile: tabela vira cards empilhados (padrão USWDS data-label) */
+      @media (max-width: 640px) {
+        #det-tabela, #det-tabela tbody, #det-tabela tr { display: block; width: 100%; }
+        #det-tabela thead { display: none; }
+        #det-tabela tr { border: 1px solid var(--line); border-radius: var(--r-sm);
+          margin: 0 0 10px; padding: 10px 12px; background: var(--card); white-space: normal; }
+        #det-tabela td { display: flex; justify-content: space-between; flex-wrap: wrap;
+          gap: 2px 12px; border: 0; padding: 3px 0; max-width: none; white-space: normal;
+          text-align: right; overflow-wrap: anywhere; }
+        #det-tabela td::before { content: attr(data-label); color: var(--muted);
+          font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+          flex: none; text-align: left; }
+        #det-tabela tr.det-grupo td { display: block; text-align: left; }
+        #det-tabela tr.det-grupo td::before { display: none; }
+        .det-scroll { max-height: none; overflow: visible; }
+      }
       .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
         background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
       .btn:hover { border-color: var(--gold); }
@@ -200,6 +263,19 @@
       .box-toggle h3 { margin: 0; }
       .box-toggle .btn { padding: 5px 10px; font-size: 12px; }
 
+      /* ficha do empenho */
+      .emp-classif { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 8px 18px; margin: 0; }
+      .emp-classif .emp-li dt { font-size: 10.5px; text-transform: uppercase;
+        letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+      .emp-classif .emp-li dd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.4; }
+      .emp-favlink { font-weight: 700; color: var(--navy); }
+      .emp-especie { display: inline-block; font-size: 10px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .06em; padding: 1px 7px;
+        border-radius: 999px; background: #fef0c7; color: var(--amber); margin-left: 8px; }
+      .emp-especie.anulacao { background: #fee4e2; color: var(--red); }
+      #emp-tabela td.neg { color: var(--red); }
+
       /* "Em resumo" — narrativa do export + deltas nos cards */
       .resumo-box { border-left: 3px solid var(--gold); }
       .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
@@ -213,7 +289,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=3"></script>
+    <script src="./comum.js?v=4"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -425,36 +501,86 @@
         </div>
 
         <div id="det-resultado" hidden>
-          <div class="filtros" style="grid-template-columns: 2fr 1fr">
-            <input id="det-q" type="search" placeholder="Buscar em qualquer coluna (favorecido, elemento, programa, nº empenho)..." />
-            <button class="btn" id="det-csv" type="button">Exportar CSV (filtro atual)</button>
+          <div class="det-acoes-topo">
+            <input id="det-q" type="search"
+              placeholder="Buscar em qualquer coluna (favorecido, elemento, programa, nº empenho)..." />
+            <button class="btn" id="det-link" type="button"
+              title="Copia um link que reabre esta consulta com os mesmos meses, filtros e ordenação">Copiar link</button>
+            <button class="btn" id="det-csv" type="button"
+              title="Exporta as linhas filtradas, com todas as colunas">Exportar CSV</button>
+            <details class="cols-drop" id="det-cols">
+              <summary class="btn" role="button">Colunas ▾</summary>
+              <div class="cols-caixa">
+                <div id="det-cols-lista"></div>
+                <button class="btn" id="det-cols-reset" type="button">Voltar ao padrão</button>
+              </div>
+            </details>
           </div>
-          <div class="filtros" id="det-filtros">
+          <div class="filtros det-filtros8" id="det-filtros">
             <select id="f-tipo"><option value="">Tipo (todos)</option></select>
             <select id="f-unidade_gestora"><option value="">Unidade gestora (todas)</option></select>
             <select id="f-funcao"><option value="">Função / área (todas)</option></select>
+            <select id="f-subfuncao"><option value="">Subfunção (todas)</option></select>
+            <select id="f-programa"><option value="">Programa (todos)</option></select>
+            <select id="f-elemento_despesa"><option value="">Elemento de despesa (todos)</option></select>
             <select id="f-fonte_recurso"><option value="">Fonte de recurso (todas)</option></select>
             <select id="f-grupo_despesa"><option value="">Grupo de despesa (todos)</option></select>
           </div>
+          <div class="barra det-toolbar">
+            <div class="acoes" id="det-metrica" role="group" aria-label="Métrica ativa da tabela">
+              <span class="contagem">Métrica:</span>
+              <button class="btn" data-met="empenhado" type="button">Empenhado</button>
+              <button class="btn" data-met="liquidado" type="button">Liquidado</button>
+              <button class="btn primario" data-met="pago" type="button">Pago</button>
+            </div>
+            <div class="acoes">
+              <label class="contagem" for="det-grupo">Agrupar por:</label>
+              <select id="det-grupo">
+                <option value="">nenhum (linha a linha)</option>
+                <option value="nome_favorecido">favorecido</option>
+                <option value="funcao">função</option>
+                <option value="elemento_despesa">elemento</option>
+                <option value="fonte_recurso">fonte</option>
+                <option value="unidade_gestora">unidade gestora</option>
+                <option value="mes">mês</option>
+              </select>
+            </div>
+            <div class="acoes det-faixa">
+              <label class="contagem" for="det-vmin">Valor</label>
+              <input id="det-vmin" type="number" min="0" step="1000" placeholder="mín R$" />
+              <input id="det-vmax" type="number" min="0" step="1000" placeholder="máx R$" />
+            </div>
+          </div>
+          <div id="det-chips" class="chips" hidden></div>
           <div class="barra">
             <span class="contagem" id="det-contagem" aria-live="polite">—</span>
             <span class="contagem" id="det-soma"></span>
           </div>
           <p class="dica-scroll" aria-hidden="true">→ deslize a tabela para ver todas as colunas</p>
-          <div class="tabela-wrap" style="overflow-x:auto">
+          <div class="tabela-wrap det-scroll">
             <table id="det-tabela">
               <thead><tr id="det-cabecalho"></tr></thead>
               <tbody id="det-corpo"></tbody>
             </table>
-            <div class="vazio" id="det-vazio" hidden>Nenhum pagamento com esse filtro.</div>
+            <div class="vazio" id="det-vazio" hidden>Nenhum lançamento com esses filtros —
+              remova um chip acima para ampliar a consulta.</div>
           </div>
           <div class="barra" style="justify-content:center;margin-top:12px">
             <button class="btn" id="det-anterior" type="button">‹ Anterior</button>
             <span class="contagem" id="det-pagina">—</span>
             <button class="btn" id="det-proxima" type="button">Próxima ›</button>
           </div>
+          <p class="det-confianca">
+            Fonte: Portal da Transparência de Santos — estágios de empenho, liquidação e pagamento
+            somados por empenho; clique numa linha para ver os documentos de cada estágio.
+            Linhas <strong>Restos a pagar</strong> = pagamento de empenho de exercício anterior;
+            <strong>Extra-orçamentário</strong> = saída sem empenho (retenções e repasses).
+            <a href="#painel-geral" id="det-glossario-link">O que significa cada coluna</a> ·
+            dados brutos: <span id="det-json-links"></span>.
+          </p>
         </div>
         <div class="vazio" id="det-carregando" hidden>Carregando…</div>
+        <span class="sr-only" id="det-sr" aria-live="polite"></span>
       </section>
 
       <p class="rodape">
@@ -503,6 +629,42 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=9"></script>
+    <!-- ── Ficha do empenho (modal, padrão CGU: documento + estágios) ── -->
+    <div class="modal-overlay" id="emp-modal" hidden>
+      <div class="modal-card" style="max-width:860px">
+        <div class="modal-head">
+          <div class="modal-tit">
+            <div id="emp-titulo">—</div>
+            <div class="modal-doc"><span id="emp-sub"></span>
+              <span id="emp-tipo" style="margin-left:10px"></span>
+              <span id="emp-tipo-linha" style="margin-left:10px"></span></div>
+          </div>
+          <div class="acoes">
+            <button class="btn" id="emp-link" type="button">Copiar link</button>
+            <button class="btn" id="emp-csv" type="button">CSV</button>
+            <button class="btn" id="emp-fechar" type="button" aria-label="Fechar">✕ Fechar</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p style="margin:0 0 10px"><a id="emp-fav" href="#" class="emp-favlink">—</a>
+            <span class="contagem" style="margin-left:6px">abre o raio-X do favorecido ↗</span></p>
+          <dl class="emp-classif" id="emp-classif"></dl>
+          <p class="contagem" id="emp-triade" style="margin:10px 0 14px"></p>
+          <div class="vazio" id="emp-carregando">Carregando…</div>
+          <div id="emp-eventos-box" hidden>
+            <h3 style="font-size:14px;margin:0 0 10px">Documentos relacionados
+              <span class="contagem" style="font-weight:400">— cada liquidação e pagamento deste empenho</span></h3>
+            <div class="tabela-wrap" style="overflow-x:auto">
+              <table id="emp-tabela">
+                <thead><tr><th>Fase</th><th>Nº documento</th><th>Data</th><th class="r">Valor</th></tr></thead>
+                <tbody id="emp-eventos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./despesas-app.js?v=10"></script>
   </body>
 </html>
