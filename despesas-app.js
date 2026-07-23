@@ -52,6 +52,7 @@ async function init() {
   renderResumo();
   renderGraficos();
   renderR100();
+  renderRecibo();
   ligarVistaFuncao();
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
@@ -82,7 +83,7 @@ async function init() {
 }
 
 // ── Cards ────────────────────────────────────────────────────────────────────
-const POP_SANTOS = (window.Comum && Comum.POP_SANTOS) || 433656; // IBGE, Censo 2022
+const POP_SANTOS = (window.Comum && Comum.POP_SANTOS) || 418608; // IBGE, Censo 2022 definitivo
 
 function deltaHTML(pct, rotulo) {
   if (pct == null) return "";
@@ -140,15 +141,25 @@ function renderGraficos() {
     const c = Chart.getChart(id);
     if (c) c.destroy();
   });
-  // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque
+  // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque;
+  // linha de média móvel 3m dá a tendência sem o serrilhado dos pagamentos.
   const serie = DADOS.series_mensais;
   const desvios = desviosSerie(serie);
   const anomalo = desvios.map(d => d != null && Math.abs(d) > 25);
+  const mm3 = serie.map((s, i) => i < 2 ? null :
+    (serie[i - 2].valor + serie[i - 1].valor + s.valor) / 3);
+  const optsMensal = chartOpts({ y: eixoReais() }, undefined, {
+    afterLabel: (c) => c.datasetIndex === 0 && anomalo[c.dataIndex]
+      ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
+      : "",
+  });
+  optsMensal.plugins.legend = { display: true, labels: { boxWidth: 18, font: { size: 12 } } };
   new Chart(document.getElementById("ch-mensal"), {
     type: "line",
     data: {
       labels: serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
       datasets: [{
+        label: "Pago no mês",
         data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: FILL_SERIE,
         fill: true, tension: .25, borderWidth: 2,
         pointRadius: anomalo.map(a => a ? 5 : 2),
@@ -156,13 +167,13 @@ function renderGraficos() {
           a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : NAVY),
         pointBorderColor: anomalo.map(a => a ? "#fff" : NAVY),
         pointBorderWidth: anomalo.map(a => a ? 1.5 : 0),
+      }, {
+        label: "Média móvel (3 m)",
+        data: mm3, borderColor: GOLD, borderDash: [5, 4], borderWidth: 2,
+        pointRadius: 0, tension: .3, fill: false,
       }],
     },
-    options: chartOpts({ y: eixoReais() }, undefined, {
-      afterLabel: (c) => anomalo[c.dataIndex]
-        ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
-        : "",
-    }),
+    options: optsMensal,
   });
 
   // Execução: empenhado × liquidado × pago por mês (tríade coletada pelo crawler)
@@ -170,6 +181,9 @@ function renderGraficos() {
 
   // Top funções (barra horizontal, com vista R$ / % / per capita)
   renderFuncao();
+
+  // Ano contra ano por função (mesmo período)
+  renderComparativo();
 
   // Por fonte (donut top 8)
   const ft = DADOS.por_fonte.slice(0, 8);
@@ -191,9 +205,10 @@ function renderGraficos() {
   // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
   const ult = serie[serie.length - 1];
   Comum.chartAcessivel("ch-mensal",
-    `Total pago por mês. Último mês (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}. Pontos fora do padrão são detalhados na aba Alertas.`,
-    ["Mês", "Pago", "Desvio vs média 12m"],
+    `Total pago por mês, com média móvel de três meses. Último mês (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}. Pontos fora do padrão são detalhados na aba Alertas.`,
+    ["Mês", "Pago", "Média 3 m", "Desvio vs média 12m"],
     serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor),
+      mm3[i] == null ? "—" : compacto(mm3[i]),
       desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]));
   Comum.chartAcessivel("ch-fonte",
     "Distribuição do gasto pago por fonte de recurso (oito maiores).",
@@ -322,6 +337,104 @@ function renderR100() {
     </div>`).join("");
   document.getElementById("r100-nota").textContent =
     `Distribuição do total pago no período (${compacto(total)}) por função de governo.`;
+  box.hidden = false;
+}
+
+// ── Comparativo ano contra ano por função (mesmo período jan–M) ──────────────
+// Usa series_mensais_por_funcao do índice; compara o acumulado do ano corrente
+// (até o último mês COMPLETO) com o mesmo período do ano anterior.
+function renderComparativo() {
+  const box = document.getElementById("box-comparativo");
+  const serie = DADOS.series_mensais_por_funcao || [];
+  const ref = DADOS.resumo?.mes_ref;   // último mês completo, calculado no export
+  if (!box || !serie.length || !ref) { if (box) box.hidden = true; return; }
+  const atual = ref.ano, anterior = atual - 1, mesLim = ref.mes;
+  const temAnterior = serie.some(s => s.ano === anterior && s.mes <= mesLim);
+  if (!temAnterior) { box.hidden = true; return; }
+
+  const soma = { [atual]: {}, [anterior]: {} };
+  for (const s of serie) {
+    if (s.mes > mesLim || !(s.ano in soma)) continue;
+    soma[s.ano][s.funcao] = (soma[s.ano][s.funcao] || 0) + s.valor;
+  }
+  const funcoes = Object.entries(soma[atual]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  const antigo = Chart.getChart("ch-comparativo");
+  if (antigo) antigo.destroy();
+  new Chart(document.getElementById("ch-comparativo"), {
+    type: "bar",
+    data: {
+      labels: funcoes.map(([f]) => rotulo(f)),
+      datasets: [
+        { label: String(anterior), data: funcoes.map(([f]) => soma[anterior][f] || 0),
+          backgroundColor: ESCURO ? "#3d4c63" : "#c7cdd8" },
+        { label: String(atual), data: funcoes.map(([f]) => soma[atual][f] || 0),
+          backgroundColor: GOLD },
+      ],
+    },
+    options: (() => {
+      const o = chartOpts({ x: eixoReais() }, "y", {
+        label: (c) => `${c.dataset.label}: ${brlc(c.raw)}`,
+        afterLabel: (c) => {
+          if (c.dataset.label !== String(atual)) return "";
+          const va = soma[anterior][funcoes[c.dataIndex][0]] || 0;
+          if (!va) return "sem base no ano anterior";
+          const d = Math.round(100 * (c.raw - va) / va);
+          return `${d >= 0 ? "+" : ""}${d}% vs ${anterior}`;
+        },
+      });
+      o.plugins.legend = { display: true, labels: { boxWidth: 18, font: { size: 12 } } };
+      return o;
+    })(),
+  });
+
+  document.getElementById("comparativo-titulo").textContent =
+    `${atual} × ${anterior}, por função`;
+  document.getElementById("comparativo-sub").textContent =
+    `Acumulado jan–${MESES[mesLim].toLowerCase()} de cada ano (meses completos).`;
+  box.hidden = false;
+
+  Comum.chartAcessivel("ch-comparativo",
+    `Gasto pago por função, ${atual} contra ${anterior}, mesmo período (jan–${MESES[mesLim]}).`,
+    ["Função", String(anterior), String(atual), "Variação"],
+    funcoes.map(([f, v]) => {
+      const va = soma[anterior][f] || 0;
+      const d = va ? Math.round(100 * (v - va) / va) : null;
+      return [f, compacto(va), compacto(v), d == null ? "—" : (d >= 0 ? "+" : "") + d + "%"];
+    }));
+}
+
+// ── Recibo do contribuinte (didático, IPTU → funções) ────────────────────────
+function renderRecibo() {
+  const box = document.getElementById("box-recibo");
+  const fns = DADOS.por_funcao || [];
+  const total = DADOS.totais?.geral;
+  if (!box || !fns.length || !total) return;
+  const faixa = document.getElementById("recibo-faixa");
+  const campo = document.getElementById("recibo-valor");
+
+  const desenhar = () => {
+    const valor = Math.max(0, Number(campo.value) || 0);
+    const top = fns.slice(0, 8);
+    const outros = total - top.reduce((s, f) => s + f.valor, 0);
+    const itens = top.map(f => ({ nome: nomeFuncao(f.funcao), v: valor * f.valor / total }));
+    if (outros > 0) itens.push({ nome: "Demais áreas", v: valor * outros / total });
+    const max = Math.max(...itens.map(i => i.v)) || 1;
+    document.getElementById("recibo-linhas").innerHTML = itens.map(i => `
+      <div class="r100-linha">
+        <span class="r100-nome" title="${esc(i.nome)}">${esc(i.nome)}</span>
+        <span class="r100-barra" aria-hidden="true"><span class="r100-fill" style="width:${(100 * i.v / max).toFixed(1)}%"></span></span>
+        <span class="r100-vlr">${i.v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+      </div>`).join("");
+  };
+
+  faixa.addEventListener("input", () => { campo.value = faixa.value; desenhar(); });
+  campo.addEventListener("input", () => {
+    const v = Number(campo.value) || 0;
+    faixa.value = Math.min(Math.max(v, faixa.min), faixa.max);
+    desenhar();
+  });
+  desenhar();
   box.hidden = false;
 }
 
@@ -536,6 +649,7 @@ const ALERTA_LABELS = {
   pico_mensal: "Pico mensal", extra_orcamentario: "Extra-orçamentário",
   fracionamento: "Possível fracionamento", favorecido_novo: "Favorecido novo",
   crescimento_yoy: "Crescimento anômalo", pf_sensivel: "Pessoa física sensível",
+  pico_favorecido: "Pico de um favorecido", pico_elemento: "Pico de um elemento",
 };
 
 function popularFiltrosAlertas() {
@@ -1037,11 +1151,15 @@ async function abrirFichaFavorecido(nome, documento) {
   modal.hidden = false;
   document.getElementById("fav-titulo").textContent = nome;
   document.getElementById("fav-doc").textContent = documento || "";
-  // ponte p/ o raio-X (só p/ o top-300, que tem dossiê pré-computado)
+  // ponte p/ o raio-X: top-300 usa o dossiê pré-computado (?f=slug); os demais
+  // usam a rota por documento/nome (página reconstruída dos lançamentos)
   const raiox = document.getElementById("fav-raiox");
   const top = (DADOS.top_favorecidos || []).find(f => f.nome === nome && (f.documento || "") === (documento || ""));
-  raiox.hidden = !top?.slug;
-  if (top?.slug) raiox.href = "./favorecido.html?f=" + encodeURIComponent(top.slug);
+  raiox.hidden = false;
+  raiox.href = top?.slug
+    ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
+    : "./favorecido.html?doc=" + encodeURIComponent(documento || "") +
+      "&nome=" + encodeURIComponent(nome || "");
   document.getElementById("fav-carregando").hidden = false;
   document.getElementById("fav-conteudo").hidden = true;
   try {

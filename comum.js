@@ -3,7 +3,7 @@
 "use strict";
 
 window.Comum = (() => {
-  const POP_SANTOS = 433656; // IBGE, Censo 2022 (per capita nos painéis)
+  const POP_SANTOS = 418608; // IBGE, Censo 2022 definitivo (per capita nos painéis; mesma base do benchmark)
 
   const PAGINAS = [
     ["index.html", "Início", "inicio"],

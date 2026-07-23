@@ -17,8 +17,7 @@ Notas metodológicas:
     ~abril do ano seguinte. NÃO é comparável 1:1 com a visão caixa/pago do
     painel (fonte municipal, adm. direta + entidades do portal).
   - População: Censo 2022 (IBGE, agregado 4709) para TODAS as cidades —
-    inclusive Santos (418.608; o restante do site usa a constante histórica
-    433.656 do Comum, mantida por consistência interna das outras páginas).
+    a mesma base de `Comum.POP_SANTOS` (unificado em 418.608 em 2026-07).
   - Pares por porte (379–452 mil hab.): Jundiaí, Piracicaba, Mogi das Cruzes,
     Bauru; + São José dos Campos (697 mil) como referência regional maior.
 

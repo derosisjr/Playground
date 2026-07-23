@@ -129,6 +129,51 @@ def test_alerta_favorecido_novo_exclui_ente_publico():
     assert not any("PREFEITURA" in t for t in novos)
 
 
+def test_alerta_pico_favorecido_zscore():
+    conn = db()
+    # 11 meses estáveis (~100 mil) + 1 mês explosivo (2 mi) p/ o mesmo favorecido
+    for mes in range(1, 12):
+        add(conn, "pagamentos", 2025, mes, 100_000.0, nome_favorecido="OSCILANTE LTDA")
+    add(conn, "pagamentos", 2025, 12, 2_000_000.0, nome_favorecido="OSCILANTE LTDA")
+    # ente público com o mesmo padrão NÃO dispara
+    for mes in range(1, 12):
+        add(conn, "pagamentos", 2025, mes, 100_000.0, nome_favorecido="PREFEITURA DE CUBATÃO")
+    add(conn, "pagamentos", 2025, 12, 2_000_000.0, nome_favorecido="PREFEITURA DE CUBATÃO")
+    picos = [a for a in export.alertas(conn) if a["tipo"] == "pico_favorecido"]
+    assert any("OSCILANTE" in a["titulo"] and "2025-12" in a["titulo"] for a in picos)
+    assert not any("PREFEITURA" in a["titulo"] for a in picos)
+
+
+def test_alerta_pico_favorecido_ignora_serie_estavel():
+    conn = db()
+    for mes in range(1, 13):   # série alta porém estável → sem pico
+        add(conn, "pagamentos", 2025, mes, 2_000_000.0, nome_favorecido="ESTAVEL LTDA")
+    assert not [a for a in export.alertas(conn) if a["tipo"] == "pico_favorecido"]
+
+
+def test_alerta_pico_elemento_ignora_sazonais():
+    conn = db()
+    # 13º explode em dezembro TODO ano — pico de calendário, não achado fiscal
+    for mes in range(1, 12):
+        add(conn, "pagamentos", 2025, mes, 500_000.0,
+            elemento_despesa="319013 - 13º SALÁRIO")
+    add(conn, "pagamentos", 2025, 12, 40_000_000.0,
+        elemento_despesa="319013 - 13º SALÁRIO")
+    assert not [a for a in export.alertas(conn) if a["tipo"] == "pico_elemento"]
+
+
+def test_alerta_pico_elemento_zscore():
+    conn = db()
+    for mes in range(1, 12):
+        add(conn, "pagamentos", 2025, mes, 500_000.0,
+            elemento_despesa="339030 - MATERIAL DE CONSUMO")
+    add(conn, "pagamentos", 2025, 12, 12_000_000.0,
+        elemento_despesa="339030 - MATERIAL DE CONSUMO")
+    picos = [a for a in export.alertas(conn) if a["tipo"] == "pico_elemento"]
+    assert any("MATERIAL DE CONSUMO" in a["titulo"] for a in picos)
+    assert picos[0]["filtro"] == {"elemento": "339030 - MATERIAL DE CONSUMO"}
+
+
 # ── Árvore e índices leves ────────────────────────────────────────────────────
 def test_exportar_arvore_agrupa_cauda(tmp_path, monkeypatch):
     monkeypatch.setattr(export, "ARVORE_PATH", str(tmp_path / "arvore.json"))

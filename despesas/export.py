@@ -71,6 +71,15 @@ ALERTA_NOVO_VALOR = 1_000_000   # ...e já acumulou ao menos isso
 ALERTA_YOY_FATOR = 3.0          # crescimento anualizado do ano corrente ≥ FATOR× ano anterior
 ALERTA_YOY_VALOR = 1_000_000    # ...e move ao menos isso no ano corrente
 ALERTA_PF_VALOR = 100_000       # pessoa física (CPF) em elemento sensível acima disso
+# Pico na série do PRÓPRIO favorecido/elemento (z-score local; o pico "global"
+# da regra 3 só enxerga o total do mês — estes pegam explosões localizadas)
+ALERTA_Z_K = 2.5                # limiar do z-score (mesmo espírito do pico global)
+ALERTA_Z_MIN_MESES = 8          # histórico mínimo p/ média/desvio estáveis
+ALERTA_ZFAV_VALOR = 1_000_000   # mês anômalo do favorecido move ao menos isso
+ALERTA_ZELEM_VALOR = 5_000_000  # mês anômalo do elemento move ao menos isso
+# elementos com pico de CALENDÁRIO (13º em dezembro, férias etc.): pico ali é
+# sazonalidade óbvia, não achado — apontá-lo desmoralizaria a lista de alertas
+ELEM_SAZONAIS = ("13º", "13O", "DECIMO TERCEIRO", "DÉCIMO TERCEIRO", "FERIAS", "FÉRIAS", "ABONO PECU")
 CAP_POR_REGRA = 15             # teto de alertas por regra nova (não afogar o painel/e-mail)
 MAX_ALERTAS = 100              # era 60
 
@@ -627,6 +636,49 @@ def alertas(conn) -> list[dict]:
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
         })
+
+    # 9/10) Pico na série do próprio favorecido / elemento (z-score local):
+    # mês muito acima da média histórica DAQUELE favorecido ou elemento.
+    def _picos_locais(campo_sql, tipo, valor_min, rotulo):
+        series: dict[str, list] = {}
+        for r in _q(conn,
+            f"SELECT {campo_sql} k, ano*100+mes p, SUM(valor) s FROM pagamentos "
+            f"WHERE {campo_sql} IS NOT NULL AND {campo_sql} <> '' "
+            f"GROUP BY k, p ORDER BY k, p"):
+            series.setdefault(r["k"], []).append((r["p"], r["s"]))
+        achados = []
+        for k, pts in series.items():
+            if len(pts) < ALERTA_Z_MIN_MESES or (tipo == "pico_favorecido" and eh_ente_publico(k)):
+                continue
+            if tipo == "pico_elemento" and any(s in (k or "").upper() for s in ELEM_SAZONAIS):
+                continue
+            vals = [s for _, s in pts]
+            media = sum(vals) / len(vals)
+            desvio = (sum((v - media) ** 2 for v in vals) / len(vals)) ** 0.5
+            if not desvio:
+                continue
+            limite = media + ALERTA_Z_K * desvio
+            anominos = [(p, s) for p, s in pts
+                        if s > limite and s >= valor_min and s >= 2 * media]
+            if not anominos:
+                continue
+            p, s = anominos[-1]   # o mais recente
+            achados.append((k, p, s, media))
+        achados.sort(key=lambda x: -x[2])
+        for k, p, s, media in achados[:CAP_POR_REGRA]:
+            curto = (k or "").split(" - ", 1)[-1][:60] if tipo == "pico_elemento" else k
+            out.append({
+                "tipo": tipo,
+                "severidade": "media",
+                "titulo": f"Pico de {rotulo}: {curto} em {p // 100}-{p % 100:02d}",
+                "detalhe": (f"R$ {s:,.2f} no mês — {s / media:.1f}× a média mensal "
+                            f"histórica (R$ {media:,.2f})."),
+                "valor": round(s, 2),
+                "filtro": ({"favorecido": k} if tipo == "pico_favorecido" else {"elemento": k}),
+            })
+
+    _picos_locais("nome_favorecido", "pico_favorecido", ALERTA_ZFAV_VALOR, "pagamento a favorecido")
+    _picos_locais("elemento_despesa", "pico_elemento", ALERTA_ZELEM_VALOR, "gasto no elemento")
 
     ordem = {"alta": 0, "media": 1, "baixa": 2}
     out.sort(key=lambda a: (ordem.get(a["severidade"], 9), -a["valor"]))

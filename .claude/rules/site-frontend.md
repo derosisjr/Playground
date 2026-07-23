@@ -20,7 +20,8 @@ topbar/hub, persiste em localStorage, default `prefers-color-scheme`; snippet in
 `<head>` de cada página; `html[data-tema="escuro"]` no comum.css vence os `:root` locais por
 especificidade; páginas com Chart.js escutam o evento **`temamudou`** e repintam os gráficos em
 memória via `definirCores()` + `Chart.getChart(id)?.destroy()` — SEM reload) e `POP_SANTOS`
-(433.656, IBGE 2022, para per capita). Favicon SVG + `og.png` + meta OG/Twitter em todas as páginas.
+(**418.608**, Censo 2022 definitivo do IBGE — unificado em 2026-07 com o benchmark de despesas; era
+433.656). Favicon SVG + `og.png` + meta OG/Twitter em todas as páginas.
 
 Também na camada comum (2026-07): **tokens de raio** `--r-sm/--r-md/--r-lg` (10/14/16px — não usar
 raio fixo novo), `.sr-only`, **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**

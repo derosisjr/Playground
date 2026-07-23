@@ -47,10 +47,15 @@ lá). `despesas.html`+`despesas-app.js` é o painel (vanilla + Chart.js e plugin
 **Detalhamento** (execução por empenho: seleciona 1+
 meses ou ano inteiro, tabela com empenhado/liquidado/pago, busca sem acento, **filtros estruturados**
 por tipo/unidade/função/fonte/grupo, ordenação, paginação e exportar CSV do filtro). A Visão geral tem
-gráfico da tríade + taxas, glossário `<details>`, toggle R$/% do total/per capita nas funções, bloco
-"De cada R$ 100", **treemap com drill-down** (função→subfunção→elemento, breadcrumb; degrada p/ a
-barra de funções se plugin/arvore.json faltarem) e **benchmark per capita vs cidades pares** — tudo
-degradável se o respectivo JSON faltar. Carga padrão =
+gráfico da tríade + taxas, glossário `<details>`, série mensal com **média móvel 3 m**, toggle
+R$/% do total/per capita nas funções, **comparativo ano×ano por função** (mesmo período jan–M, do
+`series_mensais_por_funcao` + `resumo.mes_ref`), bloco "De cada R$ 100", **recibo do contribuinte**
+(slider de IPTU → proporção por função, disclaimer de receitas vinculadas), **treemap com
+drill-down** (função→subfunção→elemento, breadcrumb; degrada p/ a barra de funções se
+plugin/arvore.json faltarem) e **benchmark per capita vs cidades pares** — tudo degradável se o
+respectivo JSON faltar. Alertas: 10 regras — as regras 9/10 são **pico por z-score na série do
+próprio favorecido/elemento** (média+2,5σ, mín. 8 meses, ≥2× a média; elementos de calendário —
+13º/férias/abono — suprimidos via `ELEM_SAZONAIS`). Carga padrão =
 **mandato (2025→ano corrente, `ANO_INICIAL=2025`)**. **`despesas-index.json`, `despesas/dados/*.json`
 e o código são versionados**; `.sqlite`/`.xlsx`/`.csv` no `.gitignore` — o `.sqlite` persiste via cache
 do Actions e `.github/workflows/despesas.yml` reprocessa o ano corrente diariamente (`--forcar`), com
@@ -65,8 +70,8 @@ Compara a despesa **por função** de Santos com pares paulistas (Jundiaí, Pira
 Cruzes, Bauru + São José dos Campos) na **DCA Anexo I-E do SICONFI** (mesma API
 `apidatalake.tesouro.gov.br` do endividamento; competência anual consolidada — NÃO bate com a visão
 caixa do painel). Gera `despesas/benchmark.json` (versionado, ~8 KB) com pago/liquidado por função e
-**populações do Censo 2022 embutidas** (atenção: Santos = 418.608 no Censo; o resto do site usa a
-constante `Comum.POP_SANTOS` = 433.656). O painel divide por habitante e narra "X% acima/abaixo da
+**populações do Censo 2022 embutidas** — a mesma base de `Comum.POP_SANTOS` (unificado em 418.608
+em 2026-07). O painel divide por habitante e narra "X% acima/abaixo da
 mediana dos pares". Workflow próprio (`benchmark-despesas.yml`, cron mensal dia 6 — a DCA sai ~abril;
 recua um exercício se o atual não estiver publicado p/ ≥4 entes).
 
@@ -88,10 +93,14 @@ Agendamento: passo final do
 
 ## Raio-X do favorecido (`favorecido.html`) e Retrospectiva (`retrospectiva.html`)
 
-Páginas-satélite da Base de Despesas, ambas 100% estáticas: o **raio-X** (`?f=<slug>`) mostra o
-dossiê de um favorecido do top-300 (série mensal, funções, últimos 50 pagamentos, alertas) a partir
-de `favorecidos/<slug>.json` pré-computados pelo export (slug = CNPJ ou hash curto p/ CPF
-mascarado; linkado pela ficha modal do painel e pela paleta Ctrl+K); a **retrospectiva** conta o
+Páginas-satélite da Base de Despesas, ambas 100% estáticas: o **raio-X** tem DUAS rotas —
+(`?f=<slug>`) dossiê pré-computado do top-300 (série mensal, funções, últimos 50 pagamentos,
+alertas) a partir de `favorecidos/<slug>.json` (slug = CNPJ ou hash curto p/ CPF mascarado), e
+(`?doc=&nome=`) **qualquer favorecido**, com dossiê reconstruído client-side dos lançamentos (sem
+rank/alertas). Ambas ganham a seção **"Lançamentos de execução"** (tríade por empenho, ordenável,
+paginada, CSV), carregada via `indice-favorecidos.json` → só os meses do favorecido. A ficha modal
+do painel linka o raio-X p/ TODO favorecido (slug quando top-300, senão doc/nome); a
+**retrospectiva** conta o
 ano em scrollytelling (IntersectionObserver, canvas puro, `?ano=`) usando só o `despesas-index.json`
 (inclui `resumo` narrativo determinístico e `anos_detalhe` com top funções/favorecidos por ano,
 ambos gerados pelo export — o mês corrente parcial fica fora da série).

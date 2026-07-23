@@ -166,11 +166,22 @@
       .r100-linha { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 74px;
         gap: 10px; align-items: center; margin: 7px 0; font-size: 13px; }
       .r100-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .r100-barra { height: 14px; border-radius: 999px; background: var(--line); overflow: hidden; }
-      .r100-fill { height: 100%; background: var(--gold); border-radius: 999px; min-width: 2px; }
+      .r100-barra { display: block; height: 14px; border-radius: 999px; background: var(--line); overflow: hidden; }
+      .r100-fill { display: block; height: 100%; background: var(--gold); border-radius: 999px; min-width: 2px; }
       .r100-vlr { font-family: "IBM Plex Mono", monospace; font-weight: 600; text-align: right; white-space: nowrap; }
       @media (max-width: 560px) { .r100-linha { grid-template-columns: 1fr 74px; }
         .r100-barra { grid-column: 1 / -1; } }
+
+      /* ── Recibo do contribuinte ───────────────────────────────────── */
+      .recibo-controles { display: flex; align-items: center; gap: 14px; margin: 0 0 14px; }
+      .recibo-controles input[type="range"] { flex: 1; accent-color: var(--gold); min-width: 0; }
+      .recibo-num { display: inline-flex; align-items: center; gap: 6px;
+        font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+      .recibo-num input { width: 110px; padding: 8px 10px; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy);
+        font-family: "IBM Plex Mono", monospace; text-align: right; }
+      .recibo-num input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+      @media (max-width: 560px) { .recibo-controles { flex-direction: column; align-items: stretch; } }
 
       /* ── Glossário ("Entenda os termos") ──────────────────────────── */
       details.entenda { background: var(--card); border: 1px solid var(--line);
@@ -202,7 +213,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=2"></script>
+    <script src="./comum.js?v=3"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -287,6 +298,11 @@
           </div>
           <div class="box"><h3>Por fonte de recurso</h3><canvas id="ch-fonte"></canvas></div>
         </div>
+        <div class="box" id="box-comparativo" hidden>
+          <h3 id="comparativo-titulo">Ano contra ano, por função</h3>
+          <p class="contagem" id="comparativo-sub" style="margin:0 0 10px"></p>
+          <canvas id="ch-comparativo"></canvas>
+        </div>
         <div class="box" id="box-mapa" hidden>
           <div class="box-toggle">
             <h3>Mapa do gasto — clique numa área para abrir</h3>
@@ -302,6 +318,27 @@
           <h3>De cada R$ 100 pagos, para onde foi o dinheiro</h3>
           <div id="r100-linhas"></div>
           <p class="contagem" style="margin:10px 0 0" id="r100-nota"></p>
+        </div>
+        <div class="box" id="box-recibo" hidden>
+          <h3>Seu recibo do contribuinte</h3>
+          <p class="contagem" style="margin:0 0 10px">
+            Quanto você pagou de IPTU no ano? Veja para onde esse dinheiro iria, na proporção
+            do gasto da cidade.
+          </p>
+          <div class="recibo-controles">
+            <input id="recibo-faixa" type="range" min="100" max="20000" step="100" value="2400"
+              aria-hidden="true" tabindex="-1" />
+            <label class="recibo-num">
+              <span class="sr-only">Valor do IPTU anual em reais</span>
+              <span aria-hidden="true">R$</span>
+              <input id="recibo-valor" type="number" min="0" max="1000000" step="50" value="2400" />
+            </label>
+          </div>
+          <div id="recibo-linhas" aria-live="polite"></div>
+          <p class="contagem" style="margin:10px 0 0">
+            Ilustrativo: aplica ao valor a mesma proporção por função de todo o gasto pago no
+            período — sem separar receitas vinculadas (SUS, convênios, FUNDEB).
+          </p>
         </div>
         <div class="box">
           <h3>Por unidade gestora</h3><canvas id="ch-unidade"></canvas>
@@ -466,6 +503,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=8"></script>
+    <script src="./despesas-app.js?v=9"></script>
   </body>
 </html>

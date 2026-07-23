@@ -67,7 +67,7 @@ async function init() {
 }
 
 // ── Hero: número-âncora ──────────────────────────────────────────────────────
-const POP_SANTOS = (window.Comum && Comum.POP_SANTOS) || 433656;
+const POP_SANTOS = (window.Comum && Comum.POP_SANTOS) || 418608;
 
 function rotuloLongo(u) {
   return `${u.q}º quadrimestre de ${u.ano}`;

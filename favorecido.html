@@ -73,10 +73,27 @@
       td.num { font-family: "IBM Plex Mono", monospace; white-space: nowrap; text-align: right; }
       .rodape { color: var(--muted); font-size: 12px; margin-top: 20px; line-height: 1.6; }
       .vazio { padding: 50px 20px; text-align: center; color: var(--muted); }
+
+      /* lançamentos de execução */
+      .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+        background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: inherit; }
+      .btn:hover { border-color: var(--gold); }
+      .btn:disabled { opacity: .5; cursor: default; }
+      .lanc-topo { display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+      .lanc-resumo { color: var(--muted); font-size: 13px;
+        font-family: "IBM Plex Mono", monospace; margin: 0 0 10px; }
+      #lanc-tabela { white-space: nowrap; }
+      #lanc-tabela td { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+      #lanc-tabela th { cursor: pointer; }
+      #lanc-tabela td.neg { color: var(--red); }
+      .lanc-pag { display: flex; align-items: center; justify-content: center;
+        gap: 14px; margin-top: 12px; }
+      .lanc-info { color: var(--muted); font-size: 12.5px; font-family: "IBM Plex Mono", monospace; }
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=2"></script>
+    <script src="./comum.js?v=3"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -111,7 +128,7 @@
           <div id="lista-alertas"></div>
         </div>
 
-        <div class="box">
+        <div class="box" id="box-pagamentos">
           <h3>Últimos pagamentos</h3>
           <div style="overflow-x:auto">
             <table class="tabela-resp">
@@ -121,14 +138,37 @@
           </div>
         </div>
 
+        <div class="box" id="box-lanc">
+          <div class="lanc-topo">
+            <h3 style="margin:0">Lançamentos de execução — todos os meses</h3>
+            <button class="btn" id="lanc-csv" type="button">Exportar CSV</button>
+          </div>
+          <p class="lanc-resumo" id="lanc-resumo"></p>
+          <div class="vazio" id="lanc-carregando">Carregando os lançamentos…</div>
+          <div id="lanc-conteudo" hidden>
+            <div style="overflow-x:auto">
+              <table id="lanc-tabela">
+                <thead><tr id="lanc-cabecalho"></tr></thead>
+                <tbody id="lanc-corpo"></tbody>
+              </table>
+            </div>
+            <div class="lanc-pag">
+              <button class="btn" id="lanc-anterior" type="button">‹ Anterior</button>
+              <span class="lanc-info" id="lanc-pagina">—</span>
+              <button class="btn" id="lanc-proxima" type="button">Próxima ›</button>
+            </div>
+          </div>
+        </div>
+
         <p class="rodape">
-          Dossiê pré-computado a partir do Portal da Transparência de Santos (visão caixa/pago).
-          Cobre os 300 maiores favorecidos do mandato. Caráter informativo — confira sempre o portal oficial.
+          Dossiê pré-computado a partir do Portal da Transparência de Santos (visão caixa/pago);
+          os lançamentos de execução (empenhado/liquidado/pago) são carregados sob demanda, só dos
+          meses em que o favorecido aparece. Caráter informativo — confira sempre o portal oficial.
           <a id="link-painel" href="./despesas.html#favorecidos">Ver no painel de despesas ↗</a>
         </p>
       </div>
     </div>
 
-    <script src="./favorecido-app.js?v=2"></script>
+    <script src="./favorecido-app.js?v=3"></script>
   </body>
 </html>

@@ -95,7 +95,8 @@ function render() {
   }
 
   el("t-capita-sub").textContent =
-    `É o gasto ${parcial ? "no ano até agora" : "do ano"} dividido por cada um dos 433.656 habitantes — ` +
+    `É o gasto ${parcial ? "no ano até agora" : "do ano"} dividido por cada um dos ` +
+    `${Comum.POP_SANTOS.toLocaleString("pt-BR")} habitantes — ` +
     "do bebê recém-nascido ao morador mais antigo da cidade.";
 
   // funções e favorecidos do ano (se o index já tiver anos_detalhe)
