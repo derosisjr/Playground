@@ -37,3 +37,5 @@ memoria/memoria-index.json
 magda-annichino/
 # cache do pnpm criado por acidente
 .pnpm-store/
+# previews locais do hub (servidos por python -m http.server, nunca publicados)
+_preview-*.html

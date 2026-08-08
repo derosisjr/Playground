@@ -39,6 +39,18 @@
         --line: #e2dccd;
         --line-ink: rgba(201, 168, 76, 0.18);
         --shadow: 24px 40px 80px -40px rgba(6, 14, 26, 0.45);
+        /* status (AA sobre --card claro) — copiado verbatim de endividamento.html:33-41
+           para não haver duas verdades de cor no site */
+        --verde: #067647; --amarelo: #b54708; --vermelho: #b42318;
+        --verde-bg: #ecfdf3; --amarelo-bg: #fef0c7; --vermelho-bg: #fee4e2;
+      }
+      /* o seletor precisa ser `body` (não :root) como no endividamento: se um dia o ramp
+         migrar para o comum.css, um :root local (0,1,0) perderia para
+         html[data-tema="escuro"] (0,1,1) — o mecanismo documentado em comum.css:22-23 */
+      html[data-tema="escuro"] body {
+        --verde: #4ade80; --amarelo: #fbbf24; --vermelho: #f87171;
+        --verde-bg: rgba(74,222,128,.13); --amarelo-bg: rgba(251,191,36,.13);
+        --vermelho-bg: rgba(248,113,113,.13);
       }
       * { box-sizing: border-box; }
       html { scroll-behavior: smooth; }
@@ -50,6 +62,13 @@
       }
       ::selection { background: var(--gold); color: var(--navy); }
       a { color: inherit; }
+      /* atalho de teclado: sem ele são 7 paradas (crest, 2 botões, 4 links da régua)
+         antes do primeiro cartão */
+      .pular { position: fixed; left: 16px; top: -100px; z-index: 200;
+        background: var(--gold); color: var(--navy); font-weight: 700; font-size: 13px;
+        padding: 10px 16px; border-radius: var(--r-sm); text-decoration: none;
+        transition: top .15s ease; }
+      .pular:focus { top: 16px; }
       a:focus-visible, button:focus-visible {
         outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px;
       }
@@ -120,11 +139,17 @@
         text-decoration: underline; text-decoration-color: var(--gold);
         text-decoration-thickness: 1.5px; text-underline-offset: 5px; }
       @media (max-width: 640px) {
-        .regua { display: grid; grid-template-columns: 1fr 1fr; }
+        /* minmax(0,1fr): com "1fr" puro o mínimo é min-content e o rótulo em nowrap
+           estoura a trilha — o overflow:hidden do hero cortava o texto em silêncio. */
+        .regua { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .ind { padding-right: 14px; margin-right: 0; }
         .ind:nth-child(even) { border-right: 0; }
         .ind:nth-child(n+3) { border-top: 1px solid rgba(201,168,76,0.10); }
+        .ind-lbl { white-space: normal; }
         .ind-val { font-size: 15.5px; }
+        /* alvo de toque: o botão de tema media 22×16px, abaixo do mínimo da WCAG */
+        .hub-busca { min-height: 44px; }
+        .hub-tema { min-width: 44px; justify-content: center; }
       }
 
       /* Skeleton de carregamento (números ao vivo) */
@@ -142,8 +167,15 @@
         letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
         display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
       .section-tag::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+      /* Segunda seção — respiro entre os dois blocos e continuação da cascata
+         (o nth-child reinicia na segunda grade, por isso os delays são redefinidos) */
+      .secao-2 { margin-top: clamp(28px, 3.6vw, 44px); }
+      .grade-2 .cartao:nth-child(1) { animation-delay: 1.02s; }
+      .grade-2 .cartao:nth-child(2) { animation-delay: 1.12s; }
+      .grade-2 .cartao:nth-child(3) { animation-delay: 1.22s; }
 
-      .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+      /* o min() impede que a trilha de 300px estoure viewports estreitos (≤348px) */
+      .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 
       .hub-busca { display: inline-flex; align-items: center; gap: 8px; margin-left: auto;
         background: none; border: 0; cursor: pointer; color: #8794a6;
@@ -153,13 +185,8 @@
         border-radius: 4px; padding: 2px 6px; color: var(--gold-bright); }
       .hub-busca:hover { color: var(--gold-bright); }
 
-      .extra-links { margin: 26px 0 0; font-size: 14px; color: var(--muted); }
-      .extra-links a { text-decoration: none; color: inherit; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
-      .extra-links a:hover { color: var(--ink); border-color: var(--gold); }
-      .extra-links b { color: var(--ink); }
-
       .cartao {
-        position: relative; display: flex; flex-direction: column; isolation: isolate;
+        position: relative; display: flex; flex-direction: column;
         background: var(--card); border: 1px solid var(--line); border-radius: 4px;
         padding: 24px 28px 22px; text-decoration: none; color: inherit; overflow: hidden;
         opacity: 0; transform: translateY(16px);
@@ -171,36 +198,61 @@
       .cartao:nth-child(3) { animation-delay: .62s; }
       .cartao:nth-child(4) { animation-delay: .72s; }
       .cartao:nth-child(5) { animation-delay: .82s; }
-      .cartao::before {  /* filete dourado superior que cresce no hover */
-        content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 46px;
-        background: linear-gradient(90deg, var(--gold), var(--gold-bright));
-        transition: width .35s cubic-bezier(.2,.7,.2,1);
+      .cartao:nth-child(6) { animation-delay: .92s; }
+      /* Barra de acento à esquerda — o dispositivo mais repetido do site
+         (comum.css:95/171, despesas.html:106, endividamento.html:139/161, regimento.html:87).
+         Via ::before e NÃO border-left: o .cartao:hover troca border-color e atropelaria
+         a barra. Ornamento, não informação — o estado vai no .selo, que tem texto. */
+      .cartao::before {
+        content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+        background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+        transition: width .28s cubic-bezier(.2,.7,.2,1);
       }
       .cartao:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: var(--shadow); }
-      .cartao:hover::before { width: 100%; }
+      .cartao:hover::before { width: 5px; }
 
-      .idx { position: absolute; top: 16px; right: 22px; font-family: "Fraunces", serif;
-        font-weight: 500; font-size: 40px; line-height: 1; color: var(--paper-2);
-        z-index: -1; transition: color .3s ease; }
-      .cartao:hover .idx { color: rgba(201,168,76,0.28); }
-
+      /* Primeira linha: origem à esquerda, estado à direita. A pill fica no FLUXO —
+         absoluta ela colidiria com a tag (a mais longa mede ~271px em 288px de caixa). */
+      .cartao-topo { display: flex; align-items: center; gap: 10px; min-height: 17px; }
       .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .16em;
-        text-transform: uppercase; color: var(--gold); font-weight: 500; }
+        text-transform: uppercase; color: var(--gold); font-weight: 500; min-width: 0; }
+      /* onde há selo o espaço é disputado (a caixa cai a 246px em 1000px de viewport):
+         a tag trunca em vez de quebrar, senão o h2 desce só nesse cartão e desalinha a
+         fileira inteira. Sem selo, a tag pode quebrar à vontade — em 1 coluna é inofensivo. */
+      .cartao-topo.tem-selo .tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .selo { margin-left: auto; flex: none; font-family: "IBM Plex Mono", monospace;
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+        padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+      .selo.verde    { background: var(--verde-bg);    color: var(--verde); }
+      .selo.amarelo  { background: var(--amarelo-bg);  color: var(--amarelo); }
+      .selo.vermelho { background: var(--vermelho-bg); color: var(--vermelho); }
+      .selo[hidden] { display: none; }
       .cartao h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 25px;
         letter-spacing: -0.01em; margin: 10px 0 0; line-height: 1.1; }
       .cartao .desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 12px 0 0; flex: 1; }
 
       .stat { margin: 18px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); }
-      .stat .val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 27px;
-        line-height: 1; color: var(--ink); letter-spacing: -0.01em; display: block;
+      /* 34px FIXO, não clamp(_,3vw,_): a largura útil do cartão é quase constante
+         (288px a 3 col, 294px a 2) porque a .shell trava em 1120px — amarrar à viewport
+         deixaria o número menor justamente onde o cartão é mais largo. */
+      .stat .val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 34px;
+        line-height: 1; color: var(--ink); letter-spacing: -0.02em; display: block;
         font-variant-numeric: tabular-nums; }
+      /* só o "R$" encolhe (qualificador, constante no site inteiro); "bi"/"mi" ficam no
+         tamanho e na cor do número — são a ordem de grandeza, não enfeite */
+      .stat .val small { font-family: "Manrope", sans-serif; font-size: 13px;
+        font-weight: 500; color: var(--muted); margin-right: .32em;
+        letter-spacing: 0; vertical-align: 3px; }
+      /* line-height explícito + min-height de exatamente 2 linhas (2 × 1.35): com
+         line-height "normal" a reserva não casava com a altura real e a régua do .stat
+         ficava 2px fora de prumo nos cartões de rótulo longo */
       .stat .lbl { font-size: 11.5px; color: var(--muted); margin-top: 7px; display: block;
-        letter-spacing: .02em; }
+        letter-spacing: .02em; line-height: 1.35; min-height: 2.7em; }
+      /* visibility (e não hidden): reserva o espaço desde o início, senão a linha
+         inteira da grade pula ~16px quando o fetch chega */
       .stat .quando { font-family: "IBM Plex Mono", monospace; font-size: 10px;
         letter-spacing: .07em; text-transform: uppercase; color: var(--muted); opacity: .75;
-        margin-top: 6px; display: block; }
-      .stat .quando::before { content: ""; width: 5px; height: 5px; border-radius: 50%;
-        background: var(--gold); display: inline-block; margin-right: 7px; vertical-align: 1px; }
+        margin-top: 6px; display: block; visibility: hidden; }
 
       .abrir { display: inline-flex; align-items: center; gap: 9px; margin-top: 16px;
         font-weight: 700; font-size: 13.5px; letter-spacing: .01em; color: var(--ink); }
@@ -220,6 +272,7 @@
     </style>
   </head>
   <body>
+    <a class="pular" href="#bases">Pular para as bases de dados</a>
     <header class="hero">
       <div class="hero-in">
         <div class="brand">
@@ -237,116 +290,132 @@
         <div class="regua" aria-label="Indicadores fiscais ao vivo">
           <a class="ind" id="ind-pago" href="./despesas.html">
             <span class="ind-lbl" id="ind-pago-lbl">Pago no mês</span>
-            <span class="ind-val" aria-live="polite" id="ind-pago-val"><span class="skel"></span></span>
+            <span class="ind-val" id="ind-pago-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-alertas" href="./despesas.html#alertas">
             <span class="ind-lbl">Alertas fiscais</span>
-            <span class="ind-val" aria-live="polite" id="ind-alertas-val"><span class="skel"></span></span>
+            <span class="ind-val" id="ind-alertas-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-req" href="./requerimentos.html">
             <span class="ind-lbl">Requerimentos respondidos</span>
-            <span class="ind-val" aria-live="polite" id="ind-req-val"><span class="skel"></span></span>
+            <span class="ind-val" id="ind-req-val"><span class="skel"></span></span>
           </a>
           <span class="ind" id="ind-atual">
             <span class="ind-lbl">Base atualizada</span>
-            <span class="ind-val" aria-live="polite" id="ind-atual-val"><span class="skel"></span></span>
+            <span class="ind-val" id="ind-atual-val"><span class="skel"></span></span>
           </span>
         </div>
       </div>
     </header>
 
-    <main class="shell">
+    <main class="shell" id="bases" tabindex="-1">
       <p class="section-tag">Bases de dados</p>
       <div class="grade">
         <a class="cartao" href="./despesas.html">
-          <span class="idx">01</span>
-          <span class="tag">Prefeitura · Execução orçamentária</span>
+          <span class="cartao-topo"><span class="tag">Prefeitura · Execução orçamentária</span></span>
           <h2>Radar de Despesas</h2>
           <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
              automáticos e busca detalhada por favorecido, função e fonte.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-despesas"><span class="skel"></span></span>
+          <div class="stat"><span class="val" id="stat-despesas"><span class="skel"></span></span>
             <span class="lbl">pago monitorado · mandato</span>
-            <span class="quando" id="stat-despesas-quando" hidden></span></div>
-          <span class="abrir">Abrir painel <span class="arw">→</span></span>
-        </a>
-
-        <a class="cartao" href="./proposituras.html">
-          <span class="idx">02</span>
-          <span class="tag">Câmara · Proposituras</span>
-          <h2>Base de Proposituras</h2>
-          <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
-             autor, situação e palavra-chave, com a tramitação de cada um.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-proposituras"><span class="skel"></span></span>
-            <span class="lbl">proposituras indexadas</span>
-            <span class="quando" id="stat-proposituras-quando" hidden></span></div>
-          <span class="abrir">Abrir painel <span class="arw">→</span></span>
-        </a>
-
-        <a class="cartao" href="./legis.html">
-          <span class="idx">03</span>
-          <span class="tag">Prefeitura · Legislação</span>
-          <h2>Base de Legislação</h2>
-          <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
-             com link direto para o documento oficial.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-legis"><span class="skel"></span></span>
-            <span class="lbl" id="stat-legis-lbl">normas indexadas</span>
-            <span class="quando" id="stat-legis-quando" hidden></span></div>
-          <span class="abrir">Abrir painel <span class="arw">→</span></span>
-        </a>
-
-        <a class="cartao" href="./requerimentos.html">
-          <span class="idx">04</span>
-          <span class="tag">Câmara · Requerimentos</span>
-          <h2>Requerimentos &amp; Respostas</h2>
-          <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
-             número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-requerimentos"><span class="skel"></span></span>
-            <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
-            <span class="quando" id="stat-requerimentos-quando" hidden></span></div>
-          <span class="abrir">Abrir painel <span class="arw">→</span></span>
-        </a>
-
-        <a class="cartao" href="./regimento.html">
-          <span class="idx">05</span>
-          <span class="tag">Câmara · Regimento Interno</span>
-          <h2>Regimento Interno</h2>
-          <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
-             artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-regimento"><span class="skel"></span></span>
-            <span class="lbl">artigos indexados</span>
-            <span class="quando" id="stat-regimento-quando" hidden></span></div>
+            <span class="quando" id="stat-despesas-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
         <a class="cartao" href="./endividamento.html">
-          <span class="idx">06</span>
-          <span class="tag">Prefeitura · Dívida pública</span>
+          <span class="cartao-topo tem-selo"><span class="tag">Prefeitura · Dívida</span><span
+            class="selo" id="selo-endividamento" hidden></span></span>
           <h2>Semáforo Fiscal</h2>
           <p class="desc">A dívida da Prefeitura e os limites da Lei de Responsabilidade Fiscal
              em um relance — evolução, precatórios e despesa com pessoal, direto do Tesouro Nacional.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-endividamento"><span class="skel"></span></span>
+          <div class="stat"><span class="val" id="stat-endividamento"><span class="skel"></span></span>
             <span class="lbl" id="stat-endividamento-lbl">dívida consolidada</span>
-            <span class="quando" id="stat-endividamento-quando" hidden></span></div>
+            <span class="quando" id="stat-endividamento-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
+        <a class="cartao" href="./proposituras.html">
+          <span class="cartao-topo"><span class="tag">Câmara · Proposituras</span></span>
+          <h2>Base de Proposituras</h2>
+          <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
+             autor, situação e palavra-chave, com a tramitação de cada um.</p>
+          <div class="stat"><span class="val" id="stat-proposituras"><span class="skel"></span></span>
+            <span class="lbl">proposituras indexadas</span>
+            <span class="quando" id="stat-proposituras-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./legis.html">
+          <span class="cartao-topo"><span class="tag">Prefeitura · Legislação</span></span>
+          <h2>Base de Legislação</h2>
+          <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
+             com link direto para o documento oficial.</p>
+          <div class="stat"><span class="val" id="stat-legis"><span class="skel"></span></span>
+            <span class="lbl" id="stat-legis-lbl">normas indexadas</span>
+            <span class="quando" id="stat-legis-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./requerimentos.html">
+          <span class="cartao-topo"><span class="tag">Câmara · Requerimentos</span></span>
+          <h2>Requerimentos &amp; Respostas</h2>
+          <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
+             número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
+          <div class="stat"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
+            <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
+            <span class="quando" id="stat-requerimentos-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./regimento.html">
+          <span class="cartao-topo"><span class="tag">Câmara · Regimento Interno</span></span>
+          <h2>Regimento Interno</h2>
+          <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
+             artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
+          <div class="stat"><span class="val" id="stat-regimento"><span class="skel"></span></span>
+            <span class="lbl">artigos indexados</span>
+            <span class="quando" id="stat-regimento-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+      </div>
+
+      <p class="section-tag secao-2">Leituras e participação</p>
+      <div class="grade grade-2">
         <a class="cartao" href="./indicadores.html">
-          <span class="idx">07</span>
-          <span class="tag">Prefeitura · Custo por Resultado</span>
+          <span class="cartao-topo"><span class="tag">Prefeitura · Custo por Resultado</span></span>
           <h2>Custo por Resultado</h2>
           <p class="desc">Saúde, educação e finanças de Santos por habitante — quanto se arrecada,
              gasta e o que o cidadão recebe, comparado a cidades paulistas e à média do estado.</p>
-          <div class="stat"><span class="val" aria-live="polite" id="stat-indicadores"><span class="skel"></span></span>
+          <div class="stat"><span class="val" id="stat-indicadores"><span class="skel"></span></span>
             <span class="lbl" id="stat-indicadores-lbl">gasto/hab em saúde no último ano</span>
-            <span class="quando" id="stat-indicadores-quando" hidden></span></div>
+            <span class="quando" id="stat-indicadores-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
-      </div>
 
-      <p class="extra-links">
-        <a href="./retrospectiva.html">📖 <b>O ano em gastos</b> — a despesa da Prefeitura contada como história</a>
-        <a href="./consulta.html">🗳️ <b>Escuta pública</b> — vote nas prioridades do seu bairro (1 minuto, sem cadastro)</a>
-      </p>
+        <a class="cartao" href="./retrospectiva.html">
+          <span class="cartao-topo"><span class="tag">Prefeitura · Retrospectiva anual</span></span>
+          <h2>O ano em gastos</h2>
+          <p class="desc">A despesa da Prefeitura contada como história — para onde o dinheiro foi
+             no ano, mês a mês, em uma leitura corrida em vez de uma tabela.</p>
+          <div class="stat"><span class="val" id="stat-retrospectiva"><span class="skel"></span></span>
+            <span class="lbl" id="stat-retrospectiva-lbl">pago no ano</span>
+            <span class="quando" id="stat-retrospectiva-quando"></span></div>
+          <span class="abrir">Abrir leitura <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./consulta.html">
+          <span class="cartao-topo tem-selo"><span class="tag">Gabinete · Escuta pública</span><span
+            class="selo" id="selo-consulta" hidden></span></span>
+          <h2>Escuta pública</h2>
+          <p class="desc">Vote nas prioridades do seu bairro e diga onde a Prefeitura deveria
+             gastar primeiro — leva 1 minuto e não pede cadastro.</p>
+          <div class="stat"><span class="val" id="stat-consulta"><span class="skel"></span></span>
+            <span class="lbl" id="stat-consulta-lbl">propostas em votação</span>
+            <span class="quando" id="stat-consulta-quando"></span></div>
+          <span class="abrir">Participar <span class="arw">→</span></span>
+        </a>
+      </div>
 
     </main>
 
@@ -358,16 +427,81 @@
     <script src="./comum.js?v=4"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
-      const compacto = (v) => {
+      const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // A escala é travada pelo valor FINAL. Sem isso a contagem crescente atravessaria
+      // "R$ 84.400" → "R$ 8,4 mi" → "R$ 8,44 bi": três larguras diferentes, 78×/s.
+      function escalaDe(v) {
         const a = Math.abs(v);
-        if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(2).replace(".", ",") + " bi";
-        if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
-        return "R$ " + Math.round(v).toLocaleString("pt-BR");
-      };
+        if (a >= 1e9) return { div: 1e9, dec: 2, un: " bi" };
+        if (a >= 1e6) return { div: 1e6, dec: 1, un: " mi" };
+        return { div: 1, dec: 0, un: "" };
+      }
+      const fmtEsc = (v, e) => (v / e.div).toLocaleString("pt-BR",
+        { minimumFractionDigits: e.dec, maximumFractionDigits: e.dec });
+
+      // Partes do número: "R$" é qualificador (vira <small>); a unidade "bi"/"mi" é ordem
+      // de grandeza e fica no tamanho e na cor do número.
+      const dinheiro = (v) => { const e = escalaDe(v); return { moeda: "R$", n: fmtEsc(v, e), unidade: e.un, bruto: v, esc: e }; };
+      const contagem = (n) => ({ n: n.toLocaleString("pt-BR"), bruto: n, esc: { div: 1, dec: 0, un: "" } });
+
+      const compacto = (v) => { const p = dinheiro(v); return p.moeda + " " + p.n + p.unidade; };
       const num = (n) => n.toLocaleString("pt-BR");
       const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
       const el = (id) => document.getElementById(id);
       const set = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+
+      // Monta o número como NÓS, nunca innerHTML: os rótulos vêm de JSON de crawler.
+      // Devolve o nó de texto do número — o contador muda só o nodeValue dele.
+      function setNum(id, p) {
+        const e = el(id); if (!e) return null;
+        const peq = (t) => Object.assign(document.createElement("small"), { textContent: t });
+        const txt = document.createTextNode(p.n);
+        e.replaceChildren(...[
+          p.moeda ? peq(p.moeda) : null,
+          txt,
+          p.unidade ? document.createTextNode(p.unidade) : null,
+        ].filter(Boolean));
+        return txt;
+      }
+
+      // Pill de estado: só onde existe estado real (Semáforo Fiscal e Escuta pública).
+      function selo(id, texto, cor) {
+        const e = el(id); if (!e) return;
+        e.textContent = texto;
+        e.className = "selo " + cor;
+        e.hidden = false;
+      }
+
+      // O cartão já concluiu a animação de entrada? getAnimations() devolve também as
+      // já finalizadas (fill-mode: forwards), cuja promise .finished resolve na hora —
+      // então isto funciona tanto se o dado chega antes quanto depois da cascata.
+      function quandoVisivel(alvo) {
+        if (reduzMotion || !alvo || !alvo.getAnimations) return Promise.resolve();
+        const anims = alvo.getAnimations();
+        if (!anims.length) return Promise.resolve();
+        return Promise.race([
+          Promise.allSettled(anims.map((a) => a.finished)),
+          new Promise((ok) => setTimeout(ok, 2500)),  // rede: nunca reter o número
+        ]);
+      }
+
+      // Contagem crescente de 0 até o valor, com a escala travada.
+      function contar(txt, p) {
+        if (reduzMotion || !txt) return;
+        // zera de forma síncrona, no mesmo bloco do setNum: assim o navegador
+        // nunca chega a pintar o valor final antes de a contagem começar
+        txt.nodeValue = fmtEsc(0, p.esc);
+        const t0 = performance.now(), dur = 1300;
+        (function tick(t) {
+          // o piso do clamp é obrigatório: o rAF recebe o timestamp do INÍCIO do quadro,
+          // que pode ser anterior ao performance.now() lido acima — sem ele o primeiro
+          // quadro renderiza valor negativo ("R$ -0,31 bi")
+          const q = Math.min(1, Math.max(0, (t - t0) / dur)), ease = 1 - Math.pow(1 - q, 3);
+          txt.nodeValue = q < 1 ? fmtEsc(p.bruto * ease, p.esc) : p.n;
+          if (q < 1) requestAnimationFrame(tick);
+        })(t0);
+      }
 
       // "atualizado hoje / ontem / há N dias"
       function relativo(dt) {
@@ -379,19 +513,31 @@
       }
 
       async function carregar(url) {
-        const r = await fetch(url + "?v=" + Date.now());
+        // "no-cache" revalida sempre (mantém o frescor) mas aceita 304 — o antigo
+        // "?v=" + Date.now() tornava a URL única e rebaixava toda visita a download inteiro.
+        const r = await fetch(url, { cache: "no-cache" });
         if (!r.ok) throw new Error("HTTP " + r.status + " em " + url);
         const mod = r.headers.get("last-modified");
         return { dados: await r.json(), modificado: mod ? new Date(mod) : null };
       }
 
       // Popula o número do cartão + a linha de frescor (Last-Modified ou data do próprio JSON).
+      // valorFn pode devolver string (nada muda) ou as partes de um número (conta).
       function stat(promessa, id, valorFn, dataFn) {
         promessa.then(({ dados, modificado }) => {
-          set(id, valorFn(dados));
+          const v = valorFn(dados);
+          if (typeof v === "string") {
+            set(id, v);
+          } else {
+            // o gate vem ANTES de escrever o número: se escrevêssemos primeiro, o
+            // cartão mostraria a resposta e depois rebobinaria para zero para contar.
+            // Espera o dado E o cartão assentado — o skeleton segura o lugar até lá.
+            quandoVisivel(el(id) && el(id).closest(".cartao"))
+              .then(() => contar(setNum(id, v), v));
+          }
           const rel = relativo((dataFn && dataFn(dados)) || modificado);
           const q = el(id + "-quando");
-          if (q && rel) { q.textContent = rel; q.hidden = false; }
+          if (q && rel) { q.textContent = rel; q.style.visibility = "visible"; }
         }).catch((e) => { console.warn("hub:", e.message || e); set(id, "—"); });
       }
 
@@ -401,22 +547,21 @@
 
       const pDespesas = carregar("./despesas-index.json");
       const pRequerimentos = carregar("./requerimentos-index.json");
-
-      document.querySelector(".hub-tema").textContent = Comum.temaAtual() === "escuro" ? "☀" : "🌙";
-
       const pLegis = carregar("./legis-index.json");
 
-      stat(pDespesas, "stat-despesas", (d) => compacto(d.totais.geral),
+      stat(pDespesas, "stat-despesas", (d) => dinheiro(d.totais.geral),
         (d) => d.atualizado_em && new Date(d.atualizado_em));
-      stat(pRequerimentos, "stat-requerimentos", (d) => num(d.length));
-      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => num(d.length));
-      stat(pLegis, "stat-legis", (d) => num(d.length));
-      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => num(d.length));
+      stat(pRequerimentos, "stat-requerimentos", (d) => contagem(d.length));
+      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => contagem(d.length));
+      stat(pLegis, "stat-legis", (d) => contagem(d.length));
+      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => contagem(d.length));
       stat(carregar("./endividamento-index.json"), "stat-endividamento", (d) => {
+        // o estado dos limites sai do rótulo e vira pill — não repetir o dado no cartão
         const fora = (d.semaforo || []).filter((m) => m.cor !== "verde").length;
-        set("stat-endividamento-lbl", "dívida consolidada · " + (d.ultimo ? d.ultimo.rotulo : "") +
-          (fora ? ` · ${fora} limite(s) em atenção` : " · limites da LRF ok"));
-        return compacto(d.totais.divida);
+        set("stat-endividamento-lbl", "dívida consolidada · " + (d.ultimo ? d.ultimo.rotulo : ""));
+        selo("selo-endividamento", fora ? `${fora} em atenção` : "limites ok",
+          fora ? "amarelo" : "verde");
+        return dinheiro(d.totais.divida);
       }, (d) => d.atualizado_em && new Date(d.atualizado_em));
       stat(carregar("./indicadores-index.json"), "stat-indicadores", (d) => {
         // headline: receita própria/hab (tema fiscal); cai p/ gasto em saúde se faltar
@@ -425,13 +570,32 @@
         const p = rp && [...rp.serie].reverse().find((x) => x.santos != null);
         if (p) {
           set("stat-indicadores-lbl", `arrecadação própria/hab em ${p.ano} · saúde, educação e fiscal`);
-          return compacto(p.santos);
+          return dinheiro(p.santos);
         }
         const g = d.temas.saude.gasto_per_capita;
         const u = g[g.length - 1];
         set("stat-indicadores-lbl", `gasto/hab em saúde em ${u.ano} · vs 5 cidades`);
-        return compacto(u.santos);
+        return dinheiro(u.santos);
       }, (d) => d.gerado_em && new Date(d.gerado_em));
+
+      // "O ano em gastos" reusa a promise de despesas — mesmo ano que a retrospectiva
+      // abre por padrão (o mais recente da base, ver retrospectiva-app.js).
+      stat(pDespesas, "stat-retrospectiva", (d) => {
+        const anos = [...new Set((d.series_mensais || []).map((s) => s.ano))].sort((a, b) => b - a);
+        const ano = anos[0];
+        set("stat-retrospectiva-lbl", `pago em ${ano} · a despesa contada como história`);
+        return dinheiro((d.totais.por_ano || {})[String(ano)] || 0);
+      }, (d) => d.atualizado_em && new Date(d.atualizado_em));
+
+      // "Escuta pública" — 1,7 KB; o campo `ativa` governa a pill de estado.
+      stat(carregar("./consulta/consultas/prioridades-2026.json"), "stat-consulta", (c) => {
+        const bairros = (c.bairros || []).length;
+        set("stat-consulta-lbl", `propostas em votação${bairros ? ` · ${bairros} bairros` : ""}`);
+        if (c.ativa) selo("selo-consulta", "aberta", "verde");
+        else selo("selo-consulta", "encerrada", "vermelho");
+        return contagem((c.propostas || []).length);
+      }); // sem dataFn: cai no Last-Modified do arquivo. `periodo.inicio` é quando a
+          // consulta ABRIU, não quando foi atualizada — usá-lo mentiria no rótulo.
 
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
@@ -468,6 +632,11 @@
         const resp = r.filter((x) => x.respondido).length;
         indicador("ind-req", Math.round((resp / r.length) * 100) + "% · " + resp + " de " + r.length);
       }).catch(() => esconder("ind-req"));
+
+      // Por último e com guarda: se o comum.js não carregar, os números acima
+      // já foram pedidos e pintados — o hub degrada só no ícone do tema.
+      const btTema = document.querySelector(".hub-tema");
+      if (btTema && window.Comum) btTema.textContent = Comum.temaAtual() === "escuro" ? "☀" : "🌙";
     </script>
   </body>
 </html>
