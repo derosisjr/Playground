@@ -78,7 +78,7 @@ jobs:
           echo "index.json com total geral R$ $TOTAL."
           if [ "$TOTAL" -lt 4000000000 ]; then
             echo "ABORTANDO commit: base parcial (total $TOTAL < 4 bi), provável cache miss do .sqlite."
-            exit 0
+            exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

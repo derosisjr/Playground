@@ -2,7 +2,13 @@ name: Proposituras — atualização incremental
 
 on:
   schedule:
+    # 2x/semana de propósito: o GitHub apaga cache sem acesso há 7 dias e o .sqlite
+    # (68 MB, não versionado) vive só nele. Com cron semanal o intervalo batia
+    # exatamente na janela de despejo — qualquer atraso na fila do Actions
+    # derrubava a base. Em jun/2026 foi o que aconteceu: o banco voltou a zero,
+    # passou a conter só o ano corrente e a guarda barrou o commit por 2 meses.
     - cron: "37 7 * * 1"  # segunda-feira 07:37 UTC = 04:37 BRT
+    - cron: "37 7 * * 4"  # quinta-feira, só para manter o cache vivo
   workflow_dispatch:
     inputs:
       ano:
@@ -20,7 +26,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120  # a carga completa de recuperação (6.9k itens + tramitação) leva ~1h
 
     steps:
       - name: Checkout
@@ -46,6 +52,31 @@ jobs:
           restore-keys: |
             proposituras-db-
 
+      # Autocura: sem isto, perder o cache era irreversível. Diferente de despesas,
+      # endividamento e indicadores — cujo workflow chama o crawler SEM --ano e por
+      # isso refaz o histórico sozinho — aqui o crawl é limitado ao ano corrente, então
+      # um banco vazio nunca voltava a encher e a guarda barrava o commit para sempre.
+      - name: Recarregar histórico se o banco estiver parcial
+        run: |
+          N=$(python - <<'PY'
+          import pathlib, sqlite3
+          p = pathlib.Path("proposituras/proposituras.sqlite")
+          if not p.exists():
+              print(0)
+          else:
+              try:
+                  con = sqlite3.connect(p)
+                  print(con.execute("select count(*) from proposituras").fetchone()[0])
+              except sqlite3.Error:
+                  print(0)
+          PY
+          )
+          echo "Banco restaurado do cache: $N proposituras."
+          if [ "$N" -lt 6000 ]; then
+            echo "Banco parcial — carga completa (todos os anos). Leva ~1h."
+            python proposituras/crawler.py
+          fi
+
       - name: Crawl incremental + export
         env:
           # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
@@ -67,8 +98,8 @@ jobs:
           N=$(python -c "import json;print(len(json.load(open('proposituras-index.json',encoding='utf-8'))))")
           echo "index.json com $N proposituras."
           if [ "$N" -lt 6000 ]; then
-            echo "ABORTANDO commit: base parcial ($N < 6000), provável cache miss do .sqlite."
-            exit 0
+            echo "ABORTANDO commit: base parcial ($N < 6000) mesmo após a recarga."
+            exit 1
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -37,6 +37,16 @@ Consequências a respeitar ao mexer neles:
   `bases-atualizacao.json` com a data real de cada base — ver `.claude/rules/site-frontend.md`.
 - O Pages publica **direto do branch `master`, raiz** (não há workflow de deploy), então qualquer
   arquivo commitado na raiz é servido assim que o commit chega.
+- **Guarda que aborta o commit sai com `exit 1`, nunca `exit 0`.** Com `exit 0` o job fica verde e
+  a base para em silêncio — foi assim que Proposituras ficou 2 meses congelada sem ninguém notar
+  (ver `.claude/rules/proposituras.md`). Corrigido em despesas, endividamento, indicadores,
+  proposituras e respostas-executivo em 2026-08.
+- **`.sqlite` em cache do Actions só é seguro se o crawl reconstruir o histórico sozinho.** O
+  GitHub apaga cache sem acesso há 7 dias; cron semanal fica na corda bamba. Antes de mexer,
+  conferir as duas propriedades juntas: *banco fora do git?* e *crawl limitado a um ano?* Se sim e
+  sim, um despejo de cache congela a base para sempre. Hoje: despesas/endividamento/indicadores
+  chamam o crawler sem `--ano` (autocuram), legis versiona o `.sqlite`, e proposituras ganhou um
+  passo explícito de recarga quando o banco vem parcial.
 
 # Comandos úteis
 

@@ -67,7 +67,7 @@ jobs:
                     and len(t['saude'].get('gasto_per_capita', [])) >= 3))")
           if [ "$OK" != "1" ]; then
             echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
-            exit 0
+            exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
