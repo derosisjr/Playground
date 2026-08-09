@@ -86,6 +86,13 @@ qualquer mexida ali:
 - Os `*-index.json` são buscados com `fetch(url, { cache: "no-cache" })` — **nunca** com
   `?v=Date.now()`, que torna a URL única e rebaixa toda visita a download inteiro (eram ~6,6 MB por
   carga; com revalidação condicional a 2ª visita responde 304).
+- **Frescor ("atualizado há N dias"): NÃO confiar no `Last-Modified`.** No GitHub Pages esse
+  cabeçalho é a hora do **deploy**, idêntica para todos os arquivos — antes disso, bases paradas há
+  2 meses anunciavam "atualizado hoje". A data real vem de **`bases-atualizacao.json`** (raiz, ~440
+  bytes), gerado por `.github/scripts/bases_atualizacao.py` a partir de `git log -1 --format=%aI`.
+  Precedência no `stat()`: data dentro do próprio JSON (`atualizado_em`/`gerado_em`) > git >
+  `Last-Modified`. O 5º argumento de `stat()` é a chave nesse índice — obrigatório para os índices
+  em formato de array (proposituras, legis, requerimentos, regimento), que não têm onde guardar data.
 
 Previews locais do hub vão em `_preview-*.html` na raiz (gitignored, servidos por
 `python -m http.server`), nunca no scratchpad: por `file://` o `fetch` dos JSON é bloqueado por CORS.

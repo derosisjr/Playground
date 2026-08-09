@@ -1,0 +1,53 @@
+name: Índice de atualização das bases
+
+# Publica a data REAL da última mudança de cada base, lida do histórico do git.
+# O hub usa isso no "atualizado há N dias": no GitHub Pages o cabeçalho
+# Last-Modified é a hora do deploy, igual para todo arquivo, então bases paradas
+# há meses apareciam como "atualizado hoje".
+#
+# Workflow próprio, e não um passo dentro dos 7 workflows de base, por dois motivos:
+# (a) todos usam fetch-depth: 1 e `git log` enxergaria um commit só;
+# (b) nenhum tem `concurrency:` nem faz pull antes do push — sete workflows
+#     escrevendo o MESMO arquivo transformaria as colisões de segunda-feira
+#     (legis 07:17, proposituras 07:37, despesas 07:41) em perda de dados.
+
+on:
+  schedule:
+    - cron: "0 12 * * *"  # 12:00 UTC — fora do bloco 04:00-08:30 dos demais workflows
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # OBRIGATÓRIO: sem histórico completo o git log não vê nada
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Só stdlib — sem requirements.txt de propósito, para o job ser rápido e
+      # não quebrar por dependência externa.
+      - name: Gerar índice de datas
+        run: python .github/scripts/bases_atualizacao.py
+
+      - name: Commitar (se mudou)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bases-atualizacao.json
+          if git diff --quiet --cached; then
+            echo "Sem mudancas nas datas das bases."
+          else
+            git commit -m "chore: atualiza índice de datas das bases ($(date +%F))"
+            git push
+          fi

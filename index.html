@@ -521,10 +521,19 @@
         return { dados: await r.json(), modificado: mod ? new Date(mod) : null };
       }
 
-      // Popula o número do cartão + a linha de frescor (Last-Modified ou data do próprio JSON).
+      // Datas reais de alteração de cada base, do histórico do git (workflow
+      // "Índice de atualização das bases"). Sem isto o frescor cairia no
+      // Last-Modified, que no GitHub Pages é a hora do DEPLOY — igual para todo
+      // arquivo, fazendo base parada há meses anunciar "atualizado hoje".
+      const pDatas = carregar("./bases-atualizacao.json")
+        .then(({ dados }) => dados.bases || {})
+        .catch(() => ({}));   // ausente = degrada para o comportamento antigo
+
+      // Popula o número do cartão + a linha de frescor.
+      // Precedência da data: a do próprio JSON > a do git > Last-Modified.
       // valorFn pode devolver string (nada muda) ou as partes de um número (conta).
-      function stat(promessa, id, valorFn, dataFn) {
-        promessa.then(({ dados, modificado }) => {
+      function stat(promessa, id, valorFn, dataFn, arquivo) {
+        Promise.all([promessa, pDatas]).then(([{ dados, modificado }, datas]) => {
           const v = valorFn(dados);
           if (typeof v === "string") {
             set(id, v);
@@ -535,7 +544,8 @@
             quandoVisivel(el(id) && el(id).closest(".cartao"))
               .then(() => contar(setNum(id, v), v));
           }
-          const rel = relativo((dataFn && dataFn(dados)) || modificado);
+          const doGit = arquivo && datas[arquivo] && new Date(datas[arquivo]);
+          const rel = relativo((dataFn && dataFn(dados)) || doGit || modificado);
           const q = el(id + "-quando");
           if (q && rel) { q.textContent = rel; q.style.visibility = "visible"; }
         }).catch((e) => { console.warn("hub:", e.message || e); set(id, "—"); });
@@ -551,10 +561,15 @@
 
       stat(pDespesas, "stat-despesas", (d) => dinheiro(d.totais.geral),
         (d) => d.atualizado_em && new Date(d.atualizado_em));
-      stat(pRequerimentos, "stat-requerimentos", (d) => contagem(d.length));
-      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => contagem(d.length));
-      stat(pLegis, "stat-legis", (d) => contagem(d.length));
-      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => contagem(d.length));
+      // estes quatro índices são arrays puros — não têm onde guardar data própria,
+      // por isso o 5º argumento (a chave no bases-atualizacao.json) é o que salva o frescor
+      stat(pRequerimentos, "stat-requerimentos", (d) => contagem(d.length),
+        null, "requerimentos-index.json");
+      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => contagem(d.length),
+        null, "proposituras-index.json");
+      stat(pLegis, "stat-legis", (d) => contagem(d.length), null, "legis-index.json");
+      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => contagem(d.length),
+        null, "regimento-index.json");
       stat(carregar("./endividamento-index.json"), "stat-endividamento", (d) => {
         // o estado dos limites sai do rótulo e vira pill — não repetir o dado no cartão
         const fora = (d.semaforo || []).filter((m) => m.cor !== "verde").length;
@@ -594,8 +609,9 @@
         if (c.ativa) selo("selo-consulta", "aberta", "verde");
         else selo("selo-consulta", "encerrada", "vermelho");
         return contagem((c.propostas || []).length);
-      }); // sem dataFn: cai no Last-Modified do arquivo. `periodo.inicio` é quando a
-          // consulta ABRIU, não quando foi atualizada — usá-lo mentiria no rótulo.
+      // sem dataFn: `periodo.inicio` é quando a consulta ABRIU, não quando foi
+      // atualizada — usá-lo mentiria no rótulo. A data vem do git.
+      }, null, "consulta/consultas/prioridades-2026.json");
 
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
