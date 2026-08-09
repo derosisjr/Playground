@@ -1,0 +1,73 @@
+{
+  "slug": "colchao-hospitalar-2025",
+  "titulo": "Colchão hospitalar em espuma D26–D33, revestido",
+  "tema": "Saúde",
+  "publicada": false,
+  "publicada_em": null,
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000437/2025",
+    "itens": [
+      1
+    ],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+  "unidade_canonica": "un",
+  "conversoes_extra": {},
+  "termos": {
+    "obrigatorios": [
+      "colchao"
+    ],
+    "algum_de": [
+      [
+        "hospitalar"
+      ]
+    ],
+    "excluir": [
+      "capa",
+      "berco",
+      "maca",
+      "caixa de ovo",
+      "colchonete",
+      "locacao",
+      "cama",
+      "beliche",
+      "resgate",
+      "aquecido",
+      "fowler",
+      "infantil",
+      "recem nascido",
+      "pediatric"
+    ]
+  },
+  "material_ou_servico": "M",
+  "srp": null,
+  "numeros": [],
+  "faixa_quantidade": null,
+  "janela_meses": 36,
+  "modalidades": [
+    6,
+    8
+  ],
+  "cidades": null,
+  "correcao": "ipca",
+  "revisao": {
+    "por": null,
+    "em": null,
+    "confirmados": [],
+    "rejeitados": []
+  },
+  "rascunho": {
+    "gerado_por": "precos/achar.py",
+    "gerado_em": "2026-08-09",
+    "termo_buscado": "colchao",
+    "revisar": [
+      "termos estão VAZIOS — escreva obrigatorios/algum_de e rode `casar.py --slug X --revisar`",
+      "termos.excluir também vazio — use `achar.py ... --item N` para ver os vizinhos textuais e escolher as exclusões",
+      "unidade_canonica 'un' derivada de 'UNI' — confirmar",
+      "tokens com dígito na descrição: 12, 188, 26, 33, 88, m3 — para virar gate, cole em numeros[]"
+    ]
+  },
+  "nota_metodologica": "RASCUNHO — não publicada. Santos comprou colchão hospitalar em espuma D26–D33 revestido a R$ 149,00/un (750 unidades, ago/2025). Das 8 ocorrências nas cidades-par, 7 são fichas de catálogo sem nenhuma especificação — apenas \"Colchão Uso Hospitalar\" ou \"COLCHÃO HOSPITALAR\" — e colchão hospitalar varia de R$ 100 a R$ 500 conforme densidade e revestimento. Só Guarujá descreve o produto (D33, impermeável, lavável, antialérgico). Uma observação não sustenta mediana, então a comparação fica retida até haver par verificável. Caso documentado de descrição de par genérica demais."
+}

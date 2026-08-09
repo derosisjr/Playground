@@ -1,0 +1,93 @@
+{
+  "slug": "detergente-neutro-2025",
+  "titulo": "Detergente líquido neutro para louças",
+  "tema": "Limpeza",
+  "publicada": false,
+  "publicada_em": null,
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000382/2025",
+    "itens": [
+      5
+    ],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+  "unidade_canonica": "l",
+  "conversoes_extra": {
+    "UN": 5,
+    "Unidade": 5,
+    "GALAO": 5,
+    "Galão": 5
+  },
+  "termos": {
+    "obrigatorios": [
+      "detergente"
+    ],
+    "algum_de": [
+      [
+        "neutro",
+        "louca",
+        "loucas"
+      ]
+    ],
+    "excluir": [
+      "enzimatico",
+      "enzimas",
+      "veiculo",
+      "veicular",
+      "automotiv",
+      "concreto",
+      "betuminoso",
+      "sabao",
+      "roupa",
+      "piso",
+      "desinfetante",
+      "alcalino",
+      "acido",
+      "clorado",
+      "maquina"
+    ]
+  },
+  "material_ou_servico": "M",
+  "srp": null,
+  "numeros": [
+    {
+      "rotulo": "volume",
+      "valores": [
+        "5 l",
+        "5l",
+        "5 litros",
+        "05 litros",
+        "5 lts"
+      ],
+      "unidade": "litro"
+    }
+  ],
+  "faixa_quantidade": null,
+  "janela_meses": 36,
+  "modalidades": [
+    6,
+    8
+  ],
+  "cidades": null,
+  "correcao": "ipca",
+  "revisao": {
+    "por": null,
+    "em": null,
+    "confirmados": [],
+    "rejeitados": []
+  },
+  "rascunho": {
+    "gerado_por": "precos/achar.py",
+    "gerado_em": "2026-08-09",
+    "termo_buscado": "detergente",
+    "revisar": [
+      "termos estão VAZIOS — escreva obrigatorios/algum_de e rode `casar.py --slug X --revisar`",
+      "termos.excluir também vazio — use `achar.py ... --item N` para ver os vizinhos textuais e escolher as exclusões",
+      "unidade_canonica 'l' derivada de 'Bombona com 5 Litros' — confirmar",
+      "tokens com dígito na descrição: 02, 1.015, 1.030, 1.252.9, 12, 25, 5.000, 7.0 — para virar gate, cole em numeros[]"
+    ]
+  },
+  "nota_metodologica": "RASCUNHO — não publicada. Santos comprou detergente líquido neutro para louças a R$ 8,90 a bombona de 5 litros (R$ 1,78/litro, ago/2025). Os únicos pares na mesma embalagem de 5 litros são de Guarujá e estão com a licitação em andamento, sem preço homologado — os demais são frascos de 500 ml sem volume declarado na unidade, ou detergente enzimático, que é produto hospitalar de outra faixa de preço. A consulta já está montada e passa a valer assim que os pares forem homologados: exige '5 litros' no texto do item (gate numeros) antes de converter UN para 5 litros, senão a conversão cairia também sobre frascos de 500 ml e o preço sairia dez vezes menor."
+}
