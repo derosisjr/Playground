@@ -1,0 +1,58 @@
+{
+  "slug": "agulha-40x12-2026",
+  "titulo": "Agulha hipodérmica descartável 40 × 1,2 mm",
+  "tema": "Saúde",
+  "publicada": true,
+  "publicada_em": "2026-08-08",
+
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000011/2026",
+    "itens": [1],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+
+  "unidade_canonica": "un",
+  "conversoes_extra": {
+    "CX": 100,
+    "Caixa": 100,
+    "CAIXA": 100
+  },
+
+  "termos": {
+    "obrigatorios": ["agulha"],
+    "algum_de": [
+      ["40x12", "40 x 12", "40x1.2", "40 x 1.2", "40 12"]
+    ],
+    "excluir": [
+      "gengival", "odontolog", "acupuntura", "raqui", "peridural", "biopsia",
+      "intraossea", "insulina", "coleta", "sutura", "caneta", "koryo",
+      "punção lombar", "puncao lombar", "esclerose", "traqueostomia",
+      "domestica", "tecido", "drywall", "parafuso"
+    ]
+  },
+
+  "material_ou_servico": "M",
+  "srp": null,
+  "numeros": [],
+  "faixa_quantidade": null,
+
+  "janela_meses": 36,
+  "modalidades": [6, 8],
+  "cidades": null,
+  "correcao": "ipca",
+
+  "revisao": {
+    "por": "gabinete",
+    "em": "2026-08-08",
+    "confirmados": [
+      "44959021000104-1-000138/2025#1",
+      "44959021000104-1-000254/2025#7",
+      "46177531000155-1-000650/2025#1"
+    ],
+    "rejeitados": []
+  },
+
+  "nota_metodologica": "Agulha hipodérmica descartável de calibre 40 × 1,2 mm (40 × 12), item padronizado da rede de saúde. Santos comprou em caixas de 100 unidades e as demais cidades ora por unidade, ora por caixa de 100 — todos os preços foram convertidos para R$ por unidade. As conversões de 'CX'/'Caixa' para 100 unidades estão declaradas neste arquivo porque a quantidade aparece na descrição do item, não no campo de unidade do PNCP; cada observação aceita foi conferida à mão para garantir que a embalagem é mesmo de 100. Os três itens em 'confirmados' descrevem o mesmo produto com vocabulário diferente ('bisel trifacetado e siliconizado' em Santos, 'formato cilíndrico, reta, oca, com bisel trifacetado' em Praia Grande), o que derruba a similaridade textual automática — a leitura das especificações completas confirmou a equivalência."
+}

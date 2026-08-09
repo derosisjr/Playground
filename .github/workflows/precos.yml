@@ -1,0 +1,128 @@
+name: Preços — atualização semanal
+
+on:
+  schedule:
+    # domingo 10:07 UTC — fora do bloco 04:00–08:30 em que os outros crons rodam
+    # (não há concurrency nem pull antes do push nesta casa; ver rules/github-actions.md)
+    - cron: "7 10 * * 0"
+  workflow_dispatch:
+    inputs:
+      orcamento:
+        description: "Teto de chamadas de itens (Tier 2) nesta execução"
+        required: false
+        default: "3000"
+      slug:
+        description: "Recasar/publicar só uma consulta (vazio = todas)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: precos/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r precos/requirements.txt
+
+      # Testes ANTES do crawl: se o casamento está quebrado, não vale gastar
+      # milhares de requisições no PNCP para depois descobrir.
+      - name: Testes
+        run: python -m pytest precos/tests -q
+
+      # O cache é só aceleração. A fonte da verdade é precos/espelho/*.jsonl.gz,
+      # versionado — cache do Actions expira em 7 dias e o backfill custa horas.
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v5
+        with:
+          path: precos/precos.sqlite
+          key: precos-db-${{ github.run_id }}
+          restore-keys: |
+            precos-db-
+
+      - name: Reconstruir SQLite se o cache esfriou
+        run: python precos/reconstruir.py --se-faltar
+
+      - name: Atualizar série do IPCA
+        run: python precos/ipca.py
+
+      # Ordem obrigatória: itens → casar → resultados → casar (outlier) → export.
+      # O Tier 3 é PUXADO pelo casamento; invertido, ele varreria a base inteira.
+      - name: Coleta e casamento
+        env:
+          ORCAMENTO: ${{ github.event.inputs.orcamento }}
+          SLUG: ${{ github.event.inputs.slug }}
+        run: |
+          ORC="${ORCAMENTO:-3000}"
+          python precos/crawler.py --incremental --orcamento "$ORC"
+          # Preços de Santos: base COMPLETA, não puxada. Sem este passo as
+          # contratações novas chegam com itens e sem preço, e o achar.py
+          # degrada para "estimado" justamente no lado que o curador escolhe.
+          python precos/crawler.py --resultados --santos --orcamento 400
+          if [ -n "$SLUG" ]; then
+            python precos/casar.py --slug "$SLUG"
+            python precos/crawler.py --resultados --slug "$SLUG"
+            python precos/casar.py --slug "$SLUG"
+          else
+            python precos/casar.py --todas
+            python precos/crawler.py --resultados
+            python precos/casar.py --todas
+          fi
+          python precos/export.py
+
+      - name: Commitar (se houver e for íntegro)
+        run: |
+          OK=$(python - <<'PY'
+          import json, os, subprocess
+          novo = json.load(open('precos-index.json', encoding='utf-8'))
+          n_novo = len(novo.get('comparacoes', []))
+          cob = novo.get('cobertura', {})
+          try:
+              antigo = json.loads(subprocess.run(
+                  ['git', 'show', 'HEAD:precos-index.json'],
+                  capture_output=True, text=True, check=True).stdout)
+          except Exception:
+              antigo = {}
+          n_velho = len(antigo.get('comparacoes', []))
+          itens_velho = (antigo.get('cobertura') or {}).get('itens', 0)
+          ok = (
+              n_novo >= 1
+              and (n_velho == 0 or n_novo >= n_velho * 0.8)
+              and cob.get('itens', 0) >= itens_velho
+              and all(c['santos'].get('preco') and c['pares'].get('n', 0) >= 1
+                      for c in novo['comparacoes'])
+          )
+          print(int(ok))
+          PY
+          )
+          MB=$(du -sm precos/espelho 2>/dev/null | cut -f1)
+          if [ "${MB:-0}" -gt 20 ]; then
+            echo "ABORTANDO: espelho com ${MB} MB (teto 20 MB) — revise o escopo."
+            exit 1
+          fi
+          if [ "$OK" != "1" ]; then
+            echo "ABORTANDO commit: índice encolheu ou comparação sem preço/par."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add precos-index.json precos/dados precos/espelho precos/ipca.json
+          if git diff --quiet --cached; then
+            echo "Sem mudancas nos precos."
+          else
+            git commit -m "chore: atualiza Preço comparado ($(date +%F))"
+            git push
+          fi

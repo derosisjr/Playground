@@ -39,3 +39,6 @@ magda-annichino/
 .pnpm-store/
 # previews locais do hub (servidos por python -m http.server, nunca publicados)
 _preview-*.html
+# Preço comparado: o sqlite é DERIVADO de precos/espelho/*.jsonl.gz (versionado)
+precos/precos.sqlite
+precos/_*

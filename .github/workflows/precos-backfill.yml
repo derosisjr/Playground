@@ -1,0 +1,96 @@
+name: Preços — backfill do espelho
+
+# Carga histórica das cidades-par. Roda SÓ sob demanda e é resumível: cada
+# execução consome um orçamento de chamadas, commita o espelho e para limpo.
+# Rodar N vezes completa a base — o controle_listagem e o itens_status garantem
+# que nada é refeito.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "listagem (Tier 1) ou itens (Tier 2)"
+        required: true
+        default: "itens"
+        type: choice
+        options: [listagem, itens]
+      cidade:
+        description: "Código IBGE (vazio = todas as cidades-par)"
+        required: false
+        default: ""
+      ano:
+        description: "Exercício (vazio = 2025 até o corrente)"
+        required: false
+        default: ""
+      orcamento:
+        description: "Teto de chamadas de itens nesta execução"
+        required: false
+        default: "2500"
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: precos/requirements.txt
+
+      - name: Instalar dependencias
+        run: pip install -r precos/requirements.txt
+
+      - name: Restaurar base SQLite (cache)
+        uses: actions/cache@v5
+        with:
+          path: precos/precos.sqlite
+          key: precos-db-${{ github.run_id }}
+          restore-keys: |
+            precos-db-
+
+      - name: Reconstruir SQLite se o cache esfriou
+        run: python precos/reconstruir.py --se-faltar
+
+      # Inputs sempre via env, nunca ${{ }} dentro de run: — anti-injeção de shell
+      - name: Coletar
+        env:
+          TIER: ${{ github.event.inputs.tier }}
+          CIDADE: ${{ github.event.inputs.cidade }}
+          ANO: ${{ github.event.inputs.ano }}
+          ORCAMENTO: ${{ github.event.inputs.orcamento }}
+        run: |
+          ARGS=""
+          [ -n "$CIDADE" ] && ARGS="$ARGS --cidade $CIDADE"
+          [ -n "$ANO" ] && ARGS="$ARGS --ano $ANO"
+          if [ "$TIER" = "listagem" ]; then
+            python precos/crawler.py --listagem $ARGS
+          else
+            python precos/crawler.py --itens --orcamento "${ORCAMENTO:-2500}"
+          fi
+
+      - name: Commitar espelho
+        run: |
+          MB=$(du -sm precos/espelho 2>/dev/null | cut -f1)
+          echo "espelho: ${MB:-0} MB"
+          if [ "${MB:-0}" -gt 20 ]; then
+            echo "ABORTANDO: espelho passou do teto de 20 MB — revise o escopo."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add precos/espelho
+          if git diff --quiet --cached; then
+            echo "Sem mudancas no espelho."
+          else
+            git commit -m "chore(precos): backfill do espelho ($(date +%F))"
+            git push
+          fi

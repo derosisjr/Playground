@@ -1,0 +1,47 @@
+{
+  "slug": "placas-visuais-2026",
+  "titulo": "Placas de identificação visual (metalon com lona)",
+  "tema": "Comunicação",
+  "publicada": false,
+  "publicada_em": null,
+
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000002/2026",
+    "itens": [1],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+
+  "unidade_canonica": "m2",
+  "conversoes_extra": {},
+
+  "termos": {
+    "obrigatorios": ["placa"],
+    "algum_de": [["metalon", "metalom", "chapa", "acm"]],
+    "excluir": [
+      "sinalizacao viaria", "solar", "fotovoltaic", "veicular", "braille",
+      "led", "automotiv", "prontuario", "circuito impresso", "dental",
+      "cozimento", "aquecedora", "vibratoria", "compactadora"
+    ]
+  },
+
+  "material_ou_servico": null,
+  "srp": null,
+  "numeros": [],
+  "faixa_quantidade": [0.1, 10.0],
+
+  "janela_meses": 36,
+  "modalidades": [6, 8],
+  "cidades": null,
+  "correcao": "ipca",
+
+  "revisao": {
+    "por": null,
+    "em": null,
+    "confirmados": [],
+    "rejeitados": []
+  },
+
+  "nota_metodologica": "RASCUNHO — não publicada. Nenhuma cidade-par comprou comunicação visual medida em m² no período espelhado: os itens em m² das vizinhas são serviços de carpintaria e vidraçaria, e a sinalização que elas compram é vendida por unidade, sem área declarada. Comparar R$/m² com R$/unidade daria um número espetacularmente errado, então a comparação fica retida até aparecer par com a mesma unidade. Mantida no repositório como caso documentado de item sem comparável."
+}

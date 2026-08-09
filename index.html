@@ -334,6 +334,17 @@
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
+        <a class="cartao" href="./precos.html">
+          <span class="cartao-topo"><span class="tag">Prefeitura · Preços pagos</span></span>
+          <h2>Preço comparado</h2>
+          <p class="desc">O preço unitário que Santos pagou, ao lado do que Guarujá, São Vicente,
+             Praia Grande e outras cidades pagaram pelo mesmo item — com a fonte no PNCP.</p>
+          <div class="stat"><span class="val" id="stat-precos"><span class="skel"></span></span>
+            <span class="lbl" id="stat-precos-lbl">comparações de preço</span>
+            <span class="quando" id="stat-precos-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
         <a class="cartao" href="./proposituras.html">
           <span class="cartao-topo"><span class="tag">Câmara · Proposituras</span></span>
           <h2>Base de Proposituras</h2>
@@ -424,7 +435,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=4"></script>
+    <script src="./comum.js?v=5"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -570,6 +581,13 @@
       stat(pLegis, "stat-legis", (d) => contagem(d.length), null, "legis-index.json");
       stat(carregar("./regimento-index.json"), "stat-regimento", (d) => contagem(d.length),
         null, "regimento-index.json");
+      stat(carregar("./precos-index.json"), "stat-precos", (d) => {
+        // nº de cidades COM dado espelhado, não o tamanho da lista de alvos:
+        // dizer "9 cidades" com 4 carregadas seria propaganda, não dado
+        const n = Object.keys((d.cobertura || {}).por_cidade || {}).length;
+        set("stat-precos-lbl", "comparações de preço · " + n + " cidades pares");
+        return contagem((d.comparacoes || []).length);
+      }, (d) => d.atualizado_em && new Date(d.atualizado_em));
       stat(carregar("./endividamento-index.json"), "stat-endividamento", (d) => {
         // o estado dos limites sai do rótulo e vira pill — não repetir o dado no cartão
         const fora = (d.semaforo || []).filter((m) => m.cor !== "verde").length;

@@ -9,6 +9,7 @@ window.Comum = (() => {
     ["index.html", "Início", "inicio"],
     ["despesas.html", "Despesas", ""],
     ["endividamento.html", "Endividamento", ""],
+    ["precos.html", "Preços", ""],
     ["proposituras.html", "Proposituras", ""],
     ["legis.html", "Legislação", ""],
     ["requerimentos.html", "Requerimentos", ""],
@@ -207,6 +208,21 @@ window.Comum = (() => {
         url: "./endividamento.html",
         h: norm("divida consolidada endividamento precatorios rcl santos"),
       }]) },
+    { id: "precos", rotulo: "Preço comparado", url: "./precos-index.json",
+      // preço unitário de material de consumo vive nos centavos: brlCurto
+      // arredondaria R$ 0,0737 para "R$ 0" e a comparação sumiria da paleta
+      mapear: (d) => (d.comparacoes || []).map((c) => ({
+        t: c.titulo,
+        s: "Santos R$ " + Number(c.santos.preco).toLocaleString("pt-BR", {
+             minimumFractionDigits: c.santos.preco < 1 ? 4 : 2,
+             maximumFractionDigits: c.santos.preco < 1 ? 4 : 2 }) + "/" + c.unidade +
+           (c.razao ? " · " + c.razao.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) +
+                      "× a mediana de " + c.pares.n_cidades + " cidades"
+                    : " · " + c.pares.n + " referência(s)"),
+        url: "./precos.html?c=" + encodeURIComponent(c.slug),
+        h: norm([c.titulo, c.unidade, "preco unitario comparacao pncp licitacao pregao",
+                 c.santos.objeto].join(" ")),
+      })) },
     { id: "indicadores", rotulo: "Custo por Resultado", url: "./indicadores-index.json",
       mapear: (d) => Object.entries(d.temas || {}).flatMap(([slug, t]) =>
         (t.indicadores || []).map((i) => ({

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Preço comparado — o que Santos paga e o que as cidades vizinhas pagam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <meta name="description" content="Comparação do preço unitário pago pela Prefeitura de Santos com o pago por Guarujá, São Vicente, Praia Grande, Cubatão e outras cidades — item a item, com a fonte no PNCP em cada número." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Preço comparado — Santos e as cidades vizinhas" />
+    <meta property="og:description" content="O preço unitário que a Prefeitura de Santos pagou, lado a lado com o de outras cidades — item a item, com a fonte no PNCP em cada número." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/precos.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css?v=2" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        /* status (AA sobre --card claro) — ramp copiado de endividamento.html */
+        --verde: #067647; --amarelo: #b54708; --vermelho: #b42318;
+        --verde-bg: #ecfdf3; --amarelo-bg: #fef0c7; --vermelho-bg: #fee4e2;
+      }
+      html[data-tema="escuro"] body {
+        --verde: #4ade80; --amarelo: #fbbf24; --vermelho: #f87171;
+        --verde-bg: rgba(74,222,128,.13); --amarelo-bg: rgba(251,191,36,.13);
+        --vermelho-bg: rgba(248,113,113,.13);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      html[data-tema="escuro"] body { color: var(--ink); }
+      ::selection { background: var(--gold); color: var(--navy); }
+      a:focus-visible, button:focus-visible, th[tabindex]:focus-visible {
+        outline: 2px solid var(--gold); outline-offset: 2px; }
+      /* links de conteúdo: o azul default do navegador falha o contraste sobre navy */
+      main a { color: inherit; text-decoration-color: var(--gold);
+        text-underline-offset: 2px; }
+      main a:hover { text-decoration-color: currentColor; }
+      main a.comp, main a.voltar { text-decoration: none; }
+      .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.hero { position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
+          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
+          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
+        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+      .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px 34px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
+        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
+      .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
+        letter-spacing: -0.015em; line-height: 1.05; }
+      .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
+      .hero-num { margin: 22px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 22px; }
+      .hero-num .grande { font-family: "IBM Plex Mono", monospace; font-weight: 600;
+        font-size: clamp(34px, 6vw, 52px); line-height: 1; color: var(--gold-bright);
+        font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+      .hero-num .contexto { color: #c3cdda; font-size: 13.5px; line-height: 1.55; max-width: 430px; }
+
+      .section-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+        letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+        margin: 38px 0 14px; }
+      .painel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+        padding: 20px 22px; }
+      .painel + .painel { margin-top: 16px; }
+
+      /* ── lista de comparações ─────────────────────────────────────────── */
+      /* Barra de consulta: com dezenas de comparações, "rolar e comparar à
+         vista" deixa de funcionar. Mesmos gestos do Detalhamento de Despesas. */
+      .consulta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+        margin-bottom: 14px; }
+      .consulta input[type="search"], .consulta select {
+        font: inherit; font-size: 13.5px; padding: 7px 11px; border-radius: var(--r-sm);
+        border: 1px solid var(--line); background: var(--card); color: inherit; }
+      .consulta input[type="search"] { min-width: 240px; flex: 1 1 240px; }
+      .consulta label { font-size: 12px; color: var(--muted); }
+      .contagem { font-size: 12.5px; color: var(--muted); margin-left: auto; }
+
+      .lista { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+
+      /* tabela de comparações (some no mobile, onde viram cartões) */
+      table.comparacoes td.tit { font-weight: 600; }
+      table.comparacoes td.tit a { text-decoration: none; }
+      table.comparacoes td.tit a:hover { text-decoration: underline;
+        text-decoration-color: var(--gold); }
+      table.comparacoes .tema { display: inline-block; font-size: 11px; color: var(--muted);
+        border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+      table.comparacoes tbody tr:hover { background: rgba(201,168,76,.07); }
+      .vazio { padding: 26px 4px; color: var(--muted); font-size: 13.5px; }
+      .comp { display: block; text-decoration: none; color: inherit; background: var(--card);
+        border: 1px solid var(--line); border-radius: 4px; padding: 18px 20px 16px;
+        position: relative; overflow: hidden; transition: border-color .15s, transform .15s; }
+      .comp::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+        background: var(--gold); }
+      .comp:hover { border-color: var(--gold); transform: translateY(-1px); }
+      .comp h3 { margin: 0 0 4px; font-family: "Fraunces", Georgia, serif; font-size: 19px;
+        font-weight: 600; line-height: 1.2; }
+      .comp .un { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted);
+        letter-spacing: .08em; text-transform: uppercase; }
+      .precos { display: flex; gap: 22px; flex-wrap: wrap; margin: 14px 0 10px; }
+      .precos div { min-width: 108px; }
+      .precos .p-lbl { display: block; font-size: 11.5px; color: var(--muted); }
+      .precos .p-val { font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 600;
+        font-variant-numeric: tabular-nums; }
+      .precos .p-val small { font-size: 13px; font-weight: 500; }
+
+      .farol { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+        font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+      .farol.acima { color: var(--vermelho); background: var(--vermelho-bg); }
+      .farol.atencao { color: var(--amarelo); background: var(--amarelo-bg); }
+      .farol.ok { color: var(--verde); background: var(--verde-bg); }
+      .farol.neutro { color: var(--muted); background: rgba(125,125,125,.12); }
+
+      .meta { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+      .selo-conf { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+        letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+        border: 1px solid var(--line); color: var(--muted); }
+
+      /* ── detalhe ──────────────────────────────────────────────────────── */
+      .voltar { display: inline-flex; align-items: center; gap: 7px; font-size: 13px;
+        color: var(--muted); text-decoration: none; margin: 26px 0 0; }
+      .voltar:hover { color: var(--navy); }
+      html[data-tema="escuro"] .voltar:hover { color: var(--ink); }
+
+      .ficha { display: grid; gap: 6px 26px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        margin-top: 14px; }
+      .ficha div { font-size: 13px; }
+      .ficha .f-lbl { display: block; color: var(--muted); font-size: 11.5px; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+      th { font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase;
+        color: var(--muted); font-weight: 600; cursor: pointer; user-select: none;
+        position: sticky; top: 0; background: var(--card); z-index: 1; }
+      th[aria-sort="ascending"]::after { content: " ▲"; }
+      th[aria-sort="descending"]::after { content: " ▼"; }
+      td.num, th.num { text-align: right; font-family: "IBM Plex Mono", monospace;
+        font-variant-numeric: tabular-nums; white-space: nowrap; }
+      tr.santos td { background: var(--amarelo-bg); font-weight: 700; }
+      /* especificações do PNCP passam de 400 caracteres: 3 linhas + título
+         completo no hover, senão cada observação vira um parágrafo */
+      td.desc { max-width: 380px; }
+      td.desc a { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+        overflow: hidden; }
+      .tabela-wrap { overflow-x: auto; max-height: 620px; overflow-y: auto; margin-top: 12px; }
+
+      .barra-acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+        margin-top: 14px; }
+      button.acao { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: var(--r-sm);
+        border: 1px solid var(--line); background: var(--card); color: inherit; cursor: pointer; }
+      button.acao:hover { border-color: var(--gold); }
+
+      details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+      summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+      details ul { font-size: 13px; line-height: 1.6; }
+
+      .aviso { border-left: 3px solid var(--gold); padding: 12px 16px; background: var(--card);
+        border-radius: 0 var(--r-sm) var(--r-sm) 0; font-size: 13px; line-height: 1.65;
+        margin-top: 16px; border-top: 1px solid var(--line);
+        border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .aviso strong { display: block; margin-bottom: 4px; }
+
+      .grafico-caixa { position: relative; height: 300px; margin-top: 14px; }
+      .rodape-fonte { margin-top: 34px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+      @media (max-width: 640px) {
+        h1 { font-size: 27px; }
+        .tabela-wrap { max-height: none; }
+        thead { display: none; }
+        table, tbody, tr, td { display: block; width: 100%; }
+        tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+        td { border: 0; padding: 3px 0; display: flex; justify-content: space-between; gap: 14px; }
+        td::before { content: attr(data-label); color: var(--muted); font-size: 11.5px;
+          text-transform: uppercase; letter-spacing: .04em; }
+        td.num { text-align: right; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Prefeitura · Preços pagos</p>
+        <h1>Preço comparado</h1>
+        <p class="hero-sub">O preço unitário que a Prefeitura de Santos pagou, colocado ao lado
+          do que outras prefeituras pagaram pelo mesmo item — direto do Portal Nacional de
+          Contratações Públicas, com o link da fonte em cada número.</p>
+        <div class="hero-num">
+          <span class="grande" id="hero-num"><span class="skel"></span></span>
+          <span class="contexto" id="hero-ctx"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell" id="conteudo" tabindex="-1">
+      <div id="visao-lista">
+        <p class="section-tag">Comparações publicadas</p>
+        <div class="consulta" id="consulta" hidden>
+          <input type="search" id="q" placeholder="Buscar item…" aria-label="Buscar comparação" />
+          <label for="f-tema">Tema</label>
+          <select id="f-tema"><option value="">todos</option></select>
+          <label for="f-cidade">Cidade</label>
+          <select id="f-cidade"><option value="">todas</option></select>
+          <label for="f-dif">Diferença</label>
+          <select id="f-dif">
+            <option value="">qualquer</option>
+            <option value="acima">acima da mediana</option>
+            <option value="muito">2× ou mais</option>
+            <option value="abaixo">na mediana ou abaixo</option>
+          </select>
+          <span class="contagem" id="contagem"></span>
+        </div>
+        <div id="lista"></div>
+      </div>
+
+      <div id="visao-detalhe" hidden></div>
+
+      <p class="rodape-fonte" id="rodape"></p>
+    </main>
+
+    <script src="./comum.js?v=5"></script>
+    <script src="./precos-app.js?v=1"></script>
+    <script>Comum.topbar("precos.html");</script>
+  </body>
+</html>
