@@ -623,7 +623,7 @@ function renderRodape() {
   const nCidades = Object.keys(c.por_cidade || {}).length;
   p.textContent =
     `Fonte: ${INDICE.fonte}. Espelho local de ${num(c.contratacoes)} contratações e `
-    + `${num(c.itens)} itens de ${nCidades} cidades-par, `
+    + `${num(c.itens)} itens de ${nCidades} cidades-par `
     + `(${Object.values(c.por_cidade || {}).map((x) => x.nome).join(", ")}), `
     + `modalidades ${(c.modalidades_nome || []).join(" e ")}, de ${mesBr(c.de + "-01")} `
     + `a ${mesBr(c.ate + "-01")}. Correção monetária pelo IPCA `
