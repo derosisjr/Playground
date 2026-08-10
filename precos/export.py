@@ -32,6 +32,7 @@ import casar  # noqa: E402
 import crawler  # noqa: E402
 import fontes  # noqa: E402
 import ipca as ipca_mod  # noqa: E402
+import texto  # noqa: E402
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(DIR)
@@ -251,6 +252,76 @@ def cobertura(conn):
     return d
 
 
+# Descrição do PNCP passa de 400 caracteres; o catálogo mostra o suficiente para
+# reconhecer o item e leva ao original a um clique. 180 caracteres × 3.817 itens
+# é a diferença entre um shard de 600 KB e um de 1,5 MB.
+CATALOGO_DESC = 140
+CATALOGO_ARQ = "itens-santos.json"
+# `orgao` e `modalidade` viram ÍNDICE numa tabela de lookup: são poucos valores
+# distintos repetidos milhares de vezes (8 órgãos, 2 modalidades). Guardar o
+# texto em cada linha custaria ~200 KB para dizer 3.775 vezes as mesmas palavras.
+CAMPOS_CATALOGO = ["descricao", "unidade", "quantidade", "preco", "data",
+                   "fornecedor", "ncp", "numero_item", "orgao", "modalidade"]
+
+
+def _catalogo_anterior():
+    """Nº de itens do catálogo no índice já publicado, ou None se não houver."""
+    try:
+        with open(SAIDA, encoding="utf-8") as f:
+            return (json.load(f).get("catalogo") or {}).get("n")
+    except (OSError, ValueError):
+        return None
+
+
+def catalogo(conn):
+    """Itens de Santos com preço HOMOLOGADO — 'o que comprou e por quanto'.
+
+    Item em licitação ainda em andamento fica de fora: tem só a estimativa do
+    edital, que é teto e não preço praticado. A página diz isso.
+
+    Formato compacto arrays-of-arrays (o mesmo de `despesas/dados/`): com 3,8 mil
+    linhas, repetir o nome de cada campo em cada objeto dobraria o shard. A URL
+    do PNCP também fica fora — é derivada do `ncp` no cliente, o que economiza
+    ~300 KB.
+
+    "Santos" aqui é o setor público municipal inteiro — Prefeitura, Câmara,
+    CAPEP, IPS, as fundações e a COHAB — porque o espelho é varrido por código
+    IBGE do município. Por isso o órgão comprador é coluna, não nota de rodapé.
+    """
+    linhas, orgaos, modalidades = [], [], []
+
+    def _idx(lista, valor):
+        v = valor or "—"
+        if v not in lista:
+            lista.append(v)
+        return lista.index(v)
+
+    invalidas = {texto.sem_acento(s) for s in fontes.SITUACOES_ITEM_INVALIDAS}
+    for r in conn.execute(
+            "SELECT i.*, c.data_publicacao, c.modalidade_nome, c.razao_social "
+            "FROM item i JOIN contratacao c ON c.ncp=i.ncp "
+            "WHERE c.ibge=? AND i.resultado_status='ok'", (fontes.IBGE_SANTOS,)):
+        sit = texto.sem_acento(r["situacao_item"] or "")
+        if any(s in sit for s in invalidas):
+            continue
+        ph = casar.preco_homologado(conn, r["ncp"], r["numero_item"])
+        if not ph or not ph[0]:
+            continue
+        valor, data, fornecedor, _ = ph
+        linhas.append([
+            (r["descricao"] or "").strip()[:CATALOGO_DESC],
+            (r["unidade_medida"] or "").strip(),
+            r["quantidade"], round(valor, 4),
+            data or (r["data_publicacao"] or "")[:10],
+            fornecedor, r["ncp"], r["numero_item"],
+            _idx(orgaos, r["razao_social"]), _idx(modalidades, r["modalidade_nome"]),
+        ])
+    # ordenação estável: sem ela o diff do shard muda a cada execução
+    linhas.sort(key=lambda x: (x[4] or "", x[6], x[7]), reverse=True)
+    return {"campos": CAMPOS_CATALOGO, "orgaos": orgaos,
+            "modalidades": modalidades, "linhas": linhas}
+
+
 def _resumo(comparacoes):
     """Narrativa determinística, sem IA — mesmo padrão dos demais painéis."""
     pub = [c for c in comparacoes if c["modo"] == "mediana"]
@@ -297,6 +368,16 @@ def main():
               f"({resumo['pares']['n_cidades']} cidades) · modo {resumo['modo']}"
               + (f" · {resumo['razao']:.2f}× a mediana" if resumo["razao"] else ""))
 
+    cat = catalogo(conn)
+    datas = [l[4] for l in cat["linhas"] if l[4]]
+    cat_ponteiro = {
+        "n": len(cat["linhas"]),
+        "de": min(datas)[:7] if datas else None,
+        "ate": max(datas)[:7] if datas else None,
+        "arquivo": "./precos/dados/itens-santos.json",
+    }
+    print(f"  catálogo: {cat_ponteiro['n']} itens de Santos com preço homologado")
+
     comparacoes.sort(key=lambda c: (-(c["razao"] or 0), c["slug"]))
     indice = {
         "atualizado_em": datetime.now().isoformat(timespec="seconds"),
@@ -304,6 +385,7 @@ def main():
         "ipca": {"fonte": (ipca_d or {}).get("fonte"), "base": base_mes},
         "cidades": [{"ibge": i, "nome": n, "pop": p} for i, n, p in fontes.CIDADES],
         "cobertura": cobertura(conn),
+        "catalogo": cat_ponteiro,
         "temas": sorted({c["tema"] for c in comparacoes if c.get("tema")}),
         "comparacoes": comparacoes,
         "resumo": _resumo(comparacoes),
@@ -316,6 +398,12 @@ def main():
     for d in detalhes:
         if any(not o.get("url") for o in d["observacoes"]):
             raise SystemExit(f"ABORTANDO: {d['slug']} tem observação sem URL de fonte")
+    if not cat_ponteiro["n"]:
+        raise SystemExit("ABORTANDO: catálogo vazio — rode o Tier 3 de Santos")
+    antes = _catalogo_anterior()
+    if antes and cat_ponteiro["n"] < antes * 0.8:
+        raise SystemExit(f"ABORTANDO: catálogo encolheu de {antes} para "
+                         f"{cat_ponteiro['n']} itens — base truncada?")
 
     for a in avisos:
         print(f"AVISO — {a}", file=sys.stderr)
@@ -323,7 +411,8 @@ def main():
     if args.dry_run:
         print(f"[dry-run] {len(comparacoes)} comparações · "
               f"{indice['cobertura']['contratacoes']} contratações espelhadas · "
-              f"{indice['cobertura']['itens']} itens")
+              f"{indice['cobertura']['itens']} itens · "
+              f"{cat_ponteiro['n']} itens no catálogo")
         print(f"[dry-run] resumo: {indice['resumo']}")
         return
 
@@ -331,8 +420,13 @@ def main():
     for d in detalhes:
         with open(os.path.join(DADOS, f"{d['slug']}.json"), "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    with open(os.path.join(DADOS, CATALOGO_ARQ), "w", encoding="utf-8") as f:
+        json.dump(cat, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"  catálogo: {os.path.getsize(os.path.join(DADOS, CATALOGO_ARQ))/1024:.0f} KB")
+    # o catálogo não é shard de comparação: preservá-lo da limpeza de órfãos
+    vivos = {d["slug"] for d in detalhes} | {os.path.splitext(CATALOGO_ARQ)[0]}
     for orfao in glob.glob(os.path.join(DADOS, "*.json")):
-        if os.path.splitext(os.path.basename(orfao))[0] not in {d["slug"] for d in detalhes}:
+        if os.path.splitext(os.path.basename(orfao))[0] not in vivos:
             os.remove(orfao)
             print(f"  removido shard órfão: {os.path.basename(orfao)}")
     with open(SAIDA, "w", encoding="utf-8") as f:

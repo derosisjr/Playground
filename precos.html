@@ -85,6 +85,26 @@
         padding: 20px 22px; }
       .painel + .painel { margin-top: 16px; }
 
+      /* ── abas (padrão APG, copiado de despesas.html) ──────────────────── */
+      .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 34px 0 0; }
+      .tab { font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 16px;
+        border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+        color: var(--muted); cursor: pointer; }
+      .tab[aria-selected="true"] { background: var(--navy); color: #fff;
+        border-color: var(--navy); }
+      html[data-tema="escuro"] .tab[aria-selected="true"] { background: var(--gold);
+        color: var(--navy); border-color: var(--gold); }
+      .aba { display: none; }
+      .aba.ativo { display: block; }
+      .aba:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+
+      .intro-aba { font-size: 13.5px; line-height: 1.65; color: var(--muted);
+        margin: 16px 0 0; max-width: 760px; }
+      .intro-aba strong { color: inherit; }
+      .paginacao { display: flex; gap: 10px; align-items: center; margin-top: 12px;
+        font-size: 13px; color: var(--muted); }
+      .paginacao button[disabled] { opacity: .45; cursor: default; }
+
       /* ── lista de comparações ─────────────────────────────────────────── */
       /* Barra de consulta: com dezenas de comparações, "rolar e comparar à
          vista" deixa de funcionar. Mesmos gestos do Detalhamento de Despesas. */
@@ -94,6 +114,7 @@
         font: inherit; font-size: 13.5px; padding: 7px 11px; border-radius: var(--r-sm);
         border: 1px solid var(--line); background: var(--card); color: inherit; }
       .consulta input[type="search"] { min-width: 240px; flex: 1 1 240px; }
+      .consulta select { max-width: 260px; }
       .consulta label { font-size: 12px; color: var(--muted); }
       .contagem { font-size: 12.5px; color: var(--muted); margin-left: auto; }
 
@@ -214,6 +235,12 @@
 
     <main class="shell" id="conteudo" tabindex="-1">
       <div id="visao-lista">
+        <div class="tabs" role="tablist" aria-label="Seções do painel">
+          <button class="tab" role="tab" data-aba="comparacoes" aria-selected="true">Comparações</button>
+          <button class="tab" role="tab" data-aba="itens" aria-selected="false">O que Santos comprou</button>
+        </div>
+
+        <section class="aba ativo" id="aba-comparacoes">
         <p class="section-tag">Comparações publicadas</p>
         <div class="consulta" id="consulta" hidden>
           <input type="search" id="q" placeholder="Buscar item…" aria-label="Buscar comparação" />
@@ -231,6 +258,39 @@
           <span class="contagem" id="contagem"></span>
         </div>
         <div id="lista"></div>
+        </section>
+
+        <section class="aba" id="aba-itens">
+          <p class="section-tag">O que Santos comprou</p>
+          <p class="intro-aba">
+            Todos os itens que o setor público municipal de Santos contratou com
+            <strong>preço homologado</strong> — Prefeitura, Câmara, CAPEP, IPS, fundações e
+            COHAB. Os que ainda estão em licitação ficam de fora: têm só a estimativa do
+            edital, que é teto e não preço pago. Cada linha leva à contratação no PNCP.
+            <strong>Isto não é comparação</strong> — comparar exige a curadoria da outra aba,
+            item a item.
+          </p>
+          <div class="consulta">
+            <input type="search" id="iq" placeholder="Buscar item…"
+                   aria-label="Buscar item comprado" />
+            <label for="i-ano">Ano</label>
+            <select id="i-ano"><option value="">todos</option></select>
+            <label for="i-orgao">Órgão</label>
+            <select id="i-orgao"><option value="">todos</option></select>
+            <span class="contagem" id="i-contagem" aria-live="polite"></span>
+          </div>
+          <div id="i-carregando" class="vazio">Carregando o catálogo…</div>
+          <div id="i-resultado" hidden>
+            <div class="tabela-wrap" id="i-tabela"></div>
+            <div class="paginacao">
+              <button class="acao" type="button" id="i-anterior">← anterior</button>
+              <span id="i-pagina"></span>
+              <button class="acao" type="button" id="i-proxima">próxima →</button>
+              <button class="acao" type="button" id="i-csv">Baixar CSV</button>
+            </div>
+            <p class="sr-only" id="i-sr" aria-live="polite"></p>
+          </div>
+        </section>
       </div>
 
       <div id="visao-detalhe" hidden></div>
@@ -239,7 +299,7 @@
     </main>
 
     <script src="./comum.js?v=5"></script>
-    <script src="./precos-app.js?v=2"></script>
+    <script src="./precos-app.js?v=5"></script>
     <script>Comum.topbar("precos.html");</script>
   </body>
 </html>

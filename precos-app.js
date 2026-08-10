@@ -7,6 +7,10 @@ let ESCURO, GOLD, MUTED, LINHA, VERMELHO, VERDE;
 let INDICE = null;
 let DETALHE = null;
 let ORDEM = { col: "preco", dir: 1 };
+// Snapshot da URL de entrada. `Comum.gravarParams` substitui a query inteira, e
+// a troca de aba acontece ANTES de o catálogo ler seus filtros — sem esta cópia,
+// abrir ?aba=itens&iq=cadeira perderia o `iq` no caminho.
+const PARAMS_INICIAIS = new URLSearchParams(location.search);
 
 function definirCores() {
   ESCURO = document.documentElement.dataset.tema === "escuro";
@@ -40,6 +44,17 @@ function definirCasas(valores) {
 const brl = (v) =>
   v == null ? "—" : "R$ " + Number(v).toLocaleString("pt-BR",
     { minimumFractionDigits: CASAS, maximumFractionDigits: CASAS });
+
+/** Preço por LINHA, para o catálogo. Ali a faixa vai de centavos a dezenas de
+ *  milhares: uma precisão única para a coluna inteira escreveria "R$ 1.549,0000"
+ *  ao lado de "R$ 0,0900". Na comparação isso não acontece — os preços são do
+ *  mesmo item, e lá a precisão única é o que mantém as linhas comparáveis. */
+const brlAuto = (v) => {
+  if (v == null) return "—";
+  const casas = Math.abs(v) >= 1 ? 2 : 4;
+  return "R$ " + Number(v).toLocaleString("pt-BR",
+    { minimumFractionDigits: casas, maximumFractionDigits: casas });
+};
 const num = (v, casas = 0) =>
   v == null ? "—" : Number(v).toLocaleString("pt-BR",
     { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -598,6 +613,237 @@ function renderDetalhe() {
   renderGrafico(cv);
 }
 
+// ── aba "O que Santos comprou" ───────────────────────────────────────────
+// Reuso do Detalhamento de Despesas: array completo em memória, só a fatia da
+// página no DOM, haystack normalizado pré-computado uma vez na carga.
+const CAT_PAGINA = 100;
+let CAT = null;          // {campos, orgaos, modalidades, linhas}
+let CAT_NORM = null;     // haystack por linha, calculado 1× (busca a cada tecla)
+let catFiltradas = [];
+let catPagina = 1;
+let catOrdem = { col: 4, dir: -1 };   // data desc
+
+const CAT_COLS = [
+  [0, "Item", false], [8, "Órgão", false], [2, "Qtd.", true], [1, "Un.", false],
+  [3, "Preço unitário", true], [4, "Data", false], [5, "Fornecedor", false],
+];
+
+/** ncp → URL pública do PNCP. Espelha `fontes.parse_ncp`; a duplicação é
+ *  deliberada e barata — carregar a URL pronta no shard custaria ~300 KB. */
+function urlDoNcp(ncp) {
+  const m = /^(\d{14})-\d+-(\d+)\/(\d{4})$/.exec(ncp || "");
+  return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${Number(m[2])}` : null;
+}
+
+const normCat = (s) => (s || "").toString().toLowerCase()
+  .normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+async function carregarCatalogo() {
+  if (CAT) return CAT;
+  const ponteiro = (INDICE || {}).catalogo;
+  if (!ponteiro || !ponteiro.arquivo) throw new Error("catálogo ausente do índice");
+  // cache-buster estável (nunca Date.now(), que derrota o cache do navegador)
+  const r = await fetch(ponteiro.arquivo + "?v=" + (INDICE.atualizado_em || ""));
+  if (!r.ok) throw new Error(r.status);
+  CAT = await r.json();
+  CAT_NORM = CAT.linhas.map((l) =>
+    normCat(l[0] + " " + l[1] + " " + l[5] + " " + CAT.orgaos[l[8]]));
+  return CAT;
+}
+
+function catFiltrar() {
+  const termos = normCat(document.getElementById("iq").value).split(/\s+/).filter(Boolean);
+  const ano = document.getElementById("i-ano").value;
+  const orgao = document.getElementById("i-orgao").value;
+  catFiltradas = CAT.linhas.filter((l, i) => {
+    if (ano && (l[4] || "").slice(0, 4) !== ano) return false;
+    if (orgao && CAT.orgaos[l[8]] !== orgao) return false;
+    return !termos.length || termos.every((t) => CAT_NORM[i].includes(t));
+  });
+  const c = catOrdem.col;
+  catFiltradas.sort((a, b) => {
+    let x = a[c], y = b[c];
+    if (c === 8) { x = CAT.orgaos[x]; y = CAT.orgaos[y]; }
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (typeof x === "number" ? x - y
+      : String(x).localeCompare(String(y), "pt-BR")) * catOrdem.dir;
+  });
+  catRender();
+  Comum.gravarParams(Object.assign(estadoLista(), {
+    aba: "itens",
+    iq: document.getElementById("iq").value.trim(),
+    iano: ano, iorg: orgao,
+    ipg: catPagina > 1 ? String(catPagina) : "",
+    iord: `${catOrdem.col}:${catOrdem.dir}`,
+  }));
+}
+
+function catRender() {
+  const totalPag = Math.max(1, Math.ceil(catFiltradas.length / CAT_PAGINA));
+  catPagina = Math.min(Math.max(1, catPagina), totalPag);
+  const ini = (catPagina - 1) * CAT_PAGINA;
+  const pagina = catFiltradas.slice(ini, ini + CAT_PAGINA);
+
+  const wrap = document.getElementById("i-tabela");
+  wrap.textContent = "";
+  const tab = el("table", { cls: "comparacoes" });
+  const trh = el("tr");
+  for (const [col, rot, isNum] of CAT_COLS) {
+    const th = el("th", {
+      cls: isNum ? "num" : null, tabindex: "0", scope: "col",
+      "aria-sort": catOrdem.col === col
+        ? (catOrdem.dir === 1 ? "ascending" : "descending") : "none",
+    }, rot);
+    const acao = () => {
+      if (catOrdem.col === col) catOrdem.dir *= -1;
+      else { catOrdem.col = col; catOrdem.dir = col === 0 || col === 8 ? 1 : -1; }
+      catFiltrar();
+    };
+    th.addEventListener("click", acao);
+    th.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); acao(); }
+    });
+    trh.append(th);
+  }
+  const thead = el("thead");
+  thead.append(trh);
+  tab.append(thead);
+
+  const tbody = el("tbody");
+  for (const l of pagina) {
+    const tr = el("tr");
+    const tdItem = el("td", { cls: "desc", "data-label": "Item" });
+    const url = urlDoNcp(l[6]);
+    tdItem.append(url
+      ? el("a", { href: url, target: "_blank", rel: "noopener", title: l[0], txt: l[0] })
+      : document.createTextNode(l[0]));
+    tr.append(tdItem);
+    tr.append(el("td", { "data-label": "Órgão", txt: CAT.orgaos[l[8]] }));
+    tr.append(el("td", { cls: "num", "data-label": "Qtd.", txt: num(l[2]) }));
+    tr.append(el("td", { "data-label": "Un.", txt: l[1] }));
+    tr.append(el("td", { cls: "num", "data-label": "Preço unitário", txt: brlAuto(l[3]) }));
+    tr.append(el("td", { "data-label": "Data", txt: dataBr(l[4]) }));
+    tr.append(el("td", { "data-label": "Fornecedor", txt: l[5] || "—" }));
+    tbody.append(tr);
+  }
+  tab.append(tbody);
+  wrap.append(tab);
+
+  const n = catFiltradas.length.toLocaleString("pt-BR");
+  document.getElementById("i-contagem").textContent =
+    `${n} ${catFiltradas.length === 1 ? "item" : "itens"}`;
+  document.getElementById("i-pagina").textContent = `Página ${catPagina} de ${totalPag}`;
+  document.getElementById("i-anterior").disabled = catPagina <= 1;
+  document.getElementById("i-proxima").disabled = catPagina >= totalPag;
+  document.getElementById("i-sr").textContent =
+    `${n} itens, página ${catPagina} de ${totalPag}.`;
+}
+
+async function abrirCatalogo() {
+  const carregando = document.getElementById("i-carregando");
+  const res = document.getElementById("i-resultado");
+  if (CAT) { catFiltrar(); return; }
+  carregando.hidden = false;
+  res.hidden = true;
+  carregando.textContent = "Carregando o catálogo…";
+  try {
+    await carregarCatalogo();
+  } catch (e) {
+    Comum.estadoErro(carregando, "Não foi possível carregar o catálogo de itens.",
+                     abrirCatalogo);
+    return;
+  }
+  const p = PARAMS_INICIAIS;
+  const selAno = document.getElementById("i-ano");
+  for (const a of [...new Set(CAT.linhas.map((l) => (l[4] || "").slice(0, 4)))]
+       .filter(Boolean).sort().reverse())
+    selAno.append(el("option", { value: a, txt: a }));
+  const selOrg = document.getElementById("i-orgao");
+  for (const o of [...CAT.orgaos].sort())
+    selOrg.append(el("option", { value: o, txt: o }));
+
+  document.getElementById("iq").value = p.get("iq") || "";
+  selAno.value = p.get("iano") || "";
+  selOrg.value = p.get("iorg") || "";
+  catPagina = parseInt(p.get("ipg") || "1", 10) || 1;
+  const ord = (p.get("iord") || "").split(":");
+  if (ord.length === 2) catOrdem = { col: +ord[0], dir: +ord[1] };
+
+  let t;
+  document.getElementById("iq").addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(() => { catPagina = 1; catFiltrar(); }, 150);
+  });
+  for (const id of ["i-ano", "i-orgao"])
+    document.getElementById(id).addEventListener("change", () => {
+      catPagina = 1; catFiltrar();
+    });
+  document.getElementById("i-anterior").addEventListener("click", () => {
+    catPagina -= 1; catFiltrar();
+  });
+  document.getElementById("i-proxima").addEventListener("click", () => {
+    catPagina += 1; catFiltrar();
+  });
+  document.getElementById("i-csv").addEventListener("click", () => {
+    Comum.exportarCsv("itens-santos.csv",
+      ["Item", "Órgão", "Quantidade", "Unidade", "Preço unitário", "Data",
+       "Fornecedor", "Modalidade", "Contratação (PNCP)"],
+      catFiltradas.map((l) => [l[0], CAT.orgaos[l[8]], l[2], l[1], l[3], l[4],
+                               l[5], CAT.modalidades[l[9]], urlDoNcp(l[6]) || l[6]]));
+  });
+
+  carregando.hidden = true;
+  res.hidden = false;
+  catFiltrar();
+}
+
+// ── abas (APG) ───────────────────────────────────────────────────────────
+function selecionarAba(nome, comFoco) {
+  for (const t of document.querySelectorAll(".tab")) {
+    const ativa = t.dataset.aba === nome;
+    t.setAttribute("aria-selected", ativa);
+    t.tabIndex = ativa ? 0 : -1;
+  }
+  for (const p of document.querySelectorAll(".aba")) p.classList.remove("ativo");
+  const painel = document.getElementById("aba-" + nome);
+  painel.classList.add("ativo");
+  if (comFoco) painel.focus();
+  Comum.gravarParams(Object.assign(estadoLista(), { aba: nome }));
+  if (nome === "itens") abrirCatalogo();
+}
+
+function ligarAbas() {
+  const abas = [...document.querySelectorAll(".tab")];
+  abas.forEach((t, i) => {
+    t.id = "tab-" + t.dataset.aba;
+    t.setAttribute("aria-controls", "aba-" + t.dataset.aba);
+    t.tabIndex = t.getAttribute("aria-selected") === "true" ? 0 : -1;
+    t.addEventListener("click", () => selecionarAba(t.dataset.aba));
+    t.addEventListener("keydown", (e) => {
+      const teclas = { ArrowRight: 1, ArrowLeft: -1, Home: "inicio", End: "fim" };
+      if (!(e.key in teclas)) return;
+      e.preventDefault();
+      const alvo = teclas[e.key] === "inicio" ? abas[0]
+        : teclas[e.key] === "fim" ? abas[abas.length - 1]
+        : abas[(i + teclas[e.key] + abas.length) % abas.length];
+      alvo.focus();
+      selecionarAba(alvo.dataset.aba);
+    });
+  });
+  for (const p of document.querySelectorAll(".aba")) {
+    p.setAttribute("role", "tabpanel");
+    p.setAttribute("aria-labelledby", "tab-" + p.id.replace("aba-", ""));
+    p.tabIndex = -1;
+  }
+}
+
+/** Estado dos filtros da lista de comparações, para não perdê-lo ao trocar de aba. */
+function estadoLista() {
+  const f = filtros();
+  return { q: f.q, tema: f.tema, cidade: f.cidade, dif: f.dif };
+}
+
 // ── carga ────────────────────────────────────────────────────────────────
 function renderHero() {
   const n = document.getElementById("hero-num");
@@ -652,6 +898,10 @@ async function iniciar() {
     document.getElementById("visao-detalhe").hidden = true;
     montarConsulta();
     renderLista();
+    ligarAbas();
+    // `?c=` vence as abas (abre o detalhe); sem ele, `?aba=` decide
+    const aba = Comum.lerParams().get("aba");
+    if (aba === "itens") selecionarAba("itens");
     return;
   }
   document.getElementById("visao-lista").hidden = true;
