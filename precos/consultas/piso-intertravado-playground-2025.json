@@ -1,0 +1,47 @@
+{
+  "slug": "piso-intertravado-playground-2025",
+  "titulo": "Piso intertravado de borracha para playground, com instalação",
+  "tema": "Obras",
+  "publicada": false,
+  "publicada_em": null,
+
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000492/2025",
+    "itens": [1],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+
+  "unidade_canonica": "m2",
+  "conversoes_extra": {},
+
+  "termos": {
+    "obrigatorios": ["borracha"],
+    "algum_de": [["playground", "intertravado", "tapete"]],
+    "excluir": [
+      "tatil", "podotatil", "alerta", "direcional", "cera", "cola",
+      "concreto", "cortadora", "fita", "sapato", "calcado", "bota",
+      "estande", "brinquedo", "madeira", "moeda"
+    ]
+  },
+
+  "material_ou_servico": "M",
+  "srp": null,
+  "numeros": [],
+  "faixa_quantidade": [0.1, 10.0],
+
+  "janela_meses": 36,
+  "modalidades": [6, 8],
+  "cidades": null,
+  "correcao": "ipca",
+
+  "revisao": {
+    "por": null,
+    "em": null,
+    "confirmados": [],
+    "rejeitados": []
+  },
+
+  "nota_metodologica": "RASCUNHO — não publicada. Santos homologou, em 03/11/2025, o fornecimento COM INSTALAÇÃO de piso intertravado de borracha vulcanizada para playground a R$ 375,00/m² (18.400 m², sobre concreto) e R$ 379,50/m² (20.000 m², sobre areia e brita), com descontos de 42,4% e 52,9% sobre a estimativa — ata de R$ 14.490.000,00. O único par nas nove cidades é São José dos Campos, que em 16/12/2025 comprou 'tapete de borracha' para playground a R$ 499,50 e R$ 507,50/m² (450 m² cada), APENAS o material — a cola foi item separado, a R$ 12,95/kg. Pela média ponderada, Santos pagou R$ 377,34/m² contra R$ 503,50/m² de SJC: 25,1% MENOS, e ainda com a instalação inclusa. A comparação não é publicada por dois motivos: a diferença de escala é de 42,7 vezes (38.400 m² contra 900 m²), fora da faixa admitida, e parte da vantagem de Santos decorre justamente do volume; e a descrição de SJC ('Tapete de borracha') não permite verificar espessura nem se o produto é intertravado vulcanizado. Registrado como caso em que a ferramenta apontou resultado FAVORÁVEL ao Município."
+}

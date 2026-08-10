@@ -1,0 +1,84 @@
+{
+  "slug": "piso-moeda-borracha-2025",
+  "titulo": "Piso moeda de borracha antiderrapante 3,5 mm (rolo 20 m × 1 m)",
+  "tema": "Obras",
+  "publicada": false,
+  "publicada_em": null,
+  "santos": {
+    "numero_controle_pncp": "58200015000183-1-000096/2025",
+    "itens": [
+      1
+    ],
+    "cnpj": null,
+    "ano": null,
+    "sequencial": null
+  },
+  "unidade_canonica": "m2",
+  "conversoes_extra": {
+    "ROL": 20,
+    "ROLO": 3,
+    "METRO QUADRADO": 1,
+    "MetroQuadrado": 1,
+    "METRO": 1
+  },
+  "termos": {
+    "obrigatorios": [
+      "piso"
+    ],
+    "algum_de": [
+      [
+        "moeda",
+        "pastilhado"
+      ]
+    ],
+    "excluir": [
+      "tatil",
+      "podotatil",
+      "alerta",
+      "direcional",
+      "cera",
+      "cortadora",
+      "vinilico",
+      "laminado",
+      "ceramico",
+      "porcelanato",
+      "estande",
+      "carpete",
+      "fita",
+      "cola"
+    ]
+  },
+  "material_ou_servico": "M",
+  "srp": null,
+  "numeros": [],
+  "faixa_quantidade": [
+    0.1,
+    10.0
+  ],
+  "janela_meses": 36,
+  "modalidades": [
+    6,
+    8
+  ],
+  "cidades": null,
+  "correcao": "ipca",
+  "revisao": {
+    "por": null,
+    "em": null,
+    "confirmados": [],
+    "rejeitados": []
+  },
+  "rascunho": {
+    "gerado_por": "precos/achar.py",
+    "gerado_em": "2026-08-09",
+    "termo_buscado": "piso moeda",
+    "revisar": [
+      "termos estão VAZIOS — escreva obrigatorios/algum_de e rode `casar.py --slug X --revisar`",
+      "termos.excluir também vazio — use `achar.py ... --item N` para ver os vizinhos textuais e escolher as exclusões",
+      "unidade_canonica 'rolo' derivada de 'ROL' — confirmar",
+      "unidade 'ROL' é embalagem sem contagem declarada — sem conversoes_extra a comparação só casa com a mesma embalagem",
+      "tokens com dígito na descrição: 100, 20m, 3.5 — para virar gate, cole em numeros[]"
+    ]
+  },
+  "nota_metodologica": "RASCUNHO — não publicada, por decisão metodológica e não por falta de dado. Santos homologou piso moeda de borracha antiderrapante (rolo de 20 m × 1 m, 3,5 mm, preto) a R$ 2.054,87 o rolo — R$ 102,74 o m² — no pregão 96/2025, registrando 3.755 rolos (75.100 m²). O único par com preço homologado nas nove cidades é o Fundo Municipal de Saúde de São José dos Campos, que pagou R$ 309,90 por rolo de 1 m × 3 m — R$ 103,30 o m² — em julho de 2025. Os preços por m² são praticamente idênticos, MAS o volume não é: SJC comprou 2 rolos (6 m²) de uma microempresária individual, contra 75.100 m² de Santos. A razão de escala é de 12.516 vezes, muito além da faixa de quantidade admitida (0,1× a 10×), e por isso o gate de quantidade rejeita a observação. Publicar essa única linha como 'comparação' sugeriria que o preço de Santos está na média do mercado, quando o que o dado mostra é outra coisa: uma compra 12,5 mil vezes maior saiu ao mesmo preço unitário de uma compra de varejo. Esse achado foi levado ao requerimento de informações sobre o pregão 96/2025, onde a disparidade de escala é o ponto e não um defeito da amostra. Jundiaí (R$ 113,34 e R$ 122,22 o metro) e São Vicente (R$ 100,31 o m²) têm o mesmo produto com licitação em andamento: quando homologarem, a comparação passa a ter três observações e pode ser publicada com mediana."
+}
