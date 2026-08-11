@@ -3,9 +3,10 @@
 **REQUERIMENTO DE INFORMAÇÕES Nº \_\_\_\_/2026**
 
 **Assunto:** Informações sobre a aquisição de carbonato de cálcio 1250 mg com vitamina D 200 UI
-(Processo nº 8102/2026-49, sequencial PNCP 56/2026), homologada a **R$ 0,80 por comprimido**
+(Processo nº 50942/2025-51, sequencial PNCP 56/2026), homologada a **R$ 0,80 por comprimido**
 em abril de 2026, quando **o mesmo fornecedor** ofertou **R$ 0,22** pelo mesmo medicamento, com
-a mesma especificação, em junho do mesmo ano (sequencial PNCP 192/2026).
+a mesma especificação, em junho do mesmo ano (Processo nº 10553/2026-65, sequencial PNCP
+192/2026).
 
 ---
 
@@ -24,13 +25,15 @@ empresa vencedora** na maior parcela.
 
 | | **1ª aquisição** | **2ª aquisição** |
 |---|---|---|
+| **Processo administrativo** | **50942/2025-51** | **10553/2026-65** |
 | Sequencial PNCP | 56/2026 (item 2) | 192/2026 (item 1) |
+| Natureza | aquisição direta | **registro de preços** |
 | Data do resultado | **01/04/2026** | **23/06/2026** |
 | Valor **estimado** | R$ 0,84 / comprimido | R$ 0,87 / comprimido |
 | Valor **homologado** | **R$ 0,80 / comprimido** | **R$ 0,22 / comprimido** |
 | Desconto sobre a estimativa | **4,8%** | **74,7%** |
 | Quantidade | 843.000 comprimidos | 1.575.900 comprimidos |
-| Valor da aquisição | **R$ 674.400,00** | R$ 346.698,00 |
+| Valor | **R$ 674.400,00** (compra) | R$ 346.698,00 (ata) |
 | Adjudicatária | CIAMED DISTRIBUIDORA DE MEDICAMENTOS LTDA – FILIAL SP | **CIAMED DISTRIBUIDORA DE MEDICAMENTOS LTDA – FILIAL SP** |
 | CNPJ | **05.782.733/0002-20** | **05.782.733/0002-20** |
 
@@ -51,6 +54,12 @@ mesma pessoa jurídica, sob o mesmo CNPJ, ofertou os dois preços**.
 Chama atenção, ainda, que a estimativa da Administração **subiu** entre os dois certames
 (R$ 0,84 para R$ 0,87), enquanto o preço efetivamente obtido caiu 72,5%. No primeiro certame o
 desconto foi de 4,8%; no segundo, de 74,7% — sobre uma estimativa maior.
+
+Registre-se uma diferença de natureza entre os dois certames: o de abril é aquisição direta,
+com quantidade firme, e o de junho é registro de preços. A distinção, contudo, milita em
+sentido contrário à hipótese de que explicaria o preço: no registro de preços o fornecedor não
+tem volume assegurado e tende a ofertar com margem maior, e ainda assim a mesma empresa ofertou
+72,5% menos que na compra firme de abril.
 
 Aplicada a diferença de R$ 0,58 por comprimido à quantidade adquirida em abril, o valor
 envolvido é de **R$ 488.940,00**.
@@ -77,10 +86,10 @@ de preços.
 
 Requer-se, assim, sejam prestadas as seguintes informações:
 
-1. **Cópia integral** dos autos dos processos administrativos correspondentes aos certames de
-   sequencial PNCP **56/2026** e **192/2026**, incluindo termos de referência, pesquisas de
-   preços, mapas comparativos, atas de sessão pública, propostas, pareceres e termos de
-   homologação.
+1. **Cópia integral** dos autos dos Processos Administrativos nº **50942/2025-51** e
+   nº **10553/2026-65** (sequenciais PNCP 56/2026 e 192/2026), incluindo termos de referência,
+   pesquisas de preços, mapas comparativos, atas de sessão pública, propostas, pareceres e
+   termos de homologação.
 
 2. Quais **fontes e parâmetros** fundamentaram o valor estimado de **R$ 0,84 por comprimido**
    no certame de abril de 2026, com identificação das bases consultadas e das datas das
@@ -149,12 +158,16 @@ certame de abril, com 4,8%, está no quartil inferior; o de junho, com 74,7%, no
 
 **Verificações pendentes antes do protocolo:**
 
-1. **Número dos pregões e dos processos administrativos.** Os sequenciais 56/2026 e 192/2026
-   são identificadores do PNCP, não a numeração interna dos certames. O campo `processo` do
-   PNCP precisa ser conferido nos editais — o número citado no assunto (8102/2026-49) deve ser
-   confirmado antes do protocolo.
-2. **Modalidade de cada certame.** Confirmar se ambos foram pregão eletrônico ou se algum foi
-   dispensa/adesão, o que mudaria o enquadramento da comparação.
+1. **Identificação dos certames — CORRIGIDA.** Uma primeira versão citava o processo
+   "8102/2026-49", que era suposição minha e estava errado. Os números corretos vieram do campo
+   `processo` do PNCP: **50942/2025-51** (abril) e **10553/2026-65** (junho). Os sequenciais
+   56/2026 e 192/2026 são identificadores do PNCP, não numeração de pregão — o número do
+   certame, se necessário, tem de sair do edital.
+2. **Modalidade — CONFERIDA.** Ambos são pregão eletrônico. Mas há uma diferença que a peça
+   registra: o de abril é **aquisição direta** (`srp = false`) e o de junho é **registro de
+   preços** (`srp = true`). Isso não enfraquece o achado — se algo, reforça: em registro de
+   preços o fornecedor não tem volume garantido e tende a ofertar mais alto, e mesmo assim a
+   CIAMED ofertou 72,5% menos que na compra firme de abril.
 3. **Execução conferida.** A Base de Despesas do gabinete (Portal da Transparência) registra o
    empenho **0006888/2026**, de 07/04/2026, no valor exato de **R$ 674.400,00**, em favor da
    CIAMED, no elemento 3.3.90.09 – Material Farmacológico. Até a data desta apuração constavam
