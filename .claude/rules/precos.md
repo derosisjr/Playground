@@ -1,3 +1,11 @@
+---
+paths:
+  - "precos/**"
+  - "precos.html"
+  - "precos-app.js"
+  - "precos-index.json"
+---
+
 # Preço comparado (`precos/` + `precos.html`)
 
 Compara o **preço unitário** que a Prefeitura de Santos pagou com o pago por municípios

@@ -44,15 +44,23 @@ trabalhar nos arquivos correspondentes):
 | Painel de Endividamento | Dívida e limites da LRF via SICONFI/RGF (crawler+painel) | `.claude/rules/endividamento.md` |
 | Preço comparado | Preço unitário de Santos × cidades-par via PNCP (crawler+painel) | `.claude/rules/precos.md` |
 | Monitor do Diário Oficial | Varredura diária do DOM → Google Sheets + e-mail | `.claude/rules/diario-oficial.md` |
-| Briefing Ordem do Dia | Pauta da Câmara → briefing com Claude API por e-mail | `.claude/rules/ordem-do-dia.md` |
+| Briefing Ordem do Dia | Pauta da Câmara → briefing via skill em rotina agendada (API = socorro manual) | `.claude/rules/ordem-do-dia.md` |
 | Respostas do Executivo | Respostas a requerimentos → Drive + Sheets + painel | `.claude/rules/respostas-executivo.md` |
 | Base de Proposituras | Índice dos projetos da Câmara (crawler+painel) | `.claude/rules/proposituras.md` |
 | Base de Legislação | Índice da legislação municipal (crawler+painel) | `.claude/rules/legis.md` |
 | Regimento Interno | Consulta rápida ao Regimento (OCR+parser+painel) | `.claude/rules/regimento.md` |
 | GitHub Actions | Tabela de secrets e padrões dos workflows | `.claude/rules/github-actions.md` |
 
-Módulos ainda sem documentação: `consulta/`, `indicadores/`, `memoria/`, `workers/`,
-`digestor/`, `REQUERIMENTOS/`, `magda-annichino/`.
+Além das rules, há **skills versionadas em `.claude/skills/`** — `dom-santos` (classifica
+atos do DOM) e `briefing-ordem-do-dia` (briefing da pauta) — que são o cérebro de IA dos
+módulos correspondentes, executadas em rotinas agendadas.
+
+Módulos ainda sem documentação: `consulta/` (+ `workers/consulta/`, escuta pública),
+`indicadores/` (Custo por Resultado, workflow próprio) e `memoria/` (interna, parada).
+
+Fora do escopo do site: `REQUERIMENTOS/` (peças ao MP e provas — **gitignored**: o repo é
+público; análises seguem `perfil-politico.md`) e `magda-annichino/` (app Next.js à parte,
+**gitignored**, fora das convenções deste repo).
 
 **Pró-Gestão RPPS** (produto, domínio distinto): vive em repo próprio —
 `c:\Users\r_ros\OneDrive\Documentos\progestao-rpps` (github.com/derosisjr/progestao-rpps),

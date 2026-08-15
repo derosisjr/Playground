@@ -15,3 +15,8 @@ paths:
 (vigente/revogada) e relacionamentos ficam para fases futuras. Páginas em latin-1 com campos
 UTF-8 embutidos (ementa/tags) — ver `_fix` em `crawler.py`. Carga inicial completa roda local;
 `.github/workflows/legis.yml` faz a atualização incremental semanal (ano corrente).
+
+Análises derivadas (rodam local, sem CI): `legis/triagem_revogacao.py` gera
+`triagem-revogacao.xlsx` (gitignored) com candidatas a revogação; `legis/posturas/` guarda
+os scripts `gerar_*.py` + CSVs-fonte da análise do Código de Posturas (saídas `.docx`/`.xlsx`
+gitignored — derivadas).

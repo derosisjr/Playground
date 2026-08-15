@@ -10,8 +10,8 @@ paths:
 
 Compartilhada por todas as páginas (sem build): tokens navy/gold, **topbar fixa** de navegação
 entre painéis (`Comum.topbar("<pagina>.html")`; o hub não a usa; inclui Indicadores e Escuta Pública),
-**busca universal Ctrl+K/"/"** (paleta sobre 7 fontes — regimento, proposituras, legislação,
-requerimentos, favorecidos, endividamento, indicadores — carregadas sob demanda; "art 79" abre o artigo direto; no Regimento o
+**busca universal Ctrl+K/"/"** (paleta sobre 8 fontes — regimento, proposituras, legislação,
+requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda; "art 79" abre o artigo direto; no Regimento o
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
 busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, `#alertas` etc. nas
@@ -43,11 +43,13 @@ para páginas dedicadas. Hero com **régua de indicadores** (pago no mês, alert
 removidos em 2026-07: o Briefing Ordem do Dia e a Base de Despesas cobrem os mesmos casos de uso
 com dados automáticos.)
 
-**Geometria em duas seções (2026-08):** "Bases de dados" com 6 cartões (Despesas, Endividamento,
-Proposituras, Legislação, Requerimentos, Regimento) + "Leituras e participação" com 3 (Custo por
-Resultado, O ano em gastos, Escuta pública) — 3+3 e 3 em três colunas, sem a **última linha órfã**
-que os 7 cartões produziam. Retrospectiva e escuta pública, antes um `<p>` com emoji abaixo da
-grade, viraram cartões. Em 2 colunas (~668–988px) a seção 2 fica 2+1; é o custo aceito.
+**Geometria em duas seções (2026-08):** "Bases de dados" com **7 cartões** (Despesas,
+Endividamento, Preço comparado — 7º, entrou em 2026-08-09 —, Proposituras, Legislação,
+Requerimentos, Regimento) + "Leituras e participação" com 3 (Custo por Resultado, O ano em
+gastos, Escuta pública). A **linha órfã que o 7º cartão produz foi aceita por decisão do
+usuário em 2026-08** (registrada também em `precos.md`) — não "corrigir" movendo cartões.
+Retrospectiva e escuta pública, antes um `<p>` com emoji abaixo da grade, viraram cartões.
+Em 2 colunas (~668–988px) a seção 2 fica 2+1; é o custo aceito.
 
 **Anatomia do cartão (2026-08).** Todos trazem número "ao vivo" + frescor ("atualizado há N dias"
 via Last-Modified) dos `*-index.json`, degradando para "—" se falhar. Regras que valem para

@@ -1,3 +1,11 @@
+---
+paths:
+  - "endividamento/**"
+  - "endividamento.html"
+  - "endividamento-app.js"
+  - "endividamento-index.json"
+---
+
 # Painel de Endividamento (`endividamento/` + `endividamento.html`)
 
 Raio-X da **dívida pública e dos limites da LRF** da Prefeitura de Santos, a partir do

@@ -17,11 +17,13 @@ paths:
 | `DRIVE_FOLDER_ID` | ID da pasta-raiz no Drive (respostas-executivo) |
 | `DOM_SHEET_ID` | ID da planilha dedicada do Monitor do Diário Oficial (reusa `GOOGLE_OAUTH_TOKEN`) |
 | `DOM_BRIEFING_TO` | Destinatário(s) do e-mail diário do DOM — assessores (opcional; cai em `DESPESAS_BRIEFING_TO`) |
+| `RESPOSTAS_EMAIL_TO` | Destinatário(s) do resumo de respostas do Executivo — assessores (fallback de `DOM_BRIEFING_TO`/`DESPESAS_BRIEFING_TO`; cai em `GMAIL_TO`) |
 
 # Padrões dos workflows
 
-Os 7 workflows de base (`despesas`, `legis`, `proposituras`, `respostas-executivo`,
-`indicadores`, `endividamento`, `benchmark-despesas`) repetem o mesmo bloco manual de
+Os workflows de base (`despesas`, `legis`, `proposituras`, `respostas-executivo`,
+`indicadores`, `endividamento`, `benchmark-despesas`, `precos` — este com irmão
+`precos-backfill` de disparo manual) repetem o mesmo bloco manual de
 `git add`/`commit`/`push` (sem `git-auto-commit-action`), usam `actions/checkout@v5` **sem
 `fetch-depth`** (portanto histórico raso, 1 commit) e **não têm `concurrency:` nem `pull` antes do
 push**. Não há workflow com gatilho `on: push`, por isso ninguém precisa de `[skip ci]`.
