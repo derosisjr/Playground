@@ -1,0 +1,74 @@
+art_ini,art_fim,capitulo_atual,tema,status,plc_arts,observacao
+1,4,Tít. I,Instituição e finalidade do Código,CONDENSADO,1; 8,Finalidade absorvida pelo art. 1º do PLC; dever de facilitar a fiscalização migra para o art. 8º
+5,8,Tít. II — Cap. I,Competência em higiene pública,CONDENSADO,11–12,Rol de fiscalização reescrito no art. 11 §2º; auto de infração tratado no Tít. VI do PLC
+9,20,Tít. II — Cap. II,Higiene dos passeios e logradouros,ALTERADO,13–20,Proibições consolidadas (13–14); limpeza do passeio pelo ocupante mantida (15); multas migradas para UFESP com faixas por volume (20); veículo abandonado ganha regra própria (19)
+21,29,Tít. II — Cap. III,Higiene das habitações,CONDENSADO,21–24,Regras de condomínio e detalhes de reservatórios/galinheiros suprimidos; deveres gerais nos arts. 22–23
+30,33,Tít. II — Cap. IV,Higiene das edificações na área rural,CONDENSADO,11 §2º II,Sem capítulo próprio; fiscalização de áreas urbana e não urbana citada genericamente
+34,35,Tít. II — Cap. V,Higiene dos sanitários,ALTERADO,25–26,Mantido apenas para estabelecimentos comerciais/industriais; exigências residenciais suprimidas; dispensador de sabão e lixeira com pedal (25 VII)
+36,41,Tít. II — Cap. VI,Poços e fontes de abastecimento,REMETIDO,27–28,Especificações construtivas (diâmetro; tampa; distâncias) suprimidas; remissão a normas e regramentos específicos
+42,47,Tít. II — Cap. VII,Instalação e limpeza de fossas,REMETIDO,79,Detalhes construtivos suprimidos; na ausência de rede exige-se sistema de tratamento conforme ABNT (art. 79)
+48,65,Tít. II — Cap. VIII (Seções I–II),Fiscalização de alimentos e gêneros alimentícios,CONDENSADO,33–40,Definições de impróprio/adulterado/fraudado mantidas quase literais (34); regras por produto (frutas; aves; ovos; gelo) condensadas nos arts. 38–40
+66,72,Tít. II — Cap. VIII (Seção III),Transporte de gêneros alimentícios,CONDENSADO,41–42,Regras específicas por tipo de veículo suprimidas; remissão à legislação sanitária
+73,80,Tít. II — Cap. VIII (Seções IV–V),Utensílios; embalagem e rotulagem,REMETIDO,40,Rotulagem é matéria federal (ANVISA); utensílios inócuos mantidos no art. 40
+81,92,Tít. II — Cap. VIII (Seção VI),Estabelecimentos de gêneros alimentícios,CONDENSADO,43–45,Exigências construtivas minuciosas (ralos; balcões de mármore; telas) suprimidas; asseio; controle de pragas e atestado de saúde mantidos
+93,94,Tít. II — Cap. VIII (Seção VII),Supermercados,REVOGADO_SEM_CORRESPONDENTE,—,Regras específicas (balança-piloto; lavabos junto às gôndolas) desaparecem
+95,97,Tít. II — Cap. VIII (Seção VIII),Casas de carnes e peixarias,CONDENSADO,46–48,Requisitos materiais substituídos por dever geral de higiene; uniformes mantidos (48)
+98,99,Tít. II — Cap. VIII (Seção IX),Hotéis; restaurantes e congêneres,CONDENSADO,43–45,Lista minuciosa (açucareiros; fio dental; canudos; cardápios plastificados) desaparece
+100,103,Tít. II — Cap. VIII (Seção X),Vendedores ambulantes de alimentos,JA_REVOGADO,—,Já revogados pela LC 1189/2023; matéria em legislação específica de ambulantes
+104,118,Tít. II — Cap. IX,Higiene e condições dos locais de trabalho,CONDENSADO,29,Iluminação; ventilação e conforto térmico (matéria trabalhista/NRs) suprimidos; dever geral de higiene no art. 29
+119,119,Tít. II — Cap. IX,Salões; barbearias; tatuadores (art. 119 e 119-A a 119-G),CONDENSADO,30–31,Esterilização e lavatório mantidos; cartazes obrigatórios e detalhes de cabines suprimidos
+120,122,Tít. II — Cap. IX,Farmácias; necrotérios; substâncias perigosas,ALTERADO,32,Farmácias passam a exigir climatização (novo); necrotérios e rotulagem de perigosos suprimidos
+123,123,Tít. II — Cap. IX,Aerodispersóides; placas de advertência de bebidas (123; 123-A; 123-B),REVOGADO_SEM_CORRESPONDENTE,—,Placas de advertência sobre álcool e energéticos desaparecem
+124,124,Tít. II — Cap. X,Hospitais; casas de saúde e congêneres,ALTERADO,50–51,Inclui ILPIs; lavanderia própria ou terceirizada licenciada; morgue com dispensa para ILPI
+125,127,Tít. II — Cap. XI,Estabelecimentos educacionais,CONDENSADO,29,Sem capítulo próprio; dever geral de higiene
+128,128,Tít. II — Cap. XII,Campos esportivos,REVOGADO_SEM_CORRESPONDENTE,—,Exigência de gramado e drenagem desaparece
+129,132,Tít. II — Cap. XIII,Piscinas,ALTERADO,65–68,Exame médico trimestral restrito ao uso público; salva-vidas conforme lei específica; dispositivos anti-sucção (novo; 66 V)
+133,135,Tít. II — Cap. XIV,Coleta de lixo nos prédios,ALTERADO,52–57,Novo regramento: sacos até 100 L; antecedência máxima de 5h; coleta seletiva e cata-treco com agendamento
+136,140,Tít. II — Cap. XV,Poluição do ar e das águas,ALTERADO,69–90,Capítulo ampliado: escala Ringelmann; odores; poluição sonora por NBR 10151/10152; solo e subsolo; multas de 200–2.000 UFESP
+141,151,Tít. II — Cap. XVI,Limpeza dos terrenos,ALTERADO,91–101,Obrigações mantidas (muro; drenagem; pragas); multa fixa de R$ 15.067;25 substituída por multa DIÁRIA de 380–432 UFESP; execução pela Prefeitura com taxa de 100% mantida
+152,161,Tít. II — Cap. XVII,Cursos d'água e valas,CONDENSADO,102–104,Detalhes de capeamento e galerias suprimidos; autorização para intervenção em APP (novo)
+162,185,Tít. II — Cap. XVIII,Cemitérios,JA_REVOGADO,—,Capítulo quase todo já revogado (LC 712/2011); PLC não trata da matéria
+186,186,Tít. III — Cap. I,Bem-estar público (disposição preliminar),ALTERADO,128,Mantido; suprimida a menção a nascituros/fumo por gestantes (LC 733/2011)
+187,188,Tít. III — Cap. II,Moralidade pública,CONDENSADO,142,Censura a publicações obscenas desaparece; responsabilidade do vendedor de bebidas pela ordem mantida
+189,190,Tít. III — Cap. III,Respeito aos locais de culto,REVOGADO_SEM_CORRESPONDENTE,—,Proteção específica desaparece; sinos disciplinados no art. 138 IV do PLC
+191,204,Tít. III — Cap. IV,Sossego público,ALTERADO,83–86; 137–143,Limites migram para NBR 10151/10152; rol de tolerâncias reescrito (carnaval; artistas de rua; cultos; obras 8h–18h); fogos de estampido seguem proibidos (139); apreensão de equipamentos
+205,212,Tít. III — Cap. V (Seção I),Divertimentos e festejos públicos,CONDENSADO,144–145; 237–247,Licença prévia mantida; detalhes de ingressos e fantasias suprimidos
+213,216,Tít. III — Cap. V (Seção II),Clubes esportivos amadores,REVOGADO_SEM_CORRESPONDENTE,—,Comissão Central de Esportes e registro de atletas desaparecem (regramento obsoleto)
+217,222,Tít. III — Cap. VI,Uso adequado das praias,ALTERADO,146–155,Prática esportiva remetida a decreto; proibição de equipamentos de som (148 IV); captura de Callichirus proibida (153; novo); barracas/tendas dependem de autorização; regramento geral por decreto (154)
+223,224,Tít. III — Cap. VII,Balneários e cabines,REVOGADO_SEM_CORRESPONDENTE,—,Sem correspondente
+225,226,Tít. III — Cap. VIII (Seções I–II),Serviços e obras nos logradouros (225; 226; 226-A),ALTERADO,164–165,Licença prévia mantida; reparo emergencial com comunicação imediata; obrigações de concessionárias reforçadas no Tít. V Cap. IX
+227,228,Tít. III — Cap. VIII (Seção II),Invasões e depredações,ALTERADO,169,Intimação prévia antes da demolição (novo)
+229,230,Tít. III — Cap. VIII (Seção III),Arborização pública,JA_REVOGADO,215–216,Já revogados pela LC 973/2017; PLC remete expressamente à LC 973/2017
+231,232,Tít. III — Cap. VIII (Seção IV),Tapumes; andaimes e materiais nos passeios,REVOGADO_SEM_CORRESPONDENTE,—,Matéria do Código de Edificações [Verificar]
+233,234,Tít. III — Cap. VIII (Seção V),Mesas e cadeiras em passeios,CONDENSADO,174,Regra específica (faixa livre de 1;50 m) desaparece; ocupação genérica autorizada a título precário
+235,235,Tít. III — Cap. VIII (Seção VI),Coretos e palanques,CONDENSADO,144; 174,Absorvido pela licença de eventos e ocupação temporária
+236,240,Tít. III — Cap. VIII (Seção VII),Barracas,CONDENSADO,173,Barracas juninas de fogos desaparecem (coerente com a proibição de fogos de estampido)
+241,249,Tít. III — Cap. IX,Publicidade e propaganda (241–249; 249-A; 249-B),CONDENSADO,179–183,De ~20 artigos para 5; limite de 25% da fachada e prazos de licença suprimidos; colagem em postes/árvores proibida (180); panfletos em residências vedados (182); multa ao anunciante
+250,258,Tít. III — Cap. X (Seção I),Conservação dos edifícios,ALTERADO,184–188,Pintura quinquenal obrigatória desaparece; interdição e demolição com rito detalhado; despesas +20% mantidas
+259,264,Tít. III — Cap. X (Seção II),Utilização dos edifícios,REVOGADO_SEM_CORRESPONDENTE,—,Matéria do Código de Edificações e da lei de uso do solo
+265,266,Tít. III — Cap. X (Seção III),Iluminação de galerias e vitrinas,REVOGADO_SEM_CORRESPONDENTE,—,Obrigação de manter vitrinas acesas das 18h às 22h desaparece
+267,269,Tít. III — Cap. X (Seção IV),Vitrinas; balcões e mostruários,REVOGADO_SEM_CORRESPONDENTE,—,Sem correspondente
+270,272,Tít. III — Cap. X (Seção V),Estores,MANTIDO,189–191,Texto quase literal
+273,275,Tít. III — Cap. X (Seção VI),Toldos,MANTIDO,192–194,Requisitos técnicos preservados; detalhes de recuo suprimidos
+276,276,Tít. III — Cap. X (Seção VII),Mastros nas fachadas,REVOGADO_SEM_CORRESPONDENTE,—,Sem correspondente
+277,285,Tít. III — Cap. XI,Muros; cercas e fechos divisórios,CONDENSADO,196–201,Obrigação de murar terrenos mantida; altura padrão (2;20 m) e tipologias detalhadas suprimidas
+286,289,Tít. III — Cap. XII,Prevenção contra incêndios,REMETIDO,202–203,Remissão integral ao Corpo de Bombeiros e ao Código de Edificações; multa fixa de 405 UFESP
+290,300,Tít. III — Cap. XIII,Animais (290–300; 300-A; 300-B),ALTERADO,204–214,Charretes/carroças proibidas (210 III); cães na praia em área/horário definidos (206); banho e tosa com câmeras mantido mas guarda de imagens cai de 60 para 30 dias e hotéis saem do rol (212) [Verificar]; maus-tratos com definição genérica
+301,306,Tít. III — Cap. XIV,Queimadas e cortes de árvores,CONDENSADO,141; 215–216,Fogueiras em logradouros proibidas (141); supressão de vegetação regida pela legislação ambiental
+307,308,Tít. III — Cap. XV,Extinção de formigueiros,CONDENSADO,58–64,Absorvido pelo capítulo de controle de zoonoses
+309,426,Tít. IV,Instalações elétricas e mecânicas (118 artigos),REMETIDO,217–220,Título inteiro suprimido (projetos elétricos; caldeiras; elevadores; ascensoristas; escadas rolantes); elevadores e cabines de alta tensão remetidos ao Código de Edificações/ABNT
+427,434,Tít. V — Caps. I–III,Licença de localização e funcionamento,ALTERADO,221–228; 327,Consulta prévia de viabilidade; prazo de 15 dias mantido; AVCB e Licença Ambiental para alto risco; responsabilização do proprietário do imóvel (221 §4º; novo); cassação impede novo alvará por 5 anos e alcança sócios (327 §2º)
+435,454,Tít. V — Cap. IV,Horário de funcionamento,ALTERADO,229–232,Desregulamentação: tabela minuciosa por ramo substituída por regra geral (respeito ao sossego); proibição de expor mercadorias fora do estabelecimento mantida com apreensão (230)
+455,470,Tít. V — Cap. V,Comércio ambulante (455–470; 470-A),JA_REVOGADO,233–236,Grande parte já revogada pela LC 1189/2023; PLC fixa pilares gerais de conduta e remete a legislação específica
+471,493,Tít. V — Cap. VI,Casas e locais de diversões públicas,ALTERADO,237–247,Licença para lotação >300 pessoas; CCT com ARTs e AVS; eventos >1.500 pessoas exigem enfermagem/ambulância/brigada; regras de cinema e programação suprimidas
+494,496,Tít. V — Cap. VII,Bancas de jornais e revistas,JA_REVOGADO,133,Já revogado pela LC 1279/2024; PLC remete a legislação específica
+497,505,Tít. V — Caps. VIII–X,Garagens; estacionamentos e oficinas,CONDENSADO,248–250,Métricas específicas (30 m² por veículo) suprimidas; lava-rápidos incluídos
+506,537,Tít. V — Cap. XI,Inflamáveis; explosivos e postos de combustível,REVOGADO_SEM_CORRESPONDENTE,—,Capítulo inteiro desaparece; inclusive distância mínima de 200 m de escolas/hospitais para novos postos (536 §3º) [Verificar cobertura por norma estadual/federal e lei de uso do solo]
+538,548,Tít. V — Cap. XII,Pedreiras; barreiras e saibreiras,MANTIDO,251–258,Licença precária e restrições preservadas; detalhes operacionais remetidos a regulamento
+549,551,Tít. V — Cap. XIII,Extração e depósitos de areia,MANTIDO,259–262,Praticamente literal
+552,567,Tít. V — Cap. XIV,Segurança no trabalho,REVOGADO_SEM_CORRESPONDENTE,—,Matéria de competência federal (CLT/NRs); remoção corrige invasão de competência
+568,572,Tít. V — Cap. XV,Aferição de pesos e medidas,REVOGADO_SEM_CORRESPONDENTE,—,Matéria do Inmetro/IPEM; remoção corrige sobreposição
+573,585,Tít. VI,Fiscalização; intimação e vistorias,ALTERADO,280–292,Procedimentos modernizados: ciência pessoal/postal/eletrônica/edital; multa de 60–600 UFESP por impedir a fiscalização; vistorias simplificadas
+586,588,Tít. VII,Aceitação das instalações,REVOGADO_SEM_CORRESPONDENTE,—,Etapa absorvida pelo licenciamento (221–226)
+589,627,Tít. VIII,Infrações e penalidades (589–627; 627-A; 627-B),ALTERADO,299–330,Multas em R$ fixos → UFESP com dosimetria; advertência formalizada; apreensão com rito e destinação; suspensão; embargo; interdição; lacração e emparedamento sistematizados; demolição com execução subsidiária e taxa de 100%
+628,640,Tít. IX,Disposições finais,ALTERADO,331–335,Comissão Consultiva do Código de Posturas (art. 636) desaparece; prazos em dias corridos mantidos; cláusula revogatória nominal (334)
