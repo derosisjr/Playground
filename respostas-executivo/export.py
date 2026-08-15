@@ -25,7 +25,10 @@ from datetime import datetime, timedelta
 
 # Permite `import index` quando rodado como `python respostas-executivo/export.py`
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from index import _google_services, _idx_header, _sem_acento  # noqa: E402
+import classificar as cls  # noqa: E402
+from index import (  # noqa: E402
+    COL_DATA_MERITO, COL_SITUACAO, _google_services, _idx_header, _sem_acento,
+)
 
 ABA = "requerimentos"
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -103,6 +106,8 @@ def coletar() -> list[dict]:
     c_resp = _idx_header(cab, "Resposta")
     c_dataresp = _idx_header(cab, "Data da resposta")
     c_status = _idx_header(cab, "Status atual")
+    c_situacao = _idx_header(cab, COL_SITUACAO)
+    c_merito = _idx_header(cab, COL_DATA_MERITO)
 
     def campo(linha: list, idx: int) -> str:
         if idx < 0 or idx >= len(linha):
@@ -125,6 +130,12 @@ def coletar() -> list[dict]:
         linha_formula = formulas[n] if n < len(formulas) else []
         linha_bruta = brutos[n] if n < len(brutos) else []
         url = _url_resposta(campo(linha_formula, c_resp))
+        # `situacao` distingue resposta de mérito de mero trâmite (pedido de prazo,
+        # ofício de encaminhamento). Antes do backfill a coluna está vazia — aí vale
+        # o critério antigo, "tem pasta no Drive".
+        situacao = campo(linha, c_situacao) or (
+            cls.RESPONDIDO if url else cls.PENDENTE
+        )
         itens.append(
             {
                 "numero": numero,
@@ -132,8 +143,10 @@ def coletar() -> list[dict]:
                 "assunto": assunto,
                 "data_sessao": _data(bruto(linha_bruta, c_sessao)),
                 "data_resposta": _data(bruto(linha_bruta, c_dataresp)),
+                "data_resposta_merito": _data(bruto(linha_bruta, c_merito)),
                 "status": campo(linha, c_status),
-                "respondido": bool(url),
+                "situacao": situacao,
+                "respondido": situacao == cls.RESPONDIDO,
                 "url_resposta": url,
             }
         )
@@ -150,11 +163,16 @@ def main() -> None:
 
     itens = coletar()
     respondidos = sum(1 for i in itens if i["respondido"])
-    print(f"{len(itens)} requerimento(s) — {respondidos} com resposta da prefeitura.")
+    print(f"{len(itens)} requerimento(s) — {respondidos} com resposta de mérito.")
+    for chave in (cls.RESPONDIDO, cls.SO_ENCAMINHAMENTO, cls.SO_PRORROGACAO,
+                  cls.PENDENTE):
+        n = sum(1 for i in itens if i["situacao"] == chave)
+        if n:
+            print(f"  {cls.ROTULOS[chave]:<18} {n:>4}  ({n / len(itens):.1%})")
 
     if args.dry_run:
         for i in itens[:5]:
-            print(f"  {i['numero']:>12}  resp={i['respondido']}  {i['assunto'][:60]}")
+            print(f"  {i['numero']:>12}  {i['situacao']:<16}  {i['assunto'][:50]}")
         return
 
     with open(args.salvar, "w", encoding="utf-8") as f:

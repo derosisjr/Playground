@@ -54,6 +54,9 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import classificar as cls  # noqa: E402  (mesmo diretório; ver bloco sys.path acima)
+
 # Garante UTF-8 na saída mesmo em consoles Windows (cp1252)
 for _stream in (sys.stdout, sys.stderr):
     try:
@@ -81,12 +84,22 @@ PAGINA_TAMANHO = 20
 # (julgamento manual) ficam em branco. A dedup é feita pela coluna de número.
 ABA_INDICACOES = "indicações"
 ABA_REQUERIMENTOS = "requerimentos"
+#
+# `Situação da resposta` e `Data da resposta de mérito` são preenchidas pela
+# classificação dos PDFs (ver classificar.py): nem todo anexo é resposta — pedido
+# de prorrogação de prazo e ofício de encaminhamento chegam pelo mesmo canal.
+# `Data da resposta` continua sendo a data mais recente de QUALQUER anexo, para
+# não quebrar a conferência manual da assessoria.
+COL_SITUACAO = "Situação da resposta"
+COL_DATA_MERITO = "Data da resposta de mérito"
+COLUNAS_CLASSIFICACAO = [COL_SITUACAO, COL_DATA_MERITO]
 ABAS = {
     ABA_INDICACOES: {
         "colunas": [
             "sta", "Assunto", "Data da Sessão", "Número",
             "Data do Protocolo na PMS", "Prazo", "Resposta",
             "Data da resposta", "A contento", "Bairro",
+            *COLUNAS_CLASSIFICACAO,
         ],
     },
     ABA_REQUERIMENTOS: {
@@ -94,15 +107,18 @@ ABAS = {
             "Ordem", "Assunto", "Secretaria", "Data da Sessão", "Nùmero",
             "Data do Protocolo na PMS", "Prazo", "Resposta",
             "Data da resposta", "Status atual",
+            *COLUNAS_CLASSIFICACAO,
         ],
     },
 }
 
 # Aba de log diário (criada automaticamente se não existir)
 LOG_ABA = "Log diário"
+# "Situação" vai no fim de propósito: a aba já existe em produção e as linhas
+# antigas foram gravadas na ordem anterior.
 LOG_COLUNAS = [
     "Data processamento", "Tipo", "Número", "Assunto",
-    "Data da resposta", "Link",
+    "Data da resposta", "Link", "Situação",
 ]
 
 
@@ -153,20 +169,40 @@ def _norm_num(s: str) -> str:
     return re.sub(r"\D", "", s or "")
 
 
+def _chave_data(d: str) -> tuple | None:
+    """'dd/mm/aaaa' → chave ordenável (aaaa, mm, dd); None se não fizer parse."""
+    m = re.search(r"(\d{2})/(\d{2})/(\d{4})", d or "")
+    return (m.group(3), m.group(2), m.group(1)) if m else None
+
+
 def _data_mais_recente(datas: list[str]) -> str:
     """Dada uma lista de datas 'dd/mm/aaaa', devolve a mais recente (string original).
     Se nenhuma fizer parse, devolve a última da lista (ou '' se vazia)."""
     melhor, melhor_chave = "", None
     for d in datas:
-        m = re.search(r"(\d{2})/(\d{2})/(\d{4})", d or "")
-        if not m:
+        chave = _chave_data(d)
+        if chave is None:
             continue
-        chave = (m.group(3), m.group(2), m.group(1))
         if melhor_chave is None or chave > melhor_chave:
             melhor_chave, melhor = chave, d.strip()
     if melhor:
         return melhor
     return datas[-1].strip() if datas else ""
+
+
+def _data_mais_antiga(datas: list[str]) -> str:
+    """A primeira data da lista em ordem cronológica ('' se nenhuma fizer parse).
+
+    Usada para a data da resposta DE MÉRITO: o que interessa é quando o conteúdo
+    chegou pela primeira vez, não a última movimentação do processo."""
+    melhor, melhor_chave = "", None
+    for d in datas:
+        chave = _chave_data(d)
+        if chave is None:
+            continue
+        if melhor_chave is None or chave < melhor_chave:
+            melhor_chave, melhor = chave, d.strip()
+    return melhor
 
 
 def aba_do_item(tipo: str) -> str:
@@ -275,6 +311,8 @@ def detalhar_item(cod: str) -> dict:
     # Resposta anexada: pode haver VÁRIOS blocos <h4>Resposta anexada</h4>, um por
     # resposta do prefeito (ex.: 1º pedido de dilação de prazo, 2º a resposta de fato).
     # Coletamos os PDFs de todos os blocos e usamos como dataResposta a MAIS RECENTE.
+    # Cada PDF carrega a data do SEU bloco: sem isso não dá para saber quando chegou
+    # a resposta de mérito, já que os blocos misturam trâmite e conteúdo.
     respostas: list[dict] = []
     urls_vistas: set[str] = set()
     datas_resposta: list[str] = []
@@ -282,17 +320,22 @@ def detalhar_item(cod: str) -> dict:
         tab_resp = h4.find_next("table")
         if not tab_resp:
             continue
+        data_bloco = ""
+        for row in tab_resp.select("tr"):
+            th = row.find("th")
+            if th and "recebimento" in th.get_text().lower():
+                data_bloco = _text(row.find("td"))
+                break
+        if data_bloco:
+            datas_resposta.append(data_bloco)
         for a in tab_resp.find_all("a", href=re.compile(r"\.pdf", re.I)):
             href = urljoin(url, a["href"])
             if href in urls_vistas:
                 continue
             urls_vistas.add(href)
-            respostas.append({"url": href, "nome": _nome_arquivo(a["href"])})
-        for row in tab_resp.select("tr"):
-            th = row.find("th")
-            if th and "recebimento" in th.get_text().lower():
-                datas_resposta.append(_text(row.find("td")))
-                break
+            respostas.append({
+                "url": href, "nome": _nome_arquivo(a["href"]), "data": data_bloco,
+            })
     data_resposta = _data_mais_recente(datas_resposta)
 
     return {
@@ -377,7 +420,7 @@ def listar_arquivos_pasta(drive, pasta_id: str) -> list[dict]:
         res = drive.files().list(
             q=f"'{pasta_id}' in parents and trashed = false "
               "and mimeType != 'application/vnd.google-apps.folder'",
-            fields="nextPageToken, files(id, name, webViewLink, createdTime)",
+            fields="nextPageToken, files(id, name, webViewLink, createdTime, size)",
             supportsAllDrives=True, includeItemsFromAllDrives=True,
             pageToken=token,
         ).execute()
@@ -455,12 +498,56 @@ def _idx_header(cabecalhos: list[str], alvo: str) -> int:
     return -1
 
 
+def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
+    """Garante que o cabeçalho da aba contenha as colunas declaradas em ABAS,
+    acrescentando ao fim as que faltarem. Devolve o cabeçalho resultante.
+
+    Necessário porque `anexar_linha` monta a linha pela ordem de ABAS: se a
+    planilha real não tiver as colunas novas, os valores entrariam deslocados."""
+    res = sheets.spreadsheets().values().get(
+        spreadsheetId=sheet_id, range=f"'{aba}'!1:1",
+    ).execute()
+    cab = (res.get("values") or [[]])[0]
+    faltantes = [c for c in ABAS[aba]["colunas"] if _idx_header(cab, c) < 0]
+    if not faltantes:
+        return cab
+    novo = cab + faltantes
+    sheets.spreadsheets().values().update(
+        spreadsheetId=sheet_id,
+        range=f"'{aba}'!A1",
+        valueInputOption="RAW",
+        body={"values": [novo]},
+    ).execute()
+    print(f"  Aba '{aba}': coluna(s) criada(s) — {', '.join(faltantes)}.", file=sys.stderr)
+    return novo
+
+
+def listar_subpastas(drive, pasta_raiz: str) -> list[dict]:
+    """Lista as subpastas de uma pasta do Drive (id/nome)."""
+    pastas: list[dict] = []
+    token = None
+    while True:
+        res = drive.files().list(
+            q=f"'{pasta_raiz}' in parents and trashed = false "
+              "and mimeType = 'application/vnd.google-apps.folder'",
+            fields="nextPageToken, files(id, name)",
+            supportsAllDrives=True, includeItemsFromAllDrives=True,
+            pageSize=1000, pageToken=token,
+        ).execute()
+        pastas.extend(res.get("files", []))
+        token = res.get("nextPageToken")
+        if not token:
+            break
+    return pastas
+
+
 def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
     """Lê cada aba e devolve, por aba, os índices de coluna e um mapa
     número→{linha, resp} (resp = se a coluna Resposta já está preenchida)."""
     indice: dict[str, dict] = {}
     for aba in ABAS:
-        info = {"col_resp": -1, "col_dataresp": -1, "mapa": {}}
+        info = {"col_resp": -1, "col_dataresp": -1, "col_situacao": -1,
+                "col_merito": -1, "mapa": {}}
         indice[aba] = info
         try:
             res = sheets.spreadsheets().values().get(
@@ -476,16 +563,21 @@ def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
         idx_num = _idx_coluna_numero(cab)
         info["col_resp"] = _idx_header(cab, "Resposta")
         info["col_dataresp"] = _idx_header(cab, "Data da resposta")
+        info["col_situacao"] = _idx_header(cab, COL_SITUACAO)
+        info["col_merito"] = _idx_header(cab, COL_DATA_MERITO)
         if idx_num < 0:
             continue
+
+        def celula(linha: list, col: int) -> str:
+            return linha[col].strip() if 0 <= col < len(linha) else ""
+
         for n, linha in enumerate(valores[1:], start=2):  # nº da linha (1-based)
             if len(linha) > idx_num and linha[idx_num].strip():
-                resp_ok = (
-                    info["col_resp"] >= 0
-                    and len(linha) > info["col_resp"]
-                    and linha[info["col_resp"]].strip() != ""
-                )
-                info["mapa"][_norm_num(linha[idx_num])] = {"linha": n, "resp": resp_ok}
+                info["mapa"][_norm_num(linha[idx_num])] = {
+                    "linha": n,
+                    "resp": celula(linha, info["col_resp"]) != "",
+                    "sit": celula(linha, info["col_situacao"]),
+                }
     return indice
 
 
@@ -502,6 +594,33 @@ def atualizar_resposta(sheets, sheet_id: str, aba: str, info: dict, linha: int,
         ).execute()
         return
     for col, val in ((cr, resposta), (cd, data_resposta)):
+        if col >= 0:
+            sheets.spreadsheets().values().update(
+                spreadsheetId=sheet_id,
+                range=f"'{aba}'!{_col_letra(col)}{linha}",
+                valueInputOption="USER_ENTERED",
+                body={"values": [[val]]},
+            ).execute()
+
+
+def atualizar_classificacao(sheets, sheet_id: str, aba: str, info: dict, linha: int,
+                            valores: dict) -> None:
+    """Grava `Situação da resposta` e `Data da resposta de mérito` de uma linha.
+
+    Silencioso quando `valores` não traz a situação — sinal de que a passagem não
+    classificou todos os PDFs e não tem veredito confiável para escrever."""
+    if COL_SITUACAO not in valores:
+        return
+    cs, cm = info.get("col_situacao", -1), info.get("col_merito", -1)
+    if cs >= 0 and cm == cs + 1:  # colunas contíguas (é como são criadas)
+        sheets.spreadsheets().values().update(
+            spreadsheetId=sheet_id,
+            range=f"'{aba}'!{_col_letra(cs)}{linha}:{_col_letra(cm)}{linha}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [[valores[COL_SITUACAO], valores.get(COL_DATA_MERITO, "")]]},
+        ).execute()
+        return
+    for col, val in ((cs, valores[COL_SITUACAO]), (cm, valores.get(COL_DATA_MERITO, ""))):
         if col >= 0:
             sheets.spreadsheets().values().update(
                 spreadsheetId=sheet_id,
@@ -548,11 +667,19 @@ def _executar(req, *, tentativas: int = 4, espera: float = 3.0):
 
 
 def garantir_aba_log(sheets, sheet_id: str) -> None:
-    """Cria a aba de log (com cabeçalho) se ela ainda não existir."""
+    """Cria a aba de log se não existir; se existir, completa o cabeçalho com as
+    colunas que faltarem (as linhas são montadas pela ordem de LOG_COLUNAS)."""
     meta = _executar(sheets.spreadsheets().get(
         spreadsheetId=sheet_id, fields="sheets.properties.title"))
     titulos = [s["properties"]["title"] for s in meta.get("sheets", [])]
     if LOG_ABA in titulos:
+        res = _executar(sheets.spreadsheets().values().get(
+            spreadsheetId=sheet_id, range=f"'{LOG_ABA}'!1:1"))
+        cab = (res.get("values") or [[]])[0]
+        if any(_idx_header(cab, c) < 0 for c in LOG_COLUNAS):
+            _executar(sheets.spreadsheets().values().update(
+                spreadsheetId=sheet_id, range=f"'{LOG_ABA}'!A1",
+                valueInputOption="RAW", body={"values": [LOG_COLUNAS]}))
         return
     _executar(sheets.spreadsheets().batchUpdate(
         spreadsheetId=sheet_id,
@@ -591,16 +718,22 @@ def montar_email_html(entradas: list[dict], data: str) -> str:
             f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Número'])}</td>"
             f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Assunto'])}</td>"
             f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e['Data da resposta'])}</td>"
+            f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{_esc(e.get('Situação', '—'))}</td>"
             f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>"
             f"<a href='{_esc(e['LinkUrl'])}'>abrir pasta</a></td>"
             "</tr>"
         )
+    merito = sum(1 for e in entradas if e.get("Situação") == cls.ROTULOS[cls.RESPONDIDO])
+    tramite = len(entradas) - merito
+    resumo = f"{merito} resposta(s) de mérito"
+    if tramite:
+        resumo += f" e {tramite} de trâmite (prazo/encaminhamento)"
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A1628">
 <div style="max-width:760px;margin:0 auto">
   <div style="border-top:3px solid #C9A84C;padding:16px 0">
     <h2 style="margin:0;color:#07111F">Respostas do Executivo</h2>
-    <p style="color:#555;margin:4px 0 0">{len(entradas)} nova(s) resposta(s) — {data}</p>
+    <p style="color:#555;margin:4px 0 0">{resumo} — {data}</p>
   </div>
   <table style="border-collapse:collapse;width:100%;font-size:14px">
     <thead><tr style="background:#07111F;color:#fff">
@@ -608,6 +741,7 @@ def montar_email_html(entradas: list[dict], data: str) -> str:
       <th style="padding:8px 10px;text-align:left">Número</th>
       <th style="padding:8px 10px;text-align:left">Assunto</th>
       <th style="padding:8px 10px;text-align:left">Data resposta</th>
+      <th style="padding:8px 10px;text-align:left">Situação</th>
       <th style="padding:8px 10px;text-align:left">Pasta</th>
     </tr></thead>
     <tbody>{linhas}</tbody>
@@ -647,11 +781,16 @@ def enviar_email(entradas: list[dict], data: str) -> None:
 
 # ── Processamento ─────────────────────────────────────────────────────────────
 def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
-                   sep: str = ",") -> tuple[str, dict, str, bool]:
+                   sep: str = ",", classificar_tudo: bool = True,
+                   ) -> tuple[str, dict, str, bool]:
     """Baixa PDFs que ainda não estão arquivados, sobe ao Drive e devolve
     (aba, valores, pasta_url, resposta_nova) — `resposta_nova` indica se algum PDF
     de RESPOSTA foi arquivado agora (sinal robusto p/ saber se chegou novidade,
-    independente do formato de data na planilha)."""
+    independente do formato de data na planilha).
+
+    `classificar_tudo` faz rebaixar também os PDFs já arquivados, para classificá-los.
+    Só vale a pena quando a planilha ainda não tem veredito para o item — do
+    contrário seriam centenas de downloads por dia sem novidade nenhuma."""
     aba = aba_do_item(item["tipo"])
     numero = item["numero"] or item["cod"]
     categoria = "REQUERIMENTO" if aba == ABA_REQUERIMENTOS else "INDICACAO"
@@ -678,20 +817,34 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
             if dados:
                 subir_pdf(drive, pasta_id, nome_pedido, dados, existentes)
 
-    # Respostas (arquivadas na subpasta)
+    # Respostas (arquivadas na subpasta), classificadas conforme chegam: nem todo
+    # anexo é resposta — ver classificar.py.
+    classes: list[str] = []
+    datas_merito: list[str] = []
     for i, pdf in enumerate(item["respostasPdf"], 1):
-        if dry_run:
-            links_resposta.append(pdf["url"])
-            continue
         nome_resp = _slug(f"RESPOSTA {i} {numero} {pdf['nome']}")
-        if nome_resp in existentes:
+        arquivado = (not dry_run) and nome_resp in existentes
+        dados = None
+        if arquivado:
             links_resposta.append(existentes[nome_resp])
+            if classificar_tudo:
+                dados = baixar_pdf_bytes(pdf["url"])
+        else:
+            dados = baixar_pdf_bytes(pdf["url"])
+            if dry_run:
+                links_resposta.append(pdf["url"])
+            elif dados:
+                links_resposta.append(
+                    subir_pdf(drive, pasta_id, nome_resp, dados, existentes))
+                resposta_nova = True
+            else:
+                continue
+        if arquivado and not classificar_tudo:
             continue
-        dados = baixar_pdf_bytes(pdf["url"])
-        if not dados:
-            continue
-        links_resposta.append(subir_pdf(drive, pasta_id, nome_resp, dados, existentes))
-        resposta_nova = True
+        classe = cls.classificar(cls.texto_pdf(dados)) if dados else cls.INDETERMINADO
+        classes.append(classe)
+        if classe in (cls.MERITO, cls.INDETERMINADO) and pdf.get("data"):
+            datas_merito.append(pdf["data"])
 
     # Coluna "Resposta": hyperlink clicável para a subpasta com os PDFs
     if dry_run:
@@ -708,6 +861,11 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         "Resposta": resposta_cell,
         "Data da resposta": item["dataResposta"],
     }
+    # Só grava a situação se TODOS os PDFs foram classificados nesta passagem;
+    # caso contrário sobrescreveríamos um veredito bom com um parcial.
+    if len(classes) == len(item["respostasPdf"]):
+        valores[COL_SITUACAO] = cls.situacao(classes)
+        valores[COL_DATA_MERITO] = _data_mais_antiga(datas_merito)
     return aba, valores, pasta_url, resposta_nova
 
 
@@ -797,13 +955,22 @@ def main():
             info = indice.get(aba, {"mapa": {}})
             existente = info["mapa"].get(num)
             ja_respondido = bool(existente and existente.get("resp"))
+            sit_atual = (existente or {}).get("sit", "")
+            # Reclassifica quando ainda não há veredito de mérito: item sem situação
+            # (anterior à classificação) ou parado em trâmite, que pode ter recebido
+            # a resposta de verdade desde a última passagem. Com --forcar reclassifica
+            # tudo — é o único jeito de preencher `Data da resposta de mérito` nos
+            # itens que o backfill do Drive marcou como respondidos (a data de
+            # recebimento só existe na página da Câmara).
+            classificar_tudo = args.forcar or sit_atual != cls.RESPONDIDO
 
             aba, valores, pasta_url, resposta_nova = processar_item(
-                detalhes, drive, pasta_raiz, args.dry_run, sep)
+                detalhes, drive, pasta_raiz, args.dry_run, sep, classificar_tudo)
 
-            # Item já respondido: só registra de novo se chegou RESPOSTA nova no Drive
-            # (sinal robusto, imune ao reformato de data feito pela planilha).
-            if ja_respondido and not resposta_nova and not args.forcar and not cods_alvo:
+            # Item já respondido de mérito: só registra de novo se chegou RESPOSTA
+            # nova no Drive (sinal robusto, imune ao reformato de data da planilha).
+            if (ja_respondido and sit_atual == cls.RESPONDIDO and not resposta_nova
+                    and not args.forcar and not cods_alvo):
                 continue
 
             rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
@@ -818,16 +985,23 @@ def main():
                 if existente:
                     atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
                                        valores["Resposta"], valores["Data da resposta"])
+                    atualizar_classificacao(sheets, sheet_id, aba, info,
+                                            existente["linha"], valores)
                     existente["resp"] = True
+                    existente["sit"] = valores.get(COL_SITUACAO, sit_atual)
                 else:
                     anexar_linha(sheets, sheet_id, aba, valores)
-                    info["mapa"][num] = {"linha": -1, "resp": True}
+                    info["mapa"][num] = {
+                        "linha": -1, "resp": True,
+                        "sit": valores.get(COL_SITUACAO, ""),
+                    }
                 log_entradas.append({
                     "Data processamento": hoje,
                     "Tipo": detalhes["tipo"],
                     "Número": detalhes["numero"],
                     "Assunto": detalhes["ementa"],
                     "Data da resposta": detalhes["dataResposta"],
+                    "Situação": cls.ROTULOS.get(valores.get(COL_SITUACAO, ""), "—"),
                     "Link": _hyperlink(pasta_url, "Abrir", sep),
                     "LinkUrl": pasta_url,
                 })

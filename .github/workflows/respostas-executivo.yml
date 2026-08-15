@@ -32,7 +32,9 @@ permissions:
 jobs:
   arquivar-respostas:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 35 min: além de varrer ~900 páginas, a rotina agora rebaixa os PDFs dos itens
+    # sem veredito de mérito para classificá-los (ver classificar.py).
+    timeout-minutes: 35
 
     steps:
       - name: Checkout

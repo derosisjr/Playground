@@ -6,6 +6,15 @@ let ITENS = [];
 let filtradas = [];
 let mostrando = 0;
 
+// Situações vindas do export (respostas-executivo/classificar.py). "respondido"
+// significa resposta de MÉRITO: pedido de prazo e ofício de encaminhamento sem
+// anexo não contam.
+const ROTULOS = {
+  respondido: "Resposta ↗",
+  so_prorrogacao: "Prazo prorrogado ↗",
+  so_encaminhamento: "Só encaminhamento ↗",
+};
+
 const el = (id) => document.getElementById(id);
 const norm = (s) =>
   (s || "")
@@ -23,12 +32,15 @@ function aplicarFiltros() {
   const q = norm(el("q").value).trim();
   const termos = q ? q.split(/\s+/) : [];
   const ano = el("ano").value;
-  const status = el("status").value; // "" | "sim" | "nao"
+  // "sim"/"nao" continuam valendo: links antigos já circulam com esses valores.
+  const status = el("status").value;
 
   filtradas = ITENS.filter((i) => {
     if (ano && String(i.ano) !== ano) return false;
     if (status === "sim" && !i.respondido) return false;
-    if (status === "nao" && i.respondido) return false;
+    else if (status === "nao" && i.respondido) return false;
+    else if (status && status !== "sim" && status !== "nao" && i.situacao !== status)
+      return false;
     if (termos.length) {
       const alvo = norm([i.numero, i.assunto, i.status, i.ano].join(" "));
       if (!termos.every((t) => alvo.includes(t))) return false;
@@ -55,13 +67,19 @@ function dataBR(s) {
 function atualizarResumo() {
   const total = filtradas.length;
   const respondidos = filtradas.filter((i) => i.respondido).length;
-  const pendentes = total - respondidos;
+  const semMerito = total - respondidos;
+  const tramite = filtradas.filter(
+    (i) => i.situacao === "so_prorrogacao" || i.situacao === "so_encaminhamento"
+  ).length;
   const pct = total ? Math.round((respondidos / total) * 100) : 0;
 
-  // tempo médio de resposta (dias entre sessão e resposta), só dos respondidos
+  // Tempo médio até a resposta DE MÉRITO. Antes do backfill da planilha o campo
+  // vem vazio; aí vale a data genérica, que é o melhor dado disponível.
   const prazos = filtradas
+    .filter((i) => i.respondido)
     .map((i) => {
-      const a = dataBR(i.data_sessao), b = dataBR(i.data_resposta);
+      const a = dataBR(i.data_sessao);
+      const b = dataBR(i.data_resposta_merito) || dataBR(i.data_resposta);
       return a && b ? (b - a) / 864e5 : null;
     })
     .filter((d) => d != null && d >= 0);
@@ -71,9 +89,9 @@ function atualizarResumo() {
 
   const cards = [
     { rotulo: "Requerimentos", valor: total.toLocaleString("pt-BR"), sub: "no filtro atual" },
-    { rotulo: "Respondidos", valor: `${pct}%`, sub: `${respondidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}` },
-    { rotulo: "Pendentes", valor: pendentes.toLocaleString("pt-BR"), sub: "aguardando o Executivo" },
-    { rotulo: "Tempo médio de resposta", valor: media == null ? "—" : `${media} dias`, sub: "entre a sessão e a resposta" },
+    { rotulo: "Respondidos", valor: `${pct}%`, sub: `${respondidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} — com resposta de mérito` },
+    { rotulo: "Sem resposta de mérito", valor: semMerito.toLocaleString("pt-BR"), sub: tramite ? `${tramite.toLocaleString("pt-BR")} só receberam trâmite` : "aguardando o Executivo" },
+    { rotulo: "Tempo médio de resposta", valor: media == null ? "—" : `${media} dias`, sub: "entre a sessão e a resposta de mérito" },
   ];
   el("stats").innerHTML = cards
     .map((c) => `<div class="stat">
@@ -87,7 +105,7 @@ function atualizarResumo() {
 // Exporta o resultado filtrado (mesmas colunas da tabela)
 function exportarCSV() {
   if (!filtradas.length) return;
-  const campos = ["numero", "ano", "assunto", "data_sessao", "data_resposta", "status", "respondido", "url_resposta"];
+  const campos = ["numero", "ano", "assunto", "data_sessao", "data_resposta", "data_resposta_merito", "situacao", "status", "respondido", "url_resposta"];
   Comum.exportarCsv(
     `requerimentos-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
     campos,
@@ -96,9 +114,11 @@ function exportarCSV() {
 }
 
 function linhaHTML(i) {
-  const resposta = i.url_resposta
-    ? `<a class="pdf" href="${escapar(i.url_resposta)}" target="_blank" rel="noopener">Resposta ↗</a>`
-    : `<span class="pendente">Pendente</span>`;
+  const rotulo = ROTULOS[i.situacao];
+  const resposta =
+    i.url_resposta && rotulo
+      ? `<a class="${i.respondido ? "pdf" : "tramite"}" href="${escapar(i.url_resposta)}" target="_blank" rel="noopener">${rotulo}</a>`
+      : `<span class="pendente">Pendente</span>`;
   return `<tr>
     <td data-label="Número" class="num">${escapar(i.numero)}</td>
     <td data-label="Assunto">${escapar(i.assunto)}</td>
@@ -117,7 +137,7 @@ function renderizarMais() {
   el("mais").hidden = mostrando >= filtradas.length;
   const respondidos = filtradas.filter((i) => i.respondido).length;
   el("contagem").textContent =
-    `${filtradas.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} respondido(s) — exibindo ${mostrando.toLocaleString("pt-BR")}`;
+    `${filtradas.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} com resposta de mérito — exibindo ${mostrando.toLocaleString("pt-BR")}`;
   el("contagem").classList.remove("pulsa"); void el("contagem").offsetWidth;
   el("contagem").classList.add("pulsa");
 }

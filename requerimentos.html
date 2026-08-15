@@ -86,6 +86,13 @@
       .status { color: var(--muted); font-size: 12px; }
       a.pdf { color: #0a58ca; font-weight: 600; text-decoration: none; white-space: nowrap; }
       a.pdf:hover { text-decoration: underline; }
+      /* Trâmite: chegou papel, mas não é resposta (prazo prorrogado, ofício de
+         encaminhamento sem anexo). Continua clicável — o ofício vale a leitura. */
+      a.tramite { color: #8a6d1f; font-weight: 600; text-decoration: none; white-space: nowrap; }
+      a.tramite:hover { text-decoration: underline; }
+      /* No escuro o âmbar fecha em ~3,5:1; o dourado claro do tema sobe a 8,9:1.
+         Fica aqui (e não no comum.css) porque a classe só existe nesta página. */
+      html[data-tema="escuro"] a.tramite { color: var(--gold-bright); }
       .pendente { display: inline-block; padding: 2px 8px; border-radius: 999px;
         background: #f1eee4; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
       .vazio { padding: 40px; text-align: center; color: var(--muted); }
@@ -105,6 +112,8 @@
           Pesquisa rápida dos requerimentos do mandato e das respostas do Executivo.
           Busque por número, assunto ou palavra-chave, filtre por ano e situação e abra
           a resposta da prefeitura (pasta no Drive com os PDFs do pedido e da resposta).
+          Só conta como respondido o que traz resposta de mérito: pedido de prorrogação
+          de prazo e ofício de encaminhamento sem anexo aparecem à parte.
         </p>
       </div>
     </header>
@@ -121,9 +130,12 @@
         <input id="q" type="search" placeholder="Buscar por número, assunto ou palavra-chave..." />
         <select id="ano"><option value="">Todos os anos</option></select>
         <select id="status">
-          <option value="">Respondidos e pendentes</option>
-          <option value="sim">Só respondidos</option>
-          <option value="nao">Só pendentes</option>
+          <option value="">Todas as situações</option>
+          <option value="sim">Só respondidos (mérito)</option>
+          <option value="nao">Tudo sem resposta de mérito</option>
+          <option value="so_prorrogacao">Só prazo prorrogado</option>
+          <option value="so_encaminhamento">Só encaminhamento</option>
+          <option value="pendente">Sem nenhuma resposta</option>
         </select>
       </div>
 
@@ -156,6 +168,6 @@
       </p>
     </div>
 
-    <script src="./requerimentos-app.js?v=2"></script>
+    <script src="./requerimentos-app.js?v=3"></script>
   </body>
 </html>
