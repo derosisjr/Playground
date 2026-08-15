@@ -58,6 +58,12 @@ for _s in (sys.stdout, sys.stderr):
 AQUI = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(AQUI, "diario.sqlite")
 
+# módulo comum na raiz do repo (consolidação 2026-08: o fallback Gmail API passou
+# a ser usado também pelo briefing da Ordem do Dia)
+RAIZ = os.path.dirname(AQUI)
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
+
 # Mapeia cada campo do ato (classificador) para a coluna da planilha (sheets.COLUNAS).
 # "Data DO" e "Edição" entram no monitor; o resto vem do ato.
 SCHEMA = """
@@ -264,34 +270,11 @@ def enviar_email(novos: list[dict], sheet_id: str, radar: list[dict] | None = No
 
 
 def _enviar_gmail_api(msg, destinatarios: list[str]) -> None:
-    """Envia a mensagem MIME pela Gmail API (HTTPS). Remetente = conta do token."""
-    import base64
-    import json
+    """Envia a mensagem MIME pela Gmail API (HTTPS). Remetente = conta do token.
 
-    from google.oauth2.credentials import Credentials
-    from google.auth.transport.requests import Request
-    from googleapiclient.discovery import build
-
-    raw_token = os.environ.get("GOOGLE_OAUTH_TOKEN")
-    if raw_token:
-        info = json.loads(raw_token)
-    elif os.path.exists(gsheets.TOKEN_FILE):
-        with open(gsheets.TOKEN_FILE, encoding="utf-8") as f:
-            info = json.load(f)
-    else:
-        raise EnvironmentError("Sem GOOGLE_OAUTH_TOKEN para o fallback Gmail API.")
-    escopos = info.get("scopes", [])
-    if "https://www.googleapis.com/auth/gmail.send" not in escopos:
-        raise EnvironmentError(
-            "Token OAuth sem o escopo gmail.send — regenerar com setup_oauth.py "
-            "(respostas-executivo) e atualizar o token na rotina/secret.")
-    creds = Credentials.from_authorized_user_info(info, escopos)
-    if not creds.valid and creds.refresh_token:
-        creds.refresh(Request())
-    gmail = build("gmail", "v1", credentials=creds, cache_discovery=False)
-    corpo = {"raw": base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")}
-    gmail.users().messages().send(userId="me", body=corpo).execute(num_retries=4)
-    print(f"E-mail enviado via Gmail API para {', '.join(destinatarios)}.", file=sys.stderr)
+    Delegado ao módulo comum `gmail_api.py` (raiz do repo) desde 2026-08."""
+    from gmail_api import enviar_gmail_api
+    enviar_gmail_api(msg, destinatarios, token_file=gsheets.TOKEN_FILE)
 
 
 def main():

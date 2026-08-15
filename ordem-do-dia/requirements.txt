@@ -3,3 +3,7 @@ requests>=2.32.0
 beautifulsoup4>=4.12.0
 markdown>=3.6
 PyMuPDF>=1.24.0
+# rotina /schedule: envio via Gmail API (SMTP 587 não abre lá)
+google-api-python-client>=2.130.0
+google-auth>=2.30.0
+google-auth-oauthlib>=1.2.0
