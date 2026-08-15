@@ -15,6 +15,9 @@ legis/legis.xlsx
 legis/legis.csv
 legis/_smoke*
 legis/triagem-revogacao.xlsx
+# posturas: só scripts e CSVs-fonte são versionados; .docx/.xlsx são saída derivada
+legis/posturas/*.docx
+legis/posturas/*.xlsx
 proposituras/proposituras.sqlite
 proposituras/proposituras.xlsx
 proposituras/proposituras.csv
@@ -25,10 +28,6 @@ despesas/despesas.csv
 despesas/_briefing.*
 diario-oficial/diario.sqlite
 diario-oficial/_*
-pro-gestao/coleta-site/
-pro-gestao/kit-certificacao/
-pro-gestao/analise.json
-pro-gestao/diagnostico*.json
 indicadores/indicadores.sqlite
 endividamento/endividamento.sqlite
 memoria/memoria.sqlite*
@@ -42,3 +41,8 @@ _preview-*.html
 # Preço comparado: o sqlite é DERIVADO de precos/espelho/*.jsonl.gz (versionado)
 precos/precos.sqlite
 precos/_*
+# peças de MP, requerimentos e provas: o repo é público — nunca publicar (decisão 2026-08-15)
+REQUERIMENTOS/
+# locks do Word e cache do pytest
+~$*
+.pytest_cache/
