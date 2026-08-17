@@ -22,7 +22,11 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 45 min não cobriam a coleta: o 1º run agendado (2026-08-16) foi morto pelo
+    # teto aos 45m17s e perdeu tudo — o espelho parcial vive no disco do runner e
+    # o passo de commit nunca chegou a rodar. O teto do job agora é folgado e quem
+    # corta é o teto do STEP de coleta (abaixo), que deixa o job seguir vivo.
+    timeout-minutes: 180
 
     steps:
       - name: Checkout
@@ -61,10 +65,17 @@ jobs:
 
       # Ordem obrigatória: itens → casar → resultados → casar (outlier) → export.
       # O Tier 3 é PUXADO pelo casamento; invertido, ele varreria a base inteira.
+      # Teto MENOR que o do job de propósito: se a coleta não couber, o GitHub mata
+      # só este passo e o job continua nos seguintes (que são `if: always()`), de
+      # modo que o espelho já gravado — o crawler faz flush a cada 250 chamadas —
+      # seja publicado e a próxima execução retome dali. O passo fica vermelho: a
+      # falha continua visível, mas para de custar o trabalho todo.
       - name: Coleta e casamento
+        timeout-minutes: 150
         env:
           ORCAMENTO: ${{ github.event.inputs.orcamento }}
           SLUG: ${{ github.event.inputs.slug }}
+          PYTHONUNBUFFERED: "1"  # sem isto o progresso fica no buffer e o log some
         run: |
           ORC="${ORCAMENTO:-3000}"
           python precos/crawler.py --incremental --orcamento "$ORC"
@@ -81,9 +92,17 @@ jobs:
             python precos/crawler.py --resultados
             python precos/casar.py --todas
           fi
-          python precos/export.py
+
+      # `always()`: roda mesmo com a coleta cortada pelo tempo — é o que
+      # transforma o progresso parcial em índice publicável.
+      - name: Export
+        if: always()
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python precos/export.py
 
       - name: Commitar (se houver e for íntegro)
+        if: always()
         run: |
           OK=$(python - <<'PY'
           import json, os, subprocess
