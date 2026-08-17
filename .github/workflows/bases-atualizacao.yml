@@ -51,3 +51,13 @@ jobs:
             git commit -m "chore: atualiza índice de datas das bases ($(date +%F))"
             git push
           fi
+
+      # Guarda de FRESCOR — lê a data do dado DENTRO de cada índice e falha se
+      # alguma base congelou. As guardas dos workflows de base medem volume
+      # ("está mutilada?"); nenhuma media frescor ("está congelada?"), e foi por
+      # esse vão que Despesas passou 40 dias parada com tudo verde (2026-08).
+      #
+      # Roda DEPOIS do commit de propósito: publicar as datas é a função
+      # principal deste workflow e não pode ser bloqueada pelo alarme.
+      - name: Guarda de frescor das bases
+        run: python .github/scripts/frescor_bases.py
