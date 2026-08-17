@@ -52,7 +52,10 @@ for _s in (sys.stdout, sys.stderr):
 
 BASE_URL = "https://santos-sp.portaltp.com.br"
 API = f"{BASE_URL}/api/transparencia.asmx"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DespesasIndexBot/1.0)"}
+# O WAF do portal passou a devolver 403 para o UA antigo ("...DespesasIndexBot/1.0")
+# em 2026-07-09 — o filtro pega o token "Bot". UA sem essa palavra, ainda
+# identificando quem somos e com link de contato, volta a receber 200.
+HEADERS = {"User-Agent": "GabineteSantos/1.0 (+https://github.com/derosisjr/Playground)"}
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(AQUI, "despesas.sqlite")
@@ -259,6 +262,7 @@ def main():
     conn = None if args.dry_run else abrir_db()
     ja = carregados(conn) if conn else set()
     total = 0
+    sucessos = erros = 0
 
     for ano, mes in meses_alvo(args.ano, args.mes):
         for fonte in fontes:
@@ -270,7 +274,9 @@ def main():
                 itens = coletar_mes(fonte, ano, mes)
             except Exception as e:
                 print(f"  ERRO em {fonte} {ano}-{mes:02d}: {e} — pulando.", file=sys.stderr)
+                erros += 1
                 continue
+            sucessos += 1
             soma = round(sum(it["valor"] for it in itens), 2)
             if args.dry_run:
                 print(f"  {len(itens)} registros | soma R$ {soma:,.2f}", file=sys.stderr)
@@ -285,7 +291,18 @@ def main():
 
     if conn:
         conn.close()
-    print(f"Concluído: {total} registros processados.", file=sys.stderr)
+    print(f"Concluído: {total} registros processados "
+          f"({sucessos} coletas ok, {erros} com erro).", file=sys.stderr)
+
+    # Falha visível: se TUDO que se tentou baixar deu erro, o portal nos barrou
+    # (foi o que aconteceu em 2026-07-09, quando o WAF passou a rejeitar o UA) e
+    # a base parou por 40 dias com o workflow verde — o export reexportava o
+    # cache velho e a guarda de R$ 4 bi passava. Sair != 0 aborta o pipeline.
+    # Nada tentado (cache quente, 0 erros) segue sendo sucesso legítimo.
+    if erros and not sucessos:
+        print(f"ERRO FATAL: nenhuma coleta funcionou ({erros} falhas). "
+              f"Portal fora do ar, bloqueio por User-Agent ou API mudou.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
