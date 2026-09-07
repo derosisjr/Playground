@@ -1,10 +1,9 @@
 // Painel de Requerimentos & Respostas — lê requerimentos-index.json e filtra no cliente.
 "use strict";
 
-const PAGINA = 200; // quantas linhas renderizar por vez
 let ITENS = [];
 let filtradas = [];
-let mostrando = 0;
+let pag = null;  // Comum.paginador — montado no init
 
 // Situações vindas do export (respostas-executivo/classificar.py). "respondido"
 // significa resposta de MÉRITO: pedido de prazo e ofício de encaminhamento sem
@@ -42,9 +41,7 @@ function aplicarFiltros() {
     return true;
   });
 
-  mostrando = 0;
-  el("corpo").innerHTML = "";
-  renderizarMais();
+  pag.reiniciar(filtradas);
   el("vazio").hidden = filtradas.length > 0;
   atualizarResumo();
   el("csv").disabled = filtradas.length === 0;
@@ -123,19 +120,6 @@ function linhaHTML(i) {
   </tr>`;
 }
 
-function renderizarMais() {
-  const fim = Math.min(mostrando + PAGINA, filtradas.length);
-  const html = filtradas.slice(mostrando, fim).map(linhaHTML).join("");
-  el("corpo").insertAdjacentHTML("beforeend", html);
-  mostrando = fim;
-  el("mais").hidden = mostrando >= filtradas.length;
-  const respondidos = filtradas.filter((i) => i.respondido).length;
-  el("contagem").textContent =
-    `${filtradas.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} com resposta de mérito — exibindo ${mostrando.toLocaleString("pt-BR")}`;
-  el("contagem").classList.remove("pulsa"); void el("contagem").offsetWidth;
-  el("contagem").classList.add("pulsa");
-}
-
 async function init() {
   try {
     const resp = await fetch("./requerimentos-index.json", { cache: "no-cache" });
@@ -157,7 +141,13 @@ async function init() {
   }
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
   ["ano", "status"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
-  el("mais").addEventListener("click", renderizarMais);
+  pag = Comum.paginador({
+    corpo: "corpo", mais: "mais", contagem: "contagem", linha: linhaHTML,
+    rotulo: (lista, mostrando) => {
+      const respondidos = lista.filter((i) => i.respondido).length;
+      return `${lista.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} com resposta de mérito — exibindo ${mostrando.toLocaleString("pt-BR")}`;
+    },
+  });
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", () => {
     for (const id of ["q", "ano", "status"]) el(id).value = "";

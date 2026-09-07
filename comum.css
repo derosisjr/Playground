@@ -248,6 +248,26 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   color: var(--muted, #5d6675); text-transform: uppercase;
 }
 
+/* ── Hero dos painéis (era copiado byte a byte em 8–10 páginas) ─────────────────
+   Os painéis definem --navy2/--navy3 localmente (#0a1628/#12263f) — valores
+   diferentes dos --navy-2/-3 do comum — por isso o fallback: quem define o
+   token local mantém a cor de sempre. Uma página pode sobrescrever qualquer
+   regra daqui no <style> local (mesma especificidade, vem depois). */
+* { box-sizing: border-box; }
+::selection { background: var(--gold); color: var(--navy); }
+header.hero { position: relative; overflow: hidden; color: #fff;
+  background:
+    radial-gradient(120% 90% at 12% -10%, var(--navy3, var(--navy-3)) 0%, transparent 55%),
+    radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
+    linear-gradient(180deg, var(--navy2, var(--navy-2)) 0%, var(--navy) 100%);
+  border-bottom: 1px solid rgba(201,168,76,0.25); }
+header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+.eyebrow { display: inline-flex; align-items: center; gap: 10px;
+  font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
+  letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
+.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+
 /* ── Tabela responsiva (aplicar a classe .tabela-resp na <table>) ───────────── */
 @media (max-width: 760px) {
   .tabela-resp thead { display: none; }
