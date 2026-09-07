@@ -79,6 +79,8 @@
         gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
       .lanc-resumo { color: var(--muted); font-size: 13px;
         font-family: "IBM Plex Mono", monospace; margin: 0 0 10px; }
+      /* .stats é display:grid — sem isto o atributo hidden não esconde o skeleton */
+      #stats-skel[hidden] { display: none; }
       #lanc-tabela { white-space: nowrap; }
       #lanc-tabela td { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
       #lanc-tabela th { cursor: pointer; }
@@ -104,6 +106,8 @@
     </header>
 
     <div class="shell">
+      <!-- skeleton dos KPIs enquanto o dossiê carrega (o padrão de despesas.html) -->
+      <div class="stats" id="stats-skel"><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div></div>
       <div class="vazio" id="carregando">Carregando o dossiê…</div>
 
       <div id="conteudo" hidden>
@@ -165,6 +169,6 @@
       </div>
     </div>
 
-    <script src="./favorecido-app.js?v=5"></script>
+    <script src="./favorecido-app.js?v=6"></script>
   </body>
 </html>

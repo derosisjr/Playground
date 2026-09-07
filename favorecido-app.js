@@ -29,6 +29,7 @@ const compacto = Comum.compacto;
 const eixoReais = { ticks: { callback: (v) => compacto(v) } };
 
 function falha(msg) {
+  el("stats-skel").hidden = true;
   el("fav-nome").textContent = "Favorecido não encontrado";
   el("carregando").innerHTML = esc(msg) +
     ' <br><br><a href="./despesas.html#favorecidos">← Voltar ao painel de despesas</a>';
@@ -123,6 +124,7 @@ function render(d) {
 
   el("link-painel").href = "./despesas.html?q=" + encodeURIComponent(d.nome) + "#favorecidos";
   el("carregando").hidden = true;
+  el("stats-skel").hidden = true;
   el("conteudo").hidden = false;
 }
 
@@ -180,18 +182,29 @@ async function buscarLancamentos(nome, doc) {
 }
 
 function renderLancCabecalho() {
-  el("lanc-cabecalho").innerHTML = LANC_COLS.map((c) => {
+  const tr = el("lanc-cabecalho");
+  tr.innerHTML = LANC_COLS.map((c) => {
     const i = lanc.campos.indexOf(c);
-    const seta = lanc.sort.idx === i ? (lanc.sort.dir === "asc" ? " ▲" : " ▼") : "";
-    return `<th data-idx="${i}"${LANC_NUM.has(c) ? ' style="text-align:right"' : ""}>${LANC_LABELS[c]}${seta}</th>`;
+    const ordenada = lanc.sort.idx === i;
+    const seta = ordenada ? (lanc.sort.dir === "asc" ? " ▲" : " ▼") : "";
+    const aria = ordenada ? ` aria-sort="${lanc.sort.dir === "asc" ? "ascending" : "descending"}"` : "";
+    return `<th data-idx="${i}"${LANC_NUM.has(c) ? ' style="text-align:right"' : ""}${aria} ` +
+      `tabindex="0" role="columnheader" aria-label="Ordenar por ${LANC_LABELS[c]}">${LANC_LABELS[c]}${seta}</th>`;
   }).join("");
-  el("lanc-cabecalho").querySelectorAll("th").forEach((th) =>
-    th.addEventListener("click", () => {
-      const i = +th.dataset.idx;
-      lanc.sort.dir = lanc.sort.idx === i && lanc.sort.dir === "desc" ? "asc" : "desc";
-      lanc.sort.idx = i; lanc.pag = 1;
-      renderLancCabecalho(); renderLancTabela();
-    }));
+  // ordenável por teclado; o foco volta ao <th> depois de o cabeçalho ser reconstruído
+  const ordenar = (th) => {
+    const i = +th.dataset.idx;
+    lanc.sort.dir = lanc.sort.idx === i && lanc.sort.dir === "desc" ? "asc" : "desc";
+    lanc.sort.idx = i; lanc.pag = 1;
+    renderLancCabecalho(); renderLancTabela();
+    tr.querySelector(`th[data-idx="${i}"]`)?.focus();
+  };
+  tr.querySelectorAll("th").forEach((th) => {
+    th.addEventListener("click", () => ordenar(th));
+    th.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); }
+    });
+  });
 }
 
 function renderLancTabela() {
@@ -291,6 +304,7 @@ async function init() {
       if (/HTTP 404/.test(e.message)) {
         return falha("Dossiê não encontrado — ele cobre os 300 maiores favorecidos e é regerado diariamente.");
       }
+      el("stats-skel").hidden = true;
       return Comum.estadoErro("carregando", "Não foi possível carregar o dossiê agora. Verifique a conexão.", init);
     }
     try {
@@ -314,6 +328,7 @@ async function init() {
     iniciarLancamentos(campos, rows);
   } catch (e) {
     console.warn("favorecido:", e.message);
+    el("stats-skel").hidden = true;
     Comum.estadoErro("carregando", "Não foi possível montar a página deste favorecido agora.", init);
   }
 }

@@ -153,6 +153,7 @@ async function init() {
   } catch (e) {
     // sem isto uma falha de rede era unhandled rejection e a página ficava em branco
     console.warn("retrospectiva:", e.message);
+    el("t-total").textContent = "R$ —";   // tira o skeleton: senão pulsa para sempre
     Comum.estadoErro("erro", "Não foi possível carregar os dados do ano. Verifique a conexão.", init);
     return;
   }
