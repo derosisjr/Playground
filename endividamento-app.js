@@ -29,17 +29,12 @@ let DADOS = null;
 let SD = null;   // bloco servico_divida do despesas-index.json (cacheado p/ repintar)
 
 // ── Formatação ───────────────────────────────────────────────────────────────
-const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const compacto = (v) => {
-  const a = Math.abs(v);
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(2).replace(".", ",") + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(0) + " mi";
-  return brl(v);
-};
+// camada comum: mesma escala de moeda do hub (R$ 8,61 bi · R$ 641,1 mi)
+const brl = Comum.brl;
+const compacto = Comum.compacto;
 const pct = (v, casas = 1) =>
   v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
-const esc = (s) => String(s).replace(/[&<>"']/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const esc = Comum.escapar;
 
 // ── Inicialização ────────────────────────────────────────────────────────────
 async function init() {

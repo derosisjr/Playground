@@ -7,13 +7,8 @@ const el = (id) => document.getElementById(id);
 const esc = Comum.escapar;
 const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const brl = (v) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const compacto = (v) => {
-  const a = Math.abs(v);
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(2).replace(".", ",") + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
-  return brl(v);
-};
+const brl = Comum.brl;
+const compacto = Comum.compacto;
 
 let DADOS = null, ANO = null;
 

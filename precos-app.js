@@ -109,8 +109,7 @@ function filtros() {
 
 function comparacoesFiltradas() {
   const f = filtros();
-  const norm = (s) => (s || "").toString().toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const norm = Comum.norm;
   const termo = norm(f.q);
   return (INDICE.comparacoes || []).filter((c) => {
     if (termo && !norm(c.titulo + " " + (c.tema || "") + " " + c.unidade).includes(termo)) return false;
@@ -288,15 +287,12 @@ function montarConsulta() {
     if (v) document.getElementById(id).value = v;
   }
 
-  let t;
   const aplicar = () => {
     const f = filtros();
     Comum.gravarParams({ q: f.q, tema: f.tema, cidade: f.cidade, dif: f.dif });
     renderLista();
   };
-  document.getElementById("q").addEventListener("input", () => {
-    clearTimeout(t); t = setTimeout(aplicar, 200);
-  });
+  document.getElementById("q").addEventListener("input", Comum.debounce(aplicar, 200));
   for (const id of ["f-tema", "f-cidade", "f-dif"])
     document.getElementById(id).addEventListener("change", aplicar);
 }
@@ -635,8 +631,7 @@ function urlDoNcp(ncp) {
   return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${Number(m[2])}` : null;
 }
 
-const normCat = (s) => (s || "").toString().toLowerCase()
-  .normalize("NFD").replace(/[̀-ͯ]/g, "");
+const normCat = Comum.norm;
 
 async function carregarCatalogo() {
   if (CAT) return CAT;
@@ -770,11 +765,8 @@ async function abrirCatalogo() {
   const ord = (p.get("iord") || "").split(":");
   if (ord.length === 2) catOrdem = { col: +ord[0], dir: +ord[1] };
 
-  let t;
-  document.getElementById("iq").addEventListener("input", () => {
-    clearTimeout(t);
-    t = setTimeout(() => { catPagina = 1; catFiltrar(); }, 150);
-  });
+  document.getElementById("iq").addEventListener("input",
+    Comum.debounce(() => { catPagina = 1; catFiltrar(); }));
   for (const id of ["i-ano", "i-orgao"])
     document.getElementById(id).addEventListener("change", () => {
       catPagina = 1; catFiltrar();

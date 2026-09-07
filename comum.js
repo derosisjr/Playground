@@ -26,11 +26,24 @@ window.Comum = (() => {
   const norm = (s) =>
     (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-  const brlCurto = (v) => {
+  // Formatação de moeda — UMA escala para o site inteiro (a mesma de
+  // despesas/formato.py e do hub): R$ 8,61 bi · R$ 157,0 mi · R$ 500 mil · R$ 123.
+  // Antes havia quatro variantes (1 ou 2 casas no "bi", 0 ou 1 no "mi") e o
+  // mesmo valor saía diferente entre o hub e o painel.
+  const brl = (v, casas = 0) => (v ?? 0).toLocaleString("pt-BR",
+    { style: "currency", currency: "BRL", minimumFractionDigits: casas, maximumFractionDigits: casas });
+  const compacto = (v) => {
+    v = v || 0;
     const a = Math.abs(v);
-    if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1).replace(".", ",") + " bi";
+    if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(2).replace(".", ",") + " bi";
     if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
-    return "R$ " + Math.round(v).toLocaleString("pt-BR");
+    if (a >= 1e3) return "R$ " + Math.round(v / 1e3) + " mil";
+    return brl(v);
+  };
+  // adia `fn` até parar de chamar por `ms` — busca a cada tecla em milhares de linhas
+  const debounce = (fn, ms = 150) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   };
 
   // ── Topbar ──────────────────────────────────────────────────────────────────
@@ -187,7 +200,7 @@ window.Comum = (() => {
     { id: "favorecidos", rotulo: "Despesas · favorecidos", url: "./despesas-index.json",
       mapear: (d) => (d.top_favorecidos || []).map((f) => ({
         t: f.nome,
-        s: brlCurto(f.valor) + " no mandato",
+        s: compacto(f.valor) + " no mandato",
         // com dossiê pré-computado abre o raio-X; sem, cai na busca do painel
         url: f.slug ? "./favorecido.html?f=" + encodeURIComponent(f.slug)
                     : "./despesas.html?q=" + encodeURIComponent(f.nome) + "#favorecidos",
@@ -207,12 +220,12 @@ window.Comum = (() => {
         h: norm([m.nome, "divida endividamento lrf semaforo fiscal rcl limite", m.base_legal].join(" ")),
       })).concat([{
         t: "Dívida consolidada de Santos",
-        s: d.totais && d.totais.divida ? brlCurto(d.totais.divida) + " · " + (d.ultimo ? d.ultimo.rotulo : "") : "evolução e limites da LRF",
+        s: d.totais && d.totais.divida ? compacto(d.totais.divida) + " · " + (d.ultimo ? d.ultimo.rotulo : "") : "evolução e limites da LRF",
         url: "./endividamento.html",
         h: norm("divida consolidada endividamento precatorios rcl santos"),
       }]) },
     { id: "precos", rotulo: "Preço comparado", url: "./precos-index.json",
-      // preço unitário de material de consumo vive nos centavos: brlCurto
+      // preço unitário de material de consumo vive nos centavos: compacto
       // arredondaria R$ 0,0737 para "R$ 0" e a comparação sumiria da paleta
       mapear: (d) => (d.comparacoes || []).map((c) => ({
         t: c.titulo,
@@ -427,6 +440,6 @@ window.Comum = (() => {
     });
   }
 
-  return { topbar, lerParams, gravarParams, exportarCsv, escapar, abrirPaleta,
+  return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, abrirPaleta,
            alternarTema, temaAtual, chartAcessivel, toast, estadoErro, POP_SANTOS };
 })();
