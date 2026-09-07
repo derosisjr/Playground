@@ -23,17 +23,30 @@ paths:
 
 Os workflows de base (`despesas`, `legis`, `proposituras`, `respostas-executivo`,
 `indicadores`, `endividamento`, `benchmark-despesas`, `precos` — este com irmão
-`precos-backfill` de disparo manual) repetem o mesmo bloco manual de
-`git add`/`commit`/`push` (sem `git-auto-commit-action`), usam `actions/checkout@v5` **sem
-`fetch-depth`** (portanto histórico raso, 1 commit) e **não têm `concurrency:` nem `pull` antes do
-push**. Não há workflow com gatilho `on: push`, por isso ninguém precisa de `[skip ci]`.
+`precos-backfill` de disparo manual) commitam pela composite action
+**`.github/actions/commitar`** (entradas `caminhos`, `mensagem`, `sem-mudancas`, `com-data`), que
+faz `git add`/`commit` e, antes do `push`, **`git pull --rebase --autostash` com 3 tentativas**.
+Usam `actions/checkout@v5` **sem `fetch-depth`** (histórico raso, 1 commit — o pull traz só o que
+falta). Não há `concurrency:` geral: os workflows tocam arquivos distintos e o rebase resolve a
+corrida; a exceção é o par `precos`/`precos-backfill`, que escreve o mesmo `precos/espelho` e por
+isso divide o grupo `concurrency: precos-espelho`. Não há workflow com gatilho `on: push`, por isso
+ninguém precisa de `[skip ci]`.
 
 Consequências a respeitar ao mexer neles:
-- **Nunca fazer dois workflows escreverem o mesmo arquivo.** Os crons são escalonados no minuto,
-  mas na segunda-feira quatro rodam em sequência apertada (legis 07:17, proposituras 07:37,
-  despesas 07:41, respostas 08:31 UTC) e cada um pode levar dezenas de minutos. Hoje as colisões
-  são inofensivas porque tocam arquivos distintos — o push perdedor só falha e refaz no dia
-  seguinte. Um arquivo compartilhado transformaria isso em perda de dados.
+- **Nunca fazer dois workflows escreverem o mesmo arquivo** (fora do par serializado acima). Os
+  crons se sobrepõem (segunda: legis 07:17, proposituras 07:37, despesas 07:41, respostas 08:31
+  UTC; domingo: precos 10:07 por até 3 h, atravessando o `bases-atualizacao` das 12:00) e cada um
+  leva dezenas de minutos. Até 2026-09 não havia rebase e o push perdedor era rejeitado ("fetch
+  first"): num cron diário custava um dia; no semanal de Preços custou **4 semanas seguidas**
+  (17/08–06/09, base congelada em 10/08). Com o rebase a corrida é inofensiva **porque os arquivos
+  são distintos**; um arquivo compartilhado vira conflito de rebase e a action falha de propósito
+  (nunca `--force`).
+- **Todo índice é gravado de forma atômica** por `comum/escrita.py` (`gravar_json`/`gravar_bytes`:
+  temporário `.tmp-*` na mesma pasta + `os.replace`; `.tmp-*` está no `.gitignore`). Motivo: o
+  timeout de passo corta o processo no meio (Preços faz isso de propósito) e um `open(..., "w")`
+  interrompido deixaria arquivo truncado que o `if: always()` commitaria. `gravar_json_se_mudou`
+  ignora `atualizado_em` para os dossiês de favorecidos e a árvore não virarem diff diário sem
+  dado novo (eram 290 arquivos/dia).
 - **Quem precisa de `git log` precisa de `fetch-depth: 0` explícito.** É o caso de
   `bases-atualizacao.yml` (cron 12:00 UTC, fora do bloco 04:00–08:30), que gera
   `bases-atualizacao.json` com a data real de cada base — ver `.claude/rules/site-frontend.md`.
@@ -42,7 +55,8 @@ Consequências a respeitar ao mexer neles:
 - **Guarda que aborta o commit sai com `exit 1`, nunca `exit 0`.** Com `exit 0` o job fica verde e
   a base para em silêncio — foi assim que Proposituras ficou 2 meses congelada sem ninguém notar
   (ver `.claude/rules/proposituras.md`). Corrigido em despesas, endividamento, indicadores,
-  proposituras e respostas-executivo em 2026-08.
+  proposituras e respostas-executivo em 2026-08; legis ganhou guarda de volume (≥ 3.000) e o
+  crawler passou a sair 1 quando toda chamada falha, em 2026-09.
 - **`.sqlite` em cache do Actions só é seguro se o crawl reconstruir o histórico sozinho.** O
   GitHub apaga cache sem acesso há 7 dias; cron semanal fica na corda bamba. Antes de mexer,
   conferir as duas propriedades juntas: *banco fora do git?* e *crawl limitado a um ano?* Se sim e

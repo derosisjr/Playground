@@ -133,7 +133,8 @@ def _get(url, params=None, tentativas=4, timeout=90):
             return r.json()
         except Exception as e:  # noqa: BLE001 — retry genérico de rede
             ultimo = e
-            time.sleep(8 * (i + 1))
+            if i < tentativas - 1:  # após a última tentativa não há por que dormir
+                time.sleep(8 * (i + 1))
     raise ultimo
 
 

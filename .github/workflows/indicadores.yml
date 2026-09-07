@@ -69,12 +69,10 @@ jobs:
             echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
             exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add indicadores-index.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas nos indicadores."
-          else
-            git commit -m "chore: atualiza base de Indicadores ($(date +%F))"
-            git push
-          fi
+
+      - name: Commitar e publicar
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: indicadores-index.json
+          mensagem: "chore: atualiza base de Indicadores"
+          sem-mudancas: "Sem mudancas nos indicadores."

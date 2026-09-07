@@ -22,6 +22,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fontes  # noqa: E402
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if RAIZ not in sys.path:
+    sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.escrita import gravar_json  # noqa: E402
 BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "indicadores.sqlite")
 SAIDA = os.path.join(RAIZ, "indicadores-index.json")
 
@@ -241,8 +244,7 @@ def main():
     if args.dry_run:
         print("[dry-run] nada gravado")
         return
-    with open(SAIDA, "w", encoding="utf-8") as f:
-        json.dump(indice, f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(SAIDA, indice, separators=(",", ":"))
     print(f"gravado: {SAIDA}")
 
 

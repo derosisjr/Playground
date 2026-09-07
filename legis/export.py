@@ -26,6 +26,9 @@ for _s in (sys.stdout, sys.stderr):
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
+if RAIZ not in sys.path:
+    sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.escrita import gravar_json  # noqa: E402
 DB_PATH = os.path.join(AQUI, "legis.sqlite")
 XLSX_PATH = os.path.join(AQUI, "legis.xlsx")
 CSV_PATH = os.path.join(AQUI, "legis.csv")
@@ -75,8 +78,7 @@ def exportar_json(normas: list[dict]) -> None:
     campos = ["id", "tipo", "numero", "ano", "data_norma", "titulo", "ementa",
               "tags", "situacao", "url_legis", "url_pdf"]
     dados = [{c: n.get(c, "") for c in campos} for n in normas]
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(JSON_PATH, dados, separators=(",", ":"))
 
 
 def main():

@@ -101,12 +101,10 @@ jobs:
             echo "ABORTANDO commit: base parcial ($N < 6000) mesmo após a recarga."
             exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add proposituras-index.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas na base."
-          else
-            git commit -m "chore: atualiza base de Proposituras ($(date +%F))"
-            git push
-          fi
+
+      - name: Commitar e publicar
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: proposituras-index.json
+          mensagem: "chore: atualiza base de Proposituras"
+          sem-mudancas: "Sem mudancas na base."

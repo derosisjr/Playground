@@ -32,6 +32,9 @@ from index import (  # noqa: E402
 
 ABA = "requerimentos"
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if RAIZ not in sys.path:
+    sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.escrita import gravar_json  # noqa: E402
 JSON_PADRAO = os.path.join(RAIZ, "requerimentos-index.json")
 
 # Captura a 1ª string entre aspas de =HYPERLINK("url"; "texto") (separador , ou ;)
@@ -175,8 +178,7 @@ def main() -> None:
             print(f"  {i['numero']:>12}  {i['situacao']:<16}  {i['assunto'][:50]}")
         return
 
-    with open(args.salvar, "w", encoding="utf-8") as f:
-        json.dump(itens, f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(args.salvar, itens, separators=(",", ":"))
     print(f"Gravado: {args.salvar}")
 
 

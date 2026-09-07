@@ -43,7 +43,7 @@ jobs:
       # Testes rápidos (parsing SOAP, agregações, regras de alerta) antes de
       # gastar requisições no portal — falhou, não crawla nem publica.
       - name: Testes
-        run: python -m pytest despesas/tests -q
+        run: python -m pytest despesas/tests comum/tests -q
 
       # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions
       # (chave rotativa por run + restore-keys p/ recuperar o mais recente).
@@ -80,15 +80,13 @@ jobs:
             echo "ABORTANDO commit: base parcial (total $TOTAL < 4 bi), provável cache miss do .sqlite."
             exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add despesas-index.json despesas/dados despesas/arvore.json favorecidos
-          if git diff --quiet --cached; then
-            echo "Sem mudancas na base."
-          else
-            git commit -m "chore: atualiza base de Despesas ($(date +%F))"
-            git push
-          fi
+
+      - name: Commitar e publicar
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json favorecidos
+          mensagem: "chore: atualiza base de Despesas"
+          sem-mudancas: "Sem mudancas na base."
 
       # Briefing semanal por e-mail aos assessores: roda na SEGUNDA (após o
       # crawl+export, com a base do mesmo run) ou quando forçado manualmente.

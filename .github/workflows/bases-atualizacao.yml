@@ -41,16 +41,11 @@ jobs:
         run: python .github/scripts/bases_atualizacao.py
 
       - name: Commitar (se mudou)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bases-atualizacao.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas nas datas das bases."
-          else
-            git commit -m "chore: atualiza índice de datas das bases ($(date +%F))"
-            git push
-          fi
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: bases-atualizacao.json
+          mensagem: "chore: atualiza índice de datas das bases"
+          sem-mudancas: "Sem mudancas nas datas das bases."
 
       # Guarda de FRESCOR — lê a data do dado DENTRO de cada índice e falha se
       # alguma base congelou. As guardas dos workflows de base medem volume

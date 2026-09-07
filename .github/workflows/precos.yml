@@ -19,6 +19,14 @@ on:
 permissions:
   contents: write
 
+# Serializa com o irmão: precos.yml e precos-backfill.yml escrevem o MESMO
+# precos/espelho — dois runners gravando os mesmos .gz a partir de bancos
+# diferentes é perda de dados, não só um push rejeitado (invariante de
+# rules/github-actions.md). cancel-in-progress: false = o segundo espera.
+concurrency:
+  group: precos-espelho
+  cancel-in-progress: false
+
 jobs:
   atualizar:
     runs-on: ubuntu-latest
@@ -127,6 +135,25 @@ jobs:
           print(int(ok))
           PY
           )
+          # Espelho íntegro? Um .gz truncado (coleta cortada no meio da gravação)
+          # não pode ser publicado: é a fonte da verdade e o sqlite é derivado.
+          python - <<'PY'
+          import glob, gzip, sys
+          ruins = []
+          for p in sorted(glob.glob('precos/espelho/*.jsonl.gz')):
+              try:
+                  with gzip.open(p, 'rb') as f:
+                      while f.read(1 << 20):
+                          pass
+              except (OSError, EOFError) as e:
+                  ruins.append(f'{p}: {e}')
+          if ruins:
+              print('ABORTANDO: espelho corrompido:')
+              for r in ruins:
+                  print('  ' + r)
+              sys.exit(1)
+          print(f'espelho íntegro: {len(glob.glob("precos/espelho/*.jsonl.gz"))} arquivos')
+          PY
           MB=$(du -sm precos/espelho 2>/dev/null | cut -f1)
           if [ "${MB:-0}" -gt 20 ]; then
             echo "ABORTANDO: espelho com ${MB} MB (teto 20 MB) — revise o escopo."
@@ -136,12 +163,10 @@ jobs:
             echo "ABORTANDO commit: índice encolheu ou comparação sem preço/par."
             exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add precos-index.json precos/dados precos/espelho precos/ipca.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas nos precos."
-          else
-            git commit -m "chore: atualiza Preço comparado ($(date +%F))"
-            git push
-          fi
+
+      - name: Commitar e publicar
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: precos-index.json precos/dados precos/espelho precos/ipca.json
+          mensagem: "chore: atualiza Preço comparado"
+          sem-mudancas: "Sem mudancas nos precos."

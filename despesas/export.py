@@ -37,6 +37,9 @@ for _s in (sys.stdout, sys.stderr):
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
+if RAIZ not in sys.path:
+    sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.escrita import gravar_json, gravar_json_se_mudou  # noqa: E402
 DB_PATH = os.path.join(AQUI, "despesas.sqlite")
 CSV_PATH = os.path.join(AQUI, "despesas.csv")
 XLSX_PATH = os.path.join(AQUI, "despesas.xlsx")
@@ -412,6 +415,15 @@ def exportar_favorecidos(conn, indice: dict) -> int:
                  "ON pagamentos(nome_favorecido, documento_favorecido)")
     tops = indice.get("top_favorecidos") or []
     validos = set()
+    # O mesmo CNPJ aparece com mais de uma grafia no Portal TP ("MUNICÍPIO DE
+    # SANTOS" / "PREFEITURA MUNICIPAL DE SANTOS") e cada grafia entra no top como
+    # favorecido distinto, mas o slug é por documento: o dossiê era gravado N
+    # vezes na mesma execução e a última grafia vencia — e como a penúltima
+    # ficava no disco entre runs, 9 arquivos viravam churn diário. O buffer
+    # grava uma vez por slug (mesmo resultado de antes: a última grafia vence).
+    # [Verificar] consolidar as grafias num só favorecido é mudança de dado, não
+    # de gravação — fora deste lote.
+    dossies = {}
     for rank, f in enumerate(tops, 1):
         nome, doc = f["nome"], f.get("documento") or ""
         slug = _slug_fav(nome, doc)
@@ -440,14 +452,18 @@ def exportar_favorecidos(conn, indice: dict) -> int:
         meus_alertas = [a for a in indice.get("alertas", [])
                         if (a.get("filtro") or {}).get("favorecido") == nome]
 
-        with open(os.path.join(FAV_DIR, slug + ".json"), "w", encoding="utf-8") as fp:
-            json.dump({
-                "nome": nome, "documento": doc, "slug": slug, "rank": rank,
-                "total": f["valor"], "qtd": f["qtd"], "meses": f["meses"],
-                "por_ano": por_ano, "serie_mensal": serie, "por_funcao": funcoes,
-                "ultimos_pagamentos": ultimos, "alertas": meus_alertas,
-                "atualizado_em": indice.get("atualizado_em"),
-            }, fp, ensure_ascii=False, separators=(",", ":"))
+        # só regrava se o CONTEÚDO mudou: com `atualizado_em` novo a cada run, os
+        # 290 dossiês viravam diff diário (2,8 MB/dia no histórico e cache do Pages
+        # invalidado em toda ficha) sem nenhum dado novo
+        dossies[slug] = {
+            "nome": nome, "documento": doc, "slug": slug, "rank": rank,
+            "total": f["valor"], "qtd": f["qtd"], "meses": f["meses"],
+            "por_ano": por_ano, "serie_mensal": serie, "por_funcao": funcoes,
+            "ultimos_pagamentos": ultimos, "alertas": meus_alertas,
+            "atualizado_em": indice.get("atualizado_em"),
+        }
+    for slug, dossie in dossies.items():
+        gravar_json_se_mudou(os.path.join(FAV_DIR, slug + ".json"), dossie, separators=(",", ":"))
 
     # remove dossiês de quem saiu do top-N
     for nome_arq in os.listdir(FAV_DIR):
@@ -720,10 +736,9 @@ def exportar_arvore(conn, indice: dict) -> int:
             subs.append({"n": sf["n"], "v": sf["v"], "f": top})
         saida.append({"n": fn["n"], "v": fn["v"], "f": subs})
 
-    with open(ARVORE_PATH, "w", encoding="utf-8") as fp:
-        json.dump({"atualizado_em": indice.get("atualizado_em"),
-                   "total": indice.get("totais", {}).get("geral"),
-                   "arvore": saida}, fp, ensure_ascii=False, separators=(",", ":"))
+    gravar_json_se_mudou(ARVORE_PATH, {"atualizado_em": indice.get("atualizado_em"),
+                                       "total": indice.get("totais", {}).get("geral"),
+                                       "arvore": saida}, separators=(",", ":"))
     return len(saida)
 
 
@@ -852,9 +867,8 @@ def exportar_detalhe_mensal(rows: list[dict]) -> list[dict]:
         ano, mes = periodo // 100, periodo % 100
         linhas = por_mes[periodo]
         arquivo = f"{ano}-{mes:02d}.json"
-        with open(os.path.join(DADOS_DIR, arquivo), "w", encoding="utf-8") as f:
-            json.dump({"campos": CAMPOS_DETALHE, "linhas": linhas},
-                      f, ensure_ascii=False, separators=(",", ":"))
+        gravar_json(os.path.join(DADOS_DIR, arquivo),
+                    {"campos": CAMPOS_DETALHE, "linhas": linhas}, separators=(",", ":"))
         soma_pago = round(sum((l[-1] or 0) for l in linhas), 2)
         manifesto.append({"ano": ano, "mes": mes, "n": len(linhas),
                           "valor": soma_pago, "arquivo": f"despesas/dados/{arquivo}"})
@@ -919,8 +933,7 @@ def exportar_estagios(conn, rows: list[dict]) -> int:
     total = 0
     for periodo, mapa in sorted(por_mes.items()):
         arquivo = f"{periodo // 100}-{periodo % 100:02d}.json"
-        with open(os.path.join(ESTAGIOS_DIR, arquivo), "w", encoding="utf-8") as f:
-            json.dump(mapa, f, ensure_ascii=False, separators=(",", ":"))
+        gravar_json(os.path.join(ESTAGIOS_DIR, arquivo), mapa, separators=(",", ":"))
         total += len(mapa)
     return total
 
@@ -972,24 +985,22 @@ def exportar_indices_leves(rows: list[dict]) -> None:
             if r.get("data"):
                 o["meses"].add(str(r["data"])[:7])
 
-    with open(os.path.join(DADOS_DIR, "elementos.json"), "w", encoding="utf-8") as f:
-        json.dump({k: sorted(v) for k, v in elementos.items()},
-                  f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(os.path.join(DADOS_DIR, "elementos.json"),
+                {k: sorted(v) for k, v in elementos.items()}, separators=(",", ":"))
 
     itens_pf = sorted(pf.values(), key=lambda x: -x["valor"])[:PF_RESUMO_TOP]
-    with open(os.path.join(DADOS_DIR, "pf-resumo.json"), "w", encoding="utf-8") as f:
-        json.dump({"itens": [{"nome": o["nome"], "documento": o["documento"],
-                              "valor": round(o["valor"], 2), "qtd": o["qtd"],
-                              "meses": len(o["meses"])} for o in itens_pf]},
-                  f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(os.path.join(DADOS_DIR, "pf-resumo.json"),
+                {"itens": [{"nome": o["nome"], "documento": o["documento"],
+                            "valor": round(o["valor"], 2), "qtd": o["qtd"],
+                            "meses": len(o["meses"])} for o in itens_pf]},
+                separators=(",", ":"))
 
     # quem aparece em quase todos os meses fica FORA do índice (baixar tudo equivale);
     # chave ausente no painel = fallback para todos os meses.
     corte = max(1, len(todos_meses) - 2)
     fav = {k: sorted(v) for k, v in fav_meses.items() if len(v) < corte}
-    with open(os.path.join(DADOS_DIR, "indice-favorecidos.json"), "w", encoding="utf-8") as f:
-        json.dump({"meses_total": len(todos_meses), "fav": fav},
-                  f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(os.path.join(DADOS_DIR, "indice-favorecidos.json"),
+                {"meses_total": len(todos_meses), "fav": fav}, separators=(",", ":"))
 
 
 def main():
@@ -1009,8 +1020,7 @@ def main():
     exportar_indices_leves(execucao)
     n_estagios = exportar_estagios(conn, execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(indice, f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(JSON_PATH, indice, separators=(",", ":"))
 
     exportar_csv(execucao)
     try:

@@ -6,6 +6,8 @@
 *.env
 __pycache__/
 *.pyc
+# temporários da gravação atômica (comum/escrita.py)
+.tmp-*
 node_modules/
 ultimo-briefing.md
 briefing_*.md
