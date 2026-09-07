@@ -44,6 +44,9 @@ import os
 import re
 import smtplib
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+from comum import http  # noqa: E402
 import time
 import unicodedata
 from datetime import datetime
@@ -126,20 +129,7 @@ LOG_COLUNAS = [
 def _http_get(url: str, params: dict | None = None, timeout: int = 30,
               tentativas: int = 4) -> requests.Response:
     """GET com retry/backoff para tolerar timeouts transitórios do site."""
-    ultimo_erro = None
-    for i in range(tentativas):
-        try:
-            resp = requests.get(url, params=params, headers=HEADERS, timeout=timeout)
-            resp.raise_for_status()
-            return resp
-        except requests.exceptions.RequestException as e:
-            ultimo_erro = e
-            if i < tentativas - 1:
-                espera = 4 * (i + 1)
-                print(f"  Aviso: falha HTTP ({e}); tentativa {i + 1}/{tentativas}, "
-                      f"aguardando {espera}s...", file=sys.stderr)
-                time.sleep(espera)
-    raise ultimo_erro
+    return http.get(url, params, tentativas=tentativas, passo=4, timeout=timeout, headers=HEADERS)
 
 
 def fetch_html(url: str) -> bytes:
@@ -159,9 +149,7 @@ def _text(tag) -> str:
 
 
 def _sem_acento(s: str) -> str:
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
-    ).lower().strip()
+    return sem_acento(s, forma="NFKD", caixa="baixa").strip()
 
 
 def _norm_num(s: str) -> str:

@@ -39,6 +39,8 @@ import os
 import smtplib
 import sqlite3
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 from html import escape as _esc
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -49,11 +51,7 @@ import classificador
 import risco as risco_mod
 import sheets as gsheets
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(AQUI, "diario.sqlite")

@@ -31,17 +31,16 @@ import os
 import re
 import sqlite3
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
+from comum import http  # noqa: E402
 import time
 from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 BASE_URL = "https://administrativo.camarasantos.sp.gov.br"
 BUSCA_DIR = f"{BASE_URL}/dispositivo/customizado_publico/legislativo/busca_documento_pub"
@@ -62,20 +61,7 @@ ANO_MIN = 2012            # primeiro ano com dados no sistema
 
 # ── HTTP / parsing ────────────────────────────────────────────────────────────
 def _http_get(url: str, params: dict | None = None, tentativas: int = 4) -> requests.Response:
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, params=params, headers=HEADERS, timeout=30)
-            r.raise_for_status()
-            return r
-        except requests.exceptions.RequestException as e:
-            ultimo = e
-            if i < tentativas - 1:
-                espera = 4 * (i + 1)
-                print(f"  Aviso: falha HTTP ({e}); tentativa {i+1}/{tentativas}, "
-                      f"aguardando {espera}s...", file=sys.stderr)
-                time.sleep(espera)
-    raise ultimo
+    return http.get(url, params, tentativas=tentativas, passo=4, timeout=30, headers=HEADERS)
 
 
 def _soup(url: str, params: dict | None = None) -> BeautifulSoup:

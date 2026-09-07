@@ -24,6 +24,7 @@ import fontes  # noqa: E402
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAIZ not in sys.path:
     sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.formato import brl  # noqa: E402
 from comum.escrita import gravar_json  # noqa: E402
 BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "indicadores.sqlite")
 SAIDA = os.path.join(RAIZ, "indicadores-index.json")
@@ -51,7 +52,7 @@ def _fmt_pct(v: float) -> str:
 
 
 def _brl(v: float) -> str:
-    return "R$ " + f"{v:,.0f}".replace(",", ".")
+    return brl(v, 0)
 
 
 def _num(v: float) -> str:

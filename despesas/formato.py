@@ -16,37 +16,18 @@ Notas da unificação (2026-07):
   - CÂMARA exige "MUNICIPAL" (evita pegar Câmara de Comércio etc.).
 """
 
+import os
 import re
-import unicodedata
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import brl, compacto, fator  # noqa: E402,F401 — reexportados p/ export.py e briefing.py
+from comum.formato import sem_acento as _sem_acento  # noqa: E402
 
 
 def sem_acento(s) -> str:
-    s = "" if s is None else str(s)
-    return "".join(c for c in unicodedata.normalize("NFD", s)
-                   if unicodedata.category(c) != "Mn").upper()
-
-
-def brl(v) -> str:
-    """R$ 1.234.567,89 (sempre 2 casas)."""
-    return "R$ " + f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def fator(v) -> str:
-    """4,3× (uma casa, vírgula decimal) — razão entre dois valores."""
-    return f"{v:.1f}".replace(".", ",") + "×"
-
-
-def compacto(v) -> str:
-    """R$ 8,44 bi · R$ 157,0 mi · R$ 500 mil · R$ 123,45."""
-    v = v or 0
-    a = abs(v)
-    if a >= 1e9:
-        return "R$ " + f"{v/1e9:.2f}".replace(".", ",") + " bi"
-    if a >= 1e6:
-        return "R$ " + f"{v/1e6:.1f}".replace(".", ",") + " mi"
-    if a >= 1e3:
-        return "R$ " + f"{v/1e3:.0f}".replace(".", ",") + " mil"
-    return brl(v)
+    """Maiúsculas sem acento (NFD) — a forma que _ENTE_RE espera."""
+    return _sem_acento(s, caixa="alta")
 
 
 def pct(novo, velho) -> str:

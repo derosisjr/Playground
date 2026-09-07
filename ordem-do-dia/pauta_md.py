@@ -20,16 +20,15 @@ Uso:
 
 import argparse
 import re
+import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 from datetime import datetime
 
 from coleta import get_sessao, get_documentos
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 
 def pauta_para_md(sessao: dict, documentos: list[dict]) -> str:

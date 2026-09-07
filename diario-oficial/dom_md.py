@@ -26,15 +26,14 @@ Uso:
 
 import argparse
 import re
+import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 
 import extrator  # download + índice secretaria→página (já sólidos)
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 # Masthead/cabeçalho/rodapé de página no fluxo do texto (mesma família de padrões
 # do classificador): "7 Diário Oficial de Santos", "Diário Oficial de Santos 7",

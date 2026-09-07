@@ -36,6 +36,8 @@ import json
 import os
 import re
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import brl  # noqa: E402
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -212,7 +214,7 @@ def veredicto(n, n_cidades) -> str:
 
 
 def _brl(v, casas=4) -> str:
-    return ("R$ " + f"{v:,.{casas}f}").replace(",", "X").replace(".", ",").replace("X", ".")
+    return brl(v, casas)
 
 
 # ──────────────────────────────── apresentação ──────────────────────────────

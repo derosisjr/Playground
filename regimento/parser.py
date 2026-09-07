@@ -15,6 +15,11 @@ CLI:
   python regimento/parser.py            # gera regimento-index.json
   python regimento/parser.py --dry-run  # so imprime contagens + amostra
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+
 import argparse, json, os, re, sys, unicodedata
 
 AQUI = os.path.dirname(__file__)
@@ -72,9 +77,7 @@ def _rotulo_artigo(numero: str) -> str:
 
 
 def _norm_busca(s: str) -> str:
-    s = unicodedata.normalize("NFD", s.lower())
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return re.sub(r"\s+", " ", s).strip()
+    return re.sub(r"\s+", " ", sem_acento(s, caixa="baixa")).strip()
 
 
 def _limpa_rotulo_estrutura(resto: str) -> str:

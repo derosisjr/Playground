@@ -28,6 +28,11 @@ Como funciona:
 A precisão é refinável ajustando ANCORAS/ROTULOS (ver etapa de verificação).
 """
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+
 import re
 
 # ── Âncoras: (categoria, tipo, regex). Ordem importa — a 1ª que casa vence. ────
@@ -391,9 +396,7 @@ _RE_CABECALHO_PAGINA = re.compile(
 
 def _norm_busca(s: str) -> str:
     """Maiúsculas sem acento — só para casar âncoras (não muda o texto extraído)."""
-    import unicodedata
-    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
-    return s.upper()
+    return sem_acento(s, forma="NFKD", caixa="alta")
 
 
 def _desfaz_hifen(linhas: list[str]) -> str:

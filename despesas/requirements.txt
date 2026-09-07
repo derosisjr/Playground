@@ -1,3 +1,5 @@
-requests
-openpyxl
-pytest
+# Versões pinadas (2026-09): com `>=` e cache de pip chaveado por este arquivo, uma major
+# nova entrava no primeiro cache frio sem deixar rastro no diff. Para subir: mude aqui.
+requests==2.32.5
+openpyxl==3.1.5
+pytest==9.1.1

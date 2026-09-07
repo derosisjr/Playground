@@ -38,17 +38,16 @@ import json
 import os
 import sqlite3
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
+from comum import http  # noqa: E402
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
 import requests
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 BASE_URL = "https://santos-sp.portaltp.com.br"
 API = f"{BASE_URL}/api/transparencia.asmx"
@@ -137,20 +136,7 @@ def _schema() -> str:
 
 # ── HTTP / parsing ────────────────────────────────────────────────────────────
 def _http_get(url: str, params: dict, tentativas: int = 4) -> requests.Response:
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, params=params, headers=HEADERS, timeout=120)
-            r.raise_for_status()
-            return r
-        except requests.exceptions.RequestException as e:
-            ultimo = e
-            if i < tentativas - 1:
-                espera = 5 * (i + 1)
-                print(f"  Aviso: falha HTTP ({e}); tentativa {i+1}/{tentativas}, "
-                      f"aguardando {espera}s...", file=sys.stderr)
-                time.sleep(espera)
-    raise ultimo
+    return http.get(url, params, tentativas=tentativas, passo=5, timeout=120, headers=HEADERS)
 
 
 def _data_iso(valor) -> str:

@@ -22,6 +22,11 @@ Duas armadilhas descobertas na verificação e tratadas aqui:
 Os campos de catálogo (`catalogoCodigoItem`, `ncmNbsCodigo`) vêm nulos nas
 compras municipais — daí todo o aparato de casamento textual em `casar.py`.
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum import http  # noqa: E402
+
 import re
 import time
 
@@ -75,19 +80,8 @@ def _get(url, params=None, tentativas=5, timeout=90):
     alguns minutos, voltando sozinho em seguida. Backoff de 15/30/45/60 s cobre
     esse tipo de estrangulamento; desistir em ~30 s perderia a cidade inteira.
     """
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, params=params, headers=_UA, timeout=timeout)
-            if r.status_code in (204, 404):
-                return None
-            r.raise_for_status()
-            return r.json()
-        except Exception as e:  # noqa: BLE001 — retry genérico de rede
-            ultimo = e
-            if i < tentativas - 1:
-                time.sleep(15 * (i + 1))
-    raise ultimo
+    return http.get_json(url, params, tentativas=tentativas, passo=15, timeout=timeout,
+                         headers=_UA, ok_vazio=(204, 404), silencioso=True)
 
 
 def municipal(contratacao: dict) -> bool:

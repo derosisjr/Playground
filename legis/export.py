@@ -18,16 +18,14 @@ import os
 import sqlite3
 import sys
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 if RAIZ not in sys.path:
     sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.saida import configurar_stdio  # noqa: E402
+
+configurar_stdio()
 from comum.escrita import gravar_json  # noqa: E402
 DB_PATH = os.path.join(AQUI, "legis.sqlite")
 XLSX_PATH = os.path.join(AQUI, "legis.xlsx")

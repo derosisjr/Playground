@@ -37,16 +37,16 @@ Uso (verificação):
 import argparse
 import io
 import re
+import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
+from comum import http  # noqa: E402
 import time
 
 import requests
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 BASE_URL = "https://diariooficial.santos.sp.gov.br"
 DOWNLOAD_URL = f"{BASE_URL}/edicoes/inicio/download"  # /AAAA-MM-DD
@@ -61,20 +61,7 @@ LIMIAR_FULLWIDTH = 0.15
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 def _http_get(url: str, timeout: int = 120, tentativas: int = 4) -> requests.Response:
     """GET com retry/backoff (mesmo padrão dos outros crawlers do projeto)."""
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=timeout)
-            r.raise_for_status()
-            return r
-        except requests.exceptions.RequestException as e:
-            ultimo = e
-            if i < tentativas - 1:
-                espera = 5 * (i + 1)
-                print(f"  Aviso: falha HTTP ({e}); tentativa {i+1}/{tentativas}, "
-                      f"aguardando {espera}s...", file=sys.stderr)
-                time.sleep(espera)
-    raise ultimo
+    return http.get(url, tentativas=tentativas, passo=5, timeout=timeout, headers=HEADERS)
 
 
 def url_edicao(data_iso: str) -> str:

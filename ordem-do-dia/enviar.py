@@ -16,16 +16,15 @@ sem ela, vai direto pela Gmail API via GOOGLE_OAUTH_TOKEN com escopo gmail.send)
 """
 
 import argparse
+import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 from datetime import datetime
 
 from email_briefing import enviar_email, montar_email_html
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 
 def main():
