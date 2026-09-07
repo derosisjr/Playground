@@ -7,12 +7,9 @@ let filtradas = [];
 let mostrando = 0;
 
 const el = (id) => document.getElementById(id);
-const norm = (s) =>
-  (s || "")
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+// utilitários da camada comum (eram cópias locais idênticas em cada painel)
+const norm = Comum.norm;
+const escapar = Comum.escapar;
 
 function preencherSelects() {
   const subtipos = [...new Set(PROPS.map((p) => p.subtipo).filter(Boolean))].sort((a, b) =>
@@ -55,10 +52,10 @@ function montarChips() {
   }
 }
 
-function atualizarChips() {
+function atualizarChips(base) {
   const ativo = el("subtipo").value;
-  // contagem por subtipo respeita os demais filtros (exceto o próprio subtipo)
-  const base = filtrarBase({ ignorarSubtipo: true });
+  // contagem por subtipo respeita os demais filtros (exceto o próprio subtipo);
+  // `base` vem do aplicarFiltros — antes era uma 2ª varredura das 7 mil linhas por tecla
   const cont = {};
   for (const p of base) cont[p.subtipo] = (cont[p.subtipo] || 0) + 1;
   for (const chip of el("chips").querySelectorAll(".chip")) {
@@ -69,33 +66,29 @@ function atualizarChips() {
 }
 
 // ── Filtragem ───────────────────────────────────────────────────────────────
-function filtrarBase({ ignorarSubtipo = false } = {}) {
+// tudo menos o subtipo — o subtipo entra depois, para os chips contarem sobre esta base
+function filtrarBase() {
   const q = norm(el("q").value).trim();
   const termos = q ? q.split(/\s+/) : [];
-  const subtipo = el("subtipo").value;
   const ano = el("ano").value;
   const autor = el("autor").value;
   const local = el("local").value;
 
   return PROPS.filter((p) => {
-    if (!ignorarSubtipo && subtipo && p.subtipo !== subtipo) return false;
     if (ano && String(p.ano) !== ano) return false;
     if (autor && p.autor !== autor) return false;
     if (local && p.local_atual !== local) return false;
-    if (termos.length) {
-      const alvo = norm(
-        [p.numero, p.ano, p.subtipo, p.ementa, p.autor, p.local_atual].join(" ")
-      );
-      if (!termos.every((t) => alvo.includes(t))) return false;
-    }
+    if (termos.length && !termos.every((t) => p._busca.includes(t))) return false;
     return true;
   });
 }
 
 function aplicarFiltros() {
-  filtradas = filtrarBase();
+  const base = filtrarBase();
+  const subtipo = el("subtipo").value;
+  filtradas = subtipo ? base.filter((p) => p.subtipo === subtipo) : base;
   atualizarResumo(filtradas);
-  atualizarChips();
+  atualizarChips(base);
 
   mostrando = 0;
   el("corpo").innerHTML = "";
@@ -190,13 +183,6 @@ function limparFiltros() {
   aplicarFiltros();
 }
 
-function escapar(s) {
-  return (s == null ? "" : String(s)).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
 async function init() {
   try {
     const resp = await fetch("./proposituras-index.json", { cache: "no-cache" });
@@ -208,6 +194,10 @@ async function init() {
       "Não foi possível carregar as proposituras. Verifique a conexão.", init);
     return;
   }
+  // texto de busca normalizado UMA vez (era normalize("NFD") em 7 mil linhas, 2× por tecla)
+  for (const p of PROPS) {
+    p._busca = norm([p.numero, p.ano, p.subtipo, p.ementa, p.autor, p.local_atual].join(" "));
+  }
   preencherSelects();
   montarChips();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
@@ -216,9 +206,8 @@ async function init() {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
-  ["q", "subtipo", "ano", "autor", "local"].forEach((id) =>
-    el(id).addEventListener("input", aplicarFiltros)
-  );
+  el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
+  ["subtipo", "ano", "autor", "local"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   el("mais").addEventListener("click", renderizarMais);
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", limparFiltros);

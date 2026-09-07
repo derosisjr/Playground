@@ -21,18 +21,11 @@ window.addEventListener("temamudou", () => {
   if (DOSSIE) renderGraficosFav(DOSSIE);
 });
 const el = (id) => document.getElementById(id);
-const esc = (s) => (s == null ? "" : String(s)).replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const brl = (v) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const brlc = (v) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-const compacto = (v) => {
-  const a = Math.abs(v);
-  // vírgula decimal: sem o replace saía "R$ 8.4 bi" ao lado de "R$ 8,4 bi" no hub
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1).replace(".", ",") + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
-  if (a >= 1e3) return "R$ " + (v / 1e3).toFixed(0) + " mil";
-  return brl(v);
-};
+// camada comum (eram cópias locais)
+const esc = Comum.escapar;
+const brl = Comum.brl;
+const brlc = (v) => Comum.brl(v, 2);
+const compacto = Comum.compacto;
 const eixoReais = { ticks: { callback: (v) => compacto(v) } };
 
 function falha(msg) {
@@ -148,7 +141,7 @@ const LANC_PAGINA = 50;
 let lanc = { campos: [], rows: [], sort: { idx: 0, dir: "desc" }, pag: 1 };
 let IDX_PAINEL = null;
 
-const semAcentoMin = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const semAcentoMin = Comum.norm;
 
 async function indicePainel() {
   if (!IDX_PAINEL) {

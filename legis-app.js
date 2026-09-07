@@ -7,12 +7,9 @@ let filtradas = [];
 let mostrando = 0;
 
 const el = (id) => document.getElementById(id);
-const norm = (s) =>
-  (s || "")
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+// utilitários da camada comum (eram cópias locais idênticas em cada painel)
+const norm = Comum.norm;
+const escapar = Comum.escapar;
 
 function preencherSelects() {
   const tipos = [...new Set(NORMAS.map((n) => n.tipo).filter(Boolean))].sort();
@@ -38,13 +35,8 @@ function aplicarFiltros() {
   filtradas = NORMAS.filter((n) => {
     if (tipo && n.tipo !== tipo) return false;
     if (ano && String(n.ano) !== ano) return false;
-    if (tema && !norm(n.tags).includes(tema)) return false;
-    if (termos.length) {
-      const alvo = norm(
-        [n.numero, n.ano, n.titulo, n.ementa, n.tags, n.tipo].join(" ")
-      );
-      if (!termos.every((t) => alvo.includes(t))) return false;
-    }
+    if (tema && !n._tags.includes(tema)) return false;
+    if (termos.length && !termos.every((t) => n._busca.includes(t))) return false;
     return true;
   });
 
@@ -119,13 +111,6 @@ function renderizarMais() {
   el("contagem").classList.add("pulsa");
 }
 
-function escapar(s) {
-  return (s == null ? "" : String(s)).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
 async function init() {
   try {
     const resp = await fetch("./legis-index.json", { cache: "no-cache" });
@@ -137,6 +122,11 @@ async function init() {
       "Não foi possível carregar a base de legislação. Verifique a conexão.", init);
     return;
   }
+  // texto de busca normalizado UMA vez (era normalize("NFD") em 3,8 mil linhas a cada tecla)
+  for (const n of NORMAS) {
+    n._busca = norm([n.numero, n.ano, n.titulo, n.ementa, n.tags, n.tipo].join(" "));
+    n._tags = norm(n.tags);
+  }
   preencherSelects();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
   const p = Comum.lerParams();
@@ -144,11 +134,14 @@ async function init() {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
-  ["q", "tipo", "ano", "tema"].forEach((id) =>
-    el(id).addEventListener("input", aplicarFiltros)
-  );
+  el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
+  ["tipo", "ano", "tema"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   el("mais").addEventListener("click", renderizarMais);
   el("csv").addEventListener("click", exportarCSV);
+  el("limpar").addEventListener("click", () => {
+    for (const id of ["q", "tipo", "ano", "tema"]) el(id).value = "";
+    aplicarFiltros();
+  });
   aplicarFiltros();
 }
 

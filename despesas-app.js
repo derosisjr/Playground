@@ -28,16 +28,11 @@ let DADOS = null;
 let favSort = { col: "valor", dir: "desc" };
 
 // ── Formatação ───────────────────────────────────────────────────────────────
-const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const brlc = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-const compacto = (v) => {
-  const a = Math.abs(v);
-  // vírgula decimal: sem o replace saía "R$ 8.4 bi" ao lado de "R$ 8,4 bi" no hub
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1).replace(".", ",") + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
-  if (a >= 1e3) return "R$ " + (v / 1e3).toFixed(0) + " mil";
-  return brl(v);
-};
+// camada comum: uma escala de moeda para o site inteiro (R$ 8,61 bi · R$ 157,0 mi)
+const brl = Comum.brl;
+const brlc = (v) => Comum.brl(v, 2);
+const compacto = Comum.compacto;
+const esc = Comum.escapar;   // era função local no fim do arquivo (e "null" virava texto)
 
 // ── Inicialização ────────────────────────────────────────────────────────────
 async function init() {
@@ -976,7 +971,7 @@ let detGrupos = [];      // modo agrupado: [{chave, n, empenhado, liquidado, pag
 let detExpandidos = new Set();
 
 // remove acentos e baixa caixa — busca tolerante a acentuação (dados em PT-BR)
-const semAcento = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const semAcento = Comum.norm;
 let detSort = { col: "pago", dir: "desc" };
 let detPagina = 1;
 let detMetrica = "pago";      // métrica ativa (padrão SIGA): governa destaque/ordenação/faixa
@@ -1092,11 +1087,8 @@ function irParaDetalhe(filtros) {
   });
 }
 
-let detDebounce = null;
-function refiltrar() {              // debounce ~150 ms (busca a cada tecla em 57k linhas)
-  clearTimeout(detDebounce);
-  detDebounce = setTimeout(() => { detPagina = 1; filtrarDetalhe(); }, 150);
-}
+// debounce ~150 ms (busca a cada tecla em 57k linhas)
+const refiltrar = Comum.debounce(() => { detPagina = 1; filtrarDetalhe(); });
 
 function ligarDetalhe() {
   document.getElementById("det-limpar").addEventListener("click", () => {
@@ -1788,11 +1780,6 @@ function ligarFicha() {
     const nomeArq = "favorecido-" + soDigitos(favFicha.doc || favFicha.nome).slice(0, 20) + ".csv";
     baixarCsv(favFicha.campos, favFicha.rows, nomeArq);
   });
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 init();

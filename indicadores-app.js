@@ -29,7 +29,7 @@
   });
 
   const $ = (id) => document.getElementById(id);
-  const brl = (v) => "R$ " + Math.round(v).toLocaleString("pt-BR");
+  const brl = Comum.brl;
   const num = (v) => (v == null ? "—" : v.toLocaleString("pt-BR"));
 
   function init() {

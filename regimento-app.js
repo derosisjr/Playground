@@ -12,15 +12,9 @@ let mostrando = 0;
 let ultimoCrumb = { t: null, c: null, s: null };  // cabecalhos ja emitidos
 
 const el = (id) => document.getElementById(id);
-const norm = (s) =>
-  (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-function escapar(s) {
-  return (s == null ? "" : String(s)).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
+// utilitários da camada comum (eram cópias locais idênticas em cada painel)
+const norm = Comum.norm;
+const escapar = Comum.escapar;
 
 // Detecta consulta por numero de artigo: "79", "art 79", "artigo 23-A".
 function numeroAlvo(q) {

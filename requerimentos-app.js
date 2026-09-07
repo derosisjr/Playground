@@ -16,12 +16,9 @@ const ROTULOS = {
 };
 
 const el = (id) => document.getElementById(id);
-const norm = (s) =>
-  (s || "")
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+// utilitários da camada comum (eram cópias locais idênticas em cada painel)
+const norm = Comum.norm;
+const escapar = Comum.escapar;
 
 function preencherSelects() {
   const anos = [...new Set(ITENS.map((i) => i.ano).filter(Boolean))].sort((a, b) => b - a);
@@ -41,10 +38,7 @@ function aplicarFiltros() {
     else if (status === "nao" && i.respondido) return false;
     else if (status && status !== "sim" && status !== "nao" && i.situacao !== status)
       return false;
-    if (termos.length) {
-      const alvo = norm([i.numero, i.assunto, i.status, i.ano].join(" "));
-      if (!termos.every((t) => alvo.includes(t))) return false;
-    }
+    if (termos.length && !termos.every((t) => i._busca.includes(t))) return false;
     return true;
   });
 
@@ -142,13 +136,6 @@ function renderizarMais() {
   el("contagem").classList.add("pulsa");
 }
 
-function escapar(s) {
-  return (s == null ? "" : String(s)).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
 async function init() {
   try {
     const resp = await fetch("./requerimentos-index.json", { cache: "no-cache" });
@@ -160,6 +147,7 @@ async function init() {
       "Não foi possível carregar os requerimentos. Verifique a conexão.", init);
     return;
   }
+  for (const i of ITENS) i._busca = norm([i.numero, i.assunto, i.status, i.ano].join(" "));
   preencherSelects();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
   const p = Comum.lerParams();
@@ -167,11 +155,14 @@ async function init() {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
-  ["q", "ano", "status"].forEach((id) =>
-    el(id).addEventListener("input", aplicarFiltros)
-  );
+  el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
+  ["ano", "status"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   el("mais").addEventListener("click", renderizarMais);
   el("csv").addEventListener("click", exportarCSV);
+  el("limpar").addEventListener("click", () => {
+    for (const id of ["q", "ano", "status"]) el(id).value = "";
+    aplicarFiltros();
+  });
   aplicarFiltros();
 }
 
