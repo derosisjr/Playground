@@ -10,6 +10,11 @@ revogação" é TRIAGEM por heurística (candidata a verificação), não confir
 Entrada : legis-index.json (raiz, UTF-8 limpo)
 Saída   : legis/triagem-revogacao.xlsx
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+
 import json, re, unicodedata, collections
 from pathlib import Path
 from datetime import date
@@ -24,8 +29,9 @@ SAIDA = Path(__file__).resolve().parent / "triagem-revogacao.xlsx"
 
 
 def na(s: str) -> str:
-    """normaliza: sem acento, minúsculo."""
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    """normaliza: sem acento, minúsculo. (Antes usava encode("ascii","ignore"), que
+    apagava § e º em vez de só tirar o acento — separadores de token em texto de norma.)"""
+    return sem_acento(s, forma="NFKD", caixa="baixa")
 
 
 def numero_de(item) -> str:

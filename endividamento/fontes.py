@@ -13,6 +13,12 @@ RGF = Relatório de Gestão Fiscal, publicado por quadrimestre (municípios
 Mesma API JSON já usada pelo painel de indicadores (apidatalake do Tesouro,
 verificada no ar em 2026-07-13 com dados de Santos até 2023-Q3+).
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+from comum import http  # noqa: E402
+
 import time
 import unicodedata
 
@@ -61,23 +67,12 @@ _UA = {"User-Agent": "painel-endividamento-camara-santos (github.com/derosisjr/P
 
 def _get(url, params=None, tentativas=4, timeout=90):
     """GET com retry simples; devolve o JSON ou levanta a última exceção."""
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, params=params, headers=_UA, timeout=timeout)
-            r.raise_for_status()
-            return r.json()
-        except Exception as e:  # noqa: BLE001 — retry genérico de rede
-            ultimo = e
-            if i < tentativas - 1:  # após a última tentativa não há por que dormir
-                time.sleep(8 * (i + 1))
-    raise ultimo
+    return http.get_json(url, params, tentativas=tentativas, passo=8, timeout=timeout, headers=_UA)
 
 
 def normalizar(texto: str) -> str:
     """Caixa alta sem acentos, p/ casar rótulos entre exercícios."""
-    s = unicodedata.normalize("NFKD", str(texto))
-    return "".join(c for c in s if not unicodedata.combining(c)).upper()
+    return sem_acento(texto, forma="NFKD", caixa="alta")
 
 
 def baixar_rgf(ano: int, periodo: int, anexo: str, ibge7: str = IBGE_SANTOS) -> list[dict]:

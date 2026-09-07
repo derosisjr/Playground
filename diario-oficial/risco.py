@@ -15,6 +15,11 @@ Limiares legais ficam em constantes no topo — **verificar anualmente** (decret
 os valores do art. 75 da Lei 14.133/21).
 """
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import brl, sem_acento  # noqa: E402
+
 import re
 import unicodedata
 
@@ -32,13 +37,12 @@ _ORDEM = {VERDE: 0, AMARELO: 1, VERMELHO: 2}
 
 
 def _sa(s: str) -> str:
-    s = "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c))
-    return s.lower()
+    return sem_acento(s, forma="NFKD", caixa="baixa")
 
 
 def _br(v: float) -> str:
     """Formata em moeda BR: 7597872.0 -> 'R$ 7.597.872,00'."""
-    return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return brl(v)
 
 
 class _R:

@@ -32,16 +32,14 @@ import json
 import os
 import re
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 import time
 from datetime import datetime
 
 import requests
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 API = "https://apidatalake.tesouro.gov.br/ords/siconfi/tt/dca"
 ANEXO = "DCA-Anexo I-E"

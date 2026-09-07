@@ -30,6 +30,8 @@ import argparse
 import os
 import smtplib
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -37,11 +39,7 @@ from email.mime.text import MIMEText
 import export  # mesmo diretório: reusa conectar(), alertas(), _q()
 from formato import brl, compacto, pct, eh_ente_publico  # formatação/classificação únicas
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 PAINEL_URL = "https://derosisjr.github.io/Playground/despesas.html"
 NAVY, GOLD, MUTED, LINE = "#07111f", "#c9a84c", "#667085", "#e4e7ec"

@@ -14,6 +14,11 @@ Duas decisões deliberadas, ambas na direção de errar para menos:
   - **Tokens curtos fora, exceto com dígito.** "de", "kg" e "un" viram ruído no
     jaccard; já "a4", "2x1" e "75g" são justamente o que distingue um item.
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento as _sem_acento  # noqa: E402
+
 import re
 import unicodedata
 
@@ -45,9 +50,7 @@ _SUPERSCRIPT = str.maketrans({"²": "2", "³": "3", "º": "", "ª": "", "°": ""
 
 def sem_acento(s) -> str:
     """Minúsculas sem acento (NFD, descarta combinantes)."""
-    s = "" if s is None else str(s)
-    return "".join(c for c in unicodedata.normalize("NFD", s)
-                   if unicodedata.category(c) != "Mn").casefold()
+    return _sem_acento(s, caixa="casefold")
 
 
 def normalizar(s) -> str:

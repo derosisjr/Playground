@@ -18,6 +18,16 @@ paths:
 | `DOM_SHEET_ID` | ID da planilha dedicada do Monitor do Diário Oficial (reusa `GOOGLE_OAUTH_TOKEN`) |
 | `DOM_BRIEFING_TO` | Destinatário(s) do e-mail diário do DOM — assessores (opcional; cai em `DESPESAS_BRIEFING_TO`) |
 | `RESPOSTAS_EMAIL_TO` | Destinatário(s) do resumo de respostas do Executivo — assessores (fallback de `DOM_BRIEFING_TO`/`DESPESAS_BRIEFING_TO`; cai em `GMAIL_TO`) |
+| `CONSULTA_WORKER_URL` / `CONSULTA_ADMIN_TOKEN` | Worker Cloudflare da escuta pública (`consulta/apurar.py`) — **sem workflow ainda**; `CONSULTA_EMAIL_TO` opcional |
+
+# Camada comum Python (`comum/`)
+
+`comum/http.py` (GET com retry — cada crawler passa o SEU User-Agent em `headers`; não
+unificar sem testar cada fonte), `comum/formato.py` (`sem_acento` com `forma`/`caixa`,
+`brl`, `compacto`, `fator`), `comum/saida.py` (`configurar_stdio`) e `comum/escrita.py`
+(gravação atômica). Scripts entram com `sys.path.append(<raiz>)` após `import sys`. Testes em
+`comum/tests` rodam no `despesas.yml`. Envio de e-mail (5 cópias SMTP) ficou fora da
+consolidação de 2026-09: mudar exige testar envio real.
 
 # Padrões dos workflows
 

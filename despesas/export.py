@@ -29,16 +29,14 @@ from datetime import datetime
 
 from formato import brl, compacto as _brl_compacto, eh_ente_publico, fator, sem_acento  # camada comum do módulo
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 if RAIZ not in sys.path:
     sys.path.append(RAIZ)  # camada comum do repo (comum/)
+from comum.saida import configurar_stdio  # noqa: E402
+
+configurar_stdio()
 from comum.escrita import gravar_json, gravar_json_se_mudou  # noqa: E402
 DB_PATH = os.path.join(AQUI, "despesas.sqlite")
 CSV_PATH = os.path.join(AQUI, "despesas.csv")

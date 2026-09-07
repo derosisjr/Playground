@@ -32,15 +32,13 @@ import argparse
 import json
 import os
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
 
 import extrator
 import sheets as gsheets
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+configurar_stdio()
 
 _ORDEM_RISCO = {"🔴": 0, "🟡": 1, "🟢": 2}
 

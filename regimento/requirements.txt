@@ -1,7 +1,9 @@
+# Versões pinadas (2026-09): com `>=` e cache de pip chaveado por este arquivo, uma major
+# nova entrava no primeiro cache frio sem deixar rastro no diff. Para subir: mude aqui.
 # OCR do PDF escaneado do Regimento (ocr_para_md.py).
 # Requer tambem o binario do Tesseract instalado (idioma 'por'):
 #   Windows: winget install UB-Mannheim.TesseractOCR  (caminho fixado em ocr_para_md.py)
 # parser.py usa apenas a biblioteca padrao.
-PyMuPDF
-pytesseract
-Pillow
+PyMuPDF==1.28.0
+pytesseract==0.3.13
+Pillow==12.1.1

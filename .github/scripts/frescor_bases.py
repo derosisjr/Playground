@@ -32,11 +32,10 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):
-        pass
+sys.path.append(str(Path(__file__).resolve().parents[2]))  # raiz do repo: comum/
+from comum.saida import configurar_stdio  # noqa: E402
+
+configurar_stdio()
 
 RAIZ = Path(__file__).resolve().parents[2]
 

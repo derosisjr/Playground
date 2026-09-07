@@ -17,6 +17,11 @@ Módulo puro (sem rede, sem Google) para poder ser testado direto:
     python -m unittest respostas-executivo/testes_classificar.py
 """
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum.formato import sem_acento  # noqa: E402
+
 import re
 import unicodedata
 
@@ -74,11 +79,8 @@ _RODAPE = [
 def _norm(texto: str) -> str:
     """Minúsculas, sem acento e com espaços colapsados — o texto extraído de PDF
     vem com quebras de linha em lugares arbitrários."""
-    sem_acento = "".join(
-        c for c in unicodedata.normalize("NFKD", texto or "")
-        if not unicodedata.combining(c)
-    ).lower()
-    return re.sub(r"\s+", " ", sem_acento).strip()
+    sem_acento_ = sem_acento(texto, forma="NFKD", caixa="baixa")
+    return re.sub(r"\s+", " ", sem_acento_).strip()
 
 
 def texto_pdf(dados: bytes) -> str:

@@ -16,6 +16,11 @@ fora do escopo para não criar dependência frágil): DATASUS/TABNET (internaç�
 por condições sensíveis, produção ambulatorial), e-Gestor AB (cobertura da
 atenção básica) e segurança (SSP-SP, estadual e instável).
 """
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
+from comum import http  # noqa: E402
+
 import time
 
 import requests
@@ -125,17 +130,7 @@ _UA = {"User-Agent": "painel-indicadores-camara-santos (github.com/derosisjr/Pla
 
 def _get(url, params=None, tentativas=4, timeout=90):
     """GET com retry simples; devolve o JSON ou levanta a última exceção."""
-    ultimo = None
-    for i in range(tentativas):
-        try:
-            r = requests.get(url, params=params, headers=_UA, timeout=timeout)
-            r.raise_for_status()
-            return r.json()
-        except Exception as e:  # noqa: BLE001 — retry genérico de rede
-            ultimo = e
-            if i < tentativas - 1:  # após a última tentativa não há por que dormir
-                time.sleep(8 * (i + 1))
-    raise ultimo
+    return http.get_json(url, params, tentativas=tentativas, passo=8, timeout=timeout, headers=_UA)
 
 
 def baixar_dca(ano: int, ibge7: str, anexo: str = "DCA-Anexo I-E") -> list[dict]:
