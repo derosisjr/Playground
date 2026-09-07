@@ -67,12 +67,10 @@ jobs:
             echo "ABORTANDO commit: índice incompleto (fonte externa fora do ar?)."
             exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add endividamento-index.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas no endividamento."
-          else
-            git commit -m "chore: atualiza Painel de Endividamento ($(date +%F))"
-            git push
-          fi
+
+      - name: Commitar e publicar
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: endividamento-index.json
+          mensagem: "chore: atualiza Painel de Endividamento"
+          sem-mudancas: "Sem mudancas no endividamento."

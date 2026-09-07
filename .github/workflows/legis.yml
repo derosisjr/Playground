@@ -49,14 +49,22 @@ jobs:
           python legis/crawler.py --ano "$ANO" $FORCAR
           python legis/export.py
 
-      - name: Commitar atualizacoes (se houver)
+      # Guarda anti-truncamento (padrão de proposituras.yml). Era o único
+      # workflow de base sem guarda: fonte fora do ar → crawler saía 0 → export
+      # reexportava o sqlite inalterado → "Sem mudancas" verde para sempre.
+      # O crawler agora sai 1 se toda chamada falhar; o volume é barrado aqui.
+      - name: Guarda de integridade do índice
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add legis/legis.sqlite legis-index.json
-          if git diff --quiet --cached; then
-            echo "Sem mudancas na base."
-          else
-            git commit -m "chore: atualiza base Legis ($(date +%F))"
-            git push
+          N=$(python -c "import json;print(len(json.load(open('legis-index.json',encoding='utf-8'))))")
+          echo "legis-index.json com $N normas."
+          if [ "$N" -lt 3000 ]; then
+            echo "ABORTANDO commit: índice parcial ($N < 3000)."
+            exit 1
           fi
+
+      - name: Commitar atualizacoes (se houver)
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: legis/legis.sqlite legis-index.json
+          mensagem: "chore: atualiza base Legis"
+          sem-mudancas: "Sem mudancas na base."

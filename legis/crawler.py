@@ -242,12 +242,15 @@ def main():
     conn = None if args.dry_run else abrir_db()
     existentes = ids_existentes(conn) if conn else set()
     processados = 0
+    sucessos = erros = 0  # chamadas de rede ok / com erro — decidem o exit code no fim
 
     for tid, nome_tipo in tipos.items():
         print(f"== Tipo {tid} — {nome_tipo} ==", file=sys.stderr)
         try:
             anos = mapear_anos(tid)
+            sucessos += 1
         except Exception as e:
+            erros += 1
             print(f"  ERRO ao mapear anos do tipo {tid}: {e} — pulando tipo.", file=sys.stderr)
             continue
         if anos:
@@ -261,7 +264,9 @@ def main():
         for ano, url in alvos:
             try:
                 ids = coletar_ids(url)
+                sucessos += 1
             except Exception as e:
+                erros += 1
                 print(f"  ERRO ao listar {nome_tipo} {ano or ''}: {e} — pulando.", file=sys.stderr)
                 continue
             print(f"  {nome_tipo} {ano or ''}: {len(ids)} documentos.", file=sys.stderr)
@@ -272,7 +277,9 @@ def main():
                     continue
                 try:
                     n = detalhar(did, nome_tipo, ano)
+                    sucessos += 1
                 except Exception as e:
+                    erros += 1
                     print(f"  ERRO doc {did}: {e} — pulando.", file=sys.stderr)
                     continue
                 if args.dry_run:
@@ -291,7 +298,17 @@ def main():
 
     if conn:
         conn.close()
-    print(f"Concluído: {processados} normas processadas.", file=sys.stderr)
+    print(f"Concluído: {processados} normas processadas "
+          f"({sucessos} chamadas ok, {erros} com erro).", file=sys.stderr)
+
+    # Falha visível (mesmo padrão de despesas/crawler.py): se TUDO que se tentou
+    # deu erro, a fonte nos barrou. Sem isto o crawler saía 0, o export
+    # reexportava o sqlite versionado inalterado e o workflow ficava verde com
+    # a base congelada — só o alarme de frescor (45 dias) perceberia.
+    if erros and not sucessos:
+        print(f"ERRO FATAL: nenhuma chamada ao Legis funcionou ({erros} falhas). "
+              f"Site fora do ar, bloqueio por User-Agent ou HTML mudou.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

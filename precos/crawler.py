@@ -28,6 +28,7 @@ import argparse
 import calendar
 import glob
 import gzip
+import io
 import json
 import os
 import sqlite3
@@ -38,6 +39,8 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fontes  # noqa: E402
 import texto  # noqa: E402
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz: comum/
+from comum.escrita import gravar_bytes  # noqa: E402
 import unidades  # noqa: E402
 
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -478,9 +481,15 @@ def gravar_espelho(conn, grupos=None, silencioso=False):
                 "SELECT * FROM resultado WHERE ncp=? "
                 "ORDER BY numero_item, sequencial_resultado", (c["ncp"],))]
             linhas.append(json.dumps(reg, ensure_ascii=False, sort_keys=True))
-        # mtime=0: sem timestamp no cabeçalho gzip, senão todo run vira diff
-        with gzip.GzipFile(alvo, "wb", mtime=0) as f:
+        # mtime=0: sem timestamp no cabeçalho gzip, senão todo run vira diff.
+        # filename=alvo mantém o nome no cabeçalho (bytes idênticos aos de antes).
+        # A troca do arquivo é atômica (gravar_bytes): o CI corta este processo
+        # pelo timeout DE PROPÓSITO, e um .gz truncado no disco seria commitado
+        # pelo passo `if: always()` — o espelho é a fonte da verdade da base.
+        buf = io.BytesIO()
+        with gzip.GzipFile(filename=alvo, mode="wb", fileobj=buf, mtime=0) as f:
             f.write(("\n".join(linhas) + "\n").encode("utf-8"))
+        gravar_bytes(alvo, buf.getvalue())
         escritos += len(linhas)
     mb = sum(os.path.getsize(p) for p in glob.glob(os.path.join(ESPELHO, "*.gz"))) / 2**20
     if not silencioso:

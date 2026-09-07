@@ -45,13 +45,9 @@ jobs:
           fi
 
       - name: Commitar (se mudou)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add despesas/benchmark.json
-          if git diff --quiet --cached; then
-            echo "Benchmark sem mudancas."
-          else
-            git commit -m "chore: atualiza benchmark de despesas por funcao (SICONFI)"
-            git push
-          fi
+        uses: ./.github/actions/commitar
+        with:
+          caminhos: despesas/benchmark.json
+          mensagem: "chore: atualiza benchmark de despesas por funcao (SICONFI)"
+          sem-mudancas: "Benchmark sem mudancas."
+          com-data: "false"

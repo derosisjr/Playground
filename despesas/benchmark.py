@@ -48,6 +48,8 @@ ANEXO = "DCA-Anexo I-E"
 PAUSA = 0.5
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.join(AQUI, "benchmark.json")
+sys.path.append(os.path.dirname(AQUI))  # raiz: comum/
+from comum.escrita import gravar_json  # noqa: E402
 
 # População: Censo 2022 (IBGE, agregado 4709, variável 93) — conferido em 2026-07.
 CIDADES = [
@@ -144,14 +146,13 @@ def main():
         print(f"[dry-run] exercício {exercicio}; nada gravado.", file=sys.stderr)
         return
 
-    with open(SAIDA, "w", encoding="utf-8") as f:
-        json.dump({
-            "exercicio": exercicio,
-            "fonte": f"SICONFI/Tesouro Nacional — {ANEXO} (competência anual consolidada)",
-            "populacao_fonte": "IBGE, Censo 2022",
-            "gerado_em": datetime.now().isoformat(timespec="seconds"),
-            "cidades": cidades,
-        }, f, ensure_ascii=False, separators=(",", ":"))
+    gravar_json(SAIDA, {
+        "exercicio": exercicio,
+        "fonte": f"SICONFI/Tesouro Nacional — {ANEXO} (competência anual consolidada)",
+        "populacao_fonte": "IBGE, Censo 2022",
+        "gerado_em": datetime.now().isoformat(timespec="seconds"),
+        "cidades": cidades,
+    }, separators=(",", ":"))
     print(f"Gravado {os.path.basename(SAIDA)}: exercício {exercicio}, "
           f"{len(cidades)} cidades.", file=sys.stderr)
 

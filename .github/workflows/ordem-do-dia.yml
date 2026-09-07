@@ -10,6 +10,10 @@ on:
         required: false
         default: ""
 
+# só lê o repo e sobe artifact — não commita
+permissions:
+  contents: read
+
 jobs:
   gerar-briefing:
     runs-on: ubuntu-latest

@@ -1,0 +1,75 @@
+name: Commitar e publicar
+description: >-
+  git add / commit / push dos artefatos de uma base, com `git pull --rebase`
+  antes do push. Substitui o bloco manual que vivia repetido em cada workflow.
+
+  Por que o rebase: os crons se sobrepõem (Preços leva ~3 h aos domingos e
+  atravessa o cron das 12:00 UTC; nas segundas e quintas Legis/Proposituras/
+  Despesas rodam em sequência apertada) e, sem rebase, o push perdedor era
+  rejeitado com "fetch first". Para um cron diário isso custava um dia; para o
+  semanal de Preços custou quatro semanas seguidas (17/08 a 06/09/2026), com a
+  base congelada em 10/08. Os workflows tocam arquivos distintos (invariante de
+  rules/github-actions.md), então o rebase é limpo; se houver conflito, é sinal
+  de que dois workflows escreveram o mesmo arquivo — falha visível, sem force.
+
+inputs:
+  caminhos:
+    description: Caminhos para `git add`, separados por espaço
+    required: true
+  mensagem:
+    description: Mensagem do commit (a data de hoje é acrescentada se `com-data` = true)
+    required: true
+  sem-mudancas:
+    description: Texto impresso quando não há nada a commitar
+    required: false
+    default: "Sem mudancas."
+  com-data:
+    description: Acrescentar " (AAAA-MM-DD)" à mensagem
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Commitar com rebase antes do push
+      shell: bash
+      env:
+        # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
+        CAMINHOS: ${{ inputs.caminhos }}
+        MENSAGEM: ${{ inputs.mensagem }}
+        SEM_MUDANCAS: ${{ inputs.sem-mudancas }}
+        COM_DATA: ${{ inputs.com-data }}
+        RAMO: ${{ github.ref_name }}
+      run: |
+        set -euo pipefail
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        # shellcheck disable=SC2086 — a lista é separada por espaço de propósito
+        git add $CAMINHOS
+        if git diff --quiet --cached; then
+          echo "$SEM_MUDANCAS"
+          exit 0
+        fi
+        if [ "$COM_DATA" = "true" ]; then
+          MENSAGEM="$MENSAGEM ($(date +%F))"
+        fi
+        git commit -m "$MENSAGEM"
+
+        # O checkout é raso (fetch-depth 1); o pull traz só o que faltar do ramo.
+        # --autostash: o crawler deixa artefatos modificados fora do `git add`
+        # (csv, sqlite de cache) e o rebase exige árvore limpa.
+        for tentativa in 1 2 3; do
+          if ! git pull --rebase --autostash origin "$RAMO"; then
+            git rebase --abort 2>/dev/null || true
+            echo "ERRO: rebase com conflito — dois workflows escreveram o mesmo arquivo?" >&2
+            exit 1
+          fi
+          if git push origin "HEAD:$RAMO"; then
+            echo "Publicado na tentativa $tentativa."
+            exit 0
+          fi
+          echo "Push rejeitado (tentativa $tentativa): outro workflow publicou antes; refazendo o rebase."
+          sleep $((tentativa * 10))
+        done
+        echo "ERRO: push rejeitado 3 vezes seguidas." >&2
+        exit 1

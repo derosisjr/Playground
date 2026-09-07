@@ -27,6 +27,8 @@ import requests
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.join(DIR, "ipca.json")
+sys.path.append(os.path.dirname(DIR))  # raiz: comum/
+from comum.escrita import gravar_json  # noqa: E402
 ANO_INICIAL = 2020
 
 SIDRA = ("https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/2266"
@@ -106,8 +108,7 @@ def main():
     print(f"  fonte: {d['fonte']}")
     if args.dry_run:
         return
-    with open(SAIDA, "w", encoding="utf-8") as f:
-        json.dump(d, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    gravar_json(SAIDA, d, separators=(",", ":"), sort_keys=True)
     print(f"  gravado: {SAIDA}")
 
 

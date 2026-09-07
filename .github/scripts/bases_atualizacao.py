@@ -27,6 +27,9 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 SAIDA = RAIZ / "bases-atualizacao.json"
+if str(RAIZ) not in sys.path:
+    sys.path.append(str(RAIZ))  # camada comum do repo (comum/)
+from comum.escrita import gravar_texto  # noqa: E402
 
 # padrões de arquivo cuja data de alteração o hub exibe
 PADROES = ["*-index.json", "consulta/consultas/*.json"]
@@ -98,7 +101,7 @@ def main():
         print(f"\n--dry-run: {len(texto)} bytes NÃO gravados em {SAIDA.name}")
         return 0
 
-    SAIDA.write_text(texto, encoding="utf-8")
+    gravar_texto(SAIDA, texto)
     print(f"\ngravado {SAIDA.name} ({len(texto)} bytes, {len(bases)} bases)")
     return 0
 

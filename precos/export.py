@@ -28,6 +28,8 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz: comum/
+from comum.escrita import gravar_json  # noqa: E402
 import casar  # noqa: E402
 import crawler  # noqa: E402
 import fontes  # noqa: E402
@@ -418,10 +420,9 @@ def main():
 
     os.makedirs(DADOS, exist_ok=True)
     for d in detalhes:
-        with open(os.path.join(DADOS, f"{d['slug']}.json"), "w", encoding="utf-8") as f:
-            json.dump(d, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-    with open(os.path.join(DADOS, CATALOGO_ARQ), "w", encoding="utf-8") as f:
-        json.dump(cat, f, ensure_ascii=False, separators=(",", ":"))
+        gravar_json(os.path.join(DADOS, f"{d['slug']}.json"), d,
+                    separators=(",", ":"), sort_keys=True)
+    gravar_json(os.path.join(DADOS, CATALOGO_ARQ), cat, separators=(",", ":"))
     print(f"  catálogo: {os.path.getsize(os.path.join(DADOS, CATALOGO_ARQ))/1024:.0f} KB")
     # o catálogo não é shard de comparação: preservá-lo da limpeza de órfãos
     vivos = {d["slug"] for d in detalhes} | {os.path.splitext(CATALOGO_ARQ)[0]}
@@ -429,8 +430,7 @@ def main():
         if os.path.splitext(os.path.basename(orfao))[0] not in vivos:
             os.remove(orfao)
             print(f"  removido shard órfão: {os.path.basename(orfao)}")
-    with open(SAIDA, "w", encoding="utf-8") as f:
-        json.dump(indice, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    gravar_json(SAIDA, indice, separators=(",", ":"), sort_keys=True)
     kb = os.path.getsize(SAIDA) / 1024
     print(f"gravado: precos-index.json ({kb:.1f} KB) · {len(detalhes)} shards")
     if kb > 100:
