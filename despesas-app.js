@@ -1291,6 +1291,7 @@ function montarCabecalho() {
     detPagina = 1;
     montarCabecalho();
     filtrarDetalhe();
+    tr.querySelector(`th[data-col="${c}"]`)?.focus();  // o innerHTML acima derrubava o foco
   };
   tr.querySelectorAll("th").forEach(th => {
     th.addEventListener("click", () => ordenar(th));
@@ -1510,7 +1511,7 @@ async function abrirFichaEmpenho(row, chaveURL) {
   const chave = `${v("unidade_gestora")}|${v("empenho")}`;
 
   const modal = document.getElementById("emp-modal");
-  modal.hidden = false;
+  abrirModal(modal, fecharFichaEmpenho);
   document.getElementById("emp-titulo").textContent =
     v("empenho") ? `Empenho ${v("empenho")}` : v("tipo");
   document.getElementById("emp-sub").textContent = v("unidade_gestora");
@@ -1587,8 +1588,40 @@ async function abrirFichaEmpenho(row, chaveURL) {
 
 let fichaEmpAtual = { chave: "", eventos: [] };
 
+// ── Modais acessíveis ────────────────────────────────────────────────────────
+// Foco entra no "Fechar" ao abrir e volta a quem abriu ao fechar; Tab circula
+// dentro do modal; Escape fecha só o de cima (a ficha do favorecido abre a do
+// empenho por cima — antes um Escape fechava as duas).
+const FOCAVEIS = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const pilhaModais = [];   // {overlay, fechar, antes} — o último é o de cima
+function abrirModal(overlay, fechar) {
+  pilhaModais.push({ overlay, fechar, antes: document.activeElement });
+  overlay.hidden = false;
+  const alvo = overlay.querySelector('[aria-label="Fechar"]') || overlay.querySelector(FOCAVEIS);
+  if (alvo) alvo.focus();
+}
+function fecharModal(overlay) {
+  overlay.hidden = true;
+  const i = pilhaModais.findIndex((m) => m.overlay === overlay);
+  if (i < 0) return;
+  const { antes } = pilhaModais.splice(i, 1)[0];
+  if (antes && typeof antes.focus === "function" && document.contains(antes)) antes.focus();
+}
+document.addEventListener("keydown", (e) => {
+  const topo = pilhaModais[pilhaModais.length - 1];
+  if (!topo) return;
+  if (e.key === "Escape") { e.preventDefault(); topo.fechar(); return; }
+  if (e.key !== "Tab") return;
+  const itens = [...topo.overlay.querySelectorAll(FOCAVEIS)].filter((x) => !x.hidden && x.offsetParent !== null);
+  if (!itens.length) return;
+  const primeiro = itens[0], ultimo = itens[itens.length - 1];
+  if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+  else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+  else if (!topo.overlay.contains(document.activeElement)) { e.preventDefault(); primeiro.focus(); }
+});
+
 function fecharFichaEmpenho() {
-  document.getElementById("emp-modal").hidden = true;
+  fecharModal(document.getElementById("emp-modal"));
   sincronizarURL({ emp: "" });
 }
 
@@ -1596,9 +1629,6 @@ function ligarFichaEmpenho() {
   document.getElementById("emp-fechar").addEventListener("click", fecharFichaEmpenho);
   document.getElementById("emp-modal").addEventListener("click", (e) => {
     if (e.target.id === "emp-modal") fecharFichaEmpenho();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !document.getElementById("emp-modal").hidden) fecharFichaEmpenho();
   });
   document.getElementById("emp-link").addEventListener("click", async () => {
     try {
@@ -1665,7 +1695,7 @@ async function arquivosDoFavorecido(nome, documento) {
 
 async function abrirFichaFavorecido(nome, documento) {
   const modal = document.getElementById("fav-modal");
-  modal.hidden = false;
+  abrirModal(modal, fecharFichaFavorecido);
   document.getElementById("fav-titulo").textContent = nome;
   document.getElementById("fav-doc").textContent = documento || "";
   // ponte p/ o raio-X: top-300 usa o dossiê pré-computado (?f=slug); os demais
@@ -1707,23 +1737,33 @@ async function abrirFichaFavorecido(nome, documento) {
 }
 
 function fecharFichaFavorecido() {
-  document.getElementById("fav-modal").hidden = true;
+  fecharModal(document.getElementById("fav-modal"));
 }
 
 function renderFichaCabecalho() {
   const tr = document.getElementById("fav-cabecalho");
   tr.innerHTML = FAV_COLS.map(c => {
     const i = favFicha.campos.indexOf(c);
-    const seta = favFicha.sort.idx === i ? (favFicha.sort.dir === "asc" ? " ▲" : " ▼") : "";
+    const ordenada = favFicha.sort.idx === i;
+    const seta = ordenada ? (favFicha.sort.dir === "asc" ? " ▲" : " ▼") : "";
+    const aria = ordenada ? ` aria-sort="${favFicha.sort.dir === "asc" ? "ascending" : "descending"}"` : "";
     const cls = DET_NUM.has(c) ? ' class="r"' : "";
-    return `<th data-idx="${i}"${cls}>${DET_LABELS[c] || c}${seta}</th>`;
+    return `<th data-idx="${i}"${cls}${aria} tabindex="0" role="columnheader" ` +
+      `aria-label="Ordenar por ${DET_LABELS[c] || c}">${DET_LABELS[c] || c}${seta}</th>`;
   }).join("");
-  tr.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+  const ordenar = (th) => {
     const i = +th.dataset.idx;
     favFicha.sort.dir = favFicha.sort.idx === i && favFicha.sort.dir === "asc" ? "desc" : "asc";
     favFicha.sort.idx = i; favFicha.pag = 1;
     renderFichaCabecalho(); renderFicha();
-  }));
+    tr.querySelector(`th[data-idx="${i}"]`)?.focus();
+  };
+  tr.querySelectorAll("th").forEach(th => {
+    th.addEventListener("click", () => ordenar(th));
+    th.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); }
+    });
+  });
 }
 
 function renderFicha() {
@@ -1769,9 +1809,6 @@ function ligarFicha() {
   document.getElementById("fav-fechar").addEventListener("click", fecharFichaFavorecido);
   document.getElementById("fav-modal").addEventListener("click", (e) => {
     if (e.target.id === "fav-modal") fecharFichaFavorecido();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !document.getElementById("fav-modal").hidden) fecharFichaFavorecido();
   });
   document.getElementById("fav-anterior").addEventListener("click", () => { favFicha.pag--; renderFicha(); });
   document.getElementById("fav-proxima").addEventListener("click", () => { favFicha.pag++; renderFicha(); });

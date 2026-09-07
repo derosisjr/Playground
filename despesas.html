@@ -579,7 +579,7 @@
 
     <!-- ── Ficha do favorecido (modal) ── -->
     <div class="modal-overlay" id="fav-modal" hidden>
-      <div class="modal-card">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="fav-titulo">
         <div class="modal-head">
           <div class="modal-tit">
             <div id="fav-titulo">—</div>
@@ -617,7 +617,7 @@
 
     <!-- ── Ficha do empenho (modal, padrão CGU: documento + estágios) ── -->
     <div class="modal-overlay" id="emp-modal" hidden>
-      <div class="modal-card" style="max-width:860px">
+      <div class="modal-card" style="max-width:860px" role="dialog" aria-modal="true" aria-labelledby="emp-titulo">
         <div class="modal-head">
           <div class="modal-tit">
             <div id="emp-titulo">—</div>
@@ -651,6 +651,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=12"></script>
+    <script src="./despesas-app.js?v=13"></script>
   </body>
 </html>

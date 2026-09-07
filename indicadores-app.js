@@ -58,11 +58,21 @@
       b.textContent = t.nome;
       b.setAttribute("role", "tab");
       b.setAttribute("aria-selected", slug === tema);
+      b.tabIndex = slug === tema ? 0 : -1;   // só a aba ativa entra no Tab (padrão APG)
       b.addEventListener("click", () => {
         tema = slug;
         Comum.gravarParams({ tema });
         renderAbas();
         renderTema();
+        abas.querySelector('[aria-selected="true"]')?.focus();
+      });
+      // setas trocam de aba, como nas abas de despesas.html
+      b.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        e.preventDefault();
+        const todas = [...abas.querySelectorAll('[role="tab"]')];
+        const i = todas.indexOf(b);
+        todas[(i + (e.key === "ArrowRight" ? 1 : -1) + todas.length) % todas.length].click();
       });
       abas.appendChild(b);
     }
