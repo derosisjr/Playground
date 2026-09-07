@@ -1,10 +1,9 @@
 // Painel da Base de Legislação — lê legis-index.json e filtra no cliente.
 "use strict";
 
-const PAGINA = 200; // quantas linhas renderizar por vez
 let NORMAS = [];
 let filtradas = [];
-let mostrando = 0;
+let pag = null;  // Comum.paginador — montado no init
 
 const el = (id) => document.getElementById(id);
 // utilitários da camada comum (eram cópias locais idênticas em cada painel)
@@ -40,9 +39,7 @@ function aplicarFiltros() {
     return true;
   });
 
-  mostrando = 0;
-  el("corpo").innerHTML = "";
-  renderizarMais();
+  pag.reiniciar(filtradas);
   el("vazio").hidden = filtradas.length > 0;
   atualizarResumo();
   el("csv").disabled = filtradas.length === 0;
@@ -99,18 +96,6 @@ function linhaHTML(n) {
   </tr>`;
 }
 
-function renderizarMais() {
-  const fim = Math.min(mostrando + PAGINA, filtradas.length);
-  const html = filtradas.slice(mostrando, fim).map(linhaHTML).join("");
-  el("corpo").insertAdjacentHTML("beforeend", html);
-  mostrando = fim;
-  el("mais").hidden = mostrando >= filtradas.length;
-  el("contagem").textContent =
-    `${filtradas.length.toLocaleString("pt-BR")} norma(s) — exibindo ${mostrando.toLocaleString("pt-BR")}`;
-  el("contagem").classList.remove("pulsa"); void el("contagem").offsetWidth;
-  el("contagem").classList.add("pulsa");
-}
-
 async function init() {
   try {
     const resp = await fetch("./legis-index.json", { cache: "no-cache" });
@@ -136,7 +121,11 @@ async function init() {
   }
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
   ["tipo", "ano", "tema"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
-  el("mais").addEventListener("click", renderizarMais);
+  pag = Comum.paginador({
+    corpo: "corpo", mais: "mais", contagem: "contagem", linha: linhaHTML,
+    rotulo: (lista, mostrando) =>
+      `${lista.length.toLocaleString("pt-BR")} norma(s) — exibindo ${mostrando.toLocaleString("pt-BR")}`,
+  });
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", () => {
     for (const id of ["q", "tipo", "ano", "tema"]) el(id).value = "";

@@ -141,6 +141,27 @@ window.Comum = (() => {
     el.querySelector("button").addEventListener("click", aoTentar);
   }
 
+  // ── Lista paginada com "Mostrar mais" ───────────────────────────────────────
+  // legis, proposituras e requerimentos tinham o mesmo renderizarMais copiado.
+  // corpo/mais/contagem: ids; linha(item) → HTML; rotulo(lista, mostrando) → texto.
+  function paginador({ corpo, mais, contagem, linha, rotulo, tamanho = 200 }) {
+    const $ = (id) => document.getElementById(id);
+    let lista = [], mostrando = 0;
+    function maisLinhas() {
+      const fim = Math.min(mostrando + tamanho, lista.length);
+      $(corpo).insertAdjacentHTML("beforeend", lista.slice(mostrando, fim).map(linha).join(""));
+      mostrando = fim;
+      $(mais).hidden = mostrando >= lista.length;
+      const c = $(contagem);
+      c.textContent = rotulo(lista, mostrando);
+      c.classList.remove("pulsa"); void c.offsetWidth;  // reinicia a animação
+      c.classList.add("pulsa");
+    }
+    function reiniciar(nova) { lista = nova; mostrando = 0; $(corpo).innerHTML = ""; maisLinhas(); }
+    $(mais).addEventListener("click", maisLinhas);
+    return { reiniciar, mais: maisLinhas };
+  }
+
   // ── Acessibilidade de gráficos ──────────────────────────────────────────────
   // Canvas é invisível para leitor de tela (padrão USWDS): dá role="img" +
   // descrição conclusiva e anexa uma tabela equivalente visualmente oculta,
@@ -440,6 +461,6 @@ window.Comum = (() => {
     });
   }
 
-  return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, abrirPaleta,
+  return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, paginador, abrirPaleta,
            alternarTema, temaAtual, chartAcessivel, toast, estadoErro, POP_SANTOS };
 })();

@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=2" />
+    <link rel="stylesheet" href="./comum.css?v=3" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -33,34 +33,20 @@
         --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
         --red: #b42318; --amber: #b54708; --slate: #475467;
       }
-      * { box-sizing: border-box; }
       body {
         margin: 0; background: var(--bg); color: var(--navy);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
-      ::selection { background: var(--gold); color: var(--navy); }
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
-      header.hero { position: relative; overflow: hidden; color: #fff;
-        background:
-          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
-          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
-          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
-        border-bottom: 1px solid rgba(201,168,76,0.25); }
       header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
         background-image:
           repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
           repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
         -webkit-mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
         mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%); }
-      header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
-        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
       .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
-      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
-        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
-        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
-      .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
       h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
         letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
@@ -289,7 +275,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=7"></script>
+    <script src="./comum.js?v=8"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
