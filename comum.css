@@ -6,6 +6,10 @@
   --navy-3: #12263f;
   --gold: #c9a84c;
   --gold-bright: #e3c977;
+  /* dourado PARA TEXTO no tema claro: o --gold sobre --card dá 2,25:1 (serve
+     como ornamento, não como texto); este dá 4,82:1 sobre --card e 4,34:1 sobre
+     --paper. No escuro o --gold já passa (≈7:1) e o token volta a ser ele. */
+  --gold-texto: #8a6d1f;
   --paper: #f4f1e9;
   --paper-2: #ebe6da;
   --card: #fffdf8;
@@ -22,6 +26,7 @@
    O atributo é aplicado no <html> por um script inline no <head> (anti-flash).
    `html[data-tema=…]` vence os :root locais dos painéis por especificidade. */
 html[data-tema="escuro"] {
+  --gold-texto: #c9a84c;
   --paper: #0a1422;
   --paper-2: #0c1b30;
   --card: #101f36;
@@ -226,10 +231,12 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   padding: 16px 18px; font: 500 16px "Manrope", sans-serif; color: var(--ink, #0c1626);
   background: transparent; width: 100%;
 }
+/* único elemento focável do diálogo: sem anel visível falhava a 2.4.7 */
+.paleta-q:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; border-radius: 4px; }
 .paleta-res { overflow-y: auto; flex: 1; padding: 6px 0; }
 .paleta-grupo {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
-  text-transform: uppercase; color: var(--gold); font-weight: 600;
+  text-transform: uppercase; color: var(--gold-texto); font-weight: 600;
   padding: 12px 18px 5px;
 }
 .paleta-carregando { color: var(--muted, #5d6675); text-transform: none; letter-spacing: 0; }

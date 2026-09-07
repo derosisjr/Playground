@@ -61,6 +61,48 @@ def data_do_commit(rel):
         timespec="seconds").replace("+00:00", "Z")
 
 
+def _ler_json(rel):
+    with open(RAIZ / rel, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def contagens():
+    """Contagens que o hub exibia lendo os índices INTEIROS só para um `d.length`:
+    proposituras 4,9 MB, legis 1,3 MB, regimento 0,4 MB, requerimentos 0,25 MB —
+    ~0,85 MB gzip por visita nova, mais o parse na main thread. Aqui custam um
+    json.load no CI; no hub, poucas centenas de bytes. Chave = nome do arquivo
+    (como em `bases`). Falha em um índice só tira a chave dele: o hub cai no fetch."""
+    out = {}
+    try:
+        out["proposituras-index.json"] = {"n": len(_ler_json("proposituras-index.json"))}
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem de proposituras falhou: {e}", file=sys.stderr)
+    try:
+        normas = _ler_json("legis-index.json")
+        leis = [n for n in normas if str(n.get("tipo", "")).lower().startswith("lei")]
+
+        def chave(n):  # mesma regra que o hub usava: ano, depois o número só com dígitos
+            digitos = "".join(ch for ch in str(n.get("numero", "")) if ch.isdigit())
+            return (n.get("ano") or 0, int(digitos) if digitos else 0)
+        ult = max(leis, key=chave) if leis else None
+        out["legis-index.json"] = {"n": len(normas)}
+        if ult:
+            out["legis-index.json"]["ultima_lei"] = {"numero": ult.get("numero"), "ano": ult.get("ano")}
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem de legis falhou: {e}", file=sys.stderr)
+    try:
+        out["regimento-index.json"] = {"n": len(_ler_json("regimento-index.json"))}
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem do regimento falhou: {e}", file=sys.stderr)
+    try:
+        reqs = _ler_json("requerimentos-index.json")
+        out["requerimentos-index.json"] = {
+            "n": len(reqs), "respondidos": sum(1 for r in reqs if r.get("respondido"))}
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem de requerimentos falhou: {e}", file=sys.stderr)
+    return out
+
+
 def montar():
     bases, sem_data = {}, []
     for rel in alvos():
@@ -89,11 +131,14 @@ def main():
         "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds")
                              .replace("+00:00", "Z"),
         "bases": bases,
+        "contagens": contagens(),
     }
     texto = json.dumps(doc, ensure_ascii=False, separators=(",", ":")) + "\n"
 
     for rel, dt in bases.items():
         print(f"  {rel:34} {dt}")
+    for rel, c in doc["contagens"].items():
+        print(f"  {rel:34} {c}")
     for rel in sem_data:
         print(f"  {rel:34} (sem data — ignorado)")
 
