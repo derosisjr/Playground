@@ -40,10 +40,17 @@
   function init() {
     // sem worker no ar, deixar claro que o voto ainda não é enviado (honestidade > fachada)
     if (!WORKER_URL) $("aviso-teste").hidden = false;
-    fetch(`./consulta/consultas/${CONSULTA}.json?v=` + Date.now())
-      .then((r) => r.json())
+    carregarConsulta();
+    $("sug-enviar").addEventListener("click", sugerir);
+  }
+
+  // separado do init para o "Tentar de novo" não religar os listeners de cima
+  function carregarConsulta() {
+    fetch(`./consulta/consultas/${CONSULTA}.json`, { cache: "no-cache" })
+      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then((d) => {
         DEF = d;
+        $("erro").hidden = true;
         $("titulo").textContent = d.titulo;
         $("descricao").textContent = d.descricao;
         const hoje = new Date().toISOString().slice(0, 10);
@@ -57,8 +64,11 @@
         sel.innerHTML = "<option value=''>Prefiro não dizer</option>" +
           d.bairros.map((b) => `<option>${b}</option>`).join("");
         $("comecar").addEventListener("click", comecar);
+      })
+      .catch((e) => {
+        console.warn("consulta:", e.message);
+        Comum.estadoErro("erro", "Não foi possível carregar a consulta. Verifique a conexão.", carregarConsulta);
       });
-    $("sug-enviar").addEventListener("click", sugerir);
   }
 
   function comecar() {
@@ -105,7 +115,7 @@
   // Fita de consenso: resultados parciais publicados pela apuração.
   function carregarResultados() {
     const alvo = document.querySelector("#fim").hidden ? null : $("fita");
-    fetch("./consulta-resultados.json?v=" + Date.now())
+    fetch("./consulta-resultados.json", { cache: "no-cache" })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((res) => {
         const c = res.consultas && res.consultas[CONSULTA];

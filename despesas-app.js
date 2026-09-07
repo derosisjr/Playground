@@ -32,8 +32,9 @@ const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL
 const brlc = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 const compacto = (v) => {
   const a = Math.abs(v);
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1) + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1) + " mi";
+  // vírgula decimal: sem o replace saía "R$ 8.4 bi" ao lado de "R$ 8,4 bi" no hub
+  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1).replace(".", ",") + " bi";
+  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
   if (a >= 1e3) return "R$ " + (v / 1e3).toFixed(0) + " mil";
   return brl(v);
 };
@@ -41,7 +42,7 @@ const compacto = (v) => {
 // ── Inicialização ────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const r = await fetch("./despesas-index.json?v=" + Date.now());
+    const r = await fetch("./despesas-index.json", { cache: "no-cache" });
     DADOS = await r.json();
   } catch (e) {
     Comum.estadoErro("stats",
@@ -1757,7 +1758,7 @@ function renderFicha() {
   const pagina = rows.slice(ini, ini + FAV_PAGINA);
 
   const corpo = document.getElementById("fav-corpo");
-  document.getElementById("fav-vazio").hidden = rows.length > 0;
+  document.getElementById("fav-ficha-vazio").hidden = rows.length > 0;  // id próprio: o "fav-vazio" é o da aba
   corpo.innerHTML = pagina.map(r => "<tr>" + FAV_COLS.map(c => {
     const i = campos.indexOf(c), v = r[i];
     if (DET_NUM.has(c)) {

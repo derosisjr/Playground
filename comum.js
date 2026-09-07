@@ -95,8 +95,11 @@ window.Comum = (() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = nomeArquivo;
+    a.style.display = "none";
+    document.body.appendChild(a);  // Firefox só baixa com o <a> no DOM
     a.click();
-    URL.revokeObjectURL(a.href);
+    // revogar depois de o clique ser processado — síncrono, o Firefox cancelava o download
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
   }
 
   // ── Toast (aviso passageiro, no lugar de alert()) ───────────────────────────
@@ -291,23 +294,26 @@ window.Comum = (() => {
     // aviso honesto quando alguma base falhou (antes era omitida em silêncio)
     const falhas = FONTES.filter((f) => cacheFontes[f.id] === "erro").map((f) => f.rotulo);
     const avisoFalhas = falhas.length
-      ? `<div class="paleta-vazio paleta-falhas">⚠ Fora do ar agora: ${escapar(falhas.join(", "))}.</div>`
+      ? `<div class="paleta-vazio paleta-falhas" role="presentation">⚠ Fora do ar agora: ${escapar(falhas.join(", "))}.</div>`
       : "";
     if (!norm(q).trim()) {
-      paletaRes.innerHTML = '<div class="paleta-vazio">Digite para buscar em Despesas, ' +
-        "Proposituras, Legislação, Requerimentos, Regimento, Endividamento e Indicadores.<br>" +
+      paletaRes.innerHTML = '<div class="paleta-vazio" role="presentation">Digite para buscar em Despesas, ' +
+        "Proposituras, Legislação, Requerimentos, Regimento, Endividamento, Indicadores e Preço comparado.<br>" +
         'Dica: <b>art 79</b> abre o artigo direto.</div>' + avisoFalhas;
       atualizarAtivo();
       return;
     }
     if (!grupos.length) {
-      paletaRes.innerHTML = '<div class="paleta-vazio">Nada encontrado nas bases do site.</div>' + avisoFalhas;
+      paletaRes.innerHTML = '<div class="paleta-vazio" role="presentation">Nada encontrado nas bases do site.</div>' + avisoFalhas;
       atualizarAtivo();
       return;
     }
     let html = "";
     for (const g of grupos) {
-      html += `<div class="paleta-grupo">${escapar(g.f.rotulo)}` +
+      // listbox só aceita option/group como filhos: o título vira presentation e as
+      // opções da fonte ficam num group nomeado (antes o ARIA era inválido)
+      html += `<div role="group" aria-label="${escapar(g.f.rotulo)}">` +
+        `<div class="paleta-grupo" role="presentation">${escapar(g.f.rotulo)}` +
         (g.carregando ? ' <span class="paleta-carregando">carregando…</span>' : "") + "</div>";
       for (const h of g.hits) {
         const i = planos.length;
@@ -317,6 +323,7 @@ window.Comum = (() => {
           `<span class="pi-t">${escapar(h.t)}</span>` +
           (h.s ? `<span class="pi-s">${escapar(h.s)}</span>` : "") + "</a>";
       }
+      html += "</div>";
     }
     paletaRes.innerHTML = html + avisoFalhas;
     atualizarAtivo();

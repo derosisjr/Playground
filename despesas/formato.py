@@ -31,6 +31,11 @@ def brl(v) -> str:
     return "R$ " + f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def fator(v) -> str:
+    """4,3× (uma casa, vírgula decimal) — razão entre dois valores."""
+    return f"{v:.1f}".replace(".", ",") + "×"
+
+
 def compacto(v) -> str:
     """R$ 8,44 bi · R$ 157,0 mi · R$ 500 mil · R$ 123,45."""
     v = v or 0

@@ -15,6 +15,12 @@ def test_compacto_faixas():
     assert compacto(-2_500_000) == "R$ -2,5 mi"
 
 
+def test_fator():
+    from formato import fator
+    assert fator(4.3) == "4,3×"
+    assert fator(10.94) == "10,9×"
+
+
 def test_pct():
     assert pct(110, 100) == "▲ 10%"
     assert pct(90, 100) == "▼ 10%"
