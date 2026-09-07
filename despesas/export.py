@@ -27,7 +27,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 
-from formato import compacto as _brl_compacto, eh_ente_publico, sem_acento  # camada comum do módulo
+from formato import brl, compacto as _brl_compacto, eh_ente_publico, fator, sem_acento  # camada comum do módulo
 
 for _s in (sys.stdout, sys.stderr):
     try:
@@ -487,7 +487,7 @@ def alertas(conn) -> list[dict]:
             "tipo": "favorecido_recorrente",
             "severidade": "alta",
             "titulo": f"Favorecido recorrente de alto valor: {r['k']}",
-            "detalhe": f"R$ {r['s']:,.2f} acumulados em {r['meses']} meses.",
+            "detalhe": f"{brl(r['s'])} acumulados em {r['meses']} meses.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"]},
         })
@@ -511,7 +511,7 @@ def alertas(conn) -> list[dict]:
                 "tipo": "concentracao",
                 "severidade": "media",
                 "titulo": f"Concentração: {r['k']} concentra {pct:.0f}% da função {r['f']}",
-                "detalhe": f"R$ {r['s']:,.2f} de R$ {base:,.2f} na função.",
+                "detalhe": f"{brl(r['s'])} de {brl(base)} na função.",
                 "valor": round(r["s"], 2),
                 "filtro": {"favorecido": r["k"], "funcao": r["f"]},
             })
@@ -529,7 +529,7 @@ def alertas(conn) -> list[dict]:
                     "tipo": "pico_mensal",
                     "severidade": "media",
                     "titulo": f"Pico de gasto em {r['ano']}-{r['mes']:02d}",
-                    "detalhe": f"R$ {r['s']:,.2f} (média mensal R$ {media:,.2f}).",
+                    "detalhe": f"{brl(r['s'])} (média mensal {brl(media)}).",
                     "valor": round(r["s"], 2),
                     "filtro": {"ano": r["ano"], "mes": r["mes"]},
                 })
@@ -544,7 +544,7 @@ def alertas(conn) -> list[dict]:
             "tipo": "extra_orcamentario",
             "severidade": "baixa",
             "titulo": f"Extra-orçamentário relevante: {r['k']}",
-            "detalhe": f"R$ {r['s']:,.2f} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
+            "detalhe": f"{brl(r['s'])} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"]},
         })
@@ -564,7 +564,7 @@ def alertas(conn) -> list[dict]:
             "tipo": "fracionamento",
             "severidade": "alta",
             "titulo": f"Possível fracionamento: {r['qt']} empenhos a {r['k']}",
-            "detalhe": (f"R$ {r['s']:,.2f} em {r['qt']} empenhos abaixo de R$ {LIMITE_DISPENSA:,.2f} "
+            "detalhe": (f"{brl(r['s'])} em {r['qt']} empenhos abaixo de {brl(LIMITE_DISPENSA)} "
                         f"({r['ano']}) — {(r['e'] or '')[:50]}."),
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"], "elemento": r["e"], "tipo_doc": "pj"},
@@ -595,7 +595,7 @@ def alertas(conn) -> list[dict]:
                 "tipo": "favorecido_novo",
                 "severidade": "media",
                 "titulo": f"Favorecido novo de alto valor: {r['k']}",
-                "detalhe": (f"R$ {r['s']:,.2f} desde {r['ini'] // 100}-{r['ini'] % 100:02d} "
+                "detalhe": (f"{brl(r['s'])} desde {r['ini'] // 100}-{r['ini'] % 100:02d} "
                             f"(1ª aparição na base)."),
                 "valor": round(r["s"], 2),
                 "filtro": {"favorecido": r["k"]},
@@ -627,8 +627,8 @@ def alertas(conn) -> list[dict]:
                 "tipo": "crescimento_yoy",
                 "severidade": "media",
                 "titulo": f"Crescimento anômalo: {r['k']}",
-                "detalhe": (f"R$ {r['v_atual']:,.2f} em {atual} (proj. anual R$ {proj:,.2f}) "
-                            f"vs R$ {r['v_ant']:,.2f} em {ant} — {proj / r['v_ant']:.1f}×."),
+                "detalhe": (f"{brl(r['v_atual'])} em {atual} (proj. anual {brl(proj)}) "
+                            f"vs {brl(r['v_ant'])} em {ant} — {fator(proj / r['v_ant'])}."),
                 "valor": round(r["v_atual"], 2),
                 "filtro": {"favorecido": r["k"]},
             })
@@ -649,7 +649,7 @@ def alertas(conn) -> list[dict]:
             "tipo": "pf_sensivel",
             "severidade": "alta",
             "titulo": f"Pessoa física em {elem_curto}: {r['k']}",
-            "detalhe": f"R$ {r['s']:,.2f} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
+            "detalhe": f"{brl(r['s'])} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
         })
@@ -688,8 +688,8 @@ def alertas(conn) -> list[dict]:
                 "tipo": tipo,
                 "severidade": "media",
                 "titulo": f"Pico de {rotulo}: {curto} em {p // 100}-{p % 100:02d}",
-                "detalhe": (f"R$ {s:,.2f} no mês — {s / media:.1f}× a média mensal "
-                            f"histórica (R$ {media:,.2f})."),
+                "detalhe": (f"{brl(s)} no mês — {fator(s / media)} a média mensal "
+                            f"histórica ({brl(media)})."),
                 "valor": round(s, 2),
                 "filtro": ({"favorecido": k} if tipo == "pico_favorecido" else {"elemento": k}),
             })
@@ -1032,7 +1032,7 @@ def main():
 
     print(f"Export concluído: {indice['totais']['pagamentos']} pagamentos (visão caixa), "
           f"{len(execucao)} linhas de execução por empenho, "
-          f"R$ {indice['totais']['geral']:,.2f}, {len(indice['alertas'])} alertas, "
+          f"{brl(indice['totais']['geral'])}, {len(indice['alertas'])} alertas, "
           f"{len(indice['meses'])} meses, {n_fav_raiox} raio-X de favorecidos, "
           f"árvore com {n_arvore} funções, estágios de {n_estagios} empenhos → "
           f"{os.path.basename(JSON_PATH)}, dados/, favorecidos/, {os.path.basename(CSV_PATH)}, {xlsx_msg}.", file=sys.stderr)

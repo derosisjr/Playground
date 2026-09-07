@@ -27,8 +27,9 @@ const brl = (v) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currenc
 const brlc = (v) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 const compacto = (v) => {
   const a = Math.abs(v);
-  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1) + " bi";
-  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1) + " mi";
+  // vírgula decimal: sem o replace saía "R$ 8.4 bi" ao lado de "R$ 8,4 bi" no hub
+  if (a >= 1e9) return "R$ " + (v / 1e9).toFixed(1).replace(".", ",") + " bi";
+  if (a >= 1e6) return "R$ " + (v / 1e6).toFixed(1).replace(".", ",") + " mi";
   if (a >= 1e3) return "R$ " + (v / 1e3).toFixed(0) + " mil";
   return brl(v);
 };
@@ -151,7 +152,7 @@ const semAcentoMin = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g,
 
 async function indicePainel() {
   if (!IDX_PAINEL) {
-    const r = await fetch("./despesas-index.json?v=" + Date.now());
+    const r = await fetch("./despesas-index.json", { cache: "no-cache" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     IDX_PAINEL = await r.json();
   }
@@ -293,7 +294,11 @@ async function init() {
       render(d);
     } catch (e) {
       console.warn("favorecido:", e.message);
-      return falha("Dossiê não encontrado — ele cobre os 300 maiores favorecidos e é regerado diariamente.");
+      // 404 é "não existe" (fora do top-300); o resto é rede — merece "Tentar de novo"
+      if (/HTTP 404/.test(e.message)) {
+        return falha("Dossiê não encontrado — ele cobre os 300 maiores favorecidos e é regerado diariamente.");
+      }
+      return Comum.estadoErro("carregando", "Não foi possível carregar o dossiê agora. Verifique a conexão.", init);
     }
     try {
       const { campos, rows } = await buscarLancamentos(d.nome, d.documento || "");
@@ -316,7 +321,7 @@ async function init() {
     iniciarLancamentos(campos, rows);
   } catch (e) {
     console.warn("favorecido:", e.message);
-    falha("Não foi possível montar a página deste favorecido agora.");
+    Comum.estadoErro("carregando", "Não foi possível montar a página deste favorecido agora.", init);
   }
 }
 

@@ -44,7 +44,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, c =>
 // ── Inicialização ────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const r = await fetch("./endividamento-index.json?v=" + Date.now());
+    const r = await fetch("./endividamento-index.json", { cache: "no-cache" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     DADOS = await r.json();
   } catch (e) {
@@ -290,7 +290,7 @@ function nomeCredor(s) {
 
 async function renderServicoDivida() {
   try {
-    const r = await fetch("./despesas-index.json?v=" + Date.now());
+    const r = await fetch("./despesas-index.json", { cache: "no-cache" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const sd = (await r.json()).servico_divida;
     if (!sd || !sd.credores || !sd.credores.length) return;

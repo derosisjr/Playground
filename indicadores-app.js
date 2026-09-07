@@ -33,7 +33,7 @@
   const num = (v) => (v == null ? "—" : v.toLocaleString("pt-BR"));
 
   function init() {
-    fetch("./indicadores-index.json?v=" + Date.now())
+    fetch("./indicadores-index.json", { cache: "no-cache" })
       .then((r) => r.json())
       .then((d) => {
         DADOS = d;

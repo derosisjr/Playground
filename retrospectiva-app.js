@@ -151,9 +151,17 @@ function render() {
 }
 
 async function init() {
-  const r = await fetch("./despesas-index.json?v=" + Date.now());
-  if (!r.ok) { el("t-abre").textContent = "Não foi possível carregar os dados."; return; }
-  DADOS = await r.json();
+  try {
+    const r = await fetch("./despesas-index.json", { cache: "no-cache" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    DADOS = await r.json();
+  } catch (e) {
+    // sem isto uma falha de rede era unhandled rejection e a página ficava em branco
+    console.warn("retrospectiva:", e.message);
+    Comum.estadoErro("erro", "Não foi possível carregar os dados do ano. Verifique a conexão.", init);
+    return;
+  }
+  el("erro").hidden = true;
 
   const anos = [...new Set(DADOS.series_mensais.map((s) => s.ano))].sort((a, b) => b - a);
   const pedido = parseInt(Comum.lerParams().get("ano"), 10);

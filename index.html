@@ -125,9 +125,12 @@
         border-top: 1px solid rgba(201,168,76,0.22);
         opacity: 0; animation: rise .8s .4s cubic-bezier(.2,.7,.2,1) forwards; }
       .ind { display: flex; flex-direction: column; gap: 7px;
-        padding: 13px 30px 2px 0; margin-right: 30px;
-        border-right: 1px solid rgba(201,168,76,0.14); text-decoration: none; }
-      .ind:last-child { border-right: 0; margin-right: 0; }
+        padding: 13px 30px 2px 0; text-decoration: none; }
+      /* divisória à esquerda do 2º indicador VISÍVEL em diante: com border-right +
+         :last-child, um indicador escondido por `hidden` (fonte fora) deixava um
+         fio dourado solto à direita do último visível */
+      .ind:not([hidden]) ~ .ind:not([hidden]) {
+        border-left: 1px solid rgba(201,168,76,0.14); padding-left: 30px; }
       .ind[hidden] { display: none; }
       .ind-lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px;
         letter-spacing: .2em; text-transform: uppercase; color: #8794a6; white-space: nowrap; }
@@ -142,8 +145,10 @@
         /* minmax(0,1fr): com "1fr" puro o mínimo é min-content e o rótulo em nowrap
            estoura a trilha — o overflow:hidden do hero cortava o texto em silêncio. */
         .regua { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .ind { padding-right: 14px; margin-right: 0; }
-        .ind:nth-child(even) { border-right: 0; }
+        .ind { padding-right: 14px; }
+        .ind:not([hidden]) ~ .ind:not([hidden]) { border-left: 0; padding-left: 0; }
+        .ind:not([hidden]) ~ .ind:not([hidden]):nth-child(even) {
+          border-left: 1px solid rgba(201,168,76,0.14); }
         .ind:nth-child(n+3) { border-top: 1px solid rgba(201,168,76,0.10); }
         .ind-lbl { white-space: normal; }
         .ind-val { font-size: 15.5px; }
@@ -170,9 +175,9 @@
       /* Segunda seção — respiro entre os dois blocos e continuação da cascata
          (o nth-child reinicia na segunda grade, por isso os delays são redefinidos) */
       .secao-2 { margin-top: clamp(28px, 3.6vw, 44px); }
-      .grade-2 .cartao:nth-child(1) { animation-delay: 1.02s; }
-      .grade-2 .cartao:nth-child(2) { animation-delay: 1.12s; }
-      .grade-2 .cartao:nth-child(3) { animation-delay: 1.22s; }
+      .grade-2 .cartao:nth-child(1) { animation-delay: 1.12s; }
+      .grade-2 .cartao:nth-child(2) { animation-delay: 1.22s; }
+      .grade-2 .cartao:nth-child(3) { animation-delay: 1.32s; }
 
       /* o min() impede que a trilha de 300px estoure viewports estreitos (≤348px) */
       .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
@@ -199,6 +204,7 @@
       .cartao:nth-child(4) { animation-delay: .72s; }
       .cartao:nth-child(5) { animation-delay: .82s; }
       .cartao:nth-child(6) { animation-delay: .92s; }
+      .cartao:nth-child(7) { animation-delay: 1.02s; }  /* Preço comparado (2026-08) */
       /* Barra de acento à esquerda — o dispositivo mais repetido do site
          (comum.css:95/171, despesas.html:106, endividamento.html:139/161, regimento.html:87).
          Via ::before e NÃO border-left: o .cartao:hover troca border-color e atropelaria
@@ -435,7 +441,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=5"></script>
+    <script src="./comum.js?v=6"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -458,6 +464,7 @@
 
       const compacto = (v) => { const p = dinheiro(v); return p.moeda + " " + p.n + p.unidade; };
       const num = (n) => n.toLocaleString("pt-BR");
+      const plural = (n, um, varios) => (n === 1 ? um : varios);
       const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
       const el = (id) => document.getElementById(id);
       const set = (id, v) => { const e = el(id); if (e) e.textContent = v; };
@@ -585,8 +592,10 @@
         // nº de cidades COM dado espelhado, não o tamanho da lista de alvos:
         // dizer "9 cidades" com 4 carregadas seria propaganda, não dado
         const n = Object.keys((d.cobertura || {}).por_cidade || {}).length;
-        set("stat-precos-lbl", "comparações de preço · " + n + " cidades pares");
-        return contagem((d.comparacoes || []).length);
+        const c = (d.comparacoes || []).length;
+        set("stat-precos-lbl", plural(c, "comparação de preço", "comparações de preço") +
+          " · " + n + " " + plural(n, "cidade par", "cidades pares"));
+        return contagem(c);
       }, (d) => d.atualizado_em && new Date(d.atualizado_em));
       stat(carregar("./endividamento-index.json"), "stat-endividamento", (d) => {
         // o estado dos limites sai do rótulo e vira pill — não repetir o dado no cartão
@@ -622,11 +631,12 @@
 
       // "Escuta pública" — 1,7 KB; o campo `ativa` governa a pill de estado.
       stat(carregar("./consulta/consultas/prioridades-2026.json"), "stat-consulta", (c) => {
-        const bairros = (c.bairros || []).length;
-        set("stat-consulta-lbl", `propostas em votação${bairros ? ` · ${bairros} bairros` : ""}`);
+        const bairros = (c.bairros || []).length, np = (c.propostas || []).length;
+        set("stat-consulta-lbl", plural(np, "proposta em votação", "propostas em votação") +
+          (bairros ? ` · ${bairros} ${plural(bairros, "bairro", "bairros")}` : ""));
         if (c.ativa) selo("selo-consulta", "aberta", "verde");
         else selo("selo-consulta", "encerrada", "vermelho");
-        return contagem((c.propostas || []).length);
+        return contagem(np);
       // sem dataFn: `periodo.inicio` é quando a consulta ABRIU, não quando foi
       // atualizada — usá-lo mentiria no rótulo. A data vem do git.
       }, null, "consulta/consultas/prioridades-2026.json");
@@ -634,7 +644,8 @@
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
         const pend = r.filter((x) => !x.respondido).length;
-        if (pend) set("stat-requerimentos-lbl", `requerimentos monitorados · ${num(pend)} pendentes`);
+        if (pend) set("stat-requerimentos-lbl",
+          `requerimentos monitorados · ${num(pend)} ${plural(pend, "pendente", "pendentes")}`);
       }).catch(() => {});
 
       pLegis.then(({ dados: L }) => {
@@ -656,7 +667,7 @@
           indicador("ind-pago", compacto(ult.valor));
         } else esconder("ind-pago");
         const ativos = (d.alertas || []).filter((a) => a.severidade === "alta" || a.severidade === "media").length;
-        indicador("ind-alertas", ativos ? ativos + " ativos" : "nenhum ativo");
+        indicador("ind-alertas", ativos ? ativos + plural(ativos, " ativo", " ativos") : "nenhum ativo");
         if (d.atualizado_em) indicador("ind-atual", new Date(d.atualizado_em).toLocaleDateString("pt-BR"));
         else esconder("ind-atual");
       }).catch(() => esconder("ind-pago", "ind-alertas", "ind-atual"));
