@@ -13,6 +13,12 @@ on:
 permissions:
   contents: write
 
+# UTF-8 como codificação padrão do Python (vira o padrão no 3.15, out/2026):
+# os crawlers lidam com páginas em latin-1 e campos UTF-8 embutidos — sem isto,
+# um `open()` sem `encoding=` dependeria do locale do runner.
+env:
+  PYTHONUTF8: "1"
+
 jobs:
   atualizar:
     runs-on: ubuntu-latest
@@ -20,22 +26,27 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Configurar Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: endividamento/requirements.txt
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: "endividamento/requirements.txt"
 
       - name: Instalar dependencias
-        run: pip install -r endividamento/requirements.txt
+        run: uv pip install --system -r endividamento/requirements.txt
 
       # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions.
       # Se o cache esfriar não tem problema: a carga completa leva ~2 min.
       - name: Restaurar base SQLite (cache)
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: endividamento/endividamento.sqlite
           key: endividamento-db-${{ github.run_id }}
