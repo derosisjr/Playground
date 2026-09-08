@@ -1,0 +1,7 @@
+# Configuração do zizmor (auditoria dos workflows — ver workflows/zizmor.yml).
+rules:
+  # `./.github/actions/commitar` é a sintaxe documentada pelo GitHub para actions
+  # locais; a alternativa `$/…` que o zizmor sugere é recente e não foi testada
+  # nesta casa. Achado informativo, sem impacto de segurança.
+  self-repository:
+    disable: true
