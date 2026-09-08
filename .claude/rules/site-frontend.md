@@ -33,6 +33,18 @@ network-first p/ estáticos, stale-while-revalidate p/ `*.json` ignorando `?v=`;
 comum.js; bump de `CACHE` no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
 `<link>`/`<script>` — incrementar ao alterar comum.css/js ou um app.js.
 
+**Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
+preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
+sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página
+conforme a rolagem, com "Abrir ↗" sempre disponível; se a biblioteca não carregar, cai num
+`<iframe>` com o visualizador nativo. **Só funciona com PDF servido inline e com CORS**: a Câmara
+(`administrativo.camarasantos.sp.gov.br`, proposituras) manda `Access-Control-Allow-Origin: *` e
+renderiza em canvas. **Legislação NÃO usa**: o Legis da Prefeitura (`egov.santos.sp.gov.br`) manda
+`Content-Disposition: attachment` sem CORS — nem PDF.js nem `<iframe>` exibem, o link segue direto
+(testado em 2026-09). **Requerimentos NÃO usa**: o link é pasta do Drive. O DOM é inline sem CORS
+(só iframe). Proposituras intercepta o clique simples em `a.pdf` (`abrirPdfNoVisor`);
+Ctrl/⌘/Shift/botão do meio seguem para a nova aba.
+
 # Hub / Página inicial (`index.html`)
 
 Porta de entrada do site (GitHub Pages serve da raiz). Página estática (navy/gold, sem build) em
