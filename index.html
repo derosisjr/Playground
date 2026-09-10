@@ -6,7 +6,7 @@
     <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
-    <link rel="stylesheet" href="./comum.css?v=3" />
+    <link rel="stylesheet" href="./comum.css?v=4" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#07111f" />
@@ -26,18 +26,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --navy: #060e1a;        /* tinta profunda */
-        --navy-2: #0c1b30;
-        --navy-3: #12263f;
-        --gold: #c9a84c;
-        --gold-bright: #e3c977;
-        --paper: #f4f1e9;       /* off-white quente (documento) */
-        --paper-2: #ebe6da;
-        --card: #fffdf8;
-        --ink: #0c1626;
-        --muted: #5d6675;
-        --line: #e2dccd;
-        --line-ink: rgba(201, 168, 76, 0.18);
+        /* tokens de cor (navy/gold/paper/card/ink/muted/line) vêm do comum.css;
+           aqui só o que é do hub */
         --shadow: 24px 40px 80px -40px rgba(6, 14, 26, 0.45);
         /* status (AA sobre --card claro) — copiado verbatim de endividamento.html:33-41
            para não haver duas verdades de cor no site */
@@ -51,6 +41,7 @@
         --verde: #4ade80; --amarelo: #fbbf24; --vermelho: #f87171;
         --verde-bg: rgba(74,222,128,.13); --amarelo-bg: rgba(251,191,36,.13);
         --vermelho-bg: rgba(248,113,113,.13);
+        --shadow: 24px 40px 80px -40px rgba(0, 0, 0, 0.75);
       }
       * { box-sizing: border-box; }
       html { scroll-behavior: smooth; }
@@ -96,12 +87,15 @@
       .hero-in { position: relative; max-width: 1120px; margin: 0 auto;
         padding: clamp(20px, 3vw, 36px) 24px clamp(14px, 2vw, 22px); }
 
-      .brand { display: flex; align-items: center; gap: 12px; margin: 0 0 clamp(16px, 2.6vw, 28px);
+      .brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 clamp(16px, 2.6vw, 28px);
         opacity: 0; animation: rise .7s .05s cubic-bezier(.2,.7,.2,1) forwards; }
       .crest { width: 34px; height: 34px; flex: none; border: 1.5px solid var(--gold);
         border-radius: 50%; display: grid; place-items: center; color: var(--gold);
         font-family: "Fraunces", serif; font-weight: 600; font-size: 16px; }
-      .brand .who { font-size: 12.5px; letter-spacing: .04em; color: #cdd6e3; }
+      /* o nome cresce ao lado do brasão; em viewport estreita só os BOTÕES descem
+         para a linha de baixo (sem isto o nome era espremido em 4 linhas entre o
+         brasão e os botões, com o "Ctrl K" partido ao meio) */
+      .brand .who { font-size: 12.5px; letter-spacing: .04em; color: #cdd6e3; flex: 1 1 14em; min-width: 0; }
       .brand .who b { color: #fff; font-weight: 700; }
 
       .eyebrow { display: inline-flex; align-items: center; gap: 10px;
@@ -158,18 +152,18 @@
       }
 
       /* Skeleton de carregamento (números ao vivo) */
-      .skel { display: inline-block; width: 4.5em; height: .85em; border-radius: 3px;
-        background: linear-gradient(90deg, rgba(6,14,26,0.07) 25%, rgba(6,14,26,0.14) 50%, rgba(6,14,26,0.07) 75%);
-        background-size: 200% 100%; animation: brilho 1.4s linear infinite; }
+      /* gradiente e animação vêm do .skel do comum.css; aqui só a geometria inline
+         (o --r-sm do comum é largo demais para um número de 34px) e a variante
+         dourada sobre o hero */
+      .skel { display: inline-block; width: 4.5em; height: .85em; border-radius: 3px; }
       .ind-val .skel { background: linear-gradient(90deg, rgba(201,168,76,0.14) 25%, rgba(201,168,76,0.32) 50%, rgba(201,168,76,0.14) 75%);
         background-size: 200% 100%; }
-      @keyframes brilho { to { background-position: -200% 0; } }
 
       /* ── Corpo ────────────────────────────────────────────────────── */
       .shell { max-width: 1120px; margin: 0 auto; width: 100%; flex: 1;
         padding: clamp(18px, 2.2vw, 28px) 24px clamp(30px, 4vw, 48px); }
-      .section-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px;
-        letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+      .section-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+        letter-spacing: .2em; text-transform: uppercase; color: var(--muted); line-height: normal;
         display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
       .section-tag::after { content: ""; flex: 1; height: 1px; background: var(--line); }
       /* Segunda seção — respiro entre os dois blocos e continuação da cascata
@@ -221,7 +215,7 @@
          absoluta ela colidiria com a tag (a mais longa mede ~271px em 288px de caixa). */
       .cartao-topo { display: flex; align-items: center; gap: 10px; min-height: 17px; }
       .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .16em;
-        text-transform: uppercase; color: var(--gold); font-weight: 500; min-width: 0; }
+        text-transform: uppercase; color: var(--gold-texto); font-weight: 500; min-width: 0; }
       /* onde há selo o espaço é disputado (a caixa cai a 246px em 1000px de viewport):
          a tag trunca em vez de quebrar, senão o h2 desce só nesse cartão e desalinha a
          fileira inteira. Sem selo, a tag pode quebrar à vontade — em 1 coluna é inofensivo. */
@@ -232,8 +226,9 @@
       .selo.verde    { background: var(--verde-bg);    color: var(--verde); }
       .selo.amarelo  { background: var(--amarelo-bg);  color: var(--amarelo); }
       .selo.vermelho { background: var(--vermelho-bg); color: var(--vermelho); }
+      .selo.cinza    { background: var(--paper-2);      color: var(--muted); }  /* estado neutro (consulta encerrada) */
       .selo[hidden] { display: none; }
-      .cartao h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 25px;
+      .cartao h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 25px;
         letter-spacing: -0.01em; margin: 10px 0 0; line-height: 1.1; }
       .cartao .desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 12px 0 0; flex: 1; }
 
@@ -257,12 +252,12 @@
       /* visibility (e não hidden): reserva o espaço desde o início, senão a linha
          inteira da grade pula ~16px quando o fetch chega */
       .stat .quando { font-family: "IBM Plex Mono", monospace; font-size: 10px;
-        letter-spacing: .07em; text-transform: uppercase; color: var(--muted); opacity: .75;
+        letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
         margin-top: 6px; display: block; visibility: hidden; }
 
       .abrir { display: inline-flex; align-items: center; gap: 9px; margin-top: 16px;
         font-weight: 700; font-size: 13.5px; letter-spacing: .01em; color: var(--ink); }
-      .abrir .arw { transition: transform .3s cubic-bezier(.2,.7,.2,1); color: var(--gold); font-size: 16px; }
+      .abrir .arw { transition: transform .3s cubic-bezier(.2,.7,.2,1); color: var(--gold-texto); font-size: 16px; }
       .cartao:hover .abrir .arw { transform: translateX(6px); }
 
       /* ── Rodapé ───────────────────────────────────────────────────── */
@@ -274,6 +269,7 @@
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
         .brand, .eyebrow, h1, .lede, .regua, .cartao { opacity: 1; transform: none; }
+        html { scroll-behavior: auto; }  /* o salto do "pular" também é movimento */
       }
     </style>
   </head>
@@ -293,7 +289,7 @@
           Painéis públicos que acompanham a despesa da Prefeitura e o que tramita na Câmara —
           a partir de dados oficiais, atualizados automaticamente. Escolha uma base para explorar.
         </p>
-        <div class="regua" aria-label="Indicadores fiscais ao vivo">
+        <div class="regua" role="group" aria-label="Indicadores fiscais ao vivo">
           <a class="ind" id="ind-pago" href="./despesas.html">
             <span class="ind-lbl" id="ind-pago-lbl">Pago no mês</span>
             <span class="ind-val" id="ind-pago-val"><span class="skel"></span></span>
@@ -315,81 +311,83 @@
     </header>
 
     <main class="shell" id="bases" tabindex="-1">
-      <p class="section-tag">Bases de dados</p>
+      <!-- uma só região viva, anunciada uma vez: o contador muda 78×/s e não pode ser live -->
+      <p class="sr-only" id="hub-status" aria-live="polite"></p>
+      <h2 class="section-tag">Bases de dados</h2>
       <div class="grade">
-        <a class="cartao" href="./despesas.html">
+        <a class="cartao" href="./despesas.html" aria-labelledby="t-despesas">
           <span class="cartao-topo"><span class="tag">Prefeitura · Execução orçamentária</span></span>
-          <h2>Radar de Despesas</h2>
+          <h3 id="t-despesas">Radar de Despesas</h3>
           <p class="desc">Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais
              automáticos e busca detalhada por favorecido, função e fonte.</p>
-          <div class="stat"><span class="val" id="stat-despesas"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-despesas"><span class="skel"></span></span>
             <span class="lbl">pago monitorado · mandato</span>
             <span class="quando" id="stat-despesas-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./endividamento.html">
+        <a class="cartao" href="./endividamento.html" aria-labelledby="t-endividamento">
           <span class="cartao-topo tem-selo"><span class="tag">Prefeitura · Dívida</span><span
             class="selo" id="selo-endividamento" hidden></span></span>
-          <h2>Semáforo Fiscal</h2>
+          <h3 id="t-endividamento">Semáforo Fiscal</h3>
           <p class="desc">A dívida da Prefeitura e os limites da Lei de Responsabilidade Fiscal
              em um relance — evolução, precatórios e despesa com pessoal, direto do Tesouro Nacional.</p>
-          <div class="stat"><span class="val" id="stat-endividamento"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-endividamento"><span class="skel"></span></span>
             <span class="lbl" id="stat-endividamento-lbl">dívida consolidada</span>
             <span class="quando" id="stat-endividamento-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./precos.html">
+        <a class="cartao" href="./precos.html" aria-labelledby="t-precos">
           <span class="cartao-topo"><span class="tag">Prefeitura · Preços pagos</span></span>
-          <h2>Preço comparado</h2>
+          <h3 id="t-precos">Preço comparado</h3>
           <p class="desc">O preço unitário que Santos pagou, ao lado do que Guarujá, São Vicente,
              Praia Grande e outras cidades pagaram pelo mesmo item — com a fonte no PNCP.</p>
-          <div class="stat"><span class="val" id="stat-precos"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-precos"><span class="skel"></span></span>
             <span class="lbl" id="stat-precos-lbl">comparações de preço</span>
             <span class="quando" id="stat-precos-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./proposituras.html">
+        <a class="cartao" href="./proposituras.html" aria-labelledby="t-proposituras">
           <span class="cartao-topo"><span class="tag">Câmara · Proposituras</span></span>
-          <h2>Base de Proposituras</h2>
+          <h3 id="t-proposituras">Base de Proposituras</h3>
           <p class="desc">Projetos em tramitação (ou já tramitados) na Câmara — filtros por tipo,
              autor, situação e palavra-chave, com a tramitação de cada um.</p>
-          <div class="stat"><span class="val" id="stat-proposituras"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-proposituras"><span class="skel"></span></span>
             <span class="lbl">proposituras indexadas</span>
             <span class="quando" id="stat-proposituras-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./legis.html">
+        <a class="cartao" href="./legis.html" aria-labelledby="t-legis">
           <span class="cartao-topo"><span class="tag">Prefeitura · Legislação</span></span>
-          <h2>Base de Legislação</h2>
+          <h3 id="t-legis">Base de Legislação</h3>
           <p class="desc">Legislação municipal de Santos indexada e pesquisável por tipo, ano e tema,
              com link direto para o documento oficial.</p>
-          <div class="stat"><span class="val" id="stat-legis"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-legis"><span class="skel"></span></span>
             <span class="lbl" id="stat-legis-lbl">normas indexadas</span>
             <span class="quando" id="stat-legis-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./requerimentos.html">
+        <a class="cartao" href="./requerimentos.html" aria-labelledby="t-requerimentos">
           <span class="cartao-topo"><span class="tag">Câmara · Requerimentos</span></span>
-          <h2>Requerimentos &amp; Respostas</h2>
+          <h3 id="t-requerimentos">Requerimentos &amp; Respostas</h3>
           <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
              número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
-          <div class="stat"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
             <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
             <span class="quando" id="stat-requerimentos-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./regimento.html">
+        <a class="cartao" href="./regimento.html" aria-labelledby="t-regimento">
           <span class="cartao-topo"><span class="tag">Câmara · Regimento Interno</span></span>
-          <h2>Regimento Interno</h2>
+          <h3 id="t-regimento">Regimento Interno</h3>
           <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
              artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
-          <div class="stat"><span class="val" id="stat-regimento"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-regimento"><span class="skel"></span></span>
             <span class="lbl">artigos indexados</span>
             <span class="quando" id="stat-regimento-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
@@ -397,37 +395,37 @@
 
       </div>
 
-      <p class="section-tag secao-2">Leituras e participação</p>
+      <h2 class="section-tag secao-2">Leituras e participação</h2>
       <div class="grade grade-2">
-        <a class="cartao" href="./indicadores.html">
+        <a class="cartao" href="./indicadores.html" aria-labelledby="t-indicadores">
           <span class="cartao-topo"><span class="tag">Prefeitura · Custo por Resultado</span></span>
-          <h2>Custo por Resultado</h2>
+          <h3 id="t-indicadores">Custo por Resultado</h3>
           <p class="desc">Saúde, educação e finanças de Santos por habitante — quanto se arrecada,
              gasta e o que o cidadão recebe, comparado a cidades paulistas e à média do estado.</p>
-          <div class="stat"><span class="val" id="stat-indicadores"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-indicadores"><span class="skel"></span></span>
             <span class="lbl" id="stat-indicadores-lbl">gasto/hab em saúde no último ano</span>
             <span class="quando" id="stat-indicadores-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./retrospectiva.html">
+        <a class="cartao" href="./retrospectiva.html" aria-labelledby="t-retrospectiva">
           <span class="cartao-topo"><span class="tag">Prefeitura · Retrospectiva anual</span></span>
-          <h2>O ano em gastos</h2>
+          <h3 id="t-retrospectiva">O ano em gastos</h3>
           <p class="desc">A despesa da Prefeitura contada como história — para onde o dinheiro foi
              no ano, mês a mês, em uma leitura corrida em vez de uma tabela.</p>
-          <div class="stat"><span class="val" id="stat-retrospectiva"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-retrospectiva"><span class="skel"></span></span>
             <span class="lbl" id="stat-retrospectiva-lbl">pago no ano</span>
             <span class="quando" id="stat-retrospectiva-quando"></span></div>
           <span class="abrir">Abrir leitura <span class="arw">→</span></span>
         </a>
 
-        <a class="cartao" href="./consulta.html">
+        <a class="cartao" href="./consulta.html" aria-labelledby="t-consulta">
           <span class="cartao-topo tem-selo"><span class="tag">Gabinete · Escuta pública</span><span
             class="selo" id="selo-consulta" hidden></span></span>
-          <h2>Escuta pública</h2>
+          <h3 id="t-consulta">Escuta pública</h3>
           <p class="desc">Vote nas prioridades do seu bairro e diga onde a Prefeitura deveria
              gastar primeiro — leva 1 minuto e não pede cadastro.</p>
-          <div class="stat"><span class="val" id="stat-consulta"><span class="skel"></span></span>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-consulta"><span class="skel"></span></span>
             <span class="lbl" id="stat-consulta-lbl">propostas em votação</span>
             <span class="quando" id="stat-consulta-quando"></span></div>
           <span class="abrir">Participar <span class="arw">→</span></span>
@@ -543,30 +541,55 @@
       // "Índice de atualização das bases"). Sem isto o frescor cairia no
       // Last-Modified, que no GitHub Pages é a hora do DEPLOY — igual para todo
       // arquivo, fazendo base parada há meses anunciar "atualizado hoje".
-      const pDatas = carregar("./bases-atualizacao.json")
-        .then(({ dados }) => dados.bases || {})
+      const pMeta = carregar("./bases-atualizacao.json")
+        .then(({ dados }) => dados || {})
         .catch(() => ({}));   // ausente = degrada para o comportamento antigo
+      const pDatas = pMeta.then((m) => m.bases || {});
+
+      // Contagens leves: o hub exibia `d.length` baixando os índices INTEIROS
+      // (proposituras 4,9 MB, legis 1,3 MB, regimento 0,4 MB, requerimentos 0,25 MB —
+      // ~0,85 MB gzip por visita nova, mais o parse na main thread). O CI publica as
+      // contagens no bases-atualizacao.json; sem a chave (arquivo antigo), cai no
+      // fetch do índice — por isso quem consome trata os dois formatos (`total`).
+      function contagemOuIndice(arquivo) {
+        return pMeta.then((m) => {
+          const c = m.contagens && m.contagens[arquivo];
+          return (c && typeof c.n === "number") ? { dados: c, modificado: null } : carregar("./" + arquivo);
+        });
+      }
+      const total = (d) => (Array.isArray(d) ? d.length : d.n);
+
+      // aria-busy sai do .stat quando o número está no lugar; quando TODOS
+      // assentaram, a região viva anuncia uma vez.
+      let statsPendentes = 0;
+      function pronto(id) {
+        const c = el(id) && el(id).closest(".stat");
+        if (c) c.setAttribute("aria-busy", "false");
+        if (--statsPendentes === 0) set("hub-status", "Números dos painéis carregados.");
+      }
 
       // Popula o número do cartão + a linha de frescor.
       // Precedência da data: a do próprio JSON > a do git > Last-Modified.
       // valorFn pode devolver string (nada muda) ou as partes de um número (conta).
       function stat(promessa, id, valorFn, dataFn, arquivo) {
+        statsPendentes++;
         Promise.all([promessa, pDatas]).then(([{ dados, modificado }, datas]) => {
           const v = valorFn(dados);
           if (typeof v === "string") {
             set(id, v);
+            pronto(id);
           } else {
             // o gate vem ANTES de escrever o número: se escrevêssemos primeiro, o
             // cartão mostraria a resposta e depois rebobinaria para zero para contar.
             // Espera o dado E o cartão assentado — o skeleton segura o lugar até lá.
             quandoVisivel(el(id) && el(id).closest(".cartao"))
-              .then(() => contar(setNum(id, v), v));
+              .then(() => { contar(setNum(id, v), v); pronto(id); });
           }
           const doGit = arquivo && datas[arquivo] && new Date(datas[arquivo]);
           const rel = relativo((dataFn && dataFn(dados)) || doGit || modificado);
           const q = el(id + "-quando");
           if (q && rel) { q.textContent = rel; q.style.visibility = "visible"; }
-        }).catch((e) => { console.warn("hub:", e.message || e); set(id, "—"); });
+        }).catch((e) => { console.warn("hub:", e.message || e); set(id, "—"); pronto(id); });
       }
 
       // Indicador da régua do hero: preenche e exibe; some se a fonte falhar.
@@ -574,19 +597,19 @@
       function esconder(...ids) { ids.forEach((id) => { const e = el(id); if (e) e.hidden = true; }); }
 
       const pDespesas = carregar("./despesas-index.json");
-      const pRequerimentos = carregar("./requerimentos-index.json");
-      const pLegis = carregar("./legis-index.json");
+      const pRequerimentos = contagemOuIndice("requerimentos-index.json");
+      const pLegis = contagemOuIndice("legis-index.json");
 
       stat(pDespesas, "stat-despesas", (d) => dinheiro(d.totais.geral),
         (d) => d.atualizado_em && new Date(d.atualizado_em));
       // estes quatro índices são arrays puros — não têm onde guardar data própria,
       // por isso o 5º argumento (a chave no bases-atualizacao.json) é o que salva o frescor
-      stat(pRequerimentos, "stat-requerimentos", (d) => contagem(d.length),
+      stat(pRequerimentos, "stat-requerimentos", (d) => contagem(total(d)),
         null, "requerimentos-index.json");
-      stat(carregar("./proposituras-index.json"), "stat-proposituras", (d) => contagem(d.length),
+      stat(contagemOuIndice("proposituras-index.json"), "stat-proposituras", (d) => contagem(total(d)),
         null, "proposituras-index.json");
-      stat(pLegis, "stat-legis", (d) => contagem(d.length), null, "legis-index.json");
-      stat(carregar("./regimento-index.json"), "stat-regimento", (d) => contagem(d.length),
+      stat(pLegis, "stat-legis", (d) => contagem(total(d)), null, "legis-index.json");
+      stat(contagemOuIndice("regimento-index.json"), "stat-regimento", (d) => contagem(total(d)),
         null, "regimento-index.json");
       stat(carregar("./precos-index.json"), "stat-precos", (d) => {
         // nº de cidades COM dado espelhado, não o tamanho da lista de alvos:
@@ -635,7 +658,8 @@
         set("stat-consulta-lbl", plural(np, "proposta em votação", "propostas em votação") +
           (bairros ? ` · ${bairros} ${plural(bairros, "bairro", "bairros")}` : ""));
         if (c.ativa) selo("selo-consulta", "aberta", "verde");
-        else selo("selo-consulta", "encerrada", "vermelho");
+        // encerrada é estado neutro: o vermelho do ramp quer dizer "acima do limite"
+        else selo("selo-consulta", "encerrada", "cinza");
         return contagem(np);
       // sem dataFn: `periodo.inicio` é quando a consulta ABRIU, não quando foi
       // atualizada — usá-lo mentiria no rótulo. A data vem do git.
@@ -643,20 +667,23 @@
 
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
-        const pend = r.filter((x) => !x.respondido).length;
+        const pend = Array.isArray(r) ? r.filter((x) => !x.respondido).length : r.n - r.respondidos;
         if (pend) set("stat-requerimentos-lbl",
           `requerimentos monitorados · ${num(pend)} ${plural(pend, "pendente", "pendentes")}`);
       }).catch(() => {});
 
       pLegis.then(({ dados: L }) => {
-        const leis = L.filter((n) => /^lei/i.test(n.tipo || ""));
-        if (!leis.length) return;
-        const ult = leis.reduce((a, b) => {
-          const na = parseInt(String(a.numero).replace(/\D/g, "")) || 0;
-          const nb = parseInt(String(b.numero).replace(/\D/g, "")) || 0;
-          return (b.ano > a.ano || (b.ano === a.ano && nb > na)) ? b : a;
-        });
-        set("stat-legis-lbl", `normas indexadas · última: Lei ${ult.numero}/${ult.ano}`);
+        let ult = L.ultima_lei;   // contagem leve do CI (mesma regra abaixo)
+        if (Array.isArray(L)) {
+          const leis = L.filter((n) => /^lei/i.test(n.tipo || ""));
+          if (!leis.length) return;
+          ult = leis.reduce((a, b) => {
+            const na = parseInt(String(a.numero).replace(/\D/g, "")) || 0;
+            const nb = parseInt(String(b.numero).replace(/\D/g, "")) || 0;
+            return (b.ano > a.ano || (b.ano === a.ano && nb > na)) ? b : a;
+          });
+        }
+        if (ult) set("stat-legis-lbl", `normas indexadas · última: Lei ${ult.numero}/${ult.ano}`);
       }).catch(() => {});
 
       pDespesas.then(({ dados: d }) => {
@@ -673,9 +700,10 @@
       }).catch(() => esconder("ind-pago", "ind-alertas", "ind-atual"));
 
       pRequerimentos.then(({ dados: r }) => {
-        if (!Array.isArray(r) || !r.length) return esconder("ind-req");
-        const resp = r.filter((x) => x.respondido).length;
-        indicador("ind-req", Math.round((resp / r.length) * 100) + "% · " + resp + " de " + r.length);
+        const n = total(r);
+        if (!n) return esconder("ind-req");
+        const resp = Array.isArray(r) ? r.filter((x) => x.respondido).length : r.respondidos;
+        indicador("ind-req", Math.round((resp / n) * 100) + "% · " + resp + " de " + n);
       }).catch(() => esconder("ind-req"));
 
       // Por último e com guarda: se o comum.js não carregar, os números acima
