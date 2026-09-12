@@ -9,6 +9,10 @@ on:
         description: "Ano a varrer (vazio = ano corrente)"
         required: false
         default: ""
+      reconciliar_tudo:
+        description: "Reconciliar TODAS as partições do mandato (não só o ano corrente)?"
+        required: false
+        default: "false"
       forcar_briefing:
         description: "Enviar o briefing semanal agora (mesmo fora de segunda)?"
         required: false
@@ -24,7 +28,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -40,13 +44,16 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r despesas/requirements.txt
 
-      # Testes rápidos (parsing SOAP, agregações, regras de alerta) antes de
-      # gastar requisições no portal — falhou, não crawla nem publica.
+      # Testes rápidos (parsing SOAP, reconciliação, agregações, regras de alerta)
+      # antes de gastar requisições no portal — falhou, não crawla nem publica.
       - name: Testes
         run: python -m pytest despesas/tests comum/tests -q
 
       # O .sqlite NÃO é versionado — persiste entre execuções via cache do Actions
       # (chave rotativa por run + restore-keys p/ recuperar o mais recente).
+      # Esquema v1 no cache é migrado pelo crawler (backup local + recriação) e
+      # TODAS as partições são rebaixadas — a primeira execução após a migração
+      # leva mais tempo (63 requisições) e reconstrói o mandato inteiro.
       - name: Restaurar base SQLite (cache)
         uses: actions/cache@v5
         with:
@@ -55,36 +62,63 @@ jobs:
           restore-keys: |
             despesas-db-
 
-      # Etapa 1: garante o mandato inteiro na base — se o cache estiver frio,
-      # baixa os meses faltantes (2025→corrente). Se quente, não faz nada.
-      # Etapa 2: re-baixa o ano corrente (--forcar) p/ pegar pagamentos novos.
-      - name: Crawl incremental + export
+      # Etapa 1: garante o mandato inteiro na base — partições sem carga (cache frio
+      # ou migração) são baixadas. Etapa 2: reconcilia o ano corrente (--forcar):
+      # cada mês é substituído pela fotografia atual da origem, em transação, com
+      # validação (resposta vazia/queda abrupta mantêm a versão anterior).
+      # Códigos de saída do crawler: 0 ok · 1 nenhuma coleta funcionou (aborta) ·
+      # 2 falha PARCIAL (as partições boas foram atualizadas; o job termina vermelho
+      # no passo final para a falha não passar despercebida).
+      - name: Crawl incremental (reconciliação por partição)
+        id: crawl
         env:
           # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
           ANO_INPUT: ${{ github.event.inputs.ano }}
+          TUDO: ${{ github.event.inputs.reconciliar_tudo }}
         run: |
+          set +e
           ANO="$ANO_INPUT"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
-          python despesas/crawler.py                 # preenche meses faltantes do mandato
-          python despesas/crawler.py --ano "$ANO" --forcar
-          python despesas/export.py
-
-      # Guarda anti-truncamento: o mandato completo é ~R$8 bi. Se a base vier
-      # parcial (ex.: só o ano corrente, ~R$2-3 bi), aborta o commit p/ não
-      # publicar uma base mutilada.
-      - name: Commitar index (se houver e for íntegro)
-        run: |
-          TOTAL=$(python -c "import json;print(int(json.load(open('despesas-index.json',encoding='utf-8'))['totais']['geral']))")
-          echo "index.json com total geral R$ $TOTAL."
-          if [ "$TOTAL" -lt 4000000000 ]; then
-            echo "ABORTANDO commit: base parcial (total $TOTAL < 4 bi), provável cache miss do .sqlite."
-            exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
+          python despesas/crawler.py --relatorio despesas/_relatorio-1.json   # partições sem carga
+          RC1=$?
+          if [ "$TUDO" = "true" ]; then
+            python despesas/crawler.py --forcar --relatorio despesas/_relatorio-2.json
+          else
+            python despesas/crawler.py --ano "$ANO" --forcar --relatorio despesas/_relatorio-2.json
           fi
+          RC2=$?
+          set -e
+          echo "rc1=$RC1 rc2=$RC2"
+          if [ "$RC1" = "1" ] || [ "$RC2" = "1" ]; then
+            echo "ERRO FATAL: nenhuma coleta funcionou — nada será publicado."
+            exit 1
+          fi
+          if [ "$RC1" != "0" ] || [ "$RC2" != "0" ]; then
+            echo "parcial=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Despesas: falha PARCIAL na coleta"
+              echo "Partições não atualizadas (versão anterior mantida):"
+              python -c "import json,glob;[print(f\"- {p['fonte']} {p['ano']}-{p['mes']:02d} [{p['status']}]: {p.get('erro')}\") for a in sorted(glob.glob('despesas/_relatorio-*.json')) for p in json.load(open(a,encoding='utf-8'))['particoes'] if p['status']!='ok']"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "parcial=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export (índice, execução, movimentação, dossiês, alertas)
+        run: python despesas/export.py
+
+      # Guarda de integridade por partição e por conservação (substitui o antigo
+      # "total > R$ 4 bi", mantido lá dentro só como sanidade grosseira): cobertura
+      # de todo estágio × mês, pago da base = execução = movimentação, manifestos ×
+      # arquivos, ranking × dossiês. Falha parcial de coleta vira aviso aqui (as
+      # partições boas são publicadas) e vermelho no passo final.
+      - name: Verificar integridade do que será publicado
+        run: python despesas/verificar.py --tolerar-erros
 
       - name: Commitar e publicar
         uses: ./.github/actions/commitar
         with:
-          caminhos: despesas-index.json despesas/dados despesas/arvore.json favorecidos
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json favorecidos
           mensagem: "chore: atualiza base de Despesas"
           sem-mudancas: "Sem mudancas na base."
 
@@ -107,3 +141,11 @@ jobs:
           else
             echo "Fora de segunda e sem --forcar_briefing: briefing nao enviado."
           fi
+
+      # Uma coleta boa não pode esconder a que falhou: se alguma partição não foi
+      # atualizada, o job termina vermelho DEPOIS de publicar o que estava íntegro.
+      - name: Falha parcial na coleta (visível)
+        if: steps.crawl.outputs.parcial == 'true'
+        run: |
+          echo "Alguma partição (estágio × mês) não foi atualizada nesta execução — ver o resumo do job."
+          exit 1
