@@ -26,6 +26,25 @@ window.Comum = (() => {
   const norm = (s) =>
     (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
+  // Identidade canônica do favorecido — ESPELHO de despesas/formato.py
+  // (identidade_favorecido): CNPJ completo → "cnpj:<14 dígitos>"; CPF mascarado →
+  // "cpf:<dígitos visíveis>|<NOME NORMALIZADO>" (dígitos parciais não bastam);
+  // documento atípico → "doc:…|nome"; sem documento → "nome:<NOME>". Nome
+  // normalizado = maiúsculas, sem acento, espaços colapsados. Mudar um lado
+  // exige mudar o outro (o índice de favorecidos e os dossiês usam esta chave).
+  const nomeNormalizado = (nome) =>
+    (nome || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()
+      .split(/\s+/).filter(Boolean).join(" ");
+  const identidadeFavorecido = (nome, doc) => {
+    doc = (doc || "").toString().trim();
+    const dig = doc.replace(/\D/g, "");
+    if (!doc.includes("*") && dig.length === 14) return "cnpj:" + dig;
+    const n = nomeNormalizado(nome);
+    if (doc.includes("*")) return "cpf:" + dig + "|" + n;
+    if (dig) return "doc:" + dig + "|" + n;
+    return "nome:" + n;
+  };
+
   // Formatação de moeda — UMA escala para o site inteiro (a mesma de
   // despesas/formato.py e do hub): R$ 8,61 bi · R$ 157,0 mi · R$ 500 mil · R$ 123.
   // Antes havia quatro variantes (1 ou 2 casas no "bi", 0 ou 1 no "mi") e o
@@ -462,5 +481,5 @@ window.Comum = (() => {
   }
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, paginador, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, POP_SANTOS };
+           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, identidadeFavorecido, nomeNormalizado, POP_SANTOS };
 })();

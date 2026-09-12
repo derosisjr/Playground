@@ -1,0 +1,726 @@
+{
+ "atualizado_em": "2026-09-12",
+ "alertas": {
+  "00f99d373d16": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MICHEL BURIHAN"
+  },
+  "3c8e31b499fe": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ESTHER PAZ PEREIRA"
+  },
+  "7c25f9ab0703": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUCIANO SOARES DE NOVAIS THOMÉ"
+  },
+  "83b10c48fcb4": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUIZ ALBERTO LAMANA DOS SANTOS"
+  },
+  "a4a01bd9eb5c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: REEM NASSIR HANNA DE TULIO"
+  },
+  "dd774423b659": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MANUEL ARMANDO NOBREGA TEIXEIRA PETITO"
+  },
+  "581deef97356": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUCIANA ROSA DE SOUSA PETITO"
+  },
+  "1cccd391a4cf": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ROBERTO LUIS DE AMORIM GODINHO LEÃO BRUNO"
+  },
+  "761122fcdd37": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: JOSÉ ANTÕNIO ALVAREZ FERNANDEZ"
+  },
+  "352145e309f1": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: DOCINDA DIAS ALVAREZ"
+  },
+  "36fb55412fb7": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: THEREZINHA CELIA MESQUITA DESBANCA"
+  },
+  "ee5365f77d7a": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: RUBIA ANDREIA JUSTO BOUÇÓS"
+  },
+  "59875195e25b": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: RECAREDO JOSE BOUÇÓS JUNIOR"
+  },
+  "694e9186fc2f": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: EDUVALDO SERGIO DOS SANTOS DIEGUES JUNIOR"
+  },
+  "e42e05c5b4a3": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: FERNANDO BARBOSA"
+  },
+  "7f66df02f874": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-01 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
+  },
+  "69912b24305d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-03 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
+  },
+  "c92f54d5fb56": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-04 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
+  },
+  "7bdc16ad5e5f": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-02 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
+  },
+  "eab28c31d39d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-05 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
+  },
+  "a5a82e958c51": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "concentracao",
+   "titulo": "Concentração: COHAB CIA HABITACAO DA BAIXADA SANTISTA concentra 100% da função 16 - HABITAÇÃO"
+  },
+  "b28a1ff6c9af": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2025-02"
+  },
+  "51244f66ae83": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: CONTRIBUIÇÕES PREVIDENCIÁRIAS - RPPS - PESSOAL ATIVO - PLANO em 2026-01"
+  },
+  "15e5ed865428": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: NET TELECOM INFORMÁTICA LTDA em 2025-09"
+  },
+  "53b5e92a7231": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: NET TELECOM INFORMÁTICA LTDA"
+  },
+  "231fc6ef5961": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_novo",
+   "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
+  },
+  "3c38294561e4": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: SÃO PAULO TRIBUNAL DE JUSTIÇA em 2025-07"
+  },
+  "3339484d5ef1": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS MATERIAIS PERMANENTES em 2025-09"
+  },
+  "bd47689476b9": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: DIVERSAS INDENIZAÇÕES E RESTITUIÇÕES em 2025-02"
+  },
+  "6f34854da142": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTRAS AMORTIZAÇÕES DA DÍVIDA CONTRATADA em 2026-03"
+  },
+  "b2b59a0168a7": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: LEMAM CONSTRUCOES E COMERCIO S/A em 2025-12"
+  },
+  "fc2177d84c44": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTRAS DESPESAS DE EXERCÍCIOS ANTERIORES em 2026-01"
+  },
+  "98ca6884208c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: LOCAÇÃO BENS MÓVEIS DE OUTRAS NATUREZAS E INTANGÍVEIS em 2026-01"
+  },
+  "42fa2231e22b": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: CAPE FEIRAS E EVENTOS EIRELI EPP em 2026-03"
+  },
+  "7494374f9ada": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: PIONEIRA SOLUÇÕES TECNOLÓGICAS"
+  },
+  "260e58be0ab3": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS - PESSOA JURÍDICA em 2026-01"
+  },
+  "788fccb379e0": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: EXPOSIÇÕES, CONGRESSOS E CONFERÊNCIAS em 2026-03"
+  },
+  "a2c6b289007d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: GÊNEROS DE ALIMENTAÇÃO em 2025-12"
+  },
+  "aff85c5ac2e6": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: TMK ENGENHARIA S.A. em 2025-08"
+  },
+  "c51805f39a18": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OBRAS EM ANDAMENTO em 2025-11"
+  },
+  "46077fffe863": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_novo",
+   "titulo": "Favorecido novo de alto valor: CONSÓRCIO SQF - IP SANTOS, CONSTITUÍDO PELAS EMPRESAS QUANTUM ENGENHARIA LTDA, SEVEN ENGENHARIA E CONSULTORIA ELÉTRICA LTDA E FORTNORT DESENVOLVIMENTO"
+  },
+  "0784b16a923e": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: FESTIVIDADES E HOMENAGENS em 2026-03"
+  },
+  "64a0fc4ec3ea": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: MATERIAL P/ MANUTENÇÃO DE BENS IMÓVEIS em 2026-01"
+  },
+  "575e21c8385c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: ADVENTUM COMERCIAL LTDA"
+  },
+  "7fd3befde823": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_novo",
+   "titulo": "Favorecido novo de alto valor: INSTITUTO SOCIAL HOSPITAL ALEMAO OSWALDO CRUZ"
+  },
+  "981a3b816d45": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: STIER CONSTRUTORA LTDA"
+  },
+  "5e86732dc95c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 150 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
+  },
+  "33b7e808a8d8": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: PIONEIRA SOLUÇÕES TECNOLÓGICAS em 2026-05"
+  },
+  "c047f20f9760": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: 2N ENGENHARIA LTDA em 2025-11"
+  },
+  "2d8661bb7858": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: PUXE COMUNICACAO EIRELI em 2025-04"
+  },
+  "597cbb63bb87": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: BANCO DO BRASIL S/A"
+  },
+  "a89a5cea99ef": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: BANCO DO BRASIL S/A em 2026-06"
+  },
+  "496902eff96e": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: EL ESTRUTURA E EVENTOS LTDA em 2026-03"
+  },
+  "bcc156a6b23f": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: EICON CONTROLES INTELIGENTES DE NEGOCIOS LTDA"
+  },
+  "ab1a00193fe4": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: SEMPRE PROPAGANDA LTDA em 2025-12"
+  },
+  "5d738ec2a0dc": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 72 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+  },
+  "791eaec2c59c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 90 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+  },
+  "ca77585c0d3b": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ADVENTUM COMERCIAL LTDA em 2026-01"
+  },
+  "f22940aa9642": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 75 empenhos distintos a BRAFEM COMERCIAL LTDA (2025)"
+  },
+  "e5d6d9e60c65": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: SECRETARIA DA FAZENDA E PLANEJAMENTO"
+  },
+  "b585034a8522": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: STIER CONSTRUTORA LTDA em 2026-06"
+  },
+  "9e17f72ac277": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: FORTNORT DESENVOLVIMENTO AMBIENTAL E URBANO EIRELI em 2025-05"
+  },
+  "f0a308993f6d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: PANVILLE ATACADISTA LTDA"
+  },
+  "94d8b8dc19c1": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 102 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
+  },
+  "d4f6f1af5b7a": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 86 empenhos distintos a COMERCIAL BRISMAR LTDA (2025)"
+  },
+  "37087671ccc5": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP em 2025-12"
+  },
+  "da0c8c96cfa9": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: PERICLES FERNANDO NUNES DE OLIVEIRA"
+  },
+  "ae6f41cdbfa9": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: MILLENNIUM MEDICAL COMERCIO, IMPORTACAO E EXPORTACAO DE PRODUTOS MEDICOS LTDA"
+  },
+  "39492b6dba89": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: DIAS CONSULTORIA LTDA"
+  },
+  "d667df7c2be3": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 66 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+  },
+  "ee6634177b30": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: NEW YORK COMERCIO E CONSTRUÇÃO LTDA"
+  },
+  "be3142b9309d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP"
+  },
+  "bb7c0ded1448": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: VB ESTRUTURAS TEMPORARIAS LTDA"
+  },
+  "44fa039faa69": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: SECRETARIA DE TURISMO E VIAGENS"
+  },
+  "a14edac427e3": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 100 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2026)"
+  },
+  "2b19480b2079": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 71 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
+  },
+  "ccd14350e53b": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 85 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2025)"
+  },
+  "579f20f1e623": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 49 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
+  },
+  "258c9f025b2c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 37 empenhos distintos a COMERCIAL PILAR AUDIO LTDA (2025)"
+  },
+  "9ab97b419549": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 40 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2025)"
+  },
+  "84e00e621db2": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 64 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
+  },
+  "216bf1f995cc": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 58 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+  },
+  "10cda15c70b0": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "dados_nao_localizado",
+   "titulo": "Pagamentos orçamentários de 2025 cujo empenho não está na base"
+  },
+  "0febbc6cf4bd": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: MUNICÍPIO DE SANTOS"
+  },
+  "8fd7061e0337": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "638b8005d039": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "concentracao",
+   "titulo": "Concentração: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS concentra 86% da função 09 - PREVIDÊNCIA SOCIAL"
+  },
+  "87224e2c1c42": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "concentracao",
+   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 44% da função 12 - EDUCAÇÃO"
+  },
+  "2394a64ab596": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: TERRA SANTOS AMBIENTAL GESTAO DE RESIDUOS SOLIDOS SPE LTDA"
+  },
+  "28b24b423003": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: IRMANDADE SANTA CASA DE MISERICÓRDIA DE SANTOS"
+  },
+  "edf1e5c2435f": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "56a91a39dcee": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
+  },
+  "aa65eb4edc4b": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CET - COMPANHIA DE ENGENHARIA DE TRAFEGO DE S"
+  },
+  "897d2327409c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PRODESAN PROGRESSO E DESENVOLVIMENTO DE SANTOS SA"
+  },
+  "a68690620e0c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "2b3cb7ea556d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CAIXA ECONÔMICA FEDERAL"
+  },
+  "9e98a7024864": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "concentracao",
+   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 46% da função 28 - ENCARGOS ESPECIAIS"
+  },
+  "0afbe01ebfb8": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: VEROCHEQUE REFEICOES LTDA"
+  },
+  "27327a765c15": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "836a647df6ac": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SÃO PAULO TRIBUNAL DE JUSTIÇA"
+  },
+  "78e855b893fb": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO NACIONAL DE PESQUISA E GESTÃO EM SAÚDE - INSAÚDE"
+  },
+  "c5f2325eb0dc": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "26c0ae8f57ed": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "concentracao",
+   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 48% da função 08 - ASSISTÊNCIA SOCIAL"
+  },
+  "3b4695b55896": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "f544a37bb7ef": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: COHAB CIA HABITACAO DA BAIXADA SANTISTA"
+  },
+  "5a6f59074f92": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: MINISTERIO DA FAZENDA"
+  },
+  "04412e126c71": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA ECONOMICA FEDERAL"
+  },
+  "f730f3fa15d4": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "4d7102ae1c13": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "45c14b3ca12d": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "25417db50855": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "aed7837c5b7c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "dd28fe443c3f": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "03ce356608a4": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "0be11054e42c": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "2340b5208dfe": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "2e039aa9d812": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: ITAU UNIBANCO S.A."
+  },
+  "bc73a7f04f00": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "504770cb5cd0": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "e09387d71be0": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "180d423aba53": {
+   "primeiro_em": "2026-09-12",
+   "ultimo_em": "2026-09-12",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  }
+ },
+ "resolvidos": {}
+}

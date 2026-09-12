@@ -104,6 +104,21 @@
       .sev.alta { background: #fee4e2; color: var(--red); }
       .sev.media { background: #fef0c7; color: var(--amber); }
       .sev.baixa { background: #eef1f6; color: var(--slate); }
+      .alerta .classe, .alerta .estado { display: inline-block; font-size: 10.5px; font-weight: 700;
+        padding: 2px 7px; border-radius: 999px; margin-right: 8px; border: 1px solid var(--line);
+        color: var(--muted); letter-spacing: .02em; }
+      .alerta .estado.novo { border-color: var(--gold); color: var(--navy); background: rgba(201,168,76,.15); }
+      .alerta.classe-inconsistencia { border-left-style: dashed; }
+      .alerta.classe-contexto { opacity: .92; }
+      .alerta-docs { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+      .alerta-docs summary { cursor: pointer; }
+      .alerta-docs ul { margin: 6px 0 0; padding-left: 18px; }
+      .alerta-docs li { margin: 2px 0; }
+      .alerta-link { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--navy); }
+      .det-titulo { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600;
+        margin: 0 0 4px; line-height: 1.3; }
+      .det-explica { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
+      #cobertura { display: block; margin-top: 6px; }
 
       /* ── Detalhamento ─────────────────────────────────────────────── */
       .det-acoes-topo { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px;
@@ -275,7 +290,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=8"></script>
+    <script src="./comum.js?v=9"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -312,11 +327,11 @@
           <p class="resumo-texto"></p>
         </div>
         <div class="box">
-          <h3>Gasto mensal (R$)</h3>
+          <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
           <canvas id="ch-mensal"></canvas>
         </div>
         <div class="box" id="box-execucao" hidden>
-          <h3>Execução do orçamento — empenhado, liquidado e pago por mês</h3>
+          <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
           <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
           <canvas id="ch-execucao"></canvas>
         </div>
@@ -333,11 +348,27 @@
             <dd>O dinheiro saindo do caixa para o favorecido. É a visão usada na maior parte
               deste painel.</dd>
             <dt>Restos a pagar</dt>
-            <dd>Despesa empenhada num ano e paga em outro. Estoque alto pode indicar
-              dificuldade de caixa.</dd>
+            <dd>Despesa empenhada num ano e paga em outro, conforme o próprio portal classifica o
+              documento. Estoque alto pode indicar dificuldade de caixa.</dd>
             <dt>Extra-orçamentário</dt>
-            <dd>Saída sem empenho: retenções, consignações e repasses (ex.: imposto retido do
-              salário do servidor e recolhido à Receita).</dd>
+            <dd>Saída classificada assim pelo portal: retenções, consignações e repasses (ex.: imposto
+              retido do salário do servidor e recolhido à Receita), com ou sem nº de empenho.</dd>
+            <dt>Empenho não localizado na base</dt>
+            <dd>Pagamento que o portal classifica como orçamentário, mas cujo nº de empenho não veio
+              no endpoint de empenhos (em geral empenhos globais emitidos antes do início da base,
+              em dezembro do exercício anterior). Não é tratado como restos a pagar nem como
+              extra-orçamentário: fica visível como categoria própria.</dd>
+            <dt>Movimentação × execução</dt>
+            <dd><strong>Movimentação no período</strong> conta cada lançamento no mês da sua data
+              (é a visão dos gráficos acima). <strong>Execução dos empenhos</strong> mostra os
+              empenhos emitidos no período com tudo o que já foi liquidado e pago deles até a data
+              da base. Um empenho de janeiro pago em agosto aparece na movimentação de agosto e na
+              execução de janeiro — nunca duplicado no mesmo recorte.</dd>
+            <dt>Taxa de execução</dt>
+            <dd>Liquidado e pago em relação ao empenhado dos empenhos do exercício <em>cujo original
+              está na base</em>. Só é publicada como validada quando a cobertura dos três estágios é
+              completa e liquidado ≤ empenhado ≥ pago; senão aparece o motivo e as razões brutas, sem
+              teto de 100%.</dd>
             <dt>Função</dt>
             <dd>A grande área do gasto (Saúde, Educação, Urbanismo…). É o recorte usado como
               proxy de secretaria — o portal não informa a unidade orçamentária.</dd>
@@ -419,12 +450,20 @@
       <!-- ── Alertas ── -->
       <section class="painel" id="painel-alertas">
         <p class="hero-sub" style="color:var(--muted);margin:0 0 14px">
-          Sinais automáticos por regras (fracionamento, concentração, recorrência, favorecido novo,
-          crescimento anômalo, pessoa física em elemento sensível, picos, extra-orçamentário).
-          Clique num alerta para abri-lo já filtrado na aba de favorecidos. Cada alerta é um ponto de
-          partida para requerimento de informação — não é conclusão de irregularidade.
+          Sinais automáticos por regras, separados em três classes: <strong>contexto</strong>
+          (escala e recorrência — informação, não achado), <strong>anomalia a conferir</strong>
+          (padrão que merece requerimento de informação) e <strong>inconsistência de dados</strong>
+          (problema na origem ou na cobertura da base). Clique num alerta para abrir o recorte que o
+          sustenta. Nenhum alerta é conclusão de irregularidade.
         </p>
-        <div class="filtros" style="grid-template-columns: 1fr 1fr">
+        <p class="contagem" id="alertas-historico" hidden></p>
+        <div class="filtros" style="grid-template-columns: 1fr 1fr 1fr">
+          <select id="alerta-classe">
+            <option value="">Classe (todas)</option>
+            <option value="anomalia">Anomalia a conferir</option>
+            <option value="inconsistencia">Inconsistência de dados</option>
+            <option value="contexto">Contexto</option>
+          </select>
           <select id="alerta-tipo"><option value="">Tipo (todos)</option></select>
           <select id="alerta-sev">
             <option value="">Severidade (todas)</option>
@@ -474,7 +513,14 @@
       <!-- ── Detalhamento (íntegra pesquisável) ── -->
       <section class="painel" id="painel-detalhe">
         <div class="box">
-          <h3>Selecione o período</h3>
+          <h3>Escolha a visão e o período</h3>
+          <div class="periodo-acoes" id="det-visao" role="group" aria-label="Visão do detalhamento">
+            <button class="btn primario" data-visao="exe" type="button"
+              title="Uma linha por empenho emitido no período, com o liquidado e o pago acumulados">Execução dos empenhos</button>
+            <button class="btn" data-visao="mov" type="button"
+              title="Cada empenho, liquidação e pagamento no mês da sua própria data">Movimentação no período</button>
+          </div>
+          <p class="det-explica" id="det-visao-explica"></p>
           <div class="periodo-acoes" id="periodo-rapido"></div>
           <div class="meses-grid" id="meses-grid"></div>
           <div class="barra" style="margin-top:12px">
@@ -487,6 +533,7 @@
         </div>
 
         <div id="det-resultado" hidden>
+          <p class="det-titulo" id="det-titulo"></p>
           <div class="det-acoes-topo">
             <input id="det-q" type="search"
               placeholder="Buscar em qualquer coluna (favorecido, elemento, programa, nº empenho)..." />
@@ -503,6 +550,8 @@
             </details>
           </div>
           <div class="filtros det-filtros8" id="det-filtros">
+            <select id="f-fase" hidden><option value="">Fase (todas)</option></select>
+            <select id="f-especie" hidden><option value="">Espécie (todas)</option></select>
             <select id="f-tipo"><option value="">Tipo (todos)</option></select>
             <select id="f-unidade_gestora"><option value="">Unidade gestora (todas)</option></select>
             <select id="f-funcao"><option value="">Função / área (todas)</option></select>
@@ -557,10 +606,13 @@
             <button class="btn" id="det-proxima" type="button">Próxima ›</button>
           </div>
           <p class="det-confianca">
-            Fonte: Portal da Transparência de Santos — estágios de empenho, liquidação e pagamento
-            somados por empenho; clique numa linha para ver os documentos de cada estágio.
-            Linhas <strong>Restos a pagar</strong> = pagamento de empenho de exercício anterior;
-            <strong>Extra-orçamentário</strong> = saída sem empenho (retenções e repasses).
+            Fonte: Portal da Transparência de Santos. Na <strong>execução dos empenhos</strong> os
+            estágios são somados por empenho; na <strong>movimentação</strong> cada documento aparece
+            na sua data. Clique numa linha para ver os documentos de cada estágio.
+            Tipos, conforme o campo do próprio portal: <strong>Restos a pagar</strong> (empenho de
+            exercício anterior), <strong>Extra-orçamentário</strong> (retenções e repasses) e
+            <strong>Empenho não localizado na base</strong> (orçamentário cujo empenho não veio no
+            endpoint — não é inferido como restos).
             <a href="#painel-geral" id="det-glossario-link">O que significa cada coluna</a> ·
             dados brutos: <span id="det-json-links"></span>.
           </p>
@@ -574,6 +626,7 @@
         API pública de pagamentos. Base de descoberta/triagem; dados informativos e não oficiais.
         A íntegra linha-a-linha está na aba <strong>Detalhamento</strong> (pesquisável e exportável)
         e também na planilha <strong>despesas.xlsx</strong>. <span id="atualizado"></span>
+        <span id="cobertura"></span>
       </p>
     </div>
 
@@ -651,6 +704,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=13"></script>
+    <script src="./despesas-app.js?v=14"></script>
   </body>
 </html>
