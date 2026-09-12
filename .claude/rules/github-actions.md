@@ -67,6 +67,12 @@ Consequências a respeitar ao mexer neles:
   (ver `.claude/rules/proposituras.md`). Corrigido em despesas, endividamento, indicadores,
   proposituras e respostas-executivo em 2026-08; legis ganhou guarda de volume (≥ 3.000) e o
   crawler passou a sair 1 quando toda chamada falha, em 2026-09.
+- **Falha parcial não pode ficar verde.** O crawler de despesas (2026-09) sai **2** quando
+  alguma partição (estágio × mês) não foi atualizada (resposta inválida/suspeita) e 1 quando
+  nada funcionou; o `despesas.yml` publica o que ficou íntegro, escreve a lista no
+  `GITHUB_STEP_SUMMARY` e termina vermelho num passo final. A guarda de publicação é o
+  `despesas/verificar.py` (cobertura por partição, conservação, manifestos × arquivos, ranking ×
+  dossiês), não mais só o "total > R$ 4 bi".
 - **`.sqlite` em cache do Actions só é seguro se o crawl reconstruir o histórico sozinho.** O
   GitHub apaga cache sem acesso há 7 dias; cron semanal fica na corda bamba. Antes de mexer,
   conferir as duas propriedades juntas: *banco fora do git?* e *crawl limitado a um ano?* Se sim e

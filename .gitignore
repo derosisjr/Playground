@@ -28,6 +28,12 @@ despesas/despesas.sqlite
 despesas/despesas.xlsx
 despesas/despesas.csv
 despesas/_briefing.*
+# reconciliação (2026-09): backup do sqlite v1, base candidata e respostas brutas — nunca versionados
+despesas/_backup/
+despesas/_candidato/
+despesas/_bruto/
+despesas/*.sqlite.bak-*
+despesas/_relatorio-*.json
 diario-oficial/diario.sqlite
 diario-oficial/_*
 indicadores/indicadores.sqlite

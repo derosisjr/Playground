@@ -82,6 +82,10 @@ function render(d) {
   el("fav-nome").textContent = d.nome;
   el("fav-doc").textContent = d.documento || "documento não informado";
   el("fav-rank").textContent = d.rank ? `#${d.rank} entre os favorecidos do mandato` : "";
+  // grafias originais consolidadas na mesma identidade (CNPJ) — o total soma todas
+  const outras = (d.grafias || []).filter((g) => g !== d.nome);
+  const gEl = el("fav-grafias");
+  if (gEl) gEl.textContent = outras.length ? `também grafado na origem como: ${outras.join(" · ")}` : "";
   if (d.atualizado_em)
     el("fav-atualizado").textContent = "atualizado " + new Date(d.atualizado_em).toLocaleDateString("pt-BR");
 
@@ -104,10 +108,11 @@ function render(d) {
   const alertas = d.alertas || [];
   if (alertas.length) {
     el("box-alertas").hidden = false;
+    const classe = { contexto: "contexto", anomalia: "anomalia a conferir", inconsistencia: "inconsistência de dados" };
     el("lista-alertas").innerHTML = alertas.map((a) => `
       <div class="alerta ${esc(a.severidade)}">
-        <span class="sev">${esc(a.severidade)}</span><span class="tit">${esc(a.titulo)}</span>
-        <div class="det">${esc(a.detalhe)}</div>
+        <span class="sev">${esc(a.severidade)}</span>${a.classe ? `<span class="sev" style="opacity:.75">${esc(classe[a.classe] || a.classe)}</span>` : ""}<span class="tit">${esc(a.titulo)}</span>
+        <div class="det">${esc(a.detalhe)}${a.link ? ` <a href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}</div>
       </div>`).join("");
   }
 
@@ -154,16 +159,31 @@ async function indicePainel() {
   return IDX_PAINEL;
 }
 
-async function buscarLancamentos(nome, doc) {
+// Identidade canônica (Comum.identidadeFavorecido = espelho de formato.identidade_favorecido):
+// CNPJ completo reúne todas as grafias; CPF mascarado só com o mesmo nome. Links antigos
+// (?doc=&nome=) continuam válidos: com só o nome, casa pelo nome normalizado; com só o
+// documento, casa pelo documento.
+function casaFavorecido(nome, doc, chave) {
+  const ident = Comum.identidadeFavorecido;
+  const nn = Comum.nomeNormalizado;
+  if (chave && chave.startsWith("cnpj:")) return (n, d) => ident(n, d) === chave;
+  if (chave && doc && nome) return (n, d) => ident(n, d) === chave;
+  if (doc) return (n, d) => (d || "") === doc;
+  const alvo = nn(nome);
+  return (n, d) => nn(n) === alvo;
+}
+
+async function buscarLancamentos(nome, doc, chave) {
   const idx = await indicePainel();
   const meses = idx.meses || [];
+  chave = chave || Comum.identidadeFavorecido(nome, doc);
   let arquivos = meses.map((m) => m.arquivo);
   try {
     const r = await fetch("./despesas/dados/indice-favorecidos.json?v=" + (idx.atualizado_em || ""));
     if (r.ok) {
       const ind = await r.json();
-      const chave = (doc || "").replace(/\D/g, "") || semAcentoMin(nome);
-      const ms = ind.fav?.[chave];
+      // índice v2 é por identidade; v1 (dígitos) não casa → todos os meses
+      const ms = ind.versao === 2 ? ind.fav?.[chave] : null;
       if (ms) {
         const quer = new Set(ms);
         arquivos = meses.filter((m) => quer.has(m.ano * 100 + m.mes)).map((m) => m.arquivo);
@@ -174,10 +194,8 @@ async function buscarLancamentos(nome, doc) {
     fetch("./" + a + "?v=" + (idx.atualizado_em || "")).then((r) => r.json())));
   const campos = partes[0]?.campos || [];
   const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido");
-  const digs = (doc || "").replace(/\D/g, "");
-  const rows = partes.flatMap((p) => p.linhas).filter((r) =>
-    nome ? (r[iN] === nome && (!doc || (r[iD] || "") === doc))
-         : ((r[iD] || "").replace(/\D/g, "") === digs && digs));
+  const casa = casaFavorecido(nome, doc, chave);
+  const rows = partes.flatMap((p) => p.linhas).filter((r) => casa(r[iN], r[iD]));
   return { campos, rows };
 }
 
@@ -216,9 +234,13 @@ function renderLancTabela() {
     : String(a[sort.idx] ?? "").localeCompare(String(b[sort.idx] ?? "")) * dir);
 
   const soma = (c) => rows.reduce((s, r) => s + (r[campos.indexOf(c)] ?? 0), 0);
+  // execução POR EMPENHO: o pago segue o favorecido do empenho, então retenções e
+  // repasses recebidos sob empenhos de terceiros (ex.: IRRF da folha) não entram aqui —
+  // o total recebido é o dos cards (pagamentos pela identidade do favorecido)
   el("lanc-resumo").textContent =
-    `${rows.length.toLocaleString("pt-BR")} lançamento(s) · Empenhado ${compacto(soma("empenhado"))} · ` +
-    `Liquidado ${compacto(soma("liquidado"))} · Pago ${compacto(soma("pago"))}`;
+    `${rows.length.toLocaleString("pt-BR")} empenho(s) · Empenhado ${compacto(soma("empenhado"))} · ` +
+    `Liquidado ${compacto(soma("liquidado"))} · Pago ${compacto(soma("pago"))} — execução por empenho; ` +
+    `o total recebido (cards acima) soma os pagamentos ao favorecido, inclusive sob empenhos de terceiros`;
 
   const totalPag = Math.max(1, Math.ceil(rows.length / LANC_PAGINA));
   lanc.pag = Math.min(Math.max(1, lanc.pag), totalPag);
@@ -308,7 +330,7 @@ async function init() {
       return Comum.estadoErro("carregando", "Não foi possível carregar o dossiê agora. Verifique a conexão.", init);
     }
     try {
-      const { campos, rows } = await buscarLancamentos(d.nome, d.documento || "");
+      const { campos, rows } = await buscarLancamentos(d.nome, d.documento || "", d.chave);
       iniciarLancamentos(campos, rows);
     } catch (e) {
       el("lanc-carregando").textContent = "Falha ao carregar os lançamentos de execução.";
