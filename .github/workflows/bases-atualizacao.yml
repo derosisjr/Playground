@@ -19,6 +19,12 @@ on:
 permissions:
   contents: write
 
+# UTF-8 como codificação padrão do Python (vira o padrão no 3.15, out/2026):
+# os crawlers lidam com páginas em latin-1 e campos UTF-8 embutidos — sem isto,
+# um `open()` sem `encoding=` dependeria do locale do runner.
+env:
+  PYTHONUTF8: "1"
+
 jobs:
   atualizar:
     runs-on: ubuntu-latest
@@ -26,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # OBRIGATÓRIO: sem histórico completo o git log não vê nada
 
       - name: Configurar Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
