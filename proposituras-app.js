@@ -134,8 +134,9 @@ function linhaHTML(p) {
   const local = p.local_atual
     ? `<span class="sit-badge">${escapar(p.local_atual)}</span>`
     : "";
+  // abre no visor embutido (clique simples); Ctrl/⌘/botão do meio seguem para a nova aba
   const pdf = p.url_pdf
-    ? `<a class="pdf" href="${escapar(p.url_pdf)}" target="_blank" rel="noopener">PDF ↗</a>`
+    ? `<a class="pdf" href="${escapar(p.url_pdf)}" target="_blank" rel="noopener" data-titulo="${escapar(p.subtipo + " " + p.numero)}">PDF</a>`
     : "";
   const det = p.url_detalhes
     ? `<a class="det" href="${escapar(p.url_detalhes)}" target="_blank" rel="noopener">Detalhes ↗</a>`
@@ -166,6 +167,15 @@ function limparFiltros() {
   el("q").value = "";
   for (const id of ["subtipo", "ano", "autor", "local"]) el(id).value = "";
   aplicarFiltros();
+}
+
+// Clique simples no "PDF" abre o visor embutido; com Ctrl/⌘/Shift ou botão do
+// meio o navegador segue o href normalmente (nova aba).
+function abrirPdfNoVisor(e) {
+  const a = e.target.closest("a.pdf");
+  if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+  e.preventDefault();
+  Comum.visorPdf(a.href, a.dataset.titulo);
 }
 
 async function init() {
@@ -200,6 +210,7 @@ async function init() {
   });
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", limparFiltros);
+  el("corpo").addEventListener("click", abrirPdfNoVisor);
   aplicarFiltros();
 }
 
