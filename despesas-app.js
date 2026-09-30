@@ -21,11 +21,34 @@ function definirCores() {
 definirCores();
 window.addEventListener("temamudou", () => {
   definirCores();
-  if (DADOS) renderGraficos();
+  if (DADOS) renderGraficosSeguro();
 });
+
+// Chart.js vem de CDN: se não carregar (ou um gráfico falhar), o resto do painel —
+// abas, alertas, favorecidos, Detalhamento — tem de continuar funcionando
+function renderGraficosSeguro() {
+  if (window.Chart) {
+    try { renderGraficos(); return; } catch (e) { console.warn("gráficos:", e); }
+  }
+  document.querySelectorAll("#painel-geral canvas").forEach(cv => {
+    if (cv.nextElementSibling?.classList.contains("sem-grafico")) return;
+    cv.hidden = true;
+    cv.insertAdjacentHTML("afterend", '<p class="contagem sem-grafico">Gráfico indisponível — a biblioteca ' +
+      "de gráficos não carregou. Os números seguem nas outras seções e abas.</p>");
+  });
+}
 
 let DADOS = null;
 let favSort = { col: "valor", dir: "desc" };
+
+// botões de alternância: .primario (visual) + aria-pressed (leitor de tela anuncia qual está ativo)
+function marcarAlternancia(seletor, ativo) {
+  document.querySelectorAll(seletor).forEach(x => {
+    const on = !!ativo(x);
+    x.classList.toggle("primario", on);
+    x.setAttribute("aria-pressed", on);
+  });
+}
 
 // ── Formatação ───────────────────────────────────────────────────────────────
 // camada comum: uma escala de moeda para o site inteiro (R$ 8,61 bi · R$ 157,0 mi)
@@ -46,7 +69,7 @@ async function init() {
   }
   renderStats();
   renderResumo();
-  renderGraficos();
+  renderGraficosSeguro();
   renderR100();
   renderRecibo();
   ligarVistaFuncao();
@@ -66,11 +89,16 @@ async function init() {
   // links para a própria página (paleta Ctrl+K "#detalhe", rodapé) trocam de aba sem recarregar
   addEventListener("hashchange", () => {
     const h = location.hash.replace("#", "");
-    if (ABAS.includes(h)) selecionarAba(h);
+    if (!ABAS.includes(h)) return;
+    selecionarAba(h);
+    document.querySelector(".tabs")?.scrollIntoView({ block: "start", behavior: "smooth" });
   });
   ligarBusca();
   ligarOrdenacao();
   ligarModosFav();
+  // estado inicial dos grupos de alternância (o HTML só marca a classe .primario)
+  ["#fn-vista button", "#fav-modos button", "#det-metrica button"].forEach(s =>
+    marcarAlternancia(s, x => x.classList.contains("primario")));
   ligarDetalhe();
   ligarFicha();
   ligarFichaEmpenho();
@@ -133,13 +161,21 @@ function renderStats() {
              (r.meses_parciais?.length ? " · meses parciais fora" : "") }
     : { rotulo: `Total em ${ultimoAno || "—"}`, valor: compacto(t.por_ano?.[ultimoAno] || 0),
         sub: "exercício corrente" };
+  // "2025-01" → "jan/2025"
+  const mesAno = (s) => s ? `${MESES[+s.slice(5, 7)].toLowerCase()}/${s.slice(0, 4)}` : "—";
+  const nConferir = (DADOS.alertas || []).filter(aConferir).length;
   const cards = [
     { rotulo: "Total no período", valor: compacto(t.geral),
-      sub: `${p.de} a ${p.ate} · ≈ ${brl(perCapita)} por santista` },
+      sub: `${mesAno(p.de)} a ${mesAno(p.ate)} · ≈ ${brl(perCapita)} por santista` },
     cardAno,
-    { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
-    { rotulo: "Favorecidos", valor: t.favorecidos.toLocaleString("pt-BR"),
-      sub: t.grafias_favorecidos ? `identidades (CNPJ/CPF) · ${t.grafias_favorecidos.toLocaleString("pt-BR")} grafias` : "distintos" },
+    // o card que responde "e agora?": o último mês fechado contra o ritmo recente
+    mr ? { rotulo: `Pago em ${MESES[mr.mes].toLowerCase()}/${mr.ano}`,
+           valor: compacto(mr.valor) + deltaHTML(r.delta_media_pct, "vs média dos 12 meses anteriores"),
+           sub: "último mês completo · vs média de 12 meses" }
+       : { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
+    { rotulo: "Alertas a conferir",
+      valor: `<a href="#alertas" class="stat-link">${nConferir.toLocaleString("pt-BR")}</a>`,
+      sub: "anomalias e inconsistências → ver" },
   ];
   document.getElementById("stats").innerHTML = cards.map(c =>
     `<div class="stat"><div class="rotulo">${c.rotulo}</div>
@@ -228,7 +264,9 @@ function renderGraficos() {
   new Chart(document.getElementById("ch-fonte"), {
     type: "doughnut",
     data: { labels: ft.map(f => rotulo(f.fonte)), datasets: [{ data: ft.map(f => f.valor), backgroundColor: PALETA }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { font: { size: 11 } } },
+    // legenda embaixo no celular: à direita ela espremia o anel
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {
+        position: matchMedia("(max-width: 640px)").matches ? "bottom" : "right", labels: { font: { size: 11 } } },
       tooltip: { callbacks: { label: (c) => `${c.label}: ${brlc(c.raw)}` } } } },
   });
 
@@ -358,7 +396,7 @@ function renderFuncao() {
   new Chart(document.getElementById("ch-funcao"), {
     type: "bar",
     data: {
-      labels: fn.map(f => rotulo(f.funcao)),
+      labels: fn.map(f => nomeFuncao(f.funcao)),   // mesmo nome do "De cada R$ 100" e do mapa
       datasets: [{ data: fn.map(f => conv(f.valor)), backgroundColor: GOLD }],
     },
     options: chartOpts({ x: { ticks: { callback: tick } } }, "y", {
@@ -379,8 +417,7 @@ function ligarVistaFuncao() {
   document.querySelectorAll("#fn-vista button").forEach(b =>
     b.addEventListener("click", () => {
       fnVista = b.dataset.vista;
-      document.querySelectorAll("#fn-vista button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.vista === fnVista));
+      marcarAlternancia("#fn-vista button", x => x.dataset.vista === fnVista);
       renderFuncao();
     }));
 }
@@ -621,6 +658,7 @@ let PARES = null;
 let paresFuncao = "";   // função selecionada (chave completa "10 - Saúde")
 
 async function initPares() {
+  if (!window.Chart) return;   // sem a biblioteca o box fica oculto
   try {
     const r = await fetch("./despesas/benchmark.json?v=" + (DADOS.atualizado_em || ""));
     if (!r.ok) throw new Error(r.status);
@@ -928,10 +966,11 @@ function nomeExibicao(nomes) {
 
 // Fonte da tabela conforme modo + elemento (com memo p/ não reagregar a cada render).
 function fonteFav() {
-  // Sem elemento e em modo CNPJ/Todos: usa o agregado pronto do index (visão caixa/pago).
+  // Sem elemento e em modo CNPJ/Todos/Privados: usa o agregado pronto do index (visão caixa/pago).
   if (!favElemento && favModo !== "pf") {
     const all = DADOS.top_favorecidos || [];
     if (favModo === "pj") return all.filter(f => (f.documento || "").includes("/"));
+    if (favModo === "privados") return all.filter(f => !f.ente_publico);   // flag do export (formato.eh_ente_publico)
     return all;
   }
   // PF sem elemento: agregado leve pré-computado (dados/pf-resumo.json).
@@ -939,7 +978,14 @@ function fonteFav() {
   // Qualquer modo com elemento (ou PF sem o índice leve): agrega do detalhe.
   if (!FAV_DETALHE) return [];
   const chave = favModo + "|" + favElemento;
-  if (favMemo.chave !== chave) favMemo = { chave, lista: agregarFavDetalhe(predTipoFav(), favElemento || null) };
+  if (favMemo.chave !== chave) {
+    let lista = agregarFavDetalhe(predTipoFav(), favElemento || null);
+    if (favModo === "privados") {
+      const publicos = new Set(DADOS.entes_publicos || []);
+      lista = lista.filter(f => !publicos.has(f.chave));
+    }
+    favMemo = { chave, lista };
+  }
   return favMemo.lista;
 }
 
@@ -965,20 +1011,45 @@ function renderFavoridosTabela() {
   });
 
   const corpo = document.getElementById("corpo-fav");
-  document.getElementById("fav-vazio").hidden = linhas.length > 0;
+  const vazio = document.getElementById("fav-vazio");
+  vazio.hidden = linhas.length > 0;
+  if (!linhas.length) {
+    // a lista é só o top-300 por valor: "não encontrado" aqui não quer dizer "não recebeu" —
+    // o raio-X por documento/nome procura na base inteira
+    const dig = soDigitos(bruto);
+    const alvo = dig.length === 14 || dig.length === 11
+      ? "./favorecido.html?doc=" + encodeURIComponent(bruto) + "&nome="
+      : "./favorecido.html?doc=&nome=" + encodeURIComponent(bruto);
+    vazio.innerHTML = bruto
+      ? `Nenhum favorecido com “${esc(bruto)}” entre os ${fonte.length} maiores desta lista. ` +
+        `<a class="btn" href="${alvo}">Procurar na base inteira (raio-X) ↗</a>`
+      : "Nenhum favorecido encontrado.";
+  }
   const visiveis = linhas.slice(0, favVisiveis);
   corpo.innerHTML = visiveis.map(f => `
-    <tr class="fav-row" style="cursor:pointer" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}" data-chave="${esc(f.chave)}">
+    <tr class="fav-row" style="cursor:pointer" tabindex="0" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}" data-chave="${esc(f.chave)}">
       <td data-label="Favorecido">${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}${f.grafias.length > 1 ? ` · ${f.grafias.length} grafias na origem` : ""}</div>` : ""}</td>
       <td data-label="Valor total" class="r num">${brlc(f.valor)}</td>
       <td data-label="Pagamentos" class="r num">${f.qtd}</td>
       <td data-label="Meses" class="r num">${f.meses}</td>
     </tr>`).join("");
-  corpo.querySelectorAll(".fav-row").forEach(tr =>
-    tr.addEventListener("click", () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc, tr.dataset.chave)));
+  corpo.querySelectorAll(".fav-row").forEach(tr => {
+    const abrir = () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc, tr.dataset.chave);
+    tr.addEventListener("click", abrir);
+    tr.addEventListener("keydown", (e) => {   // linha focável: Enter/Espaço abre a ficha
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); }
+    });
+  });
+  document.querySelectorAll("#painel-favorecidos th[data-sort]").forEach(th => {
+    const ativa = th.dataset.sort === favSort.col;
+    if (ativa) th.setAttribute("aria-sort", favSort.dir === "asc" ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+    const b = th.querySelector("button");
+    if (b) b.dataset.seta = ativa ? (favSort.dir === "asc" ? " ▲" : " ▼") : "";
+  });
   document.getElementById("fav-mais").hidden = linhas.length <= favVisiveis;
   const rotuloModo = favModo === "pf" ? "pessoa(s) física(s)"
-    : favModo === "pj" ? "empresa(s)" : "favorecido(s)";
+    : favModo === "pj" ? "empresa(s)" : favModo === "privados" ? "fornecedor(es) privado(s)" : "favorecido(s)";
   document.getElementById("contagem").textContent =
     `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor` +
     (linhas.length > visiveis.length ? ` · exibindo ${visiveis.length}` : "");
@@ -1043,8 +1114,7 @@ function ligarModosFav() {
   document.querySelectorAll("#fav-modos button").forEach(b =>
     b.addEventListener("click", () => {
       favModo = b.dataset.modo;
-      document.querySelectorAll("#fav-modos button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.modo === favModo));
+      marcarAlternancia("#fav-modos button", x => x.dataset.modo === favModo);
       favVisiveis = FAV_LOTE;
       atualizarFav();
     }));
@@ -1103,6 +1173,7 @@ function ligarBusca() {
   });
 }
 function ligarOrdenacao() {
+  // o clique (ou Enter/Espaço no <button> do cabeçalho) sobe até o <th>
   document.querySelectorAll("th[data-sort]").forEach(th =>
     th.addEventListener("click", () => {
       const col = th.dataset.sort;
@@ -1197,8 +1268,7 @@ function definirVisao(v, opts) {
     detVisiveis = (detColsPorVisao[v] || VISOES[v].cols).slice();
     if (!opts?.manterMeses) renderSeletorMeses();
   }
-  document.querySelectorAll("#det-visao button").forEach(b =>
-    b.classList.toggle("primario", b.dataset.visao === detVisao));
+  marcarAlternancia("#det-visao button", b => b.dataset.visao === detVisao);
   DET_FILTROS_TODOS.forEach(c => {
     const el = document.getElementById("f-" + c);
     if (el) el.hidden = !filtrosAtivos().includes(c);
@@ -1326,28 +1396,38 @@ function mesesSelecionados() {
 }
 function atualizarSelInfo() {
   const sel = mesesSelecionados();
-  const total = sel.reduce((s, c) => {
+  let total = 0, bytes = 0;
+  sel.forEach(c => {
     const m = manifestoAtivo().find(x => x.arquivo === c.dataset.arquivo);
-    return s + (m ? m.n : 0);
-  }, 0);
-  document.getElementById("sel-info").textContent = sel.length
+    total += m ? m.n : 0;
+    if (!DET_PARTES.has(c.dataset.arquivo)) bytes += m?.bytes || 0;   // o que já veio não baixa de novo
+  });
+  // tamanho do download (manifesto.bytes) — abrir o mandato inteiro na movimentação passa de 40 MB
+  const mb = bytes >= 1e6 ? ` · download ≈ ${(bytes / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` +
+    (bytes > 15e6 ? " (pesado em celular/3G)" : "") : "";
+  document.getElementById("sel-info").textContent = (sel.length
     ? `${sel.length} mês(es) selecionado(s) — ~${total.toLocaleString("pt-BR")} ` +
-      (detVisao === "mov" ? "documentos (movimentação)" : "empenhos (execução)")
-    : "Nenhum mês selecionado.";
+      (detVisao === "mov" ? "documentos (movimentação)" : "empenhos (execução)") + mb
+    : "Nenhum mês selecionado.") + (detPendente ? ` · filtro a aplicar: ${detPendente.rotulo}` : "");
 }
 
-// Ponte agregado→transação (padrão Checkbook): marca todos os meses, aplica os
-// filtros pedidos e cai na aba já carregando. Usada pelo treemap e por alertas.
+// Ponte agregado→transação (padrão Checkbook), usada pelo treemap: marca todos os
+// meses da MOVIMENTAÇÃO (a mesma base do mapa: pago pela data do pagamento), deixa os
+// filtros PENDENTES e cai na aba sem baixar — o mandato inteiro passa de 40 MB, então
+// quem decide é a pessoa, vendo o tamanho em sel-info ("Carregar dados" aplica o filtro).
+let detPendente = null;
 function irParaDetalhe(filtros, visao) {
-  definirVisao(visao || "exe");
+  definirVisao(visao || "mov");
   document.querySelectorAll("#meses-grid input").forEach(c => c.checked = true);
+  detPendente = {
+    q: "", filtros: { ...Object.fromEntries(filtrosAtivos().map(c => [c, ""])), ...filtros },
+    vmin: "", vmax: "", ord: "", pg: 1, grp: "", met: "pago", cols: [], emp: "",
+    rotulo: Object.values(filtros).filter(Boolean).map(v => String(v).replace(/^\d+\s*-\s*/, "")).join(" · "),
+  };
   atualizarSelInfo();
   selecionarAba("detalhe");
   location.hash = "detalhe";
-  carregarDetalhe({
-    q: "", filtros: { ...Object.fromEntries(filtrosAtivos().map(c => [c, ""])), ...filtros },
-    vmin: "", vmax: "", ord: "", pg: 1, grp: "", met: detMetrica, cols: [], emp: "",
-  });
+  Comum.toast("Filtro preparado. Ajuste o período se quiser e clique em “Carregar dados”.");
 }
 
 // debounce ~150 ms (busca a cada tecla em 57k linhas)
@@ -1358,7 +1438,11 @@ function ligarDetalhe() {
     document.querySelectorAll("#meses-grid input").forEach(c => c.checked = false);
     atualizarSelInfo();
   });
-  document.getElementById("det-carregar").addEventListener("click", () => carregarDetalhe());
+  document.getElementById("det-carregar").addEventListener("click", () => {
+    const pendente = detPendente;   // filtro preparado pelo mapa do gasto
+    detPendente = null;
+    carregarDetalhe(pendente || undefined);
+  });
   document.getElementById("det-q").addEventListener("input", refiltrar);
   DET_FILTROS_TODOS.forEach(c => document.getElementById("f-" + c)
     ?.addEventListener("change", () => { detPagina = 1; filtrarDetalhe(); }));
@@ -1370,8 +1454,7 @@ function ligarDetalhe() {
   document.querySelectorAll("#det-metrica button").forEach(b =>
     b.addEventListener("click", () => {
       detMetrica = b.dataset.met;
-      document.querySelectorAll("#det-metrica button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.met === detMetrica));
+      marcarAlternancia("#det-metrica button", x => x.dataset.met === detMetrica);
       detSort = { col: detMetrica, dir: "desc" };
       detPagina = 1;
       montarCabecalho();
@@ -1468,8 +1551,7 @@ async function carregarDetalhe(estado) {
     }
     renderTituloDetalhe(sel.map(c => c.value));
     document.getElementById("det-grupo").value = detGrupo;
-    document.querySelectorAll("#det-metrica button").forEach(x =>
-      x.classList.toggle("primario", x.dataset.met === detMetrica));
+    marcarAlternancia("#det-metrica button", x => x.dataset.met === detMetrica);
     ligarColunas();
     montarCabecalho();
     filtrarDetalhe();
@@ -1480,8 +1562,11 @@ async function carregarDetalhe(estado) {
     carregando.hidden = true; res.hidden = false;
     if (estado?.emp) abrirFichaEmpenho(null, estado.emp);   // ficha deep-linkada
   } catch (e) {
-    carregando.hidden = false;
-    carregando.textContent = "Falha ao carregar os dados do período.";
+    console.warn("detalhamento:", e);
+    Comum.estadoErro(carregando, e.falhas?.length
+      ? `Não foi possível baixar ${e.falhas.length === 1 ? "o mês" : "os meses"} ${e.falhas.join(", ")}. ` +
+        "Os demais já estão guardados — a nova tentativa baixa só o que faltou."
+      : "Falha ao carregar os dados do período. Verifique a conexão.", () => carregarDetalhe(estado));
   }
 }
 
@@ -1518,11 +1603,12 @@ function popularFiltros() {
   });
 }
 
-function atualizarFacetas() {
+function atualizarFacetas(indices) {
+  indices = indices || indicesBase();
   filtrosAtivos().forEach(campo => {
     const i = detCampos.indexOf(campo);
     const sel = document.getElementById("f-" + campo);
-    const base = linhasFiltradas({ ignorar: campo });
+    const base = linhasFiltradas({ ignorar: campo, base: indices });
     const contagem = new Map();
     for (const r of base) {
       const v = r[i];
@@ -1537,14 +1623,11 @@ function atualizarFacetas() {
   });
 }
 
-// Uma passada de filtro; `ignorar` exclui um select (p/ contagem de facetas).
-function linhasFiltradas(opts) {
-  const ignorar = opts?.ignorar;
+// Índices das linhas que passam nas condições caras e comuns a todas as facetas
+// (busca textual, faixa de valor, identidade) — calculado UMA vez por filtragem;
+// antes a busca rodava de novo para cada select (~10 passadas em até 300 mil linhas).
+function indicesBase() {
   const termos = semAcento(document.getElementById("det-q").value || "").split(/\s+/).filter(Boolean);
-  const fixos = filtrosAtivos()
-    .filter(c => c !== ignorar)
-    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
-    .filter(([, v]) => v !== "");
   const iMet = detCampos.indexOf(detMetrica);
   const vmin = parseFloat(document.getElementById("det-vmin").value);
   const vmax = parseFloat(document.getElementById("det-vmax").value);
@@ -1553,14 +1636,33 @@ function linhasFiltradas(opts) {
     const iN = detCampos.indexOf("nome_favorecido"), iD = detCampos.indexOf("documento_favorecido");
     detIdent = detRows.map(r => Comum.identidadeFavorecido(r[iN], r[iD]));
   }
-  return detRows.filter((r, i) => {
-    if (detFav && detIdent[i] !== detFav) return false;
-    if (!fixos.every(([idx, v]) => r[idx] === v)) return false;
-    if (temMin && (r[iMet] ?? 0) < vmin) return false;
-    if (temMax && (r[iMet] ?? 0) > vmax) return false;
-    if (termos.length) { const hay = detNorm[i]; return termos.every(t => hay.includes(t)); }
-    return true;
-  });
+  const out = [];
+  for (let i = 0; i < detRows.length; i++) {
+    const r = detRows[i];
+    if (detFav && detIdent[i] !== detFav) continue;
+    if (temMin && (r[iMet] ?? 0) < vmin) continue;
+    if (temMax && (r[iMet] ?? 0) > vmax) continue;
+    if (termos.length && !termos.every(t => detNorm[i].includes(t))) continue;
+    out.push(i);
+  }
+  return out;
+}
+
+// Uma passada de filtro; `ignorar` exclui um select (p/ contagem de facetas);
+// `base` reaproveita os índices de indicesBase().
+function linhasFiltradas(opts) {
+  const ignorar = opts?.ignorar;
+  const base = opts?.base || indicesBase();
+  const fixos = filtrosAtivos()
+    .filter(c => c !== ignorar)
+    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
+    .filter(([, v]) => v !== "");
+  const out = [];
+  for (const i of base) {
+    const r = detRows[i];
+    if (fixos.every(([idx, v]) => r[idx] === v)) out.push(r);
+  }
+  return out;
 }
 
 function montarCabecalho() {
@@ -1571,8 +1673,10 @@ function montarCabecalho() {
     const aria = ordenada ? ` aria-sort="${detSort.dir === "asc" ? "ascending" : "descending"}"` : "";
     const destaque = c === detMetrica ? " met-ativa" : "";
     const cls = ` class="${DET_NUM.has(c) ? "r" : ""}${destaque}"`;
+    // sem aria-label no <th>: ele substituía o nome da coluna ao ler cada célula;
+    // a dica de ordenação vai no title
     return `<th data-col="${c}"${cls}${aria} tabindex="0" role="columnheader" ` +
-      `aria-label="Ordenar por ${DET_LABELS[c]}">${DET_LABELS[c]}${seta}</th>`;
+      `title="Ordenar por ${DET_LABELS[c]}">${DET_LABELS[c]}${seta}</th>`;
   }).join("");
   const ordenar = (th) => {
     const c = th.dataset.col;
@@ -1592,7 +1696,8 @@ function montarCabecalho() {
 }
 
 function filtrarDetalhe() {
-  detFiltradas = linhasFiltradas();
+  const indices = indicesBase();
+  detFiltradas = linhasFiltradas({ base: indices });
   // somas memoizadas (1× por filtragem, não por render)
   detSomas = { empenhado: 0, liquidado: 0, pago: 0 };
   const idx = { empenhado: detCampos.indexOf("empenhado"),
@@ -1611,7 +1716,7 @@ function filtrarDetalhe() {
     return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
   });
   if (detGrupo) montarGrupos(idx);
-  atualizarFacetas();
+  atualizarFacetas(indices);
   renderChips();
   renderDetTabela();
   sincronizarURL();
@@ -1779,6 +1884,9 @@ function renderRodapeTabela(totalPag, contagem) {
     `${detSort.dir === "asc" ? "crescente" : "decrescente"}.`;
 }
 
+// valor numérico arredondado ao centavo — número (não string de toFixed) p/ o CSV sair com vírgula
+const centavos = (v) => Math.round((v || 0) * 100) / 100;
+
 // Baixa um CSV do detalhe (rótulos amigáveis no cabeçalho; dialeto Excel pt-BR do Comum).
 function baixarCsv(campos, rows, nomeArquivo) {
   Comum.exportarCsv(nomeArquivo, campos.map(c => DET_LABELS[c] || c), rows);
@@ -1794,11 +1902,14 @@ function exportarDetCsv() {
   if (detGrupo) {   // modo agrupado: exporta os subtotais
     Comum.exportarCsv(`despesas-agrupado-${sufixo}.csv`,
       [DET_GRUPOS[detGrupo] || "grupo", "Documentos", "Empenhado", "Liquidado", "Pago", "Recorte"],
-      detGrupos.map(g => [g.chave, g.n, g.empenhado.toFixed(2), g.liquidado.toFixed(2), g.pago.toFixed(2), recorte]));
+      detGrupos.map(g => [g.chave, g.n, centavos(g.empenhado), centavos(g.liquidado), centavos(g.pago), recorte]));
     return;
   }
+  // códigos viram texto legível na planilha: fase "P" → "Pagamento", 202601 → "2026-01"
+  const iPer = detCampos.indexOf("periodo_empenho");
   Comum.exportarCsv(`despesas-${sufixo}.csv`, detCampos.map(c => DET_LABELS[c] || c).concat(["Recorte"]),
-    detFiltradas.map(r => r.concat([recorte])));
+    detFiltradas.map(r => r.map((v, i) => i === iPer && v ? `${String(v).slice(0, 4)}-${String(v).slice(4)}`
+                                              : rotuloValor(detCampos[i], v)).concat([recorte])));
 }
 
 // ── Ficha do empenho (modal, padrão CGU: documento + estágios vinculados) ────
@@ -1958,7 +2069,7 @@ function ligarFichaEmpenho() {
     Comum.exportarCsv("empenho-" + fichaEmpAtual.chave.split("|")[1].replace(/\W/g, "-") + ".csv",
       ["Fase", "Nº documento", "Data", "Valor", "Espécie"],
       fichaEmpAtual.eventos.map(ev =>
-        [FASE_NOME[ev[0]] || ev[0], ev[1], ev[2], ev[3].toFixed(2), ev[4] || "Original"]));
+        [FASE_NOME[ev[0]] || ev[0], ev[1], ev[2], centavos(ev[3]), ev[4] || "Original"]));
   });
 }
 
@@ -1977,9 +2088,17 @@ const DET_PARTES = new Map();
 async function carregarPartes(arquivos, aoBaixar) {
   const faltam = arquivos.filter(a => !DET_PARTES.has(a));
   arquivos.filter(a => DET_PARTES.has(a)).forEach(() => aoBaixar && aoBaixar());
-  await Promise.all(faltam.map(a =>
-    fetch("./" + a + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())
+  // allSettled: um mês fora do ar não descarta os que vieram (ficam no cache p/ a nova tentativa)
+  const res = await Promise.allSettled(faltam.map(a =>
+    fetch("./" + a + "?v=" + (DADOS.atualizado_em || ""))
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(p => { DET_PARTES.set(a, decodificarParte(p)); if (aoBaixar) aoBaixar(); })));
+  const falhas = faltam.filter((a, i) => res[i].status === "rejected");
+  if (falhas.length) {
+    const e = new Error("falha ao baixar " + falhas.join(", "));
+    e.falhas = falhas.map(a => a.split("/").pop().replace(".json", ""));
+    throw e;
+  }
   return arquivos.map(a => DET_PARTES.get(a));
 }
 
@@ -2028,7 +2147,9 @@ async function abrirFichaFavorecido(nome, documento, chave) {
     ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
     : "./favorecido.html?doc=" + encodeURIComponent(documento || "") +
       "&nome=" + encodeURIComponent(nome || "");
-  document.getElementById("fav-carregando").hidden = false;
+  const carregandoFav = document.getElementById("fav-carregando");
+  carregandoFav.hidden = false;
+  carregandoFav.textContent = "Carregando…";   // limpa um erro de tentativa anterior
   document.getElementById("fav-conteudo").hidden = true;
   try {
     let campos, rows;
@@ -2053,7 +2174,9 @@ async function abrirFichaFavorecido(nome, documento, chave) {
     document.getElementById("fav-carregando").hidden = true;
     document.getElementById("fav-conteudo").hidden = false;
   } catch (e) {
-    document.getElementById("fav-carregando").textContent = "Falha ao carregar os lançamentos.";
+    console.warn("ficha do favorecido:", e);
+    Comum.estadoErro("fav-carregando", "Falha ao carregar os lançamentos. Verifique a conexão.",
+      () => abrirFichaFavorecido(nome, documento, chave));
   }
 }
 

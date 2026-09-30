@@ -200,6 +200,14 @@ def preparar_identidades(conn) -> dict:
     return ident
 
 
+def _marcar_ente_publico(d: dict) -> dict:
+    """Flag p/ o painel separar fornecedores de entes públicos/repasses (Município,
+    IPREV, CAPEP…) — a heurística única é formato.eh_ente_publico; o JS não a replica."""
+    if eh_ente_publico(d.get("nome")):
+        d["ente_publico"] = True
+    return d
+
+
 def _fav_campos(ident: dict, chave: str) -> dict:
     o = ident.get(chave) or {"nome": "", "documento": "", "slug": slug_favorecido(chave), "grafias": []}
     d = {"nome": o["nome"], "documento": o["documento"], "chave": chave, "slug": o["slug"]}
@@ -353,8 +361,8 @@ def agregados(conn, ident: dict | None = None) -> dict:
         "por_elemento": [{"elemento": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]} for r in por_elemento],
         "por_fonte": [{"fonte": r["k"], "valor": round(r["s"], 2)} for r in por_fonte],
         "por_unidade": [{"unidade": r["k"], "valor": round(r["s"], 2)} for r in por_unidade],
-        "top_favorecidos": [
-            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"])
+        "top_favorecidos": [_marcar_ente_publico(
+            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"]))
             for r in favorecidos
         ],
         "servico_divida": {
@@ -1428,6 +1436,7 @@ def exportar_movimento_mensal(rows: list[dict]) -> list[dict]:
                     separators=(",", ":"))
         soma = {c: round(sum((r[c] or 0) for r in por_mes[periodo]), 2) for c in ("empenhado", "liquidado", "pago")}
         manifesto.append({"ano": ano, "mes": mes, "n": len(linhas), **soma,
+                          "bytes": os.path.getsize(os.path.join(MOV_DIR, arquivo)),
                           "arquivo": f"despesas/dados/mov/{arquivo}"})
     return manifesto
 
@@ -1489,6 +1498,7 @@ def exportar_detalhe_mensal(rows: list[dict]) -> list[dict]:
                           "empenhado": round(sum((l[iE] or 0) for l in linhas), 2),
                           "liquidado": round(sum((l[iL] or 0) for l in linhas), 2),
                           "valor": round(sum((l[iP] or 0) for l in linhas), 2),   # pago acumulado
+                          "bytes": os.path.getsize(os.path.join(DADOS_DIR, arquivo)),  # estimativa antes de baixar
                           "arquivo": f"despesas/dados/{arquivo}"})
     return manifesto
 
@@ -1660,6 +1670,9 @@ def main():
     indice = agregados(conn, ident)
     indice["cobertura"] = cob
     indice["execucao"] = execucao_agregada(conn, cob)
+    # identidades classificadas como ente público (p/ o filtro "fornecedores privados"
+    # também quando o painel reagrega do detalhe por elemento)
+    indice["entes_publicos"] = sorted(k for k, o in ident.items() if eh_ente_publico(o["nome"]))
     indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
     indice["alertas"] = alertas(conn, ident, cob, indice["execucao"], contagem=indice["alertas_regras"])
     tops = {f["slug"] for f in indice["top_favorecidos"]}

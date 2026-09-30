@@ -198,11 +198,28 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=16`,
-`retrospectiva-app.js?v=7`, `favorecido-app.js?v=8`, `comum.js?v=9` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=17` (com `defer`, como o Chart.js),
+`retrospectiva-app.js?v=7`, `favorecido-app.js?v=8`, `comum.js?v=10` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
+
+**UI do painel (Lote D3, 2026-09-30).** Cards: total do período, acumulado jan–M (YoY), **último
+mês completo** vs média de 12 meses (`resumo.mes_ref`/`delta_media_pct` — o hub usa o mesmo mês)
+e **alertas a conferir** (link → `#alertas`). Chart.js/treemap e o app carregam com `defer`;
+`renderGraficosSeguro` mantém abas/alertas/tabelas funcionando se o CDN cair. Manifestos `meses`/
+`meses_movimento` trazem **`bytes`** por arquivo → `sel-info` mostra "download ≈ X MB" (só o que
+não está em `DET_PARTES`). `carregarPartes` usa `allSettled` + `r.ok`; a falha nomeia os meses e
+oferece "Tentar de novo" (`Comum.estadoErro`) baixando só o que faltou. Facetas: `indicesBase()`
+roda a busca/faixa/identidade UMA vez por filtragem. Favorecidos: modo **"Fornecedores
+privados"** (flag `ente_publico` no `top_favorecidos` e lista `entes_publicos` de chaves no
+índice — a heurística continua só em `formato.eh_ente_publico`), busca sem resultado oferece o
+raio-X na base inteira (o ranking é só o top-300), linhas focáveis (Enter abre a ficha),
+cabeçalhos com `<button>` + `aria-sort`, toggles com `aria-pressed` (`marcarAlternancia`). O mapa
+do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da movimentação e deixa
+o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
+extenso e período AAAA-MM. Modo escuro: textos em `var(--ink)` e vermelhos/âmbar claros
+(≥ 4,5:1). Service worker: dados de despesas network-first (`sw.js`, `CACHE` v3).
 
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 
