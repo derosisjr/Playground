@@ -198,7 +198,7 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=17` (com `defer`, como o Chart.js),
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=18` (com `defer`, como o Chart.js),
 `retrospectiva-app.js?v=7`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
@@ -243,6 +243,23 @@ ponte para o Detalhamento com `dfav` + meses em que recebeu. Rota `?doc=&nome=`:
 identidade (CNPJ → redireciona para `?f=` se houver dossiê; CPF mascarado sem nome → pede o
 nome; nome ambíguo → lista para escolher) e monta o dossiê com os **pagamentos reais** da
 movimentação (fase P, pela data do pagamento) + alertas do índice pela `chave`.
+
+**Análises (Lote D5, 2026-09-30).** No índice: **`prazos_pagamento`** (`prazos_pagamento()`: pagamento
+orçamentário — inclui restos a pagar, exclui extra — casado com a liquidação por UG + empenho + nº
+da liquidação (MIN(data) das liquidações não anuladas); por ano: mediana, p90 e faixas (antes da
+liquidação / ≤ 1 / 2–7 / 8–30 / 31–90 / > 90 dias); fornecedores com ≥ 10 pagamentos e ≥ R$ 1 mi,
+entes públicos fora: 10 mais rápidos e 10 mais lentos. Em 2025–26: mediana 6–7 dias, p90 21 dias);
+**`anulacoes`** (série mensal, por ano com % do empenhado, top 15 favorecidos; anulado > empenhado
+na base = `original_fora_da_base`, sem %); **`fim_de_exercicio`** (dezembro × média jan–nov de
+empenhado novo, liquidado, pago e anulado, só anos com dezembro completo — dez/2025: liquidado
+1,64×, anulado 5,9×); **`por_funcao_orcamentario`** (base do "De cada R$ 100" e do recibo — sem
+o extra-orçamentário, R$ 1,2 bi que só transita pelo caixa); **`por_programa`** (PPA, top 15, não
+é secretaria); **`por_fonte`** junta o extra-orçamentário numa linha (`FONTE_EXTRA`: a origem o
+grava sem o prefixo AUDESP do grupo de fonte e parecia fonte duplicada). Regras novas
+**`prazo_rapido`** (mediana ≤ 1 dia com a geral ≥ 5) e **`prazo_lento`** (mediana ≥ 60 dias) —
+anomalia média, triagem do art. 141 da Lei 14.133. `formato.eh_ente_publico` passou a incluir
+CET-Santos, PRODESAN, COHAB e SECRETARIA (a COHAB com 100% de Habitação era "anomalia") e a
+excluir a SABESP (privatizada em jul/2024). Export completo ~110 s (prazos ~22 s).
 
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 
