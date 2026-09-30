@@ -109,18 +109,30 @@ function deltaHTML(pct, rotulo) {
     `${pos ? "▲" : "▼"} ${Math.abs(pct)}%</span>`;
 }
 
+// Meses que a origem ainda está publicando (resumo.meses_parciais, "AAAA-MM"):
+// ficam fora de comparações e aparecem tracejados nos gráficos.
+function mesParcial(ano, mes) {
+  return (DADOS.resumo?.meses_parciais || []).includes(`${ano}-${String(mes).padStart(2, "0")}`);
+}
+
 function renderStats() {
   const t = DADOS.totais, p = DADOS.periodo, r = DADOS.resumo;
   const anos = Object.keys(t.por_ano || {}).sort();
   const ultimoAno = anos[anos.length - 1];
   const perCapita = t.geral / POP_SANTOS;
-  const yoy = r?.yoy; // acumulado do ano vs mesmo período do ano anterior
+  const yoy = r?.yoy, mr = r?.mes_ref; // acumulado jan–mês de referência vs mesmo período do ano anterior
+  const per = mr ? `jan–${MESES[mr.mes].toLowerCase()}` : "";
+  const cardAno = yoy && mr
+    ? { rotulo: `Acumulado ${per}/${mr.ano}`,
+        valor: compacto(yoy.atual) + deltaHTML(yoy.pct, `vs ${per}/${mr.ano - 1}`),
+        sub: `vs ${compacto(yoy.anterior)} em ${per}/${mr.ano - 1}` +
+             (r.meses_parciais?.length ? " · meses parciais fora" : "") }
+    : { rotulo: `Total em ${ultimoAno || "—"}`, valor: compacto(t.por_ano?.[ultimoAno] || 0),
+        sub: "exercício corrente" };
   const cards = [
     { rotulo: "Total no período", valor: compacto(t.geral),
       sub: `${p.de} a ${p.ate} · ≈ ${brl(perCapita)} por santista` },
-    { rotulo: `Total em ${ultimoAno || "—"}`,
-      valor: compacto(t.por_ano?.[ultimoAno] || 0) + deltaHTML(yoy?.pct, "vs mesmo período do ano anterior"),
-      sub: yoy ? `vs ${compacto(yoy.anterior)} no mesmo período de ${ultimoAno - 1}` : "exercício corrente" },
+    cardAno,
     { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
     { rotulo: "Favorecidos", valor: t.favorecidos.toLocaleString("pt-BR"),
       sub: t.grafias_favorecidos ? `identidades (CNPJ/CPF) · ${t.grafias_favorecidos.toLocaleString("pt-BR")} grafias` : "distintos" },
@@ -162,29 +174,33 @@ function renderGraficos() {
   // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque;
   // linha de média móvel 3m dá a tendência sem o serrilhado dos pagamentos.
   const serie = DADOS.series_mensais;
-  const desvios = desviosSerie(serie);
+  const parcial = serie.map(s => mesParcial(s.ano, s.mes));
+  const desvios = desviosSerie(serie).map((d, i) => parcial[i] ? null : d);
   const anomalo = desvios.map(d => d != null && Math.abs(d) > 25);
-  const mm3 = serie.map((s, i) => i < 2 ? null :
+  const mm3 = serie.map((s, i) => i < 2 || parcial[i] ? null :
     (serie[i - 2].valor + serie[i - 1].valor + s.valor) / 3);
   const optsMensal = chartOpts({ y: eixoReais() }, undefined, {
-    afterLabel: (c) => c.datasetIndex === 0 && anomalo[c.dataIndex]
-      ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
-      : "",
+    afterLabel: (c) => c.datasetIndex !== 0 ? ""
+      : parcial[c.dataIndex] ? "mês parcial — a origem ainda está publicando; fora das comparações"
+      : anomalo[c.dataIndex]
+        ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
+        : "",
   });
   optsMensal.plugins.legend = { display: true, labels: { boxWidth: 18, font: { size: 12 } } };
   new Chart(document.getElementById("ch-mensal"), {
     type: "line",
     data: {
-      labels: serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
+      labels: serie.map((s, i) => `${MESES[s.mes]}/${String(s.ano).slice(2)}${parcial[i] ? "*" : ""}`),
       datasets: [{
         label: "Pago no mês",
         data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: FILL_SERIE,
         fill: true, tension: .25, borderWidth: 2,
-        pointRadius: anomalo.map(a => a ? 5 : 2),
+        segment: { borderDash: (ctx) => parcial[ctx.p1DataIndex] ? [4, 4] : undefined },
+        pointRadius: anomalo.map((a, i) => a ? 5 : parcial[i] ? 3 : 2),
         pointBackgroundColor: anomalo.map((a, i) =>
-          a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : NAVY),
+          a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : parcial[i] ? "transparent" : NAVY),
         pointBorderColor: anomalo.map(a => a ? "#fff" : NAVY),
-        pointBorderWidth: anomalo.map(a => a ? 1.5 : 0),
+        pointBorderWidth: anomalo.map((a, i) => a ? 1.5 : parcial[i] ? 1.5 : 0),
       }, {
         label: "Média móvel (3 m)",
         data: mm3, borderColor: GOLD, borderDash: [5, 4], borderWidth: 2,
@@ -221,11 +237,19 @@ function renderGraficos() {
   });
 
   // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
-  const ult = serie[serie.length - 1];
+  const ult = [...serie].reverse().find(s => !mesParcial(s.ano, s.mes));
+  const nParciais = parcial.filter(Boolean).length;
+  document.querySelectorAll(".nota-parcial").forEach(el => {
+    el.hidden = !nParciais;
+    el.textContent = "* Mês parcial: o portal publica com semanas de atraso — o trecho tracejado " +
+                     "ainda vai subir e fica fora das comparações.";
+  });
   Comum.chartAcessivel("ch-mensal",
-    `Total pago por mês, com média móvel de três meses. Último mês (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}. Pontos fora do padrão são detalhados na aba Alertas.`,
+    `Total pago por mês, com média móvel de três meses. Último mês completo (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}.` +
+    (nParciais ? ` ${nParciais} mês(es) seguinte(s) ainda parcial(is) na origem.` : "") +
+    " Pontos fora do padrão são detalhados na aba Alertas.",
     ["Mês", "Pago", "Média 3 m", "Desvio vs média 12m"],
-    serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor),
+    serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}${parcial[i] ? " (parcial)" : ""}`, compacto(s.valor),
       mm3[i] == null ? "—" : compacto(mm3[i]),
       desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]));
   Comum.chartAcessivel("ch-fonte",
@@ -273,25 +297,31 @@ function renderExecucao() {
   document.getElementById("exe-taxas").textContent = partes.join(" · ");
 
   const s = exe.serie;
-  const labels = s.map(x => `${MESES[x.mes]}/${String(x.ano).slice(2)}`);
+  const parcial = s.map(x => mesParcial(x.ano, x.mes));
+  const labels = s.map((x, i) => `${MESES[x.mes]}/${String(x.ano).slice(2)}${parcial[i] ? "*" : ""}`);
+  const segParcial = (padrao) => ({ borderDash: (ctx) => parcial[ctx.p1DataIndex] ? [2, 3] : padrao });
   new Chart(document.getElementById("ch-execucao"), {
     type: "line",
     data: {
       labels,
       datasets: [
         { label: "Empenhado", data: s.map(x => x.empenhado), borderColor: PALETA[2],
-          borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .25 },
+          borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .25, segment: segParcial([6, 4]) },
         { label: "Liquidado", data: s.map(x => x.liquidado), borderColor: GOLD,
-          borderWidth: 2, pointRadius: 0, tension: .25 },
+          borderWidth: 2, pointRadius: 0, tension: .25, segment: segParcial(undefined) },
         { label: "Pago", data: s.map(x => x.pago), borderColor: NAVY,
-          backgroundColor: FILL_SERIE, fill: true, borderWidth: 2.5, pointRadius: 0, tension: .25 },
+          backgroundColor: FILL_SERIE, fill: true, borderWidth: 2.5, pointRadius: 0, tension: .25,
+          segment: segParcial(undefined) },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: true, labels: { boxWidth: 18, font: { size: 12 } } },
-        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}` } },
+        tooltip: { callbacks: {
+          label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}`,
+          footer: (itens) => itens.length && parcial[itens[0].dataIndex] ? "mês parcial — a origem ainda está publicando" : "",
+        } },
       },
       scales: { y: eixoReais() },
     },
@@ -301,7 +331,7 @@ function renderExecucao() {
     "Empenhado (compromisso assumido), liquidado (entrega atestada) e pago (dinheiro que saiu) " +
     "em cada mês. " + (partes.length ? partes.join("; ") + "." : ""),
     ["Mês", "Empenhado", "Liquidado", "Pago"],
-    s.map((x, i) => [labels[i], x.empenhado == null ? "não carregado" : compacto(x.empenhado),
+    s.map((x, i) => [labels[i].replace("*", " (parcial)"), x.empenhado == null ? "não carregado" : compacto(x.empenhado),
       x.liquidado == null ? "não carregado" : compacto(x.liquidado), x.pago == null ? "não carregado" : compacto(x.pago)]));
 }
 
@@ -1179,7 +1209,7 @@ function renderSeletorMeses() {
   const rapido = document.getElementById("periodo-rapido");
   rapido.innerHTML =
     anos.map(a => `<button class="btn" data-ano="${a}" type="button">${a} inteiro</button>`).join("") +
-    `<button class="btn" data-ultimo="1" type="button">Último mês</button>`;
+    `<button class="btn" data-ultimo="1" type="button">Último mês completo</button>`;
 
   const grid = document.getElementById("meses-grid");
   grid.innerHTML = meses.map(m => `
@@ -1192,7 +1222,11 @@ function renderSeletorMeses() {
   rapido.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     const chks = grid.querySelectorAll("input[type=checkbox]");
     if (b.dataset.ultimo) {
-      chks.forEach((c, i) => c.checked = i === chks.length - 1);
+      // último mês completo (resumo.mes_ref); sem ele, o último do manifesto
+      const mr = DADOS.resumo?.mes_ref;
+      const alvo = mr ? `${mr.ano}-${String(mr.mes).padStart(2, "0")}` : null;
+      const tem = alvo && [...chks].some(c => c.value === alvo);
+      chks.forEach((c, i) => c.checked = tem ? c.value === alvo : i === chks.length - 1);
     } else {
       const ano = b.dataset.ano;
       chks.forEach(c => c.checked = c.value.startsWith(ano + "-"));
@@ -1845,7 +1879,7 @@ async function carregarPartes(arquivos, aoBaixar) {
   arquivos.filter(a => DET_PARTES.has(a)).forEach(() => aoBaixar && aoBaixar());
   await Promise.all(faltam.map(a =>
     fetch("./" + a + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())
-      .then(p => { DET_PARTES.set(a, p); if (aoBaixar) aoBaixar(); })));
+      .then(p => { DET_PARTES.set(a, decodificarParte(p)); if (aoBaixar) aoBaixar(); })));
   return arquivos.map(a => DET_PARTES.get(a));
 }
 

@@ -178,8 +178,14 @@ ficha do empenho com estágios, CSV com recorte). `favorecido.html` (raio-X) tem
 favorecido; com CNPJ consolida todas as grafias; só nome casa pelo nome normalizado); a seção
 "Lançamentos de execução" é **execução por empenho** — o pago segue o favorecido do empenho, por
 isso difere do total recebido (retenções pagas ao IPS sob empenhos da folha, p. ex.); o texto da
-página diz isso. `retrospectiva.html` usa só o índice. Assets versionados: `despesas-app.js?v=14`,
-`favorecido-app.js?v=7`, `comum.js?v=9` (bump em todas as páginas ao mudar). Carga padrão =
+página diz isso. `retrospectiva.html` usa só o índice. **Meses parciais** (`resumo.meses_parciais`,
+posteriores ao último mês completo): no painel ficam tracejados e marcados com `*` nas séries, fora
+do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
+"Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
+total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=15`,
+`retrospectiva-app.js?v=6`, `favorecido-app.js?v=7`, `comum.js?v=9` (bump em todas as páginas ao
+mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
 

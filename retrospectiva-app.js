@@ -23,12 +23,21 @@ function contarAte(elemento, valor, fmt) {
   })(t0);
 }
 
+// meses completos do ano: exclui os que a origem ainda publica (resumo.meses_parciais) —
+// um mês pela metade viraria um "tombo" falso no fim do gráfico e o "mês mais leve".
+// Índice antigo sem meses_parciais: exclui só o mês corrente.
+function serieDoAno() {
+  const parciais = DADOS.resumo?.meses_parciais;
+  const hoje = new Date();
+  return DADOS.series_mensais.filter((s) => s.ano === ANO && (parciais
+    ? !parciais.includes(`${s.ano}-${String(s.mes).padStart(2, "0")}`)
+    : !(s.ano === hoje.getFullYear() && s.mes === hoje.getMonth() + 1)));
+}
+
 // gráfico da série do ano desenhado progressivamente (canvas puro)
 function desenharSerie(progresso) {
   const cv = el("ch-serie");
-  const hoje = new Date();
-  const serie = DADOS.series_mensais.filter((s) =>
-    s.ano === ANO && !(s.ano === hoje.getFullYear() && s.mes === hoje.getMonth() + 1));
+  const serie = serieDoAno();
   if (!serie.length) return;
   const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
   cv.width = w * dpr; cv.height = h * dpr;
@@ -66,19 +75,22 @@ function animarSerie() {
 }
 
 function render() {
-  // exclui o mês corrente (parcial) — um mês pela metade viraria um "tombo" falso no fim do gráfico
-  const hoje = new Date();
-  const serieAno = DADOS.series_mensais.filter((s) =>
-    s.ano === ANO && !(s.ano === hoje.getFullYear() && s.mes === hoje.getMonth() + 1));
-  const total = DADOS.totais.por_ano?.[String(ANO)] ??
-    serieAno.reduce((t, s) => t + s.valor, 0);
+  // total = soma dos meses completos, o mesmo recorte do texto ("de janeiro a <mês>")
+  const serieAno = serieDoAno();
+  const total = serieAno.reduce((t, s) => t + s.valor, 0);
   const parcial = serieAno.length < 12;
   const ultimoMes = serieAno.length ? serieAno[serieAno.length - 1].mes : 0;
+  const foraDoAno = (DADOS.resumo?.meses_parciais || []).some((m) => m.startsWith(ANO + "-"));
 
   el("t-ano").textContent = ANO;
   el("t-abre").textContent = parcial
     ? `De janeiro a ${MESES_N[ultimoMes]}, o caixa da Prefeitura já desembolsou:`
     : "Ao longo de doze meses, o caixa da Prefeitura desembolsou:";
+  if (foraDoAno && DADOS.dados_ate) {
+    const [a, m, d] = DADOS.dados_ate.split("-");
+    el("t-fonte").textContent = `Fonte: Portal da Transparência de Santos (visão caixa/pago) · dados até ` +
+      `${d}/${m}/${a}; meses que o portal ainda está publicando ficam de fora · role para descer ↓`;
+  }
 
   // maior e menor mês
   if (serieAno.length >= 2) {

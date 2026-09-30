@@ -329,11 +329,13 @@
         <div class="box">
           <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
           <canvas id="ch-mensal"></canvas>
+          <p class="contagem nota-parcial" hidden></p>
         </div>
         <div class="box" id="box-execucao" hidden>
           <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
           <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
           <canvas id="ch-execucao"></canvas>
+          <p class="contagem nota-parcial" hidden></p>
         </div>
         <details class="entenda">
           <summary>Entenda os termos deste painel</summary>
@@ -704,6 +706,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=14"></script>
+    <script src="./despesas-app.js?v=15"></script>
   </body>
 </html>
