@@ -821,11 +821,14 @@ def anos_detalhe(conn, ident: dict | None = None) -> dict:
               for x in _q(conn,
                   "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
                   "FROM pagamentos WHERE ano=? GROUP BY k ORDER BY s DESC LIMIT 8", a)]
-        fav = [dict(_fav_campos(ident, x["k"]), valor=round(x["s"], 2))
-               for x in _q(conn,
-                   f"SELECT fi.chave k, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
-                   f"WHERE p.ano=? GROUP BY fi.chave ORDER BY s DESC LIMIT 6", a)]
-        out[str(a)] = {"por_funcao": fn, "top_favorecidos": fav}
+        todos = [_marcar_ente_publico(dict(_fav_campos(ident, x["k"]), valor=round(x["s"], 2)))
+                 for x in _q(conn,
+                     f"SELECT fi.chave k, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
+                     f"WHERE p.ano=? GROUP BY fi.chave ORDER BY s DESC LIMIT 60", a)]
+        # a lista geral é liderada por Município/IPREV/CAPEP (fluxos internos): os
+        # fornecedores privados vêm à parte
+        out[str(a)] = {"por_funcao": fn, "top_favorecidos": todos[:6],
+                       "top_fornecedores": [f for f in todos if not f.get("ente_publico")][:5]}
     return out
 
 

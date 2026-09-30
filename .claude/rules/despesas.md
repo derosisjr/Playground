@@ -199,7 +199,7 @@ do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan�
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
 ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=18` (com `defer`, como o Chart.js),
-`retrospectiva-app.js?v=7`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
+`retrospectiva-app.js?v=8`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
@@ -259,7 +259,10 @@ grava sem o prefixo AUDESP do grupo de fonte e parecia fonte duplicada). Regras 
 **`prazo_rapido`** (mediana ≤ 1 dia com a geral ≥ 5) e **`prazo_lento`** (mediana ≥ 60 dias) —
 anomalia média, triagem do art. 141 da Lei 14.133. `formato.eh_ente_publico` passou a incluir
 CET-Santos, PRODESAN, COHAB e SECRETARIA (a COHAB com 100% de Habitação era "anomalia") e a
-excluir a SABESP (privatizada em jul/2024). Export completo ~110 s (prazos ~22 s).
+excluir a SABESP (privatizada em jul/2024). Export completo ~110 s (prazos ~22 s). Retrospectiva:
+`anos_detalhe[ano].top_fornecedores` (top 5 sem entes públicos) numa lista à parte, entes marcados
+na lista geral, comparação com o mesmo período do ano anterior (`resumo.yoy`), gráfico com
+`Comum.chartAcessivel` e redesenho no resize.
 
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 
