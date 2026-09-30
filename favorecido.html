@@ -59,6 +59,9 @@
       .alerta.alta { border-left-color: var(--red); }
       .alerta .sev { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: .1em; color: var(--red); margin-right: 8px; }
+      .alerta .sev.classe { color: var(--muted); }
+      .alerta.classe-contexto { border-left-color: var(--line); }
+      .alerta.classe-contexto .sev { color: var(--muted); }   /* contexto não é achado: sem vermelho */
       .alerta .tit { font-weight: 700; font-size: 14px; }
       .alerta .det { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.5; }
 
@@ -170,6 +173,6 @@
       </div>
     </div>
 
-    <script src="./favorecido-app.js?v=7"></script>
+    <script src="./favorecido-app.js?v=8"></script>
   </body>
 </html>

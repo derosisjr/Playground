@@ -76,6 +76,15 @@ function renderGraficosFav(d) {
     ["Função", "Recebido"], fn.map((f) => [f.funcao, compacto(f.valor)]));
 }
 
+// card de alertas: "a conferir" (anomalia + inconsistência) separado de contexto,
+// a mesma divisão do painel e do hub
+function alertasCard(alertas) {
+  const conferir = alertas.filter((a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa").length;
+  const contexto = alertas.length - conferir;
+  return { rotulo: "Alertas a conferir", valor: String(conferir),
+           sub: contexto ? `+ ${contexto} de contexto (escala, não achado)` : "envolvendo este favorecido" };
+}
+
 function render(d) {
   DOSSIE = d;
   document.title = `${d.nome} — Raio-X do favorecido`;
@@ -96,7 +105,7 @@ function render(d) {
     { rotulo: "Total no mandato", valor: compacto(d.total), sub: `${(d.qtd || 0).toLocaleString("pt-BR")} pagamentos` },
     { rotulo: `Em ${ultimoAno || "—"}`, valor: compacto(d.por_ano?.[ultimoAno] || 0), sub: "exercício corrente" },
     { rotulo: "Presença", valor: `${d.meses || 0} meses`, sub: "com pagamento recebido" },
-    { rotulo: "Alertas fiscais", valor: String((d.alertas || []).length), sub: "envolvendo este favorecido" },
+    alertasCard(d.alertas || []),
   ];
   el("stats").innerHTML = cards.map((c) =>
     `<div class="stat"><div class="rotulo">${esc(c.rotulo)}</div>
@@ -109,10 +118,13 @@ function render(d) {
   if (alertas.length) {
     el("box-alertas").hidden = false;
     const classe = { contexto: "contexto", anomalia: "anomalia a conferir", inconsistencia: "inconsistência de dados" };
+    const sev = { alta: "alta", media: "média", baixa: "baixa" };
+    // o alerta de um favorecido costuma linkar para o próprio raio-X — não repetir a página atual
+    const ehEstaPagina = (link) => d.slug && /[?&]f=([^&#]+)/.exec(link || "")?.[1] === d.slug;
     el("lista-alertas").innerHTML = alertas.map((a) => `
-      <div class="alerta ${esc(a.severidade)}">
-        <span class="sev">${esc(a.severidade)}</span>${a.classe ? `<span class="sev" style="opacity:.75">${esc(classe[a.classe] || a.classe)}</span>` : ""}<span class="tit">${esc(a.titulo)}</span>
-        <div class="det">${esc(a.detalhe)}${a.link ? ` <a href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}</div>
+      <div class="alerta ${esc(a.severidade)} classe-${esc(a.classe || "anomalia")}">
+        <span class="sev">${esc(sev[a.severidade] || a.severidade)}</span>${a.classe ? `<span class="sev classe">${esc(classe[a.classe] || a.classe)}</span>` : ""}<span class="tit">${esc(a.titulo)}</span>
+        <div class="det">${esc(a.detalhe)}${a.link && !ehEstaPagina(a.link) ? ` <a href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}</div>
       </div>`).join("");
   }
 

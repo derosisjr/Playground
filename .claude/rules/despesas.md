@@ -162,7 +162,22 @@ elemento (obras/engenharia × compras); o texto diz que o empenho não é o cont
 falta (objeto, modalidade, processo, contrato). **Histórico**: `aplicar_historico_alertas` marca
 `estado` `novo`/`persistente` (ou `sem_historico` na 1ª execução — não chama tudo de novo),
 `primeiro_em`, e move os que sumiram para `resolvidos` em `alertas-estado.json` (versionado,
-commitado pelo workflow). Hub e retrospectiva contam alta/média como antes.
+commitado pelo workflow).
+
+**Contagem e tetos (Lote D2, 2026-09-30).** "A conferir" = classe ≠ `contexto` (anomalias +
+inconsistências) — a MESMA conta no badge da aba, no hub (`index.html`), no "Em resumo"
+(`resumo.alertas_ativos`) e no card do raio-X; a retrospectiva mostra só `anomalia`. Os tetos
+(`CAP_POR_REGRA`=15, `MAX_ALERTAS`=120) são declarados: `alertas(…, contagem=dict)` preenche
+**`alertas_regras`** no índice (`{tipo: {candidatos, publicados}}` — em 2026-09: fracionamento 378,
+favorecido_recorrente 105, extra 57, pf_sensivel 42) e o painel escreve "os N maiores de M casos".
+**`pf_sensivel` é severidade média** (era alta; aluguel mensal de imóvel de PF é o caso típico —
+decisão do usuário: os nomes continuam públicos). **Links por identidade**: alertas de favorecido
+levam `dfav=<chave>` (filtro do Detalhamento por `Comum.identidadeFavorecido`, pega todas as
+grafias do CNPJ — `dq=<nome>` perdia "IPREV - INST. PREV…") e `dm` só com os meses em que o
+recorte tem pagamento (`meses_pag`); fracionamento usa os meses de emissão dos empenhos. Na aba:
+classe padrão "A conferir", regra com ≥ 3 alertas vira grupo recolhível, filtros na URL
+(`ac`/`at`/`as`; `ac=todas` = todas as classes) e aba no hash via `replaceState` em
+`selecionarAba` (+ `hashchange`) — Voltar depois de abrir um recorte restaura aba e filtros.
 
 ## Painel, raio-X, retrospectiva
 
@@ -183,8 +198,8 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=15`,
-`retrospectiva-app.js?v=6`, `favorecido-app.js?v=7`, `comum.js?v=9` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=16`,
+`retrospectiva-app.js?v=7`, `favorecido-app.js?v=8`, `comum.js?v=9` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.

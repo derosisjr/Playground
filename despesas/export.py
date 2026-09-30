@@ -38,7 +38,7 @@ import os
 import re
 import sqlite3
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime
 
 from formato import (brl, compacto as _brl_compacto, eh_ente_publico, fator, identidade_favorecido,
@@ -735,10 +735,12 @@ def _link_fav(f: dict, tops_slugs: set) -> str:
 
 
 def _link_detalhe(**p) -> str:
-    """Link para o Detalhamento já filtrado (mesmas chaves curtas do despesas-app.js)."""
+    """Link para o Detalhamento já filtrado (mesmas chaves curtas do despesas-app.js).
+    `favorecido` = chave de identidade (dfav): pega todas as grafias do mesmo CNPJ,
+    o que a busca textual pelo nome (dq) não faz."""
     from urllib.parse import urlencode
     chaves = {"visao": "dv", "meses": "dm", "busca": "dq", "elemento": "del", "funcao": "df",
-              "tipo": "dt", "unidade": "du"}
+              "tipo": "dt", "unidade": "du", "favorecido": "dfav"}
     q = {chaves[k]: v for k, v in p.items() if v}
     return f"{PAINEL_URL}?{urlencode(q)}#detalhe"
 
@@ -757,19 +759,27 @@ def _limite_dispensa(ano: int, elemento: str) -> dict:
 
 
 def alertas(conn, ident: dict | None = None, cob: dict | None = None,
-            execucao: dict | None = None) -> list[dict]:
+            execucao: dict | None = None, contagem: dict | None = None) -> list[dict]:
     """Regras determinísticas. Cada alerta traz: id estável, classe (contexto /
     anomalia / inconsistência), severidade, filtro (com a chave de identidade),
-    link para o recorte e documentos que o sustentam."""
+    link para o recorte e documentos que o sustentam. Se `contagem` for um dict,
+    recebe por regra {"candidatos": N, "publicados": M} — os tetos (CAP_POR_REGRA,
+    MAX_ALERTAS) mostram só os maiores, e o painel precisa dizer quantos ficaram de fora."""
     ident = ident if ident is not None else preparar_identidades(conn)
     cob = cob or cobertura(conn)
     out = []
+    cand: dict[str, int] = defaultdict(int)
     tops_slugs = {o["slug"] for o in ident.values()}   # todo favorecido tem slug; o link ?f= só
     # funciona p/ top-300 — o export troca para ?doc= quando o dossiê não existe (ver main)
     fav = lambda chave: _fav_campos(ident, chave)  # noqa: E731
     completo = _mes_completo_ate(conn)
     p_completo = completo[0] * 100 + completo[1] if completo else None
-    meses_tudo = [f"{r['ano']}" for r in _q(conn, "SELECT DISTINCT ano FROM pagamentos ORDER BY ano")]
+
+    def meses_pag(where, *params) -> str:
+        """Meses (AAAA-MM) com pagamento no recorte — o link baixa só esses arquivos."""
+        return ",".join(f"{r['ano']}-{r['mes']:02d}" for r in _q(conn,
+            f"SELECT DISTINCT p.ano, p.mes FROM pagamentos p {FAV_JOIN.format(t='p')} "
+            f"WHERE {where} ORDER BY p.ano, p.mes", *params))
 
     def docs_pag(where, *params, limite=MAX_DOCS_ALERTA):
         return [{"data": r["data"], "doc": r["pagamento"], "empenho": r["empenho"], "ug": r["unidade_gestora"],
@@ -779,11 +789,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                                   f"WHERE {where} ORDER BY p.valor DESC LIMIT {limite}", *params)]
 
     # 1) Favorecido recorrente de alto valor — CONTEXTO (escala, não irregularidade)
-    for r in _q(conn,
+    recorrentes = _q(conn,
         f"SELECT fi.chave k, SUM(p.valor) s, COUNT(DISTINCT p.ano*100+p.mes) meses "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} GROUP BY fi.chave "
-        f"HAVING s >= ? AND meses >= ? ORDER BY s DESC LIMIT ?",
-        ALERTA_FAV_VALOR, ALERTA_FAV_MESES, CAP_POR_REGRA):
+        f"HAVING s >= ? AND meses >= ? ORDER BY s DESC",
+        ALERTA_FAV_VALOR, ALERTA_FAV_MESES)
+    cand["favorecido_recorrente"] = len(recorrentes)
+    for r in recorrentes[:CAP_POR_REGRA]:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("favorecido_recorrente", r["k"]),
@@ -808,8 +820,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         base = tot_funcao.get(r["f"], 0) or 1
         pct = 100 * r["s"] / base
         if pct >= ALERTA_CONCENTRACAO_PCT and r["f"] != "(sem função)":
+            cand["concentracao"] += 1
             if n_conc >= CAP_POR_REGRA:
-                break
+                continue
             n_conc += 1
             f = fav(r["k"])
             publico = eh_ente_publico(f["nome"])
@@ -823,7 +836,8 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                            (" Ente público/repasse institucional — concentração esperada." if publico else ""),
                 "valor": round(r["s"], 2),
                 "filtro": {"favorecido": f["nome"], "chave": r["k"], "funcao": r["f"]},
-                "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], funcao=r["f"]),
+                "link": _link_detalhe(visao="mov", favorecido=r["k"], funcao=r["f"],
+                    meses=meses_pag("fi.chave=? AND COALESCE(NULLIF(p.funcao,''),'(sem função)')=?", r["k"], r["f"])),
             })
 
     # 3) Pico mensal (sobre o total geral por mês) — só meses completos
@@ -848,11 +862,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 })
 
     # 4) Extra-orçamentário relevante — CONTEXTO (retenções/consignações são esperadas)
-    for r in _q(conn,
+    extras = _q(conn,
         f"SELECT fi.chave k, p.elemento_despesa e, SUM(p.valor) s, COUNT(*) n "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE p.tipo_pagamento LIKE '%Extra%' "
-        f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC LIMIT 20",
-        ALERTA_EXTRA_VALOR):
+        f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
+        ALERTA_EXTRA_VALOR)
+    cand["extra_orcamentario"] = len(extras)
+    for r in extras[:20]:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("extra_orcamentario", r["k"], r["e"]),
@@ -861,7 +877,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "detalhe": f"{brl(r['s'])} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"]},
-            "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], elemento=r["e"]),
+            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
+                meses=meses_pag("fi.chave=? AND p.elemento_despesa IS ? AND p.tipo_pagamento LIKE '%Extra%'",
+                                r["k"], r["e"])),
         })
 
     # 5) Possível fracionamento — TRIAGEM: conta EMPENHOS DISTINTOS (UG + nº) pelo
@@ -887,6 +905,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         soma = round(sum(e["liquido"] for e in abaixo), 2)
         if len(abaixo) >= FRAC_MIN_EMPENHOS and soma >= FRAC_FATOR_TOTAL * lim["valor"]:
             candidatos.append((k, el, ano, abaixo, soma, lim, len(emps)))
+    cand["fracionamento"] = len(candidatos)
     for k, el, ano, abaixo, soma, lim, n_total in sorted(candidatos, key=lambda x: -x[4]):
         if n >= CAP_POR_REGRA:
             break
@@ -908,7 +927,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "limite": lim,
             "documentos": docs,
             "informacoes_faltantes": FRAC_INFO_FALTANTE,
-            "link": _link_detalhe(visao="exe", meses=str(ano), busca=f["nome"], elemento=el),
+            # execução: cada empenho está no arquivo do mês em que foi emitido (1º documento)
+            "link": _link_detalhe(visao="exe", favorecido=k, elemento=el,
+                                  meses=",".join(sorted({(e["data"] or "")[:7] for e in abaixo} - {""})) or str(ano)),
         })
 
     # 6) Favorecido novo (1ª aparição recente) de alto valor
@@ -929,8 +950,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]):
                 continue
+            cand["favorecido_novo"] += 1
             if n >= CAP_POR_REGRA:
-                break
+                continue
             n += 1
             out.append({
                 "id": _id_alerta("favorecido_novo", r["k"]),
@@ -960,8 +982,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]) or r["v_atual"] < ALERTA_YOY_FATOR * r["v_ant"]:
                 continue
+            cand["crescimento_yoy"] += 1
             if n >= CAP_POR_REGRA:
-                break
+                continue
             n += 1
             per = f"jan–{MESES_ABREV[mlim - 1]}"
             out.append({
@@ -976,28 +999,29 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "link": _link_fav(f, tops_slugs),
             })
 
-    # 8) Pessoa física (CPF) recebendo em elemento sensível
+    # 8) Pessoa física (CPF) recebendo em elemento sensível. Severidade MÉDIA (era
+    # alta): o caso típico é aluguel mensal fixo de imóvel de PF, padrão esperado —
+    # não pode ocupar sozinho o topo da lista (decisão de 2026-09-29).
     cond_elem = " OR ".join(f"p.elemento_despesa LIKE '{x}'" for x in ELEM_SENSIVEIS)
-    n = 0
-    for r in _q(conn,
+    pfs = _q(conn,
         f"SELECT fi.chave k, p.elemento_despesa e, SUM(p.valor) s, COUNT(*) qt "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave LIKE 'cpf:%' AND ({cond_elem}) "
         f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
-        ALERTA_PF_VALOR):
-        if n >= CAP_POR_REGRA:
-            break
-        n += 1
+        ALERTA_PF_VALOR)
+    cand["pf_sensivel"] = len(pfs)
+    for r in pfs[:CAP_POR_REGRA]:
         f = fav(r["k"])
         elem_curto = (r["e"] or "").split(" - ", 1)[-1][:40]
         out.append({
             "id": _id_alerta("pf_sensivel", r["k"], r["e"]),
-            "tipo": "pf_sensivel", "classe": CLASSE_ANOMALIA, "severidade": "alta",
+            "tipo": "pf_sensivel", "classe": CLASSE_ANOMALIA, "severidade": "media",
             "titulo": f"Pessoa física em {elem_curto}: {f['nome']}",
             "detalhe": f"{brl(r['s'])} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
             "documentos": docs_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"]),
-            "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], elemento=r["e"]),
+            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
+                                  meses=meses_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"])),
         })
 
     # 9/10) Pico na série do próprio favorecido / elemento (z-score local) — meses completos
@@ -1028,12 +1052,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             p, s = anominos[-1]   # o mais recente
             achados.append((k, p, s, media, nome))
         achados.sort(key=lambda x: -x[2])
+        cand[tipo] = len(achados)
         for k, p, s, media, nome in achados[:CAP_POR_REGRA]:
             mes_txt = f"{p // 100}-{p % 100:02d}"
             if tipo == "pico_favorecido":
                 filtro = {"favorecido": nome, "chave": k, "ano": p // 100, "mes": p % 100}
                 docs = docs_pag("fi.chave=? AND p.ano=? AND p.mes=?", k, p // 100, p % 100)
-                link = _link_detalhe(visao="mov", meses=mes_txt, busca=nome)
+                link = _link_detalhe(visao="mov", meses=mes_txt, favorecido=k)
                 curto = nome
             else:
                 filtro = {"elemento": k, "ano": p // 100, "mes": p % 100}
@@ -1129,6 +1154,12 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
     ordem = {"alta": 0, "media": 1, "baixa": 2}
     ordem_classe = {CLASSE_INCONSISTENCIA: 0, CLASSE_ANOMALIA: 1, CLASSE_CONTEXTO: 2}
     out.sort(key=lambda a: (ordem.get(a["severidade"], 9), ordem_classe.get(a["classe"], 9), -a["valor"]))
+    if contagem is not None:
+        gerados = Counter(a["tipo"] for a in out)
+        publicados = Counter(a["tipo"] for a in out[:MAX_ALERTAS])
+        for tipo in gerados:   # regras sem teto: candidatos = gerados
+            contagem[tipo] = {"candidatos": max(cand.get(tipo, 0), gerados[tipo]),
+                              "publicados": publicados.get(tipo, 0)}
     return out[:MAX_ALERTAS]
 
 
@@ -1629,7 +1660,8 @@ def main():
     indice = agregados(conn, ident)
     indice["cobertura"] = cob
     indice["execucao"] = execucao_agregada(conn, cob)
-    indice["alertas"] = alertas(conn, ident, cob, indice["execucao"])
+    indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
+    indice["alertas"] = alertas(conn, ident, cob, indice["execucao"], contagem=indice["alertas_regras"])
     tops = {f["slug"] for f in indice["top_favorecidos"]}
     for a in indice["alertas"]:   # link ?f= só existe para o top-300; os demais vão pela rota por documento
         if a.get("link", "").startswith(RAIOX_URL + "?f=") and a["link"].split("?f=")[1] not in tops:

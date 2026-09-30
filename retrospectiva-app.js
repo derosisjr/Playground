@@ -134,12 +134,20 @@ function render() {
 
   // alertas (vigentes — só faz sentido no ano corrente da base)
   const ultimoAnoBase = Math.max(...DADOS.series_mensais.map((s) => s.ano));
-  const alertas = (DADOS.alertas || []).filter((a) => a.severidade !== "baixa");
+  // só anomalias: inconsistência é problema da origem, contexto não é achado.
+  // Destaques = o maior de cada regra (3 regras diferentes), cada um com o link do recorte.
+  const ordemSev = { alta: 0, media: 1, baixa: 2 };
+  const alertas = (DADOS.alertas || []).filter((a) => a.classe ? a.classe === "anomalia" : a.severidade !== "baixa");
   if (ANO === ultimoAnoBase && alertas.length) {
     el("cap-alertas").hidden = false;
     el("t-alertas-n").textContent = alertas.length;
-    el("lista-alertas").innerHTML = alertas.filter((a) => a.severidade === "alta").slice(0, 3)
-      .map((a) => `<div class="alerta-r"><div class="t">${esc(a.titulo)}</div>
+    const vistos = new Set();
+    const destaques = [...alertas]
+      .sort((a, b) => (ordemSev[a.severidade] ?? 9) - (ordemSev[b.severidade] ?? 9) || (b.valor || 0) - (a.valor || 0))
+      .filter((a) => !vistos.has(a.tipo) && vistos.add(a.tipo)).slice(0, 3);
+    el("lista-alertas").innerHTML = destaques
+      .map((a) => `<div class="alerta-r"><div class="t">${a.link
+          ? `<a href="${esc(a.link)}">${esc(a.titulo)}</a>` : esc(a.titulo)}</div>
         <div class="d">${esc(a.detalhe)}</div></div>`).join("");
   }
 

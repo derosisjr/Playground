@@ -53,8 +53,7 @@ async function init() {
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
   popularFiltrosAlertas();
-  renderAlertas();
-  ligarAlertas();
+  ligarAlertas();   // restaura filtros da URL e renderiza
   // deep-link de busca (paleta ⌘K / links externos): ?q= pré-preenche favorecidos
   const qIni = new URLSearchParams(location.search).get("q");
   if (qIni) document.getElementById("q").value = qIni;
@@ -63,7 +62,12 @@ async function init() {
   ligarAbas();
   // deep-link de aba: despesas.html#alertas / #favorecidos / #detalhe
   const aba = location.hash.replace("#", "");
-  if (["geral", "alertas", "favorecidos", "detalhe"].includes(aba)) selecionarAba(aba);
+  selecionarAba(ABAS.includes(aba) ? aba : "geral");   // também tira as abas inativas do Tab
+  // links para a própria página (paleta Ctrl+K "#detalhe", rodapé) trocam de aba sem recarregar
+  addEventListener("hashchange", () => {
+    const h = location.hash.replace("#", "");
+    if (ABAS.includes(h)) selecionarAba(h);
+  });
   ligarBusca();
   ligarOrdenacao();
   ligarModosFav();
@@ -722,6 +726,11 @@ const ALERTA_LABELS = {
 };
 const CLASSE_LABELS = { contexto: "Contexto", anomalia: "Anomalia a conferir", inconsistencia: "Inconsistência de dados" };
 const ESTADO_LABELS = { novo: "novo", persistente: "persistente", sem_historico: "sem histórico" };
+const SEV_LABELS = { alta: "Alta", media: "Média", baixa: "Baixa" };
+const GRUPO_MIN = 3;   // regra com ≥ N alertas visíveis vira um grupo recolhível (evita 15 cartões seguidos)
+// "A conferir" = anomalias + inconsistências (contexto é informação, não achado) —
+// a mesma contagem do hub, do "Em resumo" (resumo.alertas_ativos) e da aba.
+const aConferir = (a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa";
 
 function popularFiltrosAlertas() {
   const lista = DADOS.alertas || [];
@@ -731,11 +740,28 @@ function popularFiltrosAlertas() {
     tipos.map(t => `<option value="${esc(t)}">${esc(ALERTA_LABELS[t] || t)}</option>`).join("");
 }
 
+// filtros dos alertas na URL (ac/at/as) — Voltar depois de abrir um recorte restaura a triagem.
+// Preserva os demais parâmetros (o Detalhamento grava os seus).
+function gravarFiltrosAlerta() {
+  const p = Object.fromEntries(Comum.lerParams());
+  delete p.ac; delete p.at; delete p.as;
+  const cl = document.getElementById("alerta-classe").value;
+  if (cl !== "conferir") p.ac = cl || "todas";
+  p.at = document.getElementById("alerta-tipo").value;
+  p.as = document.getElementById("alerta-sev").value;
+  Comum.gravarParams(p);
+}
+
 function ligarAlertas() {
-  document.getElementById("alerta-tipo").addEventListener("change", renderAlertas);
-  document.getElementById("alerta-sev").addEventListener("change", renderAlertas);
-  const cl = document.getElementById("alerta-classe");
-  if (cl) cl.addEventListener("change", renderAlertas);
+  const p = Comum.lerParams();
+  const sel = (id, v) => { const el = document.getElementById(id);
+    if (v != null && [...el.options].some(o => o.value === v)) el.value = v; };
+  sel("alerta-classe", p.get("ac") === "todas" ? "" : p.get("ac"));
+  sel("alerta-tipo", p.get("at"));
+  sel("alerta-sev", p.get("as"));
+  ["alerta-tipo", "alerta-sev", "alerta-classe"].forEach(id =>
+    document.getElementById(id).addEventListener("change", () => { gravarFiltrosAlerta(); renderAlertas(); }));
+  renderAlertas();
   const h = DADOS.alertas_historico, nota = document.getElementById("alertas-historico");
   if (h && nota) {
     nota.textContent = h.disponivel
@@ -748,15 +774,32 @@ function ligarAlertas() {
 
 function renderAlertas() {
   const lista = DADOS.alertas || [];
-  document.getElementById("badge-alertas").textContent = lista.length ? `(${lista.length})` : "";
+  const nConferir = lista.filter(aConferir).length;
+  const badge = document.getElementById("badge-alertas");
+  badge.textContent = nConferir ? `(${nConferir})` : "";
+  badge.title = `${nConferir} a conferir · ${lista.length - nConferir} de contexto`;
   const fTipo = document.getElementById("alerta-tipo").value;
   const fSev = document.getElementById("alerta-sev").value;
   const fCl = document.getElementById("alerta-classe")?.value || "";
   const vis = lista.filter(a => (!fTipo || a.tipo === fTipo) && (!fSev || a.severidade === fSev) &&
-                                (!fCl || (a.classe || "anomalia") === fCl));
+                                (!fCl || (fCl === "conferir" ? aConferir(a) : (a.classe || "anomalia") === fCl)));
 
   const cont = document.getElementById("lista-alertas");
-  document.getElementById("alertas-vazio").hidden = vis.length > 0;
+  const vazio = document.getElementById("alertas-vazio");
+  vazio.hidden = vis.length > 0;
+  if (!vis.length) {
+    const filtrado = fTipo || fSev || fCl !== "conferir";
+    vazio.innerHTML = lista.length && filtrado
+      ? 'Nenhum alerta com esses filtros. <button class="btn" type="button" id="alertas-limpar">Limpar filtros</button>'
+      : "Nenhum alerta com os limiares atuais.";
+    document.getElementById("alertas-limpar")?.addEventListener("click", () => {
+      document.getElementById("alerta-classe").value = "conferir";
+      document.getElementById("alerta-tipo").value = "";
+      document.getElementById("alerta-sev").value = "";
+      gravarFiltrosAlerta();
+      renderAlertas();
+    });
+  }
   const docsHtml = (a) => {
     const docs = a.documentos || [];
     if (!docs.length) return "";
@@ -773,10 +816,10 @@ function renderAlertas() {
     ? `<div class="det">Não constam na fonte: ${esc(a.informacoes_faltantes.join(", "))}.</div>` : "";
   const limiteHtml = (a) => a.limite?.verificacao
     ? `<div class="det">Limite usado: ${esc(a.limite.norma || "não cadastrado")} — ${esc(a.limite.verificacao)}.</div>` : "";
-  cont.innerHTML = vis.map(a => `
+  const cartao = (a) => `
     <div class="alerta ${a.severidade} classe-${esc(a.classe || "anomalia")}" data-link="${esc(a.link || "")}">
       <div class="top">
-        <div class="titulo"><span class="sev ${a.severidade}">${a.severidade}</span>
+        <div class="titulo"><span class="sev ${a.severidade}">${esc(SEV_LABELS[a.severidade] || a.severidade)}</span>
           <span class="classe">${esc(CLASSE_LABELS[a.classe] || "")}</span>
           ${a.estado && a.estado !== "sem_historico" ? `<span class="estado ${esc(a.estado)}">${esc(ESTADO_LABELS[a.estado] || a.estado)}</span>` : ""}
           ${esc(a.titulo)}</div>
@@ -785,12 +828,43 @@ function renderAlertas() {
       <div class="det">${esc(a.detalhe)}</div>
       ${limiteHtml(a)}${faltamHtml(a)}${docsHtml(a)}
       ${a.link ? `<a class="alerta-link" href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}
-    </div>`).join("");
+    </div>`;
 
-  // clique no cartão abre o recorte (link citável); cliques em <details>/<a> seguem o próprio elemento
+  // regra com muitos alertas vira um grupo recolhível, na posição do seu 1º alerta;
+  // o teto por regra (alertas_regras) é declarado: "os N maiores de M casos"
+  const porTipo = new Map();
+  vis.forEach(a => { if (!porTipo.has(a.tipo)) porTipo.set(a.tipo, []); porTipo.get(a.tipo).push(a); });
+  const agrupar = (tipo) => !fTipo && porTipo.get(tipo).length >= GRUPO_MIN;
+  const tetoHtml = (tipo, n) => {
+    const r = DADOS.alertas_regras?.[tipo];
+    return r && r.candidatos > r.publicados
+      ? `<div class="teto">Mostrando os ${n} maiores de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra.</div>` : "";
+  };
+  const feitos = new Set();
+  cont.innerHTML = vis.map(a => {
+    if (!agrupar(a.tipo)) return cartao(a);
+    if (feitos.has(a.tipo)) return "";
+    feitos.add(a.tipo);
+    const itens = porTipo.get(a.tipo);
+    // inconsistência: o valor é o que a origem duplicou, não gasto — somar leria como despesa
+    const soma = a.classe === "inconsistencia" ? 0 : itens.reduce((t, x) => t + (x.valor || 0), 0);
+    const sevs = new Set(itens.map(x => x.severidade));
+    const sevHtml = sevs.size === 1
+      ? ` <span class="sev ${a.severidade}">${esc(SEV_LABELS[a.severidade] || a.severidade)}</span>` : "";
+    return `<details class="alerta-grupo">
+      <summary><span>${esc(ALERTA_LABELS[a.tipo] || a.tipo)} — ${itens.length} alertas${sevHtml}</span>
+        <span class="vlr">${soma ? brlc(soma) : ""}</span></summary>
+      ${tetoHtml(a.tipo, itens.length)}${itens.map(cartao).join("")}
+    </details>`;
+  }).join("");
+  // filtrado por tipo: a lista é a regra inteira — o teto vai no topo
+  if (fTipo && vis.length) cont.insertAdjacentHTML("afterbegin", tetoHtml(fTipo, vis.length));
+
+  // clique no cartão abre o recorte (link citável); cliques nos documentos (<details>) e em <a>
+  // seguem o próprio elemento — o grupo recolhível também é <details>, por isso a classe
   cont.querySelectorAll(".alerta").forEach(el => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest("details, a")) return;
+      if (e.target.closest(".alerta-docs, a") || getSelection().toString()) return;
       const link = el.getAttribute("data-link");
       if (link) location.href = link;
     });
@@ -1002,6 +1076,7 @@ function ligarAbas() {
     p.setAttribute("aria-labelledby", "tab-" + p.id.replace("painel-", ""));
   });
 }
+const ABAS = ["geral", "alertas", "favorecidos", "detalhe"];
 function selecionarAba(nome) {
   document.querySelectorAll(".tab").forEach(t => {
     const ativa = t.dataset.tab === nome;
@@ -1010,6 +1085,12 @@ function selecionarAba(nome) {
   });
   document.querySelectorAll(".painel").forEach(p => p.classList.remove("ativo"));
   document.getElementById("painel-" + nome).classList.add("ativo");
+  // aba no hash (sem nova entrada de histórico): Voltar depois de abrir um alerta cai
+  // na mesma aba; a Visão geral é o padrão e fica sem hash
+  const hash = nome === "geral" ? "" : "#" + nome;
+  const atual = location.hash.replace("#", "");
+  if (location.hash !== hash && (!atual || ABAS.includes(atual)))   // não apaga âncoras de conteúdo
+    history.replaceState(null, "", location.pathname + location.search + hash);
 }
 function ligarBusca() {
   document.getElementById("q").addEventListener("input", () => {
@@ -1086,6 +1167,8 @@ let detRows = [];        // todas as linhas carregadas (arrays)
 let detNorm = [];        // texto normalizado (sem acento, minúsculo) por linha, p/ busca
 const detArquivoDaLinha = new WeakMap();  // linha → dados/AAAA-MM.json de origem
 let detFiltradas = [];
+let detFav = null;       // filtro por IDENTIDADE do favorecido (dfav=<chave>, vindo dos alertas)
+let detIdent = null;     // identidade por linha (calculada só quando há detFav)
 let detSomas = { empenhado: 0, liquidado: 0, pago: 0 };  // memoizado por filtragem
 let detGrupos = [];      // modo agrupado: [{chave, n, empenhado, liquidado, pago, linhas}]
 let detExpandidos = new Set();
@@ -1167,6 +1250,7 @@ function estadoDetalhe() {
     dgrp: detGrupo,
     dmet: detMetrica !== "pago" ? detMetrica : "",
     dcols: detVisiveis.join(",") === DET_COLS_PADRAO.join(",") ? "" : detVisiveis.join(","),
+    dfav: detFav || "",
   };
   for (const c of filtrosAtivos()) est[DET_URL[c]] = document.getElementById("f-" + c).value;
   return est;
@@ -1199,6 +1283,7 @@ async function aplicarEstadoURL(p) {
     grp: p.get("dgrp") || "", met: p.get("dmet") || "pago",
     cols: (p.get("dcols") || "").split(",").filter(Boolean),
     emp: p.get("emp") || "",
+    fav: p.get("dfav") || "",
   });
 }
 
@@ -1356,6 +1441,8 @@ async function carregarDetalhe(estado) {
       detArquivoDaLinha.set(r, arquivos[k]);   // p/ a ficha achar o estagios/ do mês
     }));
     detNorm = detRows.map(r => semAcento(r.join(" ")));
+    detIdent = null;
+    detFav = estado?.fav || null;
     detVisiveis = detVisiveis.filter(c => detCampos.includes(c));
     if (!detVisiveis.length) detVisiveis = VISOES[detVisao].cols.filter(c => detCampos.includes(c));
     popularFiltros();
@@ -1462,7 +1549,12 @@ function linhasFiltradas(opts) {
   const vmin = parseFloat(document.getElementById("det-vmin").value);
   const vmax = parseFloat(document.getElementById("det-vmax").value);
   const temMin = !isNaN(vmin), temMax = !isNaN(vmax);
+  if (detFav && !detIdent) {   // mesma chave do export (Comum.identidadeFavorecido ⇄ formato.py)
+    const iN = detCampos.indexOf("nome_favorecido"), iD = detCampos.indexOf("documento_favorecido");
+    detIdent = detRows.map(r => Comum.identidadeFavorecido(r[iN], r[iD]));
+  }
   return detRows.filter((r, i) => {
+    if (detFav && detIdent[i] !== detFav) return false;
     if (!fixos.every(([idx, v]) => r[idx] === v)) return false;
     if (temMin && (r[iMet] ?? 0) < vmin) return false;
     if (temMax && (r[iMet] ?? 0) > vmax) return false;
@@ -1550,6 +1642,11 @@ function renderChips() {
   const chips = [];
   const q = document.getElementById("det-q").value.trim();
   if (q) chips.push({ id: "q", texto: `busca: "${q}"` });
+  if (detFav) {
+    const nome = detFiltradas.length ? detFiltradas[0][detCampos.indexOf("nome_favorecido")]
+                                     : detFav.replace(/^[a-z]+:[\d]*\|?/, "");
+    chips.push({ id: "fav", texto: `favorecido (todas as grafias): ${String(nome).slice(0, 34)}` });
+  }
   filtrosAtivos().forEach(c => {
     const v = document.getElementById("f-" + c).value;
     if (v) chips.push({ id: c, texto: `${DET_LABELS[c]}: ${rotuloValor(c, v).length > 34 ? rotuloValor(c, v).slice(0, 32) + "…" : rotuloValor(c, v)}` });
@@ -1572,6 +1669,9 @@ function renderChips() {
       filtrosAtivos().forEach(c => document.getElementById("f-" + c).value = "");
       document.getElementById("det-vmin").value = "";
       document.getElementById("det-vmax").value = "";
+      detFav = null;
+    } else if (alvo === "fav") {
+      detFav = null;
     } else if (alvo === "faixa") {
       document.getElementById("det-vmin").value = "";
       document.getElementById("det-vmax").value = "";

@@ -489,6 +489,33 @@ def test_alertas_classes_links_e_documentos():
     assert len(ids) == len(set(ids))
 
 
+def test_alertas_contagem_de_candidatos_alem_do_teto(monkeypatch):
+    monkeypatch.setattr(export, "CAP_POR_REGRA", 2)
+    conn = db()
+    for i in range(5):        # 5 PFs em locação acima do limiar → 5 candidatos, 2 publicados
+        for mes in (1, 2):
+            add(conn, "pagamentos", 2025, mes, 60_000.0 + i, nome_favorecido=f"LOCADOR {i}",
+                documento_favorecido=f"***.{i:03d}.308-**", elemento_despesa="33903615000 - LOCAÇÃO DE IMÓVEIS")
+    contagem = {}
+    lista = export.alertas(conn, contagem=contagem)
+    pf = [a for a in lista if a["tipo"] == "pf_sensivel"]
+    assert len(pf) == 2 and contagem["pf_sensivel"] == {"candidatos": 5, "publicados": 2}
+    assert all(a["severidade"] == "media" for a in pf)       # aluguel de PF: não é "alta"
+
+
+def test_link_do_alerta_filtra_por_identidade_e_so_os_meses_do_favorecido():
+    conn = db()
+    for mes in (3, 7):
+        add(conn, "pagamentos", 2025, mes, 80_000.0, nome_favorecido="FULANO DE TAL",
+            documento_favorecido="***.123.456-**", elemento_despesa="33903615000 - LOCAÇÃO DE IMÓVEIS")
+    add(conn, "pagamentos", 2025, 5, 10.0, nome_favorecido="OUTRA LTDA")   # outro mês, outro favorecido
+    a = next(a for a in export.alertas(conn) if a["tipo"] == "pf_sensivel")
+    from urllib.parse import parse_qs, urlsplit
+    q = parse_qs(urlsplit(a["link"]).query)
+    assert q["dfav"] == [a["filtro"]["chave"]] and "dq" not in q      # identidade, não busca textual
+    assert q["dm"] == ["2025-03,2025-07"] and q["dv"] == ["mov"]
+
+
 def test_alertas_consolidam_por_identidade():
     conn = db()
     doc = "33.333.333/0001-33"

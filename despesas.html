@@ -114,6 +114,15 @@
       .alerta-docs summary { cursor: pointer; }
       .alerta-docs ul { margin: 6px 0 0; padding-left: 18px; }
       .alerta-docs li { margin: 2px 0; }
+      .alerta-grupo { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
+                      margin-bottom: 10px; padding: 10px 14px; }
+      .alerta-grupo > summary { cursor: pointer; font-weight: 700; font-size: 14px; display: flex;
+                                justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .alerta-grupo > summary .vlr { font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+      .filtros-alertas { grid-template-columns: 1fr 1fr 1fr; }
+      @media (max-width: 560px) { .filtros-alertas { grid-template-columns: 1fr; } }
+      .teto { color: var(--muted); font-size: 12.5px; font-weight: 500; margin: 6px 0 8px; }
+      .alerta-grupo[open] > summary { margin-bottom: 8px; }
       .alerta-link { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--navy); }
       .det-titulo { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600;
         margin: 0 0 4px; line-height: 1.3; }
@@ -459,15 +468,16 @@
           sustenta. Nenhum alerta é conclusão de irregularidade.
         </p>
         <p class="contagem" id="alertas-historico" hidden></p>
-        <div class="filtros" style="grid-template-columns: 1fr 1fr 1fr">
-          <select id="alerta-classe">
-            <option value="">Classe (todas)</option>
+        <div class="filtros filtros-alertas">
+          <select id="alerta-classe" aria-label="Classe do alerta">
+            <option value="conferir">A conferir (anomalias e inconsistências)</option>
+            <option value="">Todas as classes</option>
             <option value="anomalia">Anomalia a conferir</option>
             <option value="inconsistencia">Inconsistência de dados</option>
             <option value="contexto">Contexto</option>
           </select>
-          <select id="alerta-tipo"><option value="">Tipo (todos)</option></select>
-          <select id="alerta-sev">
+          <select id="alerta-tipo" aria-label="Tipo de alerta"><option value="">Tipo (todos)</option></select>
+          <select id="alerta-sev" aria-label="Severidade">
             <option value="">Severidade (todas)</option>
             <option value="alta">Alta</option>
             <option value="media">Média</option>
@@ -475,7 +485,7 @@
           </select>
         </div>
         <div id="lista-alertas"></div>
-        <div class="vazio" id="alertas-vazio" hidden>Nenhum alerta com os limiares atuais.</div>
+        <div class="vazio" id="alertas-vazio" hidden></div>
       </section>
 
       <!-- ── Favorecidos ── -->
@@ -706,6 +716,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=15"></script>
+    <script src="./despesas-app.js?v=16"></script>
   </body>
 </html>
