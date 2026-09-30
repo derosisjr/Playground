@@ -684,30 +684,67 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
     tops = indice.get("top_favorecidos") or []
     validos = set()
     dossies = {}
+    # total pago por elemento no período — p/ a participação do favorecido em cada elemento
+    tot_elem = {r["e"]: r["s"] for r in _q(conn,
+        "SELECT elemento_despesa e, SUM(valor) s FROM pagamentos GROUP BY elemento_despesa")}
+    # pagamentos do top-N materializados UMA vez, indexados pela identidade: cada consulta
+    # por favorecido refazia o join com fav_ident sobre a tabela inteira (300 × N varreduras
+    # — o dossiê sozinho passava de 3 minutos)
+    conn.execute("DROP TABLE IF EXISTS top_fav")
+    conn.execute("CREATE TEMP TABLE top_fav (chave TEXT PRIMARY KEY)")
+    conn.executemany("INSERT OR IGNORE INTO top_fav VALUES (?)", [(f["chave"],) for f in tops])
+    conn.execute("DROP TABLE IF EXISTS pag_top")
+    conn.execute(f"CREATE TEMP TABLE pag_top AS SELECT fi.chave chave, p.* FROM pagamentos p "
+                 f"{FAV_JOIN.format(t='p')} JOIN top_fav t ON t.chave = fi.chave")
+    conn.execute("CREATE INDEX temp.ix_pag_top ON pag_top(chave)")
+
+    def por_chave(select, grupo, ordem):
+        out = defaultdict(list)
+        for r in _q(conn, f"SELECT p.chave c, {select} FROM pag_top p "
+                          f"GROUP BY p.chave, {grupo} ORDER BY p.chave, {ordem}"):
+            out[r["c"]].append(r)
+        return out
+    agg_elem = por_chave("p.elemento_despesa k, SUM(p.valor) s", "p.elemento_despesa", "s DESC")
+    agg_ug = por_chave("p.unidade_gestora k, SUM(p.valor) s", "p.unidade_gestora", "s DESC")
+    agg_tipo = por_chave("p.tipo_pagamento k, SUM(p.valor) s, COUNT(*) n", "p.tipo_pagamento", "s DESC")
+    agg_nome = por_chave("p.nome_favorecido k, SUM(p.valor) s, COUNT(*) n, MIN(p.data) i, MAX(p.data) f",
+                         "p.nome_favorecido", "i")
     for rank, f in enumerate(tops, 1):
         chave, slug = f["chave"], f["slug"]
         validos.add(slug + ".json")
         serie = [{"ano": r["ano"], "mes": r["mes"], "valor": round(r["s"], 2)}
                  for r in _q(conn,
-                     f"SELECT p.ano, p.mes, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
-                     f"WHERE fi.chave=? GROUP BY p.ano, p.mes ORDER BY p.ano, p.mes", chave)]
+                     "SELECT p.ano, p.mes, SUM(p.valor) s FROM pag_top p "
+                     "WHERE p.chave=? GROUP BY p.ano, p.mes ORDER BY p.ano, p.mes", chave)]
         por_ano = {}
         for s in serie:
             por_ano[str(s["ano"])] = round(por_ano.get(str(s["ano"]), 0) + s["valor"], 2)
         funcoes = [{"funcao": r["k"], "valor": round(r["s"], 2)}
                    for r in _q(conn,
                        f"SELECT COALESCE(NULLIF(p.funcao,''),'(sem função)') k, SUM(p.valor) s "
-                       f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave=? "
-                       f"GROUP BY k ORDER BY s DESC LIMIT 6", chave)]
+                       "FROM pag_top p WHERE p.chave=? "
+                       "GROUP BY k ORDER BY s DESC LIMIT 6", chave)]
         ultimos = [{"data": r["data"], "valor": round(r["valor"], 2), "funcao": r["funcao"],
                     "elemento": r["elemento_despesa"], "unidade": r["unidade_gestora"],
-                    "tipo": r["tipo_pagamento"]}
+                    "tipo": r["tipo_pagamento"], "pagamento": r["pagamento"], "empenho": r["empenho"]}
                    for r in _q(conn,
                        f"SELECT p.data, p.valor, p.funcao, p.elemento_despesa, p.unidade_gestora, "
-                       f"p.tipo_pagamento FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave=? "
-                       f"ORDER BY p.data DESC, p.valor DESC LIMIT 50", chave)]
+                       "p.tipo_pagamento, p.pagamento, p.empenho FROM pag_top p "
+                       "WHERE p.chave=? ORDER BY p.data DESC, p.valor DESC LIMIT 50", chave)]
         meus_alertas = [a for a in indice.get("alertas", [])
                         if (a.get("filtro") or {}).get("chave") == chave]
+        # o que uma investigação pergunta primeiro: em quê, por quem, de que tipo, desde quando
+        elementos = [{"elemento": r["k"], "valor": round(r["s"], 2),
+                      "participacao_pct": round(100 * r["s"] / tot_elem[r["k"]], 1) if tot_elem.get(r["k"]) else None}
+                     for r in agg_elem[chave][:8]]
+        unidades = [{"unidade": r["k"], "valor": round(r["s"], 2)} for r in agg_ug[chave]]
+        tipos = [{"tipo": r["k"] or "(não informado)", "valor": round(r["s"], 2), "qtd": r["n"]} for r in agg_tipo[chave]]
+        # grafia × razão social: a origem pode trazer o mesmo CNPJ com outro NOME (troca de
+        # razão social) — total e datas por nome deixam isso visível
+        grafias_det = [{"nome": r["k"], "valor": round(r["s"], 2), "qtd": r["n"], "primeiro": r["i"], "ultimo": r["f"]}
+                       for r in agg_nome[chave]]
+        datas = {"i": min((g["primeiro"] for g in grafias_det if g["primeiro"]), default=None),
+                 "f": max((g["ultimo"] for g in grafias_det if g["ultimo"]), default=None)}
 
         # só regrava se o CONTEÚDO mudou: com `atualizado_em` novo a cada run, os
         # 290 dossiês viravam diff diário (2,8 MB/dia no histórico e cache do Pages
@@ -717,9 +754,15 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
             "grafias": f.get("grafias") or [f["nome"]], "rank": rank,
             "total": f["valor"], "qtd": f["qtd"], "meses": f["meses"],
             "por_ano": por_ano, "serie_mensal": serie, "por_funcao": funcoes,
+            "por_elemento": elementos, "por_unidade": unidades, "por_tipo": tipos,
+            "primeiro_pagamento": datas["i"], "ultimo_pagamento": datas["f"],
             "ultimos_pagamentos": ultimos, "alertas": meus_alertas,
             "atualizado_em": indice.get("atualizado_em"),
         }
+        if len(grafias_det) > 1:
+            dossies[slug]["grafias_detalhe"] = grafias_det
+        if f.get("ente_publico"):
+            dossies[slug]["ente_publico"] = True
     for slug, dossie in dossies.items():
         gravar_json_se_mudou(os.path.join(FAV_DIR, slug + ".json"), dossie, separators=(",", ":"))
 
@@ -1572,7 +1615,7 @@ def exportar_estagios(conn, rows: list[dict]) -> int:
 #   indice-favorecidos.json identidade → meses onde aparece (a ficha baixa SÓ esses)
 # Chave = identidade canônica (formato.identidade_favorecido) — TEM de casar com
 # Comum.identidadeFavorecido() do comum.js.
-INDICES_LEVES = ("elementos.json", "pf-resumo.json", "indice-favorecidos.json")
+INDICES_LEVES = ("elementos.json", "pf-resumo.json", "indice-favorecidos.json", "nomes-favorecidos.json")
 PF_RESUMO_TOP = 1000
 
 
@@ -1690,6 +1733,11 @@ def main():
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["meses_movimento"] = exportar_movimento_mensal(movimento)
     exportar_indices_leves(execucao, movimento)
+    # nome de exibição + documento de TODAS as identidades (~7,8 mil): o raio-X por nome
+    # (?nome=) acha quem está fora do top-300 sem varrer os 45 MB da movimentação
+    gravar_json(os.path.join(DADOS_DIR, "nomes-favorecidos.json"),
+                {k: [o["nome"], o["documento"] or ""] for k, o in sorted(ident.items())},
+                separators=(",", ":"))
     n_estagios = exportar_estagios(conn, execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE
     indice["campos_movimento"] = CAMPOS_MOV

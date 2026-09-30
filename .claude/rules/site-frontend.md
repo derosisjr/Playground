@@ -24,7 +24,7 @@ memória via `definirCores()` + `Chart.getChart(id)?.destroy()` — SEM reload) 
 433.656). Favicon SVG + `og.png` + meta OG/Twitter em todas as páginas.
 
 Também na camada comum (2026-07): **tokens de raio** `--r-sm/--r-md/--r-lg` (10/14/16px — não usar
-raio fixo novo), `.sr-only`, **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**
+raio fixo novo), `.sr-only` (`table.sr-only` vai para `left:-10000px`: tabela ignora width 1px e gerava rolagem horizontal no celular), **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**
 (role=img + tabela oculta — usar em TODO gráfico novo), **`Comum.toast(msg)`** (no lugar de
 `alert()`), **`Comum.estadoErro(alvo, msg, aoTentar)`** (erro de fetch com "Tentar de novo" — o
 alvo deve ser um contêiner que o render de sucesso reconstrói), skeletons `.skel` (base clara no

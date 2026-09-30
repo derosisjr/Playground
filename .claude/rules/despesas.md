@@ -199,7 +199,7 @@ do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan�
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
 ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=17` (com `defer`, como o Chart.js),
-`retrospectiva-app.js?v=7`, `favorecido-app.js?v=8`, `comum.js?v=10` (bump em todas as páginas ao
+`retrospectiva-app.js?v=7`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
@@ -220,6 +220,29 @@ do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da mov
 o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
 extenso e período AAAA-MM. Modo escuro: textos em `var(--ink)` e vermelhos/âmbar claros
 (≥ 4,5:1). Service worker: dados de despesas network-first (`sw.js`, `CACHE` v3).
+
+**Raio-X (Lote D4, 2026-09-30).** O dossiê (`favorecidos/<slug>.json`) ganhou `por_elemento`
+(com `participacao_pct` = fatia do favorecido em todo o pago no elemento), `por_unidade`,
+`por_tipo`, `primeiro_pagamento`/`ultimo_pagamento`, `ultimos_pagamentos[].pagamento/empenho`,
+`grafias_detalhe` (total/qtd/período por nome da origem — a página marca **"outro nome"** quando
+os nomes não dividem metade das palavras: troca de razão social, p. ex. SABINO → OPUS) e
+`ente_publico`. O export materializa os pagamentos do top-300 numa temp table indexada
+(`pag_top`) — as consultas por favorecido refaziam o join com `fav_ident` na tabela inteira (o
+dossiê levava 180 s; agora ~5 s; export completo ~70 s). `dados/nomes-favorecidos.json` (chave →
+[nome, documento] de todas as identidades) deixa a rota `?nome=` achar quem está fora do top-300.
+Página: cards com o **ano da base** (não o último ano do favorecido) e o período de presença;
+série com todos os meses (lacunas = 0) e meses parciais claros; composição (elemento/UG/tipo);
+**consultas externas** só para CNPJ privado — link do Portal da Transparência federal
+(pessoa-jurídica: sanções CEIS/CNEP, contratos federais) e botão que consulta o cadastro da
+Receita via **BrasilAPI** no navegador (abertura, situação, CNAE, sócios), com sinal quando a
+empresa abriu < 12 meses antes do 1º pagamento da base (PNCP ficou de fora: o site recusou
+conexão na verificação, link não validado); lançamentos de execução **sob demanda** acima de
+~3 MB (botão com meses e MB), progresso e "Tentar de novo"; **faixa de conciliação** recebido ×
+pago sob empenhos dele × diferença, com as causas; "← Voltar" (history.back se veio do site) e
+ponte para o Detalhamento com `dfav` + meses em que recebeu. Rota `?doc=&nome=`: resolve a
+identidade (CNPJ → redireciona para `?f=` se houver dossiê; CPF mascarado sem nome → pede o
+nome; nome ambíguo → lista para escolher) e monta o dossiê com os **pagamentos reais** da
+movimentação (fase P, pela data do pagamento) + alertas do índice pela `chave`.
 
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 

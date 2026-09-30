@@ -345,6 +345,13 @@ def test_raiox_e_ranking_coerentes(tmp_path, monkeypatch):
     assert d["total"] == idx["top_favorecidos"][0]["valor"] == 5_000.0
     assert len(d["serie_mensal"]) == 4 and round(sum(s["valor"] for s in d["serie_mensal"]), 2) == 5_000.0
     assert len(d["grafias"]) == 3
+    # composição do dossiê (Lote D4): as somas por dimensão fecham com o total
+    for campo in ("por_elemento", "por_unidade", "por_tipo"):
+        assert round(sum(x["valor"] for x in d[campo]), 2) == 5_000.0, campo
+    assert d["primeiro_pagamento"] <= d["ultimo_pagamento"]
+    assert len(d["grafias_detalhe"]) == 3 and round(sum(g["valor"] for g in d["grafias_detalhe"]), 2) == 5_000.0
+    assert all(0 < (e["participacao_pct"] or 0) <= 100 for e in d["por_elemento"])
+    assert d.get("ente_publico") is True          # IPREV: ente público (formato.eh_ente_publico)
 
 
 def test_cpf_mascarado_semelhante_nao_e_fundido():
