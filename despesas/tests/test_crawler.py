@@ -58,10 +58,18 @@ def test_hash_identico_para_registro_igual(monkeypatch):
     assert a["hash"] == b["hash"]              # dedup via INSERT OR IGNORE
 
 
-def test_valor_invalido_vira_zero(monkeypatch):
+def test_valor_invalido_rejeita_resposta(monkeypatch):
+    # v2: valor não numérico invalida a resposta inteira (a partição anterior fica);
+    # valor nulo continua lido como 0,00
+    import pytest
     item = dict(ITEM_API, valor="n/d")
     monkeypatch.setattr(crawler, "_http_get",
                         lambda url, params: SimpleNamespace(content=_resposta_soap([item])))
+    with pytest.raises(crawler.RespostaInvalida):
+        crawler.coletar_mes("empenhos", 2026, 1)
+    nulo = dict(ITEM_API, valor=None)
+    monkeypatch.setattr(crawler, "_http_get",
+                        lambda url, params: SimpleNamespace(content=_resposta_soap([nulo])))
     assert crawler.coletar_mes("empenhos", 2026, 1)[0]["valor"] == 0.0
 
 
@@ -70,7 +78,7 @@ def test_coletar_mes_descarta_entidade_demonstracao(monkeypatch):
                 nome_favorecido="ECORONDÔNIA AMBIENTAL S/A")
     monkeypatch.setattr(crawler, "_http_get",
                         lambda url, params: SimpleNamespace(content=_resposta_soap([ITEM_API, demo])))
-    itens = crawler.coletar_mes("empenhos", 2025, 1)
+    itens = crawler.coletar_mes("empenhos", 2026, 1)
     assert len(itens) == 1
     assert itens[0]["unidade_gestora"] == "PREFEITURA MUNICIPAL DE SANTOS"
 

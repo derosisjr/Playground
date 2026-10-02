@@ -21,11 +21,34 @@ function definirCores() {
 definirCores();
 window.addEventListener("temamudou", () => {
   definirCores();
-  if (DADOS) renderGraficos();
+  if (DADOS) renderGraficosSeguro();
 });
+
+// Chart.js vem de CDN: se não carregar (ou um gráfico falhar), o resto do painel —
+// abas, alertas, favorecidos, Detalhamento — tem de continuar funcionando
+function renderGraficosSeguro() {
+  if (window.Chart) {
+    try { renderGraficos(); return; } catch (e) { console.warn("gráficos:", e); }
+  }
+  document.querySelectorAll("#painel-geral canvas").forEach(cv => {
+    if (cv.nextElementSibling?.classList.contains("sem-grafico")) return;
+    cv.hidden = true;
+    cv.insertAdjacentHTML("afterend", '<p class="contagem sem-grafico">Gráfico indisponível — a biblioteca ' +
+      "de gráficos não carregou. Os números seguem nas outras seções e abas.</p>");
+  });
+}
 
 let DADOS = null;
 let favSort = { col: "valor", dir: "desc" };
+
+// botões de alternância: .primario (visual) + aria-pressed (leitor de tela anuncia qual está ativo)
+function marcarAlternancia(seletor, ativo) {
+  document.querySelectorAll(seletor).forEach(x => {
+    const on = !!ativo(x);
+    x.classList.toggle("primario", on);
+    x.setAttribute("aria-pressed", on);
+  });
+}
 
 // ── Formatação ───────────────────────────────────────────────────────────────
 // camada comum: uma escala de moeda para o site inteiro (R$ 8,61 bi · R$ 157,0 mi)
@@ -46,15 +69,15 @@ async function init() {
   }
   renderStats();
   renderResumo();
-  renderGraficos();
+  renderGraficosSeguro();
   renderR100();
   renderRecibo();
+  renderAnalises();   // prazos, anulações, fim de exercício (tabelas; os gráficos vêm com os demais)
   ligarVistaFuncao();
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
   popularFiltrosAlertas();
-  renderAlertas();
-  ligarAlertas();
+  ligarAlertas();   // restaura filtros da URL e renderiza
   // deep-link de busca (paleta ⌘K / links externos): ?q= pré-preenche favorecidos
   const qIni = new URLSearchParams(location.search).get("q");
   if (qIni) document.getElementById("q").value = qIni;
@@ -63,16 +86,28 @@ async function init() {
   ligarAbas();
   // deep-link de aba: despesas.html#alertas / #favorecidos / #detalhe
   const aba = location.hash.replace("#", "");
-  if (["geral", "alertas", "favorecidos", "detalhe"].includes(aba)) selecionarAba(aba);
+  selecionarAba(ABAS.includes(aba) ? aba : "geral");   // também tira as abas inativas do Tab
+  // links para a própria página (paleta Ctrl+K "#detalhe", rodapé) trocam de aba sem recarregar
+  addEventListener("hashchange", () => {
+    const h = location.hash.replace("#", "");
+    if (!ABAS.includes(h)) return;
+    selecionarAba(h);
+    document.querySelector(".tabs")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
   ligarBusca();
   ligarOrdenacao();
   ligarModosFav();
+  // estado inicial dos grupos de alternância (o HTML só marca a classe .primario)
+  ["#fn-vista button", "#fav-modos button", "#det-metrica button"].forEach(s =>
+    marcarAlternancia(s, x => x.classList.contains("primario")));
   ligarDetalhe();
   ligarFicha();
   ligarFichaEmpenho();
   // consulta citável: ?dm=… restaura meses+filtros do Detalhamento e auto-carrega
   const pURL = Comum.lerParams();
+  definirVisao(pURL.get("dv") || "exe");   // redesenha o seletor de meses se a visão for "mov"
   if (pURL.get("dm")) aplicarEstadoURL(pURL);
+  renderCobertura();
 
   const at = DADOS.atualizado_em ? new Date(DADOS.atualizado_em).toLocaleString("pt-BR") : "";
   const ate = DADOS.dados_ate
@@ -80,6 +115,21 @@ async function init() {
       new Date(DADOS.dados_ate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR") + "."
     : "";
   document.getElementById("atualizado").textContent = (at ? "Atualizado em " + at + "." : "") + ate;
+}
+
+// Cobertura da base por partição (fonte × mês): o que falta, o que falhou e o que
+// veio em duplicidade sistemática na origem — substitui a confiança cega no total.
+function renderCobertura() {
+  const cob = DADOS.cobertura, el = document.getElementById("cobertura");
+  if (!cob || !el) return;
+  const n = (cob.particoes || []).length;
+  const partes = [`Cobertura: ${n} partições (estágio × mês) carregadas`];
+  if (cob.faltantes?.length) partes.push(`${cob.faltantes.length} sem carga: ${cob.faltantes.slice(0, 4).join(", ")}${cob.faltantes.length > 4 ? "…" : ""}`);
+  if (cob.com_erro?.length) partes.push(`${cob.com_erro.length} com falha na última coleta (versão anterior mantida)`);
+  if (cob.duplicidade_sistematica?.length)
+    partes.push(`${cob.duplicidade_sistematica.length} devolvidas pela origem em duplicidade sistemática (linhas idênticas contadas uma vez — ver Alertas › Inconsistência de dados)`);
+  if (DADOS.conservacao && !DADOS.conservacao.ok) partes.push("ATENÇÃO: soma da execução ≠ soma da movimentação (conservação falhou)");
+  el.textContent = partes.join(" · ") + ".";
 }
 
 // ── Cards ────────────────────────────────────────────────────────────────────
@@ -92,20 +142,41 @@ function deltaHTML(pct, rotulo) {
     `${pos ? "▲" : "▼"} ${Math.abs(pct)}%</span>`;
 }
 
+// Meses que a origem ainda está publicando (resumo.meses_parciais, "AAAA-MM"):
+// ficam fora de comparações e aparecem tracejados nos gráficos.
+function mesParcial(ano, mes) {
+  return (DADOS.resumo?.meses_parciais || []).includes(`${ano}-${String(mes).padStart(2, "0")}`);
+}
+
 function renderStats() {
   const t = DADOS.totais, p = DADOS.periodo, r = DADOS.resumo;
   const anos = Object.keys(t.por_ano || {}).sort();
   const ultimoAno = anos[anos.length - 1];
   const perCapita = t.geral / POP_SANTOS;
-  const yoy = r?.yoy; // acumulado do ano vs mesmo período do ano anterior
+  const yoy = r?.yoy, mr = r?.mes_ref; // acumulado jan–mês de referência vs mesmo período do ano anterior
+  const per = mr ? `jan–${MESES[mr.mes].toLowerCase()}` : "";
+  const cardAno = yoy && mr
+    ? { rotulo: `Acumulado ${per}/${mr.ano}`,
+        valor: compacto(yoy.atual) + deltaHTML(yoy.pct, `vs ${per}/${mr.ano - 1}`),
+        sub: `vs ${compacto(yoy.anterior)} em ${per}/${mr.ano - 1}` +
+             (r.meses_parciais?.length ? " · meses parciais fora" : "") }
+    : { rotulo: `Total em ${ultimoAno || "—"}`, valor: compacto(t.por_ano?.[ultimoAno] || 0),
+        sub: "exercício corrente" };
+  // "2025-01" → "jan/2025"
+  const mesAno = (s) => s ? `${MESES[+s.slice(5, 7)].toLowerCase()}/${s.slice(0, 4)}` : "—";
+  const nConferir = (DADOS.alertas || []).filter(aConferir).length;
   const cards = [
     { rotulo: "Total no período", valor: compacto(t.geral),
-      sub: `${p.de} a ${p.ate} · ≈ ${brl(perCapita)} por santista` },
-    { rotulo: `Total em ${ultimoAno || "—"}`,
-      valor: compacto(t.por_ano?.[ultimoAno] || 0) + deltaHTML(yoy?.pct, "vs mesmo período do ano anterior"),
-      sub: yoy ? `vs ${compacto(yoy.anterior)} no mesmo período de ${ultimoAno - 1}` : "exercício corrente" },
-    { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
-    { rotulo: "Favorecidos", valor: t.favorecidos.toLocaleString("pt-BR"), sub: "distintos" },
+      sub: `${mesAno(p.de)} a ${mesAno(p.ate)} · ≈ ${brl(perCapita)} por santista` },
+    cardAno,
+    // o card que responde "e agora?": o último mês fechado contra o ritmo recente
+    mr ? { rotulo: `Pago em ${MESES[mr.mes].toLowerCase()}/${mr.ano}`,
+           valor: compacto(mr.valor) + deltaHTML(r.delta_media_pct, "vs média dos 12 meses anteriores"),
+           sub: "último mês completo · vs média de 12 meses" }
+       : { rotulo: "Pagamentos", valor: t.pagamentos.toLocaleString("pt-BR"), sub: "registros" },
+    { rotulo: "Alertas a conferir",
+      valor: `<a href="#alertas" class="stat-link">${nConferir.toLocaleString("pt-BR")}</a>`,
+      sub: "anomalias e inconsistências → ver" },
   ];
   document.getElementById("stats").innerHTML = cards.map(c =>
     `<div class="stat"><div class="rotulo">${c.rotulo}</div>
@@ -137,36 +208,40 @@ function desviosSerie(serie) {
 
 function renderGraficos() {
   // rerender (troca de tema): solta os charts anteriores antes de recriar
-  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade"].forEach(id => {
+  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade", "ch-anulacoes", "ch-programa"].forEach(id => {
     const c = Chart.getChart(id);
     if (c) c.destroy();
   });
   // Série mensal — pontos fora do padrão (>±25% da média móvel) ganham destaque;
   // linha de média móvel 3m dá a tendência sem o serrilhado dos pagamentos.
   const serie = DADOS.series_mensais;
-  const desvios = desviosSerie(serie);
+  const parcial = serie.map(s => mesParcial(s.ano, s.mes));
+  const desvios = desviosSerie(serie).map((d, i) => parcial[i] ? null : d);
   const anomalo = desvios.map(d => d != null && Math.abs(d) > 25);
-  const mm3 = serie.map((s, i) => i < 2 ? null :
+  const mm3 = serie.map((s, i) => i < 2 || parcial[i] ? null :
     (serie[i - 2].valor + serie[i - 1].valor + s.valor) / 3);
   const optsMensal = chartOpts({ y: eixoReais() }, undefined, {
-    afterLabel: (c) => c.datasetIndex === 0 && anomalo[c.dataIndex]
-      ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
-      : "",
+    afterLabel: (c) => c.datasetIndex !== 0 ? ""
+      : parcial[c.dataIndex] ? "mês parcial — a origem ainda está publicando; fora das comparações"
+      : anomalo[c.dataIndex]
+        ? `${desvios[c.dataIndex] > 0 ? "+" : ""}${desvios[c.dataIndex]}% vs média 12m — fora do padrão, ver aba Alertas`
+        : "",
   });
   optsMensal.plugins.legend = { display: true, labels: { boxWidth: 18, font: { size: 12 } } };
   new Chart(document.getElementById("ch-mensal"), {
     type: "line",
     data: {
-      labels: serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
+      labels: serie.map((s, i) => `${MESES[s.mes]}/${String(s.ano).slice(2)}${parcial[i] ? "*" : ""}`),
       datasets: [{
         label: "Pago no mês",
         data: serie.map(s => s.valor), borderColor: NAVY, backgroundColor: FILL_SERIE,
         fill: true, tension: .25, borderWidth: 2,
-        pointRadius: anomalo.map(a => a ? 5 : 2),
+        segment: { borderDash: (ctx) => parcial[ctx.p1DataIndex] ? [4, 4] : undefined },
+        pointRadius: anomalo.map((a, i) => a ? 5 : parcial[i] ? 3 : 2),
         pointBackgroundColor: anomalo.map((a, i) =>
-          a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : NAVY),
+          a ? (desvios[i] > 0 ? "#b42318" : "#b54708") : parcial[i] ? "transparent" : NAVY),
         pointBorderColor: anomalo.map(a => a ? "#fff" : NAVY),
-        pointBorderWidth: anomalo.map(a => a ? 1.5 : 0),
+        pointBorderWidth: anomalo.map((a, i) => a ? 1.5 : parcial[i] ? 1.5 : 0),
       }, {
         label: "Média móvel (3 m)",
         data: mm3, borderColor: GOLD, borderDash: [5, 4], borderWidth: 2,
@@ -190,7 +265,9 @@ function renderGraficos() {
   new Chart(document.getElementById("ch-fonte"), {
     type: "doughnut",
     data: { labels: ft.map(f => rotulo(f.fonte)), datasets: [{ data: ft.map(f => f.valor), backgroundColor: PALETA }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { font: { size: 11 } } },
+    // legenda embaixo no celular: à direita ela espremia o anel
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {
+        position: matchMedia("(max-width: 640px)").matches ? "bottom" : "right", labels: { font: { size: 11 } } },
       tooltip: { callbacks: { label: (c) => `${c.label}: ${brlc(c.raw)}` } } } },
   });
 
@@ -203,11 +280,19 @@ function renderGraficos() {
   });
 
   // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
-  const ult = serie[serie.length - 1];
+  const ult = [...serie].reverse().find(s => !mesParcial(s.ano, s.mes));
+  const nParciais = parcial.filter(Boolean).length;
+  document.querySelectorAll(".nota-parcial").forEach(el => {
+    el.hidden = !nParciais;
+    el.textContent = "* Mês parcial: o portal publica com semanas de atraso — o trecho tracejado " +
+                     "ainda vai subir e fica fora das comparações.";
+  });
   Comum.chartAcessivel("ch-mensal",
-    `Total pago por mês, com média móvel de três meses. Último mês (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}. Pontos fora do padrão são detalhados na aba Alertas.`,
+    `Total pago por mês, com média móvel de três meses. Último mês completo (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}.` +
+    (nParciais ? ` ${nParciais} mês(es) seguinte(s) ainda parcial(is) na origem.` : "") +
+    " Pontos fora do padrão são detalhados na aba Alertas.",
     ["Mês", "Pago", "Média 3 m", "Desvio vs média 12m"],
-    serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor),
+    serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}${parcial[i] ? " (parcial)" : ""}`, compacto(s.valor),
       mm3[i] == null ? "—" : compacto(mm3[i]),
       desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]));
   Comum.chartAcessivel("ch-fonte",
@@ -217,6 +302,7 @@ function renderGraficos() {
     `Gasto pago por unidade gestora. Primeira: ${un[0] ? un[0].unidade + ", " + compacto(un[0].valor) : "—"}.`,
     ["Unidade gestora", "Pago"], un.map(u => [u.unidade, compacto(u.valor)]));
 
+  renderGraficosAnalises();
   if (ARVORE) renderMapa();   // repinta na troca de tema
   if (PARES) renderPares();
 }
@@ -233,33 +319,53 @@ function renderExecucao() {
   const ultimo = anos[anos.length - 1];
   const taxas = exe.por_ano?.[ultimo] || {};
   const partes = [];
-  if (taxas.taxa_pagamento != null)
-    partes.push(`Dos empenhos de ${ultimo}: ${Math.round(taxas.taxa_liquidacao)}% liquidado · ` +
+  const bt = taxas.base_taxa;
+  if (taxas.taxa_pagamento != null) {
+    const cob = bt?.cobertura_pct != null
+      ? ` (taxa calculada sobre ${bt.cobertura_pct}% do empenhado — empenhos cujo original está na base)` : "";
+    partes.push(`Dos empenhos de ${ultimo}${cob}: ${Math.round(taxas.taxa_liquidacao)}% liquidado · ` +
                 `${Math.round(taxas.taxa_pagamento)}% pago`);
+  } else if (taxas.taxa_motivos?.length) {
+    // sem teto artificial: os números brutos aparecem com o motivo da não validação
+    const brutas = taxas.taxas_brutas
+      ? ` Razões brutas: liquidado/empenhado ${taxas.taxas_brutas.liquidacao}%, pago/empenhado ${taxas.taxas_brutas.pagamento}%.` : "";
+    partes.push(`Taxa de execução de ${ultimo} NÃO validada — ${taxas.taxa_motivos.join("; ")}.${brutas}`);
+  }
+  if (bt?.sem_original)
+    partes.push(`${bt.sem_original.toLocaleString("pt-BR")} empenhos de ${ultimo} só têm anulações/reforços na base ` +
+                `(original emitido antes de ${DADOS.periodo?.de || "2025-01"}): ${compacto(bt.pago_sem_original)} pagos por eles ficam fora da taxa`);
   if (taxas.restos)
     partes.push(`restos a pagar quitados em ${ultimo}: ${compacto(taxas.restos)}`);
+  if (taxas.nao_localizado)
+    partes.push(`pagamentos orçamentários cujo empenho não está na base: ${compacto(taxas.nao_localizado)}`);
   document.getElementById("exe-taxas").textContent = partes.join(" · ");
 
   const s = exe.serie;
-  const labels = s.map(x => `${MESES[x.mes]}/${String(x.ano).slice(2)}`);
+  const parcial = s.map(x => mesParcial(x.ano, x.mes));
+  const labels = s.map((x, i) => `${MESES[x.mes]}/${String(x.ano).slice(2)}${parcial[i] ? "*" : ""}`);
+  const segParcial = (padrao) => ({ borderDash: (ctx) => parcial[ctx.p1DataIndex] ? [2, 3] : padrao });
   new Chart(document.getElementById("ch-execucao"), {
     type: "line",
     data: {
       labels,
       datasets: [
         { label: "Empenhado", data: s.map(x => x.empenhado), borderColor: PALETA[2],
-          borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .25 },
+          borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: .25, segment: segParcial([6, 4]) },
         { label: "Liquidado", data: s.map(x => x.liquidado), borderColor: GOLD,
-          borderWidth: 2, pointRadius: 0, tension: .25 },
+          borderWidth: 2, pointRadius: 0, tension: .25, segment: segParcial(undefined) },
         { label: "Pago", data: s.map(x => x.pago), borderColor: NAVY,
-          backgroundColor: FILL_SERIE, fill: true, borderWidth: 2.5, pointRadius: 0, tension: .25 },
+          backgroundColor: FILL_SERIE, fill: true, borderWidth: 2.5, pointRadius: 0, tension: .25,
+          segment: segParcial(undefined) },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: true, labels: { boxWidth: 18, font: { size: 12 } } },
-        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}` } },
+        tooltip: { callbacks: {
+          label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}`,
+          footer: (itens) => itens.length && parcial[itens[0].dataIndex] ? "mês parcial — a origem ainda está publicando" : "",
+        } },
       },
       scales: { y: eixoReais() },
     },
@@ -269,7 +375,8 @@ function renderExecucao() {
     "Empenhado (compromisso assumido), liquidado (entrega atestada) e pago (dinheiro que saiu) " +
     "em cada mês. " + (partes.length ? partes.join("; ") + "." : ""),
     ["Mês", "Empenhado", "Liquidado", "Pago"],
-    s.map((x, i) => [labels[i], compacto(x.empenhado), compacto(x.liquidado), compacto(x.pago)]));
+    s.map((x, i) => [labels[i].replace("*", " (parcial)"), x.empenhado == null ? "não carregado" : compacto(x.empenhado),
+      x.liquidado == null ? "não carregado" : compacto(x.liquidado), x.pago == null ? "não carregado" : compacto(x.pago)]));
 }
 
 // Top funções com três vistas: R$ absoluto, % do total e por habitante (padrão
@@ -291,7 +398,7 @@ function renderFuncao() {
   new Chart(document.getElementById("ch-funcao"), {
     type: "bar",
     data: {
-      labels: fn.map(f => rotulo(f.funcao)),
+      labels: fn.map(f => nomeFuncao(f.funcao)),   // mesmo nome do "De cada R$ 100" e do mapa
       datasets: [{ data: fn.map(f => conv(f.valor)), backgroundColor: GOLD }],
     },
     options: chartOpts({ x: { ticks: { callback: tick } } }, "y", {
@@ -312,17 +419,116 @@ function ligarVistaFuncao() {
   document.querySelectorAll("#fn-vista button").forEach(b =>
     b.addEventListener("click", () => {
       fnVista = b.dataset.vista;
-      document.querySelectorAll("#fn-vista button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.vista === fnVista));
+      marcarAlternancia("#fn-vista button", x => x.dataset.vista === fnVista);
       renderFuncao();
     }));
 }
 
 // "De cada R$ 100 pagos" — tradução do total em escala humana (barras proporcionais)
+// "Para onde vai o dinheiro" usa só o orçamentário (índice novo); índice antigo cai no total
+function baseParaOndeVai() {
+  const orc = DADOS.por_funcao_orcamentario;
+  if (orc?.length) return { fns: orc, total: orc.reduce((s, f) => s + f.valor, 0) };
+  return { fns: DADOS.por_funcao || [], total: DADOS.totais?.geral };
+}
+
+// link para o raio-X: dossiê pré-computado (top-300) ou a rota por documento/nome
+function linkRaiox(f) {
+  const top = (DADOS.top_favorecidos || []).find(t => t.chave === f.chave);
+  return top?.slug ? `./favorecido.html?f=${encodeURIComponent(top.slug)}`
+    : `./favorecido.html?doc=${encodeURIComponent(f.documento || "")}&nome=${encodeURIComponent(f.nome || "")}`;
+}
+const dias = (d) => d == null ? "—" : `${Number(d).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} d`;
+
+// ── Análises (Lote D5): prazo de pagamento, anulações, fim de exercício ──────
+function renderAnalises() {
+  const prz = DADOS.prazos_pagamento;
+  if (prz?.por_ano && Object.keys(prz.por_ano).length) {
+    const anos = Object.keys(prz.por_ano).sort();
+    const ult = anos[anos.length - 1], a = prz.por_ano[ult];
+    document.getElementById("prazos-resumo").textContent =
+      anos.map(k => `${k}: mediana de ${dias(prz.por_ano[k].mediana_dias)} entre a liquidação e o pagamento ` +
+                    `(90% em até ${dias(prz.por_ano[k].p90_dias)}; ${prz.por_ano[k].pagamentos.toLocaleString("pt-BR")} pagamentos)`).join(" · ");
+    const total = a.faixas.reduce((s, f) => s + f.qtd, 0) || 1;
+    const max = Math.max(...a.faixas.map(f => f.qtd)) || 1;
+    document.getElementById("prazos-faixas").innerHTML = a.faixas.filter(f => f.qtd || f.faixa !== "antes da liquidação").map(f => `
+      <div class="r100-linha">
+        <span class="r100-nome">${esc(f.faixa)}${f.faixa === "antes da liquidação" && f.qtd ? " ⚠" : ""}</span>
+        <span class="r100-barra" aria-hidden="true"><span class="r100-fill" style="width:${(100 * f.qtd / max).toFixed(1)}%"></span></span>
+        <span class="r100-vlr">${Math.round(100 * f.qtd / total)}%</span>
+      </div>`).join("");
+    const linha = (x) => `<tr><td data-label="Fornecedor"><a href="${linkRaiox(x)}">${esc(x.nome)}</a></td>
+      <td data-label="Mediana" class="r">${dias(x.mediana_dias)}</td>
+      <td data-label="Pagamentos" class="r">${x.pagamentos}</td>
+      <td data-label="Valor" class="r">${compacto(x.valor)}</td></tr>`;
+    document.getElementById("prazos-lentos").innerHTML = (prz.mais_lentos || []).map(linha).join("");
+    document.getElementById("prazos-rapidos").innerHTML = (prz.mais_rapidos || []).map(linha).join("");
+    document.getElementById("prazos-nota").textContent =
+      `Distribuição de ${ult}. ${prz.criterio} A Lei 14.133 (art. 141) manda pagar na ordem cronológica, ` +
+      "por fonte de recurso, com exceções justificadas: pagamento muito mais rápido ou muito mais lento que a " +
+      "fila é triagem para pedir a justificativa — não é conclusão. Os casos extremos viram alertas.";
+    document.getElementById("box-prazos").hidden = false;
+  }
+
+  const an = DADOS.anulacoes;
+  if (an?.por_ano && Object.keys(an.por_ano).length) {
+    document.getElementById("anul-resumo").textContent = Object.entries(an.por_ano).map(([k, v]) =>
+      `${k}: ${compacto(v.valor)} anulados em ${v.qtd.toLocaleString("pt-BR")} anulações` +
+      (v.pct_do_empenhado != null ? ` (${v.pct_do_empenhado.toLocaleString("pt-BR")}% do empenhado na base)` : "")).join(" · ");
+    document.getElementById("anul-top").innerHTML = (an.top_favorecidos || []).slice(0, 10).map(x => `
+      <tr><td data-label="Favorecido"><a href="${linkRaiox(x)}">${esc(x.nome)}</a>${x.ente_publico ? ' <span class="p" style="color:var(--muted)">· ente público</span>' : ""}</td>
+        <td data-label="Anulado" class="r">${compacto(x.valor)}</td>
+        <td data-label="% do empenhado" class="r">${x.pct_do_empenhado != null ? x.pct_do_empenhado.toLocaleString("pt-BR") + "%"
+          : '<span title="O empenho original é anterior a jan/2025 — fora da base">orig. anterior</span>'}</td></tr>`).join("");
+    document.getElementById("box-anulacoes").hidden = false;
+  }
+
+  const fim = DADOS.fim_de_exercicio;
+  if (fim && Object.keys(fim).length) {
+    const rot = { empenhado: "Empenhado (novos)", liquidado: "Liquidado", pago: "Pago", anulado: "Anulado" };
+    document.getElementById("fim-corpo").innerHTML = Object.entries(fim).map(([ano, m]) =>
+      Object.entries(rot).map(([k, r]) => m[k] ? `<tr><td data-label="Ano · estágio">${ano} · ${r}</td>
+        <td data-label="Dezembro" class="r">${compacto(m[k].dezembro)}</td>
+        <td data-label="Média jan–nov" class="r">${compacto(m[k].media_jan_nov)}</td>
+        <td data-label="Dez ÷ média" class="r"${m[k].razao >= 1.5 ? ' style="font-weight:800"' : ""}>${m[k].razao != null
+          ? m[k].razao.toLocaleString("pt-BR") + "×" : "—"}</td></tr>` : "").join("")).join("");
+    document.getElementById("fim-nota").textContent =
+      "Corrida de liquidação e cancelamento de saldos no encerramento do exercício aparecem aqui: liquidar em " +
+      "dezembro garante a inscrição em restos a pagar processados; anular em massa cancela empenhos sem execução. " +
+      "Só anos com dezembro completo na base.";
+    document.getElementById("box-fim").hidden = false;
+  }
+}
+
+// gráficos das análises (repintados na troca de tema junto com os demais)
+function renderGraficosAnalises() {
+  const an = DADOS.anulacoes;
+  if (an?.serie?.length) {
+    new Chart(document.getElementById("ch-anulacoes"), {
+      type: "bar",
+      data: { labels: an.serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
+              datasets: [{ data: an.serie.map(s => s.valor), backgroundColor: PALETA[7] }] },
+      options: chartOpts({ y: eixoReais() }),
+    });
+    Comum.chartAcessivel("ch-anulacoes", "Valor de empenhos anulados por mês.", ["Mês", "Anulado", "Anulações"],
+      an.serie.map(s => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor), String(s.qtd)]));
+  }
+  const pr = (DADOS.por_programa || []).slice(0, 12);
+  if (pr.length) {
+    new Chart(document.getElementById("ch-programa"), {
+      type: "bar",
+      data: { labels: pr.map(p => rotulo(nomeFuncao(p.programa))), datasets: [{ data: pr.map(p => p.valor), backgroundColor: NAVY }] },
+      options: chartOpts({ x: eixoReais() }, "y"),
+    });
+    Comum.chartAcessivel("ch-programa", "Pago orçamentário por programa do PPA (doze maiores).", ["Programa", "Pago"],
+      pr.map(p => [p.programa, compacto(p.valor)]));
+    document.getElementById("box-programa").hidden = false;
+  }
+}
+
 function renderR100() {
   const box = document.getElementById("box-r100");
-  const fns = DADOS.por_funcao || [];
-  const total = DADOS.totais?.geral;
+  const { fns, total } = baseParaOndeVai();
   if (!box || !fns.length || !total) return;
   const top = fns.slice(0, 8);
   const outros = total - top.reduce((s, f) => s + f.valor, 0);
@@ -336,7 +542,8 @@ function renderR100() {
       <span class="r100-vlr">R$ ${i.v.toFixed(2).replace(".", ",")}</span>
     </div>`).join("");
   document.getElementById("r100-nota").textContent =
-    `Distribuição do total pago no período (${compacto(total)}) por função de governo.`;
+    `Distribuição do pago ORÇAMENTÁRIO no período (${compacto(total)}) por função de governo — sem as ` +
+    "retenções e consignações extra-orçamentárias, que só transitam pelo caixa.";
   box.hidden = false;
 }
 
@@ -407,8 +614,7 @@ function renderComparativo() {
 // ── Recibo do contribuinte (didático, IPTU → funções) ────────────────────────
 function renderRecibo() {
   const box = document.getElementById("box-recibo");
-  const fns = DADOS.por_funcao || [];
-  const total = DADOS.totais?.geral;
+  const { fns, total } = baseParaOndeVai();
   if (!box || !fns.length || !total) return;
   const faixa = document.getElementById("recibo-faixa");
   const campo = document.getElementById("recibo-valor");
@@ -554,6 +760,7 @@ let PARES = null;
 let paresFuncao = "";   // função selecionada (chave completa "10 - Saúde")
 
 async function initPares() {
+  if (!window.Chart) return;   // sem a biblioteca o box fica oculto
   try {
     const r = await fetch("./despesas/benchmark.json?v=" + (DADOS.atualizado_em || ""));
     if (!r.ok) throw new Error(r.status);
@@ -648,12 +855,23 @@ function chartOpts(scales, indexAxis, tooltipExtra) {
 
 // ── Alertas ──────────────────────────────────────────────────────────────────
 const ALERTA_LABELS = {
-  favorecido_recorrente: "Favorecido recorrente", concentracao: "Concentração em função",
+  favorecido_recorrente: "Grande recebedor recorrente", concentracao: "Concentração em função",
   pico_mensal: "Pico mensal", extra_orcamentario: "Extra-orçamentário",
-  fracionamento: "Possível fracionamento", favorecido_novo: "Favorecido novo",
-  crescimento_yoy: "Crescimento anômalo", pf_sensivel: "Pessoa física sensível",
+  fracionamento: "Triagem de fracionamento", favorecido_novo: "Favorecido novo",
+  crescimento_yoy: "Crescimento no mesmo período", pf_sensivel: "Pessoa física sensível",
   pico_favorecido: "Pico de um favorecido", pico_elemento: "Pico de um elemento",
+  dados_duplicidade: "Dados: duplicidade na origem", dados_particao: "Dados: coleta falhou",
+  dados_cobertura: "Dados: cobertura incompleta", dados_taxa: "Dados: taxa não validada",
+  dados_nao_localizado: "Dados: empenho não localizado",
+  prazo_rapido: "Pago bem mais rápido que a fila", prazo_lento: "Pago bem mais devagar que a fila",
 };
+const CLASSE_LABELS = { contexto: "Contexto", anomalia: "Anomalia a conferir", inconsistencia: "Inconsistência de dados" };
+const ESTADO_LABELS = { novo: "novo", persistente: "persistente", sem_historico: "sem histórico" };
+const SEV_LABELS = { alta: "Alta", media: "Média", baixa: "Baixa" };
+const GRUPO_MIN = 3;   // regra com ≥ N alertas visíveis vira um grupo recolhível (evita 15 cartões seguidos)
+// "A conferir" = anomalias + inconsistências (contexto é informação, não achado) —
+// a mesma contagem do hub, do "Em resumo" (resumo.alertas_ativos) e da aba.
+const aConferir = (a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa";
 
 function popularFiltrosAlertas() {
   const lista = DADOS.alertas || [];
@@ -663,51 +881,133 @@ function popularFiltrosAlertas() {
     tipos.map(t => `<option value="${esc(t)}">${esc(ALERTA_LABELS[t] || t)}</option>`).join("");
 }
 
+// filtros dos alertas na URL (ac/at/as) — Voltar depois de abrir um recorte restaura a triagem.
+// Preserva os demais parâmetros (o Detalhamento grava os seus).
+function gravarFiltrosAlerta() {
+  const p = Object.fromEntries(Comum.lerParams());
+  delete p.ac; delete p.at; delete p.as;
+  const cl = document.getElementById("alerta-classe").value;
+  if (cl !== "conferir") p.ac = cl || "todas";
+  p.at = document.getElementById("alerta-tipo").value;
+  p.as = document.getElementById("alerta-sev").value;
+  Comum.gravarParams(p);
+}
+
 function ligarAlertas() {
-  document.getElementById("alerta-tipo").addEventListener("change", renderAlertas);
-  document.getElementById("alerta-sev").addEventListener("change", renderAlertas);
+  const p = Comum.lerParams();
+  const sel = (id, v) => { const el = document.getElementById(id);
+    if (v != null && [...el.options].some(o => o.value === v)) el.value = v; };
+  sel("alerta-classe", p.get("ac") === "todas" ? "" : p.get("ac"));
+  sel("alerta-tipo", p.get("at"));
+  sel("alerta-sev", p.get("as"));
+  ["alerta-tipo", "alerta-sev", "alerta-classe"].forEach(id =>
+    document.getElementById(id).addEventListener("change", () => { gravarFiltrosAlerta(); renderAlertas(); }));
+  renderAlertas();
+  const h = DADOS.alertas_historico, nota = document.getElementById("alertas-historico");
+  if (h && nota) {
+    nota.textContent = h.disponivel
+      ? `Histórico de alertas desde ${new Date(h.desde + "T12:00:00").toLocaleDateString("pt-BR")}: ` +
+        `${h.novos} novo(s), ${h.persistentes} persistente(s), ${(h.resolvidos_recentes || []).length} resolvido(s) recentemente.`
+      : (h.nota || "Sem histórico de alertas.");
+    nota.hidden = false;
+  }
 }
 
 function renderAlertas() {
   const lista = DADOS.alertas || [];
-  document.getElementById("badge-alertas").textContent = lista.length ? `(${lista.length})` : "";
+  const nConferir = lista.filter(aConferir).length;
+  const badge = document.getElementById("badge-alertas");
+  badge.textContent = nConferir ? `(${nConferir})` : "";
+  badge.title = `${nConferir} a conferir · ${lista.length - nConferir} de contexto`;
   const fTipo = document.getElementById("alerta-tipo").value;
   const fSev = document.getElementById("alerta-sev").value;
-  const vis = lista.filter(a => (!fTipo || a.tipo === fTipo) && (!fSev || a.severidade === fSev));
+  const fCl = document.getElementById("alerta-classe")?.value || "";
+  const vis = lista.filter(a => (!fTipo || a.tipo === fTipo) && (!fSev || a.severidade === fSev) &&
+                                (!fCl || (fCl === "conferir" ? aConferir(a) : (a.classe || "anomalia") === fCl)));
 
   const cont = document.getElementById("lista-alertas");
-  document.getElementById("alertas-vazio").hidden = vis.length > 0;
-  cont.innerHTML = vis.map(a => `
-    <div class="alerta ${a.severidade}" data-fav="${esc(a.filtro?.favorecido || "")}"
-         data-elemento="${esc(a.filtro?.elemento || "")}" data-modo="${esc(a.filtro?.tipo_doc || "")}">
+  const vazio = document.getElementById("alertas-vazio");
+  vazio.hidden = vis.length > 0;
+  if (!vis.length) {
+    const filtrado = fTipo || fSev || fCl !== "conferir";
+    vazio.innerHTML = lista.length && filtrado
+      ? 'Nenhum alerta com esses filtros. <button class="btn" type="button" id="alertas-limpar">Limpar filtros</button>'
+      : "Nenhum alerta com os limiares atuais.";
+    document.getElementById("alertas-limpar")?.addEventListener("click", () => {
+      document.getElementById("alerta-classe").value = "conferir";
+      document.getElementById("alerta-tipo").value = "";
+      document.getElementById("alerta-sev").value = "";
+      gravarFiltrosAlerta();
+      renderAlertas();
+    });
+  }
+  const docsHtml = (a) => {
+    const docs = a.documentos || [];
+    if (!docs.length) return "";
+    const li = docs.map(d => {
+      const partes = [d.data, d.empenho ? "emp. " + d.empenho : "", d.doc ? "doc. " + d.doc : "",
+                      d.ug ? d.ug.replace(/^PREFEITURA MUNICIPAL DE SANTOS$/, "PMS") : "",
+                      d.reforcos ? `${d.reforcos} reforço(s)` : "", d.anulacoes ? `${d.anulacoes} anulação(ões)` : "",
+                      d.elemento || ""].filter(Boolean).join(" · ");
+      return `<li>${esc(partes)} — <span class="num">${brlc(d.valor)}</span></li>`;
+    }).join("");
+    return `<details class="alerta-docs"><summary>${docs.length} documento(s) que acionaram a regra</summary><ul>${li}</ul></details>`;
+  };
+  const faltamHtml = (a) => (a.informacoes_faltantes || []).length
+    ? `<div class="det">Não constam na fonte: ${esc(a.informacoes_faltantes.join(", "))}.</div>` : "";
+  const limiteHtml = (a) => a.limite?.verificacao
+    ? `<div class="det">Limite usado: ${esc(a.limite.norma || "não cadastrado")} — ${esc(a.limite.verificacao)}.</div>` : "";
+  const cartao = (a) => `
+    <div class="alerta ${a.severidade} classe-${esc(a.classe || "anomalia")}" data-link="${esc(a.link || "")}">
       <div class="top">
-        <div class="titulo"><span class="sev ${a.severidade}">${a.severidade}</span>${esc(a.titulo)}</div>
-        <div class="vlr">${brlc(a.valor)}</div>
+        <div class="titulo"><span class="sev ${a.severidade}">${esc(SEV_LABELS[a.severidade] || a.severidade)}</span>
+          <span class="classe">${esc(CLASSE_LABELS[a.classe] || "")}</span>
+          ${a.estado && a.estado !== "sem_historico" ? `<span class="estado ${esc(a.estado)}">${esc(ESTADO_LABELS[a.estado] || a.estado)}</span>` : ""}
+          ${esc(a.titulo)}</div>
+        <div class="vlr">${a.valor ? brlc(a.valor) : ""}</div>
       </div>
       <div class="det">${esc(a.detalhe)}</div>
-    </div>`).join("");
+      ${limiteHtml(a)}${faltamHtml(a)}${docsHtml(a)}
+      ${a.link ? `<a class="alerta-link" href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}
+    </div>`;
 
+  // regra com muitos alertas vira um grupo recolhível, na posição do seu 1º alerta;
+  // o teto por regra (alertas_regras) é declarado: "os N maiores de M casos"
+  const porTipo = new Map();
+  vis.forEach(a => { if (!porTipo.has(a.tipo)) porTipo.set(a.tipo, []); porTipo.get(a.tipo).push(a); });
+  const agrupar = (tipo) => !fTipo && porTipo.get(tipo).length >= GRUPO_MIN;
+  const tetoHtml = (tipo, n) => {
+    const r = DADOS.alertas_regras?.[tipo];
+    return r && r.candidatos > r.publicados
+      ? `<div class="teto">Mostrando os ${n} maiores de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra.</div>` : "";
+  };
+  const feitos = new Set();
+  cont.innerHTML = vis.map(a => {
+    if (!agrupar(a.tipo)) return cartao(a);
+    if (feitos.has(a.tipo)) return "";
+    feitos.add(a.tipo);
+    const itens = porTipo.get(a.tipo);
+    // inconsistência: o valor é o que a origem duplicou, não gasto — somar leria como despesa
+    const soma = a.classe === "inconsistencia" ? 0 : itens.reduce((t, x) => t + (x.valor || 0), 0);
+    const sevs = new Set(itens.map(x => x.severidade));
+    const sevHtml = sevs.size === 1
+      ? ` <span class="sev ${a.severidade}">${esc(SEV_LABELS[a.severidade] || a.severidade)}</span>` : "";
+    return `<details class="alerta-grupo">
+      <summary><span>${esc(ALERTA_LABELS[a.tipo] || a.tipo)} — ${itens.length} alertas${sevHtml}</span>
+        <span class="vlr">${soma ? brlc(soma) : ""}</span></summary>
+      ${tetoHtml(a.tipo, itens.length)}${itens.map(cartao).join("")}
+    </details>`;
+  }).join("");
+  // filtrado por tipo: a lista é a regra inteira — o teto vai no topo
+  if (fTipo && vis.length) cont.insertAdjacentHTML("afterbegin", tetoHtml(fTipo, vis.length));
+
+  // clique no cartão abre o recorte (link citável); cliques nos documentos (<details>) e em <a>
+  // seguem o próprio elemento — o grupo recolhível também é <details>, por isso a classe
   cont.querySelectorAll(".alerta").forEach(el => {
-    el.addEventListener("click", async () => {
-      const fav = el.getAttribute("data-fav");
-      if (!fav) {
-        // alertas sem favorecido (ex.: pico de elemento) desembocam no Detalhamento
-        const elemento = el.getAttribute("data-elemento");
-        if (elemento) irParaDetalhe({ elemento_despesa: elemento });
-        return;
-      }
-      const modo = el.getAttribute("data-modo");
-      const elemento = el.getAttribute("data-elemento");
-      selecionarAba("favorecidos");
-      if (modo) {
-        favModo = modo;
-        document.querySelectorAll("#fav-modos button").forEach(x =>
-          x.classList.toggle("primario", x.dataset.modo === favModo));
-      }
-      favElemento = elemento || "";
-      document.getElementById("q").value = fav;
-      await atualizarFav();
-      document.getElementById("f-elemento-fav").value = favElemento;
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".alerta-docs, a") || getSelection().toString()) return;
+      const link = el.getAttribute("data-link");
+      if (link) location.href = link;
     });
   });
 }
@@ -733,7 +1033,8 @@ function predTipoFav() {
   return () => true;
 }
 
-// Agrega favorecidos a partir do detalhe (execução), filtrando por tipo e elemento.
+// Agrega favorecidos a partir do detalhe (execução) por IDENTIDADE (mesma regra do
+// export: CNPJ completo une grafias; CPF mascarado só une com o mesmo nome).
 function agregarFavDetalhe(predTipo, elemento) {
   const { campos, rows } = FAV_DETALHE;
   const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido"),
@@ -743,25 +1044,36 @@ function agregarFavDetalhe(predTipo, elemento) {
     const doc = r[iD];
     if (!predTipo(doc)) continue;
     if (elemento && r[iE] !== elemento) continue;
-    const chave = r[iN] + "|" + doc;
+    const chave = chaveFavorecido(r[iN], doc);
     let o = map.get(chave);
-    if (!o) { o = { nome: r[iN], documento: doc, valor: 0, qtd: 0, meses: new Set() }; map.set(chave, o); }
+    if (!o) { o = { chave, nomes: new Map(), documento: doc, valor: 0, qtd: 0, meses: new Set() }; map.set(chave, o); }
+    o.nomes.set(r[iN], (o.nomes.get(r[iN]) || 0) + 1);
     o.valor += (r[iP] || 0);
     o.qtd += 1;
     if (r[iData]) o.meses.add(String(r[iData]).slice(0, 7));
   }
   return [...map.values()]
-    .map(o => ({ nome: o.nome, documento: o.documento, valor: o.valor, qtd: o.qtd, meses: o.meses.size }))
+    .map(o => ({ chave: o.chave, nome: nomeExibicao(o.nomes), documento: o.documento, valor: o.valor, qtd: o.qtd,
+                 meses: o.meses.size, grafias: o.nomes.size > 1 ? [...o.nomes.keys()] : undefined }))
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 300);
 }
 
+// mesma escolha determinística do export (formato.nome_exibicao): sem U+FFFD > mais
+// lançamentos > mais longa > alfabética
+function nomeExibicao(nomes) {
+  return [...nomes.entries()].sort((a, b) =>
+    (a[0].includes("\ufffd") - b[0].includes("\ufffd")) || (b[1] - a[1]) || (b[0].length - a[0].length) ||
+    a[0].localeCompare(b[0]))[0][0];
+}
+
 // Fonte da tabela conforme modo + elemento (com memo p/ não reagregar a cada render).
 function fonteFav() {
-  // Sem elemento e em modo CNPJ/Todos: usa o agregado pronto do index (visão caixa/pago).
+  // Sem elemento e em modo CNPJ/Todos/Privados: usa o agregado pronto do index (visão caixa/pago).
   if (!favElemento && favModo !== "pf") {
     const all = DADOS.top_favorecidos || [];
     if (favModo === "pj") return all.filter(f => (f.documento || "").includes("/"));
+    if (favModo === "privados") return all.filter(f => !f.ente_publico);   // flag do export (formato.eh_ente_publico)
     return all;
   }
   // PF sem elemento: agregado leve pré-computado (dados/pf-resumo.json).
@@ -769,7 +1081,14 @@ function fonteFav() {
   // Qualquer modo com elemento (ou PF sem o índice leve): agrega do detalhe.
   if (!FAV_DETALHE) return [];
   const chave = favModo + "|" + favElemento;
-  if (favMemo.chave !== chave) favMemo = { chave, lista: agregarFavDetalhe(predTipoFav(), favElemento || null) };
+  if (favMemo.chave !== chave) {
+    let lista = agregarFavDetalhe(predTipoFav(), favElemento || null);
+    if (favModo === "privados") {
+      const publicos = new Set(DADOS.entes_publicos || []);
+      lista = lista.filter(f => !publicos.has(f.chave));
+    }
+    favMemo = { chave, lista };
+  }
   return favMemo.lista;
 }
 
@@ -780,9 +1099,11 @@ function renderFavoridosTabela() {
   const fonte = fonteFav();
   let linhas = fonte.map(f => ({
     nome: f.nome || "—", valor: f.valor, qtd: f.qtd, meses: f.meses, documento: f.documento || "",
+    chave: f.chave || chaveFavorecido(f.nome, f.documento), grafias: f.grafias || [],
   }));
   if (termo) linhas = linhas.filter(f =>
     semAcento(f.nome).includes(termo) ||
+    f.grafias.some(g => semAcento(g).includes(termo)) ||
     (f.documento && (semAcento(f.documento).includes(termo) ||
       (termoDig && soDigitos(f.documento).includes(termoDig)))));
   const dir = favSort.dir === "asc" ? 1 : -1;
@@ -793,20 +1114,45 @@ function renderFavoridosTabela() {
   });
 
   const corpo = document.getElementById("corpo-fav");
-  document.getElementById("fav-vazio").hidden = linhas.length > 0;
+  const vazio = document.getElementById("fav-vazio");
+  vazio.hidden = linhas.length > 0;
+  if (!linhas.length) {
+    // a lista é só o top-300 por valor: "não encontrado" aqui não quer dizer "não recebeu" —
+    // o raio-X por documento/nome procura na base inteira
+    const dig = soDigitos(bruto);
+    const alvo = dig.length === 14 || dig.length === 11
+      ? "./favorecido.html?doc=" + encodeURIComponent(bruto) + "&nome="
+      : "./favorecido.html?doc=&nome=" + encodeURIComponent(bruto);
+    vazio.innerHTML = bruto
+      ? `Nenhum favorecido com “${esc(bruto)}” entre os ${fonte.length} maiores desta lista. ` +
+        `<a class="btn" href="${alvo}">Procurar na base inteira (raio-X) ↗</a>`
+      : "Nenhum favorecido encontrado.";
+  }
   const visiveis = linhas.slice(0, favVisiveis);
   corpo.innerHTML = visiveis.map(f => `
-    <tr class="fav-row" style="cursor:pointer" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}">
-      <td data-label="Favorecido">${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}</div>` : ""}</td>
+    <tr class="fav-row" style="cursor:pointer" tabindex="0" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}" data-chave="${esc(f.chave)}">
+      <td data-label="Favorecido">${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}${f.grafias.length > 1 ? ` · ${f.grafias.length} grafias na origem` : ""}</div>` : ""}</td>
       <td data-label="Valor total" class="r num">${brlc(f.valor)}</td>
       <td data-label="Pagamentos" class="r num">${f.qtd}</td>
       <td data-label="Meses" class="r num">${f.meses}</td>
     </tr>`).join("");
-  corpo.querySelectorAll(".fav-row").forEach(tr =>
-    tr.addEventListener("click", () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc)));
+  corpo.querySelectorAll(".fav-row").forEach(tr => {
+    const abrir = () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc, tr.dataset.chave);
+    tr.addEventListener("click", abrir);
+    tr.addEventListener("keydown", (e) => {   // linha focável: Enter/Espaço abre a ficha
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); }
+    });
+  });
+  document.querySelectorAll("#painel-favorecidos th[data-sort]").forEach(th => {
+    const ativa = th.dataset.sort === favSort.col;
+    if (ativa) th.setAttribute("aria-sort", favSort.dir === "asc" ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+    const b = th.querySelector("button");
+    if (b) b.dataset.seta = ativa ? (favSort.dir === "asc" ? " ▲" : " ▼") : "";
+  });
   document.getElementById("fav-mais").hidden = linhas.length <= favVisiveis;
   const rotuloModo = favModo === "pf" ? "pessoa(s) física(s)"
-    : favModo === "pj" ? "empresa(s)" : "favorecido(s)";
+    : favModo === "pj" ? "empresa(s)" : favModo === "privados" ? "fornecedor(es) privado(s)" : "favorecido(s)";
   document.getElementById("contagem").textContent =
     `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor` +
     (linhas.length > visiveis.length ? ` · exibindo ${visiveis.length}` : "");
@@ -871,8 +1217,7 @@ function ligarModosFav() {
   document.querySelectorAll("#fav-modos button").forEach(b =>
     b.addEventListener("click", () => {
       favModo = b.dataset.modo;
-      document.querySelectorAll("#fav-modos button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.modo === favModo));
+      marcarAlternancia("#fav-modos button", x => x.dataset.modo === favModo);
       favVisiveis = FAV_LOTE;
       atualizarFav();
     }));
@@ -904,6 +1249,7 @@ function ligarAbas() {
     p.setAttribute("aria-labelledby", "tab-" + p.id.replace("painel-", ""));
   });
 }
+const ABAS = ["geral", "alertas", "favorecidos", "detalhe"];
 function selecionarAba(nome) {
   document.querySelectorAll(".tab").forEach(t => {
     const ativa = t.dataset.tab === nome;
@@ -912,6 +1258,12 @@ function selecionarAba(nome) {
   });
   document.querySelectorAll(".painel").forEach(p => p.classList.remove("ativo"));
   document.getElementById("painel-" + nome).classList.add("ativo");
+  // aba no hash (sem nova entrada de histórico): Voltar depois de abrir um alerta cai
+  // na mesma aba; a Visão geral é o padrão e fica sem hash
+  const hash = nome === "geral" ? "" : "#" + nome;
+  const atual = location.hash.replace("#", "");
+  if (location.hash !== hash && (!atual || ABAS.includes(atual)))   // não apaga âncoras de conteúdo
+    history.replaceState(null, "", location.pathname + location.search + hash);
 }
 function ligarBusca() {
   document.getElementById("q").addEventListener("input", () => {
@@ -924,6 +1276,7 @@ function ligarBusca() {
   });
 }
 function ligarOrdenacao() {
+  // o clique (ou Enter/Espaço no <button> do cabeçalho) sobe até o <th>
   document.querySelectorAll("th[data-sort]").forEach(th =>
     th.addEventListener("click", () => {
       const col = th.dataset.sort;
@@ -940,22 +1293,44 @@ function ligarOrdenacao() {
 // contagem, faixa de valor, colunas configuráveis, agrupamento com subtotais,
 // métrica ativa (empenhado/liquidado/pago) e ficha do empenho por linha.
 const DET_LABELS = {
-  data: "Data", unidade_gestora: "Unidade gestora", tipo: "Tipo",
+  data: "Data", fase: "Fase", especie: "Espécie", unidade_gestora: "Unidade gestora", tipo: "Tipo",
   nome_favorecido: "Favorecido", documento_favorecido: "CPF/CNPJ",
   funcao: "Função / área", subfuncao: "Subfunção", programa: "Programa",
   elemento_despesa: "Elemento de despesa", fonte_recurso: "Fonte de recurso",
-  grupo_despesa: "Grupo de despesa", empenho: "Nº empenho",
-  empenhado: "Empenhado", liquidado: "Liquidado", pago: "Pago",
+  grupo_despesa: "Grupo de despesa", empenho: "Nº empenho", documento: "Nº documento",
+  empenhado: "Empenhado", liquidado: "Liquidado", pago: "Pago", periodo_empenho: "Mês do empenho",
 };
 const DET_NUM = new Set(["empenhado", "liquidado", "pago"]);  // colunas de valor
-const DET_FILTROS = ["tipo", "unidade_gestora", "funcao", "subfuncao", "programa",
-                     "elemento_despesa", "fonte_recurso", "grupo_despesa"];
+// Duas visões, nunca misturadas (2026-09):
+//   exe = "Execução dos empenhos": uma linha por empenho do mês selecionado, com o
+//         liquidado/pago acumulados até a data da base (arquivos despesas/dados/AAAA-MM.json)
+//   mov = "Movimentação no período": um documento por linha, no mês da SUA data
+//         (despesas/dados/mov/AAAA-MM.json, codificado por dicionário)
+// URL: ?dv=exe|mov — links antigos sem dv são "exe" (o comportamento que sempre tiveram).
+const VISOES = {
+  exe: { rotulo: "Execução dos empenhos", filtros: ["tipo", "unidade_gestora", "funcao", "subfuncao", "programa",
+           "elemento_despesa", "fonte_recurso", "grupo_despesa"],
+         cols: ["data", "nome_favorecido", "unidade_gestora", "funcao", "elemento_despesa", "empenho",
+                "empenhado", "liquidado", "pago"],
+         somente: [] },
+  mov: { rotulo: "Movimentação no período", filtros: ["fase", "especie", "tipo", "unidade_gestora", "funcao",
+           "subfuncao", "programa", "elemento_despesa", "fonte_recurso", "grupo_despesa"],
+         cols: ["data", "fase", "especie", "nome_favorecido", "unidade_gestora", "elemento_despesa", "empenho",
+                "documento", "empenhado", "liquidado", "pago"],
+         somente: ["fase", "especie", "documento", "periodo_empenho"] },
+};
+let detVisao = "exe";
+const DET_FILTROS_TODOS = VISOES.mov.filtros;              // todos os selects existentes no HTML
+const filtrosAtivos = () => VISOES[detVisao].filtros;
+const colunasDisponiveis = () => Object.keys(DET_LABELS).filter(c =>
+  !VISOES.mov.somente.includes(c) || detVisao === "mov");
+const manifestoAtivo = () => (detVisao === "mov" ? (DADOS.meses_movimento || DADOS.meses) : DADOS.meses) || [];
+const FASE_LABEL = { E: "Empenho", L: "Liquidação", P: "Pagamento" };
 // chaves curtas na URL (prefixo d p/ não colidir com o ?q= dos Favorecidos)
 const DET_URL = { tipo: "dt", unidade_gestora: "du", funcao: "df", subfuncao: "dsf",
                   programa: "dpr", elemento_despesa: "del", fonte_recurso: "dfr",
-                  grupo_despesa: "dg" };
-const DET_COLS_PADRAO = ["data", "nome_favorecido", "unidade_gestora", "funcao",
-                         "elemento_despesa", "empenho", "empenhado", "liquidado", "pago"];
+                  grupo_despesa: "dg", fase: "dfa", especie: "des" };
+const DET_COLS_PADRAO = VISOES.exe.cols;
 const DET_GRUPOS = { nome_favorecido: "favorecido", funcao: "função",
                      elemento_despesa: "elemento", fonte_recurso: "fonte",
                      unidade_gestora: "unidade gestora", mes: "mês" };
@@ -966,6 +1341,8 @@ let detRows = [];        // todas as linhas carregadas (arrays)
 let detNorm = [];        // texto normalizado (sem acento, minúsculo) por linha, p/ busca
 const detArquivoDaLinha = new WeakMap();  // linha → dados/AAAA-MM.json de origem
 let detFiltradas = [];
+let detFav = null;       // filtro por IDENTIDADE do favorecido (dfav=<chave>, vindo dos alertas)
+let detIdent = null;     // identidade por linha (calculada só quando há detFav)
 let detSomas = { empenhado: 0, liquidado: 0, pago: 0 };  // memoizado por filtragem
 let detGrupos = [];      // modo agrupado: [{chave, n, empenhado, liquidado, pago, linhas}]
 let detExpandidos = new Set();
@@ -983,10 +1360,60 @@ let detVisiveis = (() => {    // colunas exibidas (gerenciador + localStorage)
   } catch (e) { /* primeira visita */ }
   return DET_COLS_PADRAO.slice();
 })();
+let detColsPorVisao = { exe: null, mov: null };   // memória das colunas por visão nesta sessão
+
+function definirVisao(v, opts) {
+  if (!VISOES[v]) v = "exe";
+  if (v === "mov" && !DADOS.meses_movimento) v = "exe";   // índice antigo sem movimentação
+  if (v !== detVisao) {
+    detColsPorVisao[detVisao] = detVisiveis.slice();
+    detVisao = v;
+    detVisiveis = (detColsPorVisao[v] || VISOES[v].cols).slice();
+    if (!opts?.manterMeses) renderSeletorMeses();
+  }
+  marcarAlternancia("#det-visao button", b => b.dataset.visao === detVisao);
+  DET_FILTROS_TODOS.forEach(c => {
+    const el = document.getElementById("f-" + c);
+    if (el) el.hidden = !filtrosAtivos().includes(c);
+  });
+  const explica = document.getElementById("det-visao-explica");
+  if (explica) explica.textContent = detVisao === "mov"
+    ? "Cada lançamento conta no mês da sua própria data: empenhos, liquidações e pagamentos emitidos no período. " +
+      "Um empenho de janeiro pago em agosto aparece aqui em agosto (só o pagamento)."
+    : "Uma linha por empenho emitido no período, com tudo o que já foi liquidado e pago dele até a data da base — " +
+      "inclusive em meses posteriores. Um empenho de janeiro pago em agosto aparece aqui em janeiro.";
+}
+
+function ligarVisaoDetalhe() {
+  const grupo = document.getElementById("det-visao");
+  if (!grupo) return;
+  if (!DADOS.meses_movimento) grupo.hidden = true;
+  grupo.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    const antes = mesesSelecionados().map(c => c.value);
+    definirVisao(b.dataset.visao);
+    document.querySelectorAll("#meses-grid input").forEach(c => c.checked = antes.includes(c.value));
+    atualizarSelInfo();
+    document.getElementById("det-resultado").hidden = true;   // resultado anterior era da outra visão
+    sincronizarURL();
+  }));
+}
+
+// decodifica os arquivos de movimentação (colunas por dicionário → valores)
+function decodificarParte(p) {
+  if (!p || !p.dicionario) return p;
+  const idx = Object.keys(p.dicionario).map(c => [p.campos.indexOf(c), p.dicionario[c]]);
+  const linhas = p.linhas.map(r => {
+    const o = r.slice();
+    for (const [i, dic] of idx) o[i] = dic[o[i]];
+    return o;
+  });
+  return { campos: p.campos, linhas };
+}
 
 // ── Estado na URL (consulta citável — padrão Checkbook/CGU) ──────────────────
 function estadoDetalhe() {
   const est = {
+    dv: detVisao !== "exe" ? detVisao : "",       // padrão (exe) fica fora da URL: links antigos = exe
     dm: mesesSelecionados().map(c => c.value).join(","),
     dq: document.getElementById("det-q").value.trim(),
     dmin: document.getElementById("det-vmin").value,
@@ -996,8 +1423,9 @@ function estadoDetalhe() {
     dgrp: detGrupo,
     dmet: detMetrica !== "pago" ? detMetrica : "",
     dcols: detVisiveis.join(",") === DET_COLS_PADRAO.join(",") ? "" : detVisiveis.join(","),
+    dfav: detFav || "",
   };
-  for (const c of DET_FILTROS) est[DET_URL[c]] = document.getElementById("f-" + c).value;
+  for (const c of filtrosAtivos()) est[DET_URL[c]] = document.getElementById("f-" + c).value;
   return est;
 }
 
@@ -1012,6 +1440,7 @@ function sincronizarURL(extra) {
 
 // aplica o estado vindo da URL (chamado no init quando há dm=) — auto-carrega
 async function aplicarEstadoURL(p) {
+  definirVisao(p.get("dv") || "exe");
   const meses = (p.get("dm") || "").split(",").filter(Boolean);
   const chks = [...document.querySelectorAll("#meses-grid input")];
   chks.forEach(c => c.checked = meses.includes(c.value) ||
@@ -1021,23 +1450,24 @@ async function aplicarEstadoURL(p) {
   selecionarAba("detalhe");
   await carregarDetalhe({
     q: p.get("dq") || "",
-    filtros: Object.fromEntries(DET_FILTROS.map(c => [c, p.get(DET_URL[c]) || ""])),
+    filtros: Object.fromEntries(filtrosAtivos().map(c => [c, p.get(DET_URL[c]) || ""])),
     vmin: p.get("dmin") || "", vmax: p.get("dmax") || "",
     ord: p.get("dord") || "", pg: +(p.get("dpg") || 1),
     grp: p.get("dgrp") || "", met: p.get("dmet") || "pago",
     cols: (p.get("dcols") || "").split(",").filter(Boolean),
     emp: p.get("emp") || "",
+    fav: p.get("dfav") || "",
   });
 }
 
 function renderSeletorMeses() {
-  const meses = DADOS.meses || [];
+  const meses = manifestoAtivo();
   // botões rápidos por ano + último mês
   const anos = [...new Set(meses.map(m => m.ano))].sort();
   const rapido = document.getElementById("periodo-rapido");
   rapido.innerHTML =
     anos.map(a => `<button class="btn" data-ano="${a}" type="button">${a} inteiro</button>`).join("") +
-    `<button class="btn" data-ultimo="1" type="button">Último mês</button>`;
+    `<button class="btn" data-ultimo="1" type="button">Último mês completo</button>`;
 
   const grid = document.getElementById("meses-grid");
   grid.innerHTML = meses.map(m => `
@@ -1050,7 +1480,11 @@ function renderSeletorMeses() {
   rapido.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     const chks = grid.querySelectorAll("input[type=checkbox]");
     if (b.dataset.ultimo) {
-      chks.forEach((c, i) => c.checked = i === chks.length - 1);
+      // último mês completo (resumo.mes_ref); sem ele, o último do manifesto
+      const mr = DADOS.resumo?.mes_ref;
+      const alvo = mr ? `${mr.ano}-${String(mr.mes).padStart(2, "0")}` : null;
+      const tem = alvo && [...chks].some(c => c.value === alvo);
+      chks.forEach((c, i) => c.checked = tem ? c.value === alvo : i === chks.length - 1);
     } else {
       const ano = b.dataset.ano;
       chks.forEach(c => c.checked = c.value.startsWith(ano + "-"));
@@ -1065,26 +1499,38 @@ function mesesSelecionados() {
 }
 function atualizarSelInfo() {
   const sel = mesesSelecionados();
-  const total = sel.reduce((s, c) => {
-    const m = (DADOS.meses || []).find(x => x.arquivo === c.dataset.arquivo);
-    return s + (m ? m.n : 0);
-  }, 0);
-  document.getElementById("sel-info").textContent = sel.length
-    ? `${sel.length} mês(es) selecionado(s) — ~${total.toLocaleString("pt-BR")} linhas de execução`
-    : "Nenhum mês selecionado.";
+  let total = 0, bytes = 0;
+  sel.forEach(c => {
+    const m = manifestoAtivo().find(x => x.arquivo === c.dataset.arquivo);
+    total += m ? m.n : 0;
+    if (!DET_PARTES.has(c.dataset.arquivo)) bytes += m?.bytes || 0;   // o que já veio não baixa de novo
+  });
+  // tamanho do download (manifesto.bytes) — abrir o mandato inteiro na movimentação passa de 40 MB
+  const mb = bytes >= 1e6 ? ` · download ≈ ${(bytes / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` +
+    (bytes > 15e6 ? " (pesado em celular/3G)" : "") : "";
+  document.getElementById("sel-info").textContent = (sel.length
+    ? `${sel.length} mês(es) selecionado(s) — ~${total.toLocaleString("pt-BR")} ` +
+      (detVisao === "mov" ? "documentos (movimentação)" : "empenhos (execução)") + mb
+    : "Nenhum mês selecionado.") + (detPendente ? ` · filtro a aplicar: ${detPendente.rotulo}` : "");
 }
 
-// Ponte agregado→transação (padrão Checkbook): marca todos os meses, aplica os
-// filtros pedidos e cai na aba já carregando. Usada pelo treemap e por alertas.
-function irParaDetalhe(filtros) {
+// Ponte agregado→transação (padrão Checkbook), usada pelo treemap: marca todos os
+// meses da MOVIMENTAÇÃO (a mesma base do mapa: pago pela data do pagamento), deixa os
+// filtros PENDENTES e cai na aba sem baixar — o mandato inteiro passa de 40 MB, então
+// quem decide é a pessoa, vendo o tamanho em sel-info ("Carregar dados" aplica o filtro).
+let detPendente = null;
+function irParaDetalhe(filtros, visao) {
+  definirVisao(visao || "mov");
   document.querySelectorAll("#meses-grid input").forEach(c => c.checked = true);
+  detPendente = {
+    q: "", filtros: { ...Object.fromEntries(filtrosAtivos().map(c => [c, ""])), ...filtros },
+    vmin: "", vmax: "", ord: "", pg: 1, grp: "", met: "pago", cols: [], emp: "",
+    rotulo: Object.values(filtros).filter(Boolean).map(v => String(v).replace(/^\d+\s*-\s*/, "")).join(" · "),
+  };
   atualizarSelInfo();
   selecionarAba("detalhe");
   location.hash = "detalhe";
-  carregarDetalhe({
-    q: "", filtros: { ...Object.fromEntries(DET_FILTROS.map(c => [c, ""])), ...filtros },
-    vmin: "", vmax: "", ord: "", pg: 1, grp: "", met: detMetrica, cols: [], emp: "",
-  });
+  Comum.toast("Filtro preparado. Ajuste o período se quiser e clique em “Carregar dados”.");
 }
 
 // debounce ~150 ms (busca a cada tecla em 57k linhas)
@@ -1095,10 +1541,14 @@ function ligarDetalhe() {
     document.querySelectorAll("#meses-grid input").forEach(c => c.checked = false);
     atualizarSelInfo();
   });
-  document.getElementById("det-carregar").addEventListener("click", () => carregarDetalhe());
+  document.getElementById("det-carregar").addEventListener("click", () => {
+    const pendente = detPendente;   // filtro preparado pelo mapa do gasto
+    detPendente = null;
+    carregarDetalhe(pendente || undefined);
+  });
   document.getElementById("det-q").addEventListener("input", refiltrar);
-  DET_FILTROS.forEach(c => document.getElementById("f-" + c)
-    .addEventListener("change", () => { detPagina = 1; filtrarDetalhe(); }));
+  DET_FILTROS_TODOS.forEach(c => document.getElementById("f-" + c)
+    ?.addEventListener("change", () => { detPagina = 1; filtrarDetalhe(); }));
   ["det-vmin", "det-vmax"].forEach(id =>
     document.getElementById(id).addEventListener("input", refiltrar));
   document.getElementById("det-grupo").addEventListener("change", (e) => {
@@ -1107,8 +1557,7 @@ function ligarDetalhe() {
   document.querySelectorAll("#det-metrica button").forEach(b =>
     b.addEventListener("click", () => {
       detMetrica = b.dataset.met;
-      document.querySelectorAll("#det-metrica button").forEach(x =>
-        x.classList.toggle("primario", x.dataset.met === detMetrica));
+      marcarAlternancia("#det-metrica button", x => x.dataset.met === detMetrica);
       detSort = { col: detMetrica, dir: "desc" };
       detPagina = 1;
       montarCabecalho();
@@ -1132,25 +1581,26 @@ function ligarDetalhe() {
     if (g) { g.open = true; g.scrollIntoView({ behavior: "smooth", block: "start" }); }
   });
   ligarColunas();
+  ligarVisaoDetalhe();
 }
 
 // Gerenciador de colunas ("Colunas ▾"): default enxuto aprovado; CSV exporta tudo.
 function ligarColunas() {
   const caixa = document.getElementById("det-cols-lista");
-  caixa.innerHTML = Object.keys(DET_LABELS).map(c => `
+  caixa.innerHTML = colunasDisponiveis().map(c => `
     <label class="mes-chk"><input type="checkbox" value="${c}"
       ${detVisiveis.includes(c) ? "checked" : ""} />${DET_LABELS[c]}</label>`).join("");
   caixa.querySelectorAll("input").forEach(ch => ch.addEventListener("change", () => {
     const marcadas = [...caixa.querySelectorAll("input:checked")].map(x => x.value);
     if (!marcadas.length) { ch.checked = true; Comum.toast("Mantenha ao menos uma coluna."); return; }
-    detVisiveis = Object.keys(DET_LABELS).filter(c => marcadas.includes(c));  // ordem canônica
+    detVisiveis = colunasDisponiveis().filter(c => marcadas.includes(c));  // ordem canônica
     try { localStorage.setItem("despesas_det_cols", JSON.stringify(detVisiveis)); } catch (e) {}
     montarCabecalho();
     renderDetTabela();
     sincronizarURL();
   }));
   document.getElementById("det-cols-reset").addEventListener("click", () => {
-    detVisiveis = DET_COLS_PADRAO.slice();
+    detVisiveis = VISOES[detVisao].cols.slice();
     try { localStorage.removeItem("despesas_det_cols"); } catch (e) {}
     ligarColunas(); montarCabecalho(); renderDetTabela(); sincronizarURL();
   });
@@ -1177,10 +1627,14 @@ async function carregarDetalhe(estado) {
       detArquivoDaLinha.set(r, arquivos[k]);   // p/ a ficha achar o estagios/ do mês
     }));
     detNorm = detRows.map(r => semAcento(r.join(" ")));
+    detIdent = null;
+    detFav = estado?.fav || null;
+    detVisiveis = detVisiveis.filter(c => detCampos.includes(c));
+    if (!detVisiveis.length) detVisiveis = VISOES[detVisao].cols.filter(c => detCampos.includes(c));
     popularFiltros();
     if (estado) {                       // consulta vinda da URL: restaura tudo
       document.getElementById("det-q").value = estado.q;
-      DET_FILTROS.forEach(c => { document.getElementById("f-" + c).value = estado.filtros[c] || ""; });
+      filtrosAtivos().forEach(c => { document.getElementById("f-" + c).value = estado.filtros[c] || ""; });
       document.getElementById("det-vmin").value = estado.vmin;
       document.getElementById("det-vmax").value = estado.vmax;
       detMetrica = ["empenhado", "liquidado", "pago"].includes(estado.met) ? estado.met : "pago";
@@ -1194,13 +1648,13 @@ async function carregarDetalhe(estado) {
       detSort = { col: detMetrica, dir: "desc" };
       detPagina = 1;
       document.getElementById("det-q").value = "";
-      DET_FILTROS.forEach(c => document.getElementById("f-" + c).value = "");
+      DET_FILTROS_TODOS.forEach(c => { const el = document.getElementById("f-" + c); if (el) el.value = ""; });
       document.getElementById("det-vmin").value = "";
       document.getElementById("det-vmax").value = "";
     }
+    renderTituloDetalhe(sel.map(c => c.value));
     document.getElementById("det-grupo").value = detGrupo;
-    document.querySelectorAll("#det-metrica button").forEach(x =>
-      x.classList.toggle("primario", x.dataset.met === detMetrica));
+    marcarAlternancia("#det-metrica button", x => x.dataset.met === detMetrica);
     ligarColunas();
     montarCabecalho();
     filtrarDetalhe();
@@ -1211,15 +1665,34 @@ async function carregarDetalhe(estado) {
     carregando.hidden = true; res.hidden = false;
     if (estado?.emp) abrirFichaEmpenho(null, estado.emp);   // ficha deep-linkada
   } catch (e) {
-    carregando.hidden = false;
-    carregando.textContent = "Falha ao carregar os dados do período.";
+    console.warn("detalhamento:", e);
+    Comum.estadoErro(carregando, e.falhas?.length
+      ? `Não foi possível baixar ${e.falhas.length === 1 ? "o mês" : "os meses"} ${e.falhas.join(", ")}. ` +
+        "Os demais já estão guardados — a nova tentativa baixa só o que faltou."
+      : "Falha ao carregar os dados do período. Verifique a conexão.", () => carregarDetalhe(estado));
   }
 }
 
 // Facetas com contagem (cross-filter): cada select conta as linhas que restariam
 // sob TODOS os demais filtros; opções com 0 ficam desabilitadas (menos a ativa).
+// título explícito do recorte (aparece na tela, no CSV e no link)
+function renderTituloDetalhe(meses) {
+  const t = document.getElementById("det-titulo");
+  if (!t) return;
+  const anos = [...new Set(meses.map(m => m.slice(0, 4)))];
+  const rot = meses.length > 6 ? `${meses.length} meses (${anos.join(", ")})` :
+    meses.map(m => MESES[+m.slice(5, 7)] + "/" + m.slice(0, 4)).join(", ");
+  const ate = DADOS.dados_ate ? new Date(DADOS.dados_ate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR") : "a data da base";
+  t.textContent = detVisao === "mov"
+    ? `Movimentação em ${rot} — lançamentos pela data de cada estágio`
+    : `Execução dos empenhos emitidos em ${rot} — liquidado e pago acumulados até ${ate}`;
+}
+
+// valores codificados viram rótulo legível nos selects/chips (fase E/L/P)
+const rotuloValor = (campo, v) => campo === "fase" ? (FASE_LABEL[v] || v) : v;
+
 function popularFiltros() {
-  DET_FILTROS.forEach(campo => {
+  filtrosAtivos().forEach(campo => {
     const i = detCampos.indexOf(campo);
     const sel = document.getElementById("f-" + campo);
     const rotulo = sel.dataset.rotulo || sel.options[0].text;
@@ -1228,16 +1701,17 @@ function popularFiltros() {
       .sort((a, b) => String(a).localeCompare(String(b)));
     const atual = sel.value;
     sel.innerHTML = `<option value="">${esc(rotulo)}</option>` +
-      vals.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      vals.map(v => `<option value="${esc(v)}">${esc(rotuloValor(campo, v))}</option>`).join("");
     sel.value = atual;
   });
 }
 
-function atualizarFacetas() {
-  DET_FILTROS.forEach(campo => {
+function atualizarFacetas(indices) {
+  indices = indices || indicesBase();
+  filtrosAtivos().forEach(campo => {
     const i = detCampos.indexOf(campo);
     const sel = document.getElementById("f-" + campo);
-    const base = linhasFiltradas({ ignorar: campo });
+    const base = linhasFiltradas({ ignorar: campo, base: indices });
     const contagem = new Map();
     for (const r of base) {
       const v = r[i];
@@ -1246,31 +1720,52 @@ function atualizarFacetas() {
     for (const op of sel.options) {
       if (!op.value) continue;
       const n = contagem.get(op.value) || 0;
-      op.textContent = `${op.value} (${n.toLocaleString("pt-BR")})`;
+      op.textContent = `${rotuloValor(campo, op.value)} (${n.toLocaleString("pt-BR")})`;
       op.disabled = n === 0 && sel.value !== op.value;
     }
   });
 }
 
-// Uma passada de filtro; `ignorar` exclui um select (p/ contagem de facetas).
-function linhasFiltradas(opts) {
-  const ignorar = opts?.ignorar;
+// Índices das linhas que passam nas condições caras e comuns a todas as facetas
+// (busca textual, faixa de valor, identidade) — calculado UMA vez por filtragem;
+// antes a busca rodava de novo para cada select (~10 passadas em até 300 mil linhas).
+function indicesBase() {
   const termos = semAcento(document.getElementById("det-q").value || "").split(/\s+/).filter(Boolean);
-  const fixos = DET_FILTROS
-    .filter(c => c !== ignorar)
-    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
-    .filter(([, v]) => v !== "");
   const iMet = detCampos.indexOf(detMetrica);
   const vmin = parseFloat(document.getElementById("det-vmin").value);
   const vmax = parseFloat(document.getElementById("det-vmax").value);
   const temMin = !isNaN(vmin), temMax = !isNaN(vmax);
-  return detRows.filter((r, i) => {
-    if (!fixos.every(([idx, v]) => r[idx] === v)) return false;
-    if (temMin && (r[iMet] ?? 0) < vmin) return false;
-    if (temMax && (r[iMet] ?? 0) > vmax) return false;
-    if (termos.length) { const hay = detNorm[i]; return termos.every(t => hay.includes(t)); }
-    return true;
-  });
+  if (detFav && !detIdent) {   // mesma chave do export (Comum.identidadeFavorecido ⇄ formato.py)
+    const iN = detCampos.indexOf("nome_favorecido"), iD = detCampos.indexOf("documento_favorecido");
+    detIdent = detRows.map(r => Comum.identidadeFavorecido(r[iN], r[iD]));
+  }
+  const out = [];
+  for (let i = 0; i < detRows.length; i++) {
+    const r = detRows[i];
+    if (detFav && detIdent[i] !== detFav) continue;
+    if (temMin && (r[iMet] ?? 0) < vmin) continue;
+    if (temMax && (r[iMet] ?? 0) > vmax) continue;
+    if (termos.length && !termos.every(t => detNorm[i].includes(t))) continue;
+    out.push(i);
+  }
+  return out;
+}
+
+// Uma passada de filtro; `ignorar` exclui um select (p/ contagem de facetas);
+// `base` reaproveita os índices de indicesBase().
+function linhasFiltradas(opts) {
+  const ignorar = opts?.ignorar;
+  const base = opts?.base || indicesBase();
+  const fixos = filtrosAtivos()
+    .filter(c => c !== ignorar)
+    .map(c => [detCampos.indexOf(c), document.getElementById("f-" + c).value])
+    .filter(([, v]) => v !== "");
+  const out = [];
+  for (const i of base) {
+    const r = detRows[i];
+    if (fixos.every(([idx, v]) => r[idx] === v)) out.push(r);
+  }
+  return out;
 }
 
 function montarCabecalho() {
@@ -1281,8 +1776,10 @@ function montarCabecalho() {
     const aria = ordenada ? ` aria-sort="${detSort.dir === "asc" ? "ascending" : "descending"}"` : "";
     const destaque = c === detMetrica ? " met-ativa" : "";
     const cls = ` class="${DET_NUM.has(c) ? "r" : ""}${destaque}"`;
+    // sem aria-label no <th>: ele substituía o nome da coluna ao ler cada célula;
+    // a dica de ordenação vai no title
     return `<th data-col="${c}"${cls}${aria} tabindex="0" role="columnheader" ` +
-      `aria-label="Ordenar por ${DET_LABELS[c]}">${DET_LABELS[c]}${seta}</th>`;
+      `title="Ordenar por ${DET_LABELS[c]}">${DET_LABELS[c]}${seta}</th>`;
   }).join("");
   const ordenar = (th) => {
     const c = th.dataset.col;
@@ -1302,7 +1799,8 @@ function montarCabecalho() {
 }
 
 function filtrarDetalhe() {
-  detFiltradas = linhasFiltradas();
+  const indices = indicesBase();
+  detFiltradas = linhasFiltradas({ base: indices });
   // somas memoizadas (1× por filtragem, não por render)
   detSomas = { empenhado: 0, liquidado: 0, pago: 0 };
   const idx = { empenhado: detCampos.indexOf("empenhado"),
@@ -1321,7 +1819,7 @@ function filtrarDetalhe() {
     return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
   });
   if (detGrupo) montarGrupos(idx);
-  atualizarFacetas();
+  atualizarFacetas(indices);
   renderChips();
   renderDetTabela();
   sincronizarURL();
@@ -1352,9 +1850,14 @@ function renderChips() {
   const chips = [];
   const q = document.getElementById("det-q").value.trim();
   if (q) chips.push({ id: "q", texto: `busca: "${q}"` });
-  DET_FILTROS.forEach(c => {
+  if (detFav) {
+    const nome = detFiltradas.length ? detFiltradas[0][detCampos.indexOf("nome_favorecido")]
+                                     : detFav.replace(/^[a-z]+:[\d]*\|?/, "");
+    chips.push({ id: "fav", texto: `favorecido (todas as grafias): ${String(nome).slice(0, 34)}` });
+  }
+  filtrosAtivos().forEach(c => {
     const v = document.getElementById("f-" + c).value;
-    if (v) chips.push({ id: c, texto: `${DET_LABELS[c]}: ${v.length > 34 ? v.slice(0, 32) + "…" : v}` });
+    if (v) chips.push({ id: c, texto: `${DET_LABELS[c]}: ${rotuloValor(c, v).length > 34 ? rotuloValor(c, v).slice(0, 32) + "…" : rotuloValor(c, v)}` });
   });
   const vmin = document.getElementById("det-vmin").value;
   const vmax = document.getElementById("det-vmax").value;
@@ -1371,9 +1874,12 @@ function renderChips() {
     if (alvo === "*" || alvo === "q") document.getElementById("det-q").value = alvo === "q" ? "" : document.getElementById("det-q").value;
     if (alvo === "*") {
       document.getElementById("det-q").value = "";
-      DET_FILTROS.forEach(c => document.getElementById("f-" + c).value = "");
+      filtrosAtivos().forEach(c => document.getElementById("f-" + c).value = "");
       document.getElementById("det-vmin").value = "";
       document.getElementById("det-vmax").value = "";
+      detFav = null;
+    } else if (alvo === "fav") {
+      detFav = null;
     } else if (alvo === "faixa") {
       document.getElementById("det-vmin").value = "";
       document.getElementById("det-vmax").value = "";
@@ -1415,6 +1921,8 @@ function celulaDet(r, c) {
     if (v == null) return `<td class="r${destaque}" data-label="${DET_LABELS[c]}" style="color:var(--muted)">—</td>`;
     return `<td class="r num${v < 0 ? " neg" : ""}${destaque}" data-label="${DET_LABELS[c]}">${brlc(v)}</td>`;
   }
+  if (c === "fase") return `<td data-label="${DET_LABELS[c]}">${esc(FASE_LABEL[v] || v || "")}</td>`;
+  if (c === "periodo_empenho" && v) return `<td data-label="${DET_LABELS[c]}">${MESES[v % 100]}/${Math.floor(v / 100)}</td>`;
   return `<td data-label="${DET_LABELS[c]}" title="${esc(v ?? "")}">${esc(v ?? "")}</td>`;
 }
 
@@ -1479,6 +1987,9 @@ function renderRodapeTabela(totalPag, contagem) {
     `${detSort.dir === "asc" ? "crescente" : "decrescente"}.`;
 }
 
+// valor numérico arredondado ao centavo — número (não string de toFixed) p/ o CSV sair com vírgula
+const centavos = (v) => Math.round((v || 0) * 100) / 100;
+
 // Baixa um CSV do detalhe (rótulos amigáveis no cabeçalho; dialeto Excel pt-BR do Comum).
 function baixarCsv(campos, rows, nomeArquivo) {
   Comum.exportarCsv(nomeArquivo, campos.map(c => DET_LABELS[c] || c), rows);
@@ -1486,13 +1997,22 @@ function baixarCsv(campos, rows, nomeArquivo) {
 
 function exportarDetCsv() {
   if (!detFiltradas.length) { Comum.toast("Nada para exportar."); return; }
+  // o nome do arquivo e uma coluna "Recorte" dizem qual visão foi exportada
+  const meses = mesesSelecionados().map(c => c.value);
+  const recorte = document.getElementById("det-titulo")?.textContent || VISOES[detVisao].rotulo;
+  const sufixo = (detVisao === "mov" ? "movimentacao" : "execucao") + "-" +
+    (meses.length === 1 ? meses[0] : `${meses[0]}_a_${meses[meses.length - 1]}`);
   if (detGrupo) {   // modo agrupado: exporta os subtotais
-    Comum.exportarCsv("despesas-agrupado.csv",
-      [DET_GRUPOS[detGrupo] || "grupo", "Documentos", "Empenhado", "Liquidado", "Pago"],
-      detGrupos.map(g => [g.chave, g.n, g.empenhado.toFixed(2), g.liquidado.toFixed(2), g.pago.toFixed(2)]));
+    Comum.exportarCsv(`despesas-agrupado-${sufixo}.csv`,
+      [DET_GRUPOS[detGrupo] || "grupo", "Documentos", "Empenhado", "Liquidado", "Pago", "Recorte"],
+      detGrupos.map(g => [g.chave, g.n, centavos(g.empenhado), centavos(g.liquidado), centavos(g.pago), recorte]));
     return;
   }
-  baixarCsv(detCampos, detFiltradas, "despesas-detalhe.csv");
+  // códigos viram texto legível na planilha: fase "P" → "Pagamento", 202601 → "2026-01"
+  const iPer = detCampos.indexOf("periodo_empenho");
+  Comum.exportarCsv(`despesas-${sufixo}.csv`, detCampos.map(c => DET_LABELS[c] || c).concat(["Recorte"]),
+    detFiltradas.map(r => r.map((v, i) => i === iPer && v ? `${String(v).slice(0, 4)}-${String(v).slice(4)}`
+                                              : rotuloValor(detCampos[i], v)).concat([recorte])));
 }
 
 // ── Ficha do empenho (modal, padrão CGU: documento + estágios vinculados) ────
@@ -1520,8 +2040,9 @@ async function abrirFichaEmpenho(row, chaveURL) {
 
   // favorecido com ponte p/ o raio-X (slug do top-300 ou rota por documento)
   const fav = document.getElementById("emp-fav");
-  const top = (DADOS.top_favorecidos || []).find(f =>
-    f.nome === v("nome_favorecido") && (f.documento || "") === (v("documento_favorecido") || ""));
+  const chaveFav = chaveFavorecido(v("nome_favorecido"), v("documento_favorecido"));
+  const top = (DADOS.top_favorecidos || []).find(f => f.chave ? f.chave === chaveFav
+    : (f.nome === v("nome_favorecido") && (f.documento || "") === (v("documento_favorecido") || "")));
   fav.textContent = `${v("nome_favorecido")} ${v("documento_favorecido") ? "· " + v("documento_favorecido") : ""}`;
   fav.href = top?.slug
     ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
@@ -1546,10 +2067,20 @@ async function abrirFichaEmpenho(row, chaveURL) {
   carregando.textContent = "Carregando os documentos de estágio…";
 
   let eventos = null, tipoEmp = "";
-  if (v("tipo") === "Extra-orçamentário" || !v("empenho")) {
-    eventos = [["P", "—", v("data") || "", v("pago") ?? 0]];
+  // estágios vivem no arquivo do mês do EMPENHO: na execução é o próprio arquivo da linha;
+  // na movimentação a linha traz periodo_empenho (null p/ não localizado/extra sem nº)
+  let arquivo = "";
+  if (detVisao === "mov") {
+    const pe = v("periodo_empenho");
+    if (pe) arquivo = `despesas/dados/estagios/${Math.floor(pe / 100)}-${String(pe % 100).padStart(2, "0")}.json`;
   } else {
-    const arquivo = (detArquivoDaLinha.get(row) || "").replace("despesas/dados/", "despesas/dados/estagios/");
+    arquivo = (detArquivoDaLinha.get(row) || "").replace("despesas/dados/", "despesas/dados/estagios/");
+  }
+  if (!v("empenho") || !arquivo) {
+    const fase = v("fase") || "P";
+    const valor = fase === "E" ? v("empenhado") : fase === "L" ? v("liquidado") : v("pago");
+    eventos = [[fase, v("documento") || "—", v("data") || "", valor ?? 0]];
+  } else {
     try {
       if (!ESTAGIOS_CACHE.has(arquivo)) {
         const r = await fetch("./" + arquivo + "?v=" + (DADOS.atualizado_em || ""));
@@ -1641,7 +2172,7 @@ function ligarFichaEmpenho() {
     Comum.exportarCsv("empenho-" + fichaEmpAtual.chave.split("|")[1].replace(/\W/g, "-") + ".csv",
       ["Fase", "Nº documento", "Data", "Valor", "Espécie"],
       fichaEmpAtual.eventos.map(ev =>
-        [FASE_NOME[ev[0]] || ev[0], ev[1], ev[2], ev[3].toFixed(2), ev[4] || "Original"]));
+        [FASE_NOME[ev[0]] || ev[0], ev[1], ev[2], centavos(ev[3]), ev[4] || "Original"]));
   });
 }
 
@@ -1660,9 +2191,17 @@ const DET_PARTES = new Map();
 async function carregarPartes(arquivos, aoBaixar) {
   const faltam = arquivos.filter(a => !DET_PARTES.has(a));
   arquivos.filter(a => DET_PARTES.has(a)).forEach(() => aoBaixar && aoBaixar());
-  await Promise.all(faltam.map(a =>
-    fetch("./" + a + "?v=" + (DADOS.atualizado_em || "")).then(r => r.json())
-      .then(p => { DET_PARTES.set(a, p); if (aoBaixar) aoBaixar(); })));
+  // allSettled: um mês fora do ar não descarta os que vieram (ficam no cache p/ a nova tentativa)
+  const res = await Promise.allSettled(faltam.map(a =>
+    fetch("./" + a + "?v=" + (DADOS.atualizado_em || ""))
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(p => { DET_PARTES.set(a, decodificarParte(p)); if (aoBaixar) aoBaixar(); })));
+  const falhas = faltam.filter((a, i) => res[i].status === "rejected");
+  if (falhas.length) {
+    const e = new Error("falha ao baixar " + falhas.join(", "));
+    e.falhas = falhas.map(a => a.split("/").pop().replace(".json", ""));
+    throw e;
+  }
   return arquivos.map(a => DET_PARTES.get(a));
 }
 
@@ -1674,8 +2213,9 @@ async function carregarTodoDetalhe() {
   return FAV_DETALHE;
 }
 
-// mesma chave do export (_chave_fav): dígitos do documento; sem doc → nome sem acento
-const chaveFavorecido = (nome, doc) => soDigitos(doc || "") || semAcento(nome || "");
+// mesma chave do export (formato.identidade_favorecido) — espelhada em Comum.identidadeFavorecido
+const chaveFavorecido = (nome, doc) => Comum.identidadeFavorecido
+  ? Comum.identidadeFavorecido(nome, doc) : (soDigitos(doc || "") || semAcento(nome || ""));
 
 // Meses (arquivos) onde o favorecido aparece, via índice leve. null = não sei → todos.
 async function arquivosDoFavorecido(nome, documento) {
@@ -1686,14 +2226,16 @@ async function arquivosDoFavorecido(nome, documento) {
       FAV_INDICE = await r.json();
     } catch (e) { FAV_INDICE = "erro"; }
   }
-  if (FAV_INDICE === "erro" || !FAV_INDICE.fav) return null;
+  // índice v1 (chave = dígitos) não casa com a identidade v2 → fallback p/ todos os meses
+  if (FAV_INDICE === "erro" || !FAV_INDICE.fav || FAV_INDICE.versao !== 2) return null;
   const meses = FAV_INDICE.fav[chaveFavorecido(nome, documento)];
   if (!meses) return null;   // fora do índice (ex.: presente em quase todos os meses)
   const quer = new Set(meses);
   return (DADOS.meses || []).filter(m => quer.has(m.ano * 100 + m.mes)).map(m => m.arquivo);
 }
 
-async function abrirFichaFavorecido(nome, documento) {
+async function abrirFichaFavorecido(nome, documento, chave) {
+  chave = chave || chaveFavorecido(nome, documento);
   const modal = document.getElementById("fav-modal");
   abrirModal(modal, fecharFichaFavorecido);
   document.getElementById("fav-titulo").textContent = nome;
@@ -1701,13 +2243,16 @@ async function abrirFichaFavorecido(nome, documento) {
   // ponte p/ o raio-X: top-300 usa o dossiê pré-computado (?f=slug); os demais
   // usam a rota por documento/nome (página reconstruída dos lançamentos)
   const raiox = document.getElementById("fav-raiox");
-  const top = (DADOS.top_favorecidos || []).find(f => f.nome === nome && (f.documento || "") === (documento || ""));
+  const top = (DADOS.top_favorecidos || []).find(f => f.chave ? f.chave === chave
+    : (f.nome === nome && (f.documento || "") === (documento || "")));
   raiox.hidden = false;
   raiox.href = top?.slug
     ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
     : "./favorecido.html?doc=" + encodeURIComponent(documento || "") +
       "&nome=" + encodeURIComponent(nome || "");
-  document.getElementById("fav-carregando").hidden = false;
+  const carregandoFav = document.getElementById("fav-carregando");
+  carregandoFav.hidden = false;
+  carregandoFav.textContent = "Carregando…";   // limpa um erro de tentativa anterior
   document.getElementById("fav-conteudo").hidden = true;
   try {
     let campos, rows;
@@ -1724,7 +2269,7 @@ async function abrirFichaFavorecido(nome, documento) {
       }
     }
     const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido");
-    const linhas = rows.filter(r => r[iN] === nome && r[iD] === documento);
+    const linhas = rows.filter(r => chaveFavorecido(r[iN], r[iD]) === chave);   // todas as grafias
     favFicha = { nome, doc: documento, campos, rows: linhas,
                  sort: { idx: campos.indexOf("pago"), dir: "desc" }, pag: 1 };
     renderFichaCabecalho();
@@ -1732,7 +2277,9 @@ async function abrirFichaFavorecido(nome, documento) {
     document.getElementById("fav-carregando").hidden = true;
     document.getElementById("fav-conteudo").hidden = false;
   } catch (e) {
-    document.getElementById("fav-carregando").textContent = "Falha ao carregar os lançamentos.";
+    console.warn("ficha do favorecido:", e);
+    Comum.estadoErro("fav-carregando", "Falha ao carregar os lançamentos. Verifique a conexão.",
+      () => abrirFichaFavorecido(nome, documento, chave));
   }
 }
 
