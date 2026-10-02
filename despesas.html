@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <meta name="description" content="Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e busca por favorecido, função e fonte." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=4" />
+    <link rel="stylesheet" href="./comum.css?v=6" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -34,7 +34,7 @@
         --red: #b42318; --amber: #b54708; --slate: #475467;
       }
       body {
-        margin: 0; background: var(--bg); color: var(--navy);
+        margin: 0; background: var(--bg); color: var(--ink);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
@@ -56,7 +56,7 @@
       /* ── Abas ─────────────────────────────────────────────────────── */
       .tabs { display: flex; gap: 6px; margin: 8px 0 18px; flex-wrap: wrap; }
       .tab { padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px;
-        background: var(--card); font: inherit; font-size: 14px; cursor: pointer; color: var(--navy); }
+        background: var(--card); font: inherit; font-size: 14px; cursor: pointer; color: var(--ink); }
       .tab:hover { border-color: var(--gold); }
       .tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
       .painel { display: none; }
@@ -75,7 +75,7 @@
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
       @media (max-width: 820px) { .filtros { grid-template-columns: 1fr 1fr; } }
       .filtros input, .filtros select { width: 100%; padding: 11px 12px; border: 1px solid var(--line);
-        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy); }
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--ink); }
       .filtros input:focus, .filtros select:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
 
       /* ── Tabelas ──────────────────────────────────────────────────── */
@@ -104,29 +104,64 @@
       .sev.alta { background: #fee4e2; color: var(--red); }
       .sev.media { background: #fef0c7; color: var(--amber); }
       .sev.baixa { background: #eef1f6; color: var(--slate); }
+      .alerta .classe, .alerta .estado { display: inline-block; font-size: 10.5px; font-weight: 700;
+        padding: 2px 7px; border-radius: 999px; margin-right: 8px; border: 1px solid var(--line);
+        color: var(--muted); letter-spacing: .02em; }
+      .alerta .estado.novo { border-color: var(--gold); color: var(--ink); background: rgba(201,168,76,.15); }
+      .alerta.classe-inconsistencia { border-left-style: dashed; }
+      .alerta.classe-contexto { opacity: .92; }
+      .alerta-docs { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+      .alerta-docs summary { cursor: pointer; }
+      .alerta-docs ul { margin: 6px 0 0; padding-left: 18px; }
+      .alerta-docs li { margin: 2px 0; }
+      .alerta-grupo { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
+                      margin-bottom: 10px; padding: 10px 14px; }
+      .alerta-grupo > summary { cursor: pointer; font-weight: 700; font-size: 14px; display: flex;
+                                justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .alerta-grupo > summary .vlr { font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+      .filtros-alertas { grid-template-columns: 1fr 1fr 1fr; }
+      .filtros-fav { grid-template-columns: 2fr 1fr; }
+      @media (max-width: 560px) { .filtros-alertas, .filtros-fav { grid-template-columns: 1fr; } }
+      .sub-h { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+      table.mini { font-size: 12.5px; width: 100%; }
+      table.mini td, table.mini th { padding: 6px 8px; }
+      table.mini td.r, table.mini th.r { text-align: right; white-space: nowrap; font-family: "IBM Plex Mono", monospace; }
+      table.mini a { color: inherit; }
+      .stat-link { color: inherit; text-decoration: underline dotted var(--gold); text-underline-offset: 4px; }
+      .fav-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+      th[data-sort] button { all: unset; cursor: pointer; font: inherit; }
+      th[data-sort] button::after { content: attr(data-seta); }
+      th[data-sort] button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .teto { color: var(--muted); font-size: 12.5px; font-weight: 500; margin: 6px 0 8px; }
+      .alerta-grupo[open] > summary { margin-bottom: 8px; }
+      .alerta-link { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+      .det-titulo { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600;
+        margin: 0 0 4px; line-height: 1.3; }
+      .det-explica { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
+      #cobertura { display: block; margin-top: 6px; }
 
       /* ── Detalhamento ─────────────────────────────────────────────── */
       .det-acoes-topo { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px;
         margin: 0 0 12px; align-items: start; }
       .det-acoes-topo input[type="search"] { width: 100%; padding: 11px 12px;
         border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card);
-        font: inherit; color: var(--navy); }
+        font: inherit; color: var(--ink); }
       .det-acoes-topo input[type="search"]:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
       @media (max-width: 700px) { .det-acoes-topo { grid-template-columns: 1fr 1fr; } }
       .det-filtros8 { grid-template-columns: repeat(4, 1fr); }
       @media (max-width: 980px) { .det-filtros8 { grid-template-columns: 1fr 1fr; } }
       .det-toolbar { align-items: center; gap: 10px 22px; }
       .det-toolbar select { padding: 8px 10px; border: 1px solid var(--line);
-        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy); }
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--ink); }
       .det-toolbar .btn { padding: 6px 11px; font-size: 12.5px; }
       .det-faixa input { width: 110px; padding: 8px 10px; border: 1px solid var(--line);
-        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--ink);
         font-family: "IBM Plex Mono", monospace; }
       /* chips de filtros ativos (padrão USAspending) */
       .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
       .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
         border: 1px solid var(--gold); border-radius: 999px; background: var(--card);
-        color: var(--navy); font: inherit; font-size: 12.5px; cursor: pointer; max-width: 100%; }
+        color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; max-width: 100%; }
       .chip:hover { background: rgba(201,168,76,.12); }
       .chip.chip-limpar { border-color: var(--line); color: var(--muted); }
       /* dropdown do gerenciador de colunas */
@@ -170,7 +205,7 @@
         .det-scroll { max-height: none; overflow: visible; }
       }
       .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
-        background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
+        background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); }
       .btn:hover { border-color: var(--gold); }
       .btn.primario { background: var(--navy); color: #fff; border-color: var(--navy); }
       .btn.primario:hover { background: var(--navy2); }
@@ -202,7 +237,9 @@
       .modal-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
         max-width: 1000px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
       .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-        padding: 16px 18px; background: var(--navy2); color: #fff; border-bottom: 1px solid var(--line); }
+        padding: 16px 18px; background: var(--navy2); color: #fff; border-bottom: 1px solid var(--line);
+        flex-wrap: wrap; }   /* no celular título e botões quebram em vez de espremer */
+      .modal-tit { min-width: 0; flex: 1 1 220px; }
       .modal-tit { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600; line-height: 1.2; }
       .modal-doc { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--gold-bright); margin-top: 4px; }
       .modal-body { padding: 16px 18px; overflow: auto; }
@@ -227,7 +264,7 @@
       .recibo-num { display: inline-flex; align-items: center; gap: 6px;
         font-family: "IBM Plex Mono", monospace; font-weight: 600; }
       .recibo-num input { width: 110px; padding: 8px 10px; border: 1px solid var(--line);
-        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--ink);
         font-family: "IBM Plex Mono", monospace; text-align: right; }
       .recibo-num input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
       @media (max-width: 560px) { .recibo-controles { flex-direction: column; align-items: stretch; } }
@@ -255,7 +292,7 @@
       .emp-classif .emp-li dt { font-size: 10.5px; text-transform: uppercase;
         letter-spacing: .08em; color: var(--muted); font-weight: 700; }
       .emp-classif .emp-li dd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.4; }
-      .emp-favlink { font-weight: 700; color: var(--navy); }
+      .emp-favlink { font-weight: 700; color: var(--ink); }
       .emp-especie { display: inline-block; font-size: 10px; font-weight: 800;
         text-transform: uppercase; letter-spacing: .06em; padding: 1px 7px;
         border-radius: 999px; background: #fef0c7; color: var(--amber); margin-left: 8px; }
@@ -272,10 +309,19 @@
         vertical-align: 3px; margin-left: 2px; white-space: nowrap; }
       .delta.pos { color: #b42318; }   /* gasto subindo = atenção */
       .delta.neg { color: #067647; }   /* gasto caindo = alívio ao contribuinte */
+      /* modo escuro: os vermelhos/âmbar do tema claro ficam ~1,6:1 sobre o card escuro */
+      html[data-tema="escuro"] .delta.pos,
+      html[data-tema="escuro"] #det-tabela td.neg,
+      html[data-tema="escuro"] #fav-tabela td.neg,
+      html[data-tema="escuro"] #emp-tabela td.neg,
+      html[data-tema="escuro"] .sev.alta { color: #f97066; }
+      html[data-tema="escuro"] .sev.media { color: #fdb022; }
+      html[data-tema="escuro"] .alerta .estado.novo { color: var(--gold-bright); }
+      html[data-tema="escuro"] .emp-especie.anulacao { background: rgba(180, 35, 24, 0.22); color: #f97066; }
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=9"></script>
+    <script src="./comum.js?v=11"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -312,13 +358,53 @@
           <p class="resumo-texto"></p>
         </div>
         <div class="box">
-          <h3>Gasto mensal (R$)</h3>
+          <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
           <canvas id="ch-mensal"></canvas>
+          <p class="contagem nota-parcial" hidden></p>
         </div>
         <div class="box" id="box-execucao" hidden>
-          <h3>Execução do orçamento — empenhado, liquidado e pago por mês</h3>
+          <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
           <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
           <canvas id="ch-execucao"></canvas>
+          <p class="contagem nota-parcial" hidden></p>
+        </div>
+        <div class="box" id="box-prazos" hidden>
+          <h3>Quanto a Prefeitura demora para pagar depois de liquidar</h3>
+          <p class="contagem" id="prazos-resumo" style="margin:0 0 10px"></p>
+          <div id="prazos-faixas" class="r100"></div>
+          <div class="grid2" style="margin-top:12px">
+            <div><h4 class="sub-h">Mais lentos (mediana de dias)</h4><div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Fornecedor</th><th class="r">Mediana</th><th class="r">Pagamentos</th><th class="r">Valor</th></tr></thead>
+              <tbody id="prazos-lentos"></tbody></table></div></div>
+            <div><h4 class="sub-h">Mais rápidos</h4><div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Fornecedor</th><th class="r">Mediana</th><th class="r">Pagamentos</th><th class="r">Valor</th></tr></thead>
+              <tbody id="prazos-rapidos"></tbody></table></div></div>
+          </div>
+          <p class="contagem" id="prazos-nota" style="margin:10px 0 0"></p>
+        </div>
+        <div class="grid2">
+          <div class="box" id="box-anulacoes" hidden>
+            <h3>Anulações de empenho</h3>
+            <p class="contagem" id="anul-resumo" style="margin:0 0 10px"></p>
+            <canvas id="ch-anulacoes"></canvas>
+            <h4 class="sub-h" style="margin-top:12px">Quem mais teve empenho anulado</h4>
+            <div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Favorecido</th><th class="r">Anulado</th><th class="r">% do empenhado</th></tr></thead>
+              <tbody id="anul-top"></tbody></table></div>
+          </div>
+          <div class="box" id="box-fim" hidden>
+            <h3>Fim de exercício — dezembro × média de jan a nov</h3>
+            <div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Ano · estágio</th><th class="r">Dezembro</th><th class="r">Média jan–nov</th><th class="r">Dez ÷ média</th></tr></thead>
+              <tbody id="fim-corpo"></tbody></table></div>
+            <p class="contagem" id="fim-nota" style="margin:10px 0 0"></p>
+          </div>
+        </div>
+        <div class="box" id="box-programa" hidden>
+          <h3>Por programa do PPA — o “para quê” do gasto (orçamentário)</h3>
+          <canvas id="ch-programa"></canvas>
+          <p class="contagem" style="margin:10px 0 0">Programas são temáticos e não correspondem 1 a 1 às
+            secretarias (ex.: “Gestão e apoio administrativo” aparece em várias áreas).</p>
         </div>
         <details class="entenda">
           <summary>Entenda os termos deste painel</summary>
@@ -333,17 +419,56 @@
             <dd>O dinheiro saindo do caixa para o favorecido. É a visão usada na maior parte
               deste painel.</dd>
             <dt>Restos a pagar</dt>
-            <dd>Despesa empenhada num ano e paga em outro. Estoque alto pode indicar
-              dificuldade de caixa.</dd>
+            <dd>Despesa empenhada num ano e paga em outro, conforme o próprio portal classifica o
+              documento. Estoque alto pode indicar dificuldade de caixa.</dd>
             <dt>Extra-orçamentário</dt>
-            <dd>Saída sem empenho: retenções, consignações e repasses (ex.: imposto retido do
-              salário do servidor e recolhido à Receita).</dd>
+            <dd>Saída classificada assim pelo portal: retenções, consignações e repasses (ex.: imposto
+              retido do salário do servidor e recolhido à Receita), com ou sem nº de empenho.</dd>
+            <dt>Empenho não localizado na base</dt>
+            <dd>Pagamento que o portal classifica como orçamentário, mas cujo nº de empenho não veio
+              no endpoint de empenhos (em geral empenhos globais emitidos antes do início da base,
+              em dezembro do exercício anterior). Não é tratado como restos a pagar nem como
+              extra-orçamentário: fica visível como categoria própria.</dd>
+            <dt>Movimentação × execução</dt>
+            <dd><strong>Movimentação no período</strong> conta cada lançamento no mês da sua data
+              (é a visão dos gráficos acima). <strong>Execução dos empenhos</strong> mostra os
+              empenhos emitidos no período com tudo o que já foi liquidado e pago deles até a data
+              da base. Um empenho de janeiro pago em agosto aparece na movimentação de agosto e na
+              execução de janeiro — nunca duplicado no mesmo recorte.</dd>
+            <dt>Taxa de execução</dt>
+            <dd>Liquidado e pago em relação ao empenhado dos empenhos do exercício <em>cujo original
+              está na base</em>. Só é publicada como validada quando a cobertura dos três estágios é
+              completa e liquidado ≤ empenhado ≥ pago; senão aparece o motivo e as razões brutas, sem
+              teto de 100%.</dd>
             <dt>Função</dt>
             <dd>A grande área do gasto (Saúde, Educação, Urbanismo…). É o recorte usado como
-              proxy de secretaria — o portal não informa a unidade orçamentária.</dd>
+              proxy de secretaria — o portal não informa a unidade orçamentária. <strong>“(sem
+              função)”</strong> são lançamentos que a origem não classifica por função — todos
+              extra-orçamentários: retenções (IRRF da folha e de fornecedores), consignações e
+              devoluções (ex.: IPTU pago antecipado), repassadas a terceiros.</dd>
+            <dt>Subfunção</dt>
+            <dd>Detalha a função (dentro de Saúde: Atenção Básica, Hospitalar…).</dd>
+            <dt>Programa</dt>
+            <dd>O programa do PPA ao qual a despesa pertence — o “para quê” do gasto.</dd>
+            <dt>Grupo e elemento de despesa</dt>
+            <dd>O “o quê”: o grupo (pessoal, custeio, investimentos…) e o elemento (material de
+              consumo, serviços de terceiros, obras, locação de imóveis…).</dd>
+            <dt>Unidade gestora</dt>
+            <dd>A entidade que executa: Prefeitura, CAPEP, Instituto de Previdência (IPS) e fundações.</dd>
             <dt>Fonte de recurso</dt>
             <dd>De onde vem o dinheiro: recursos próprios do município, transferências do SUS,
-              convênios etc.</dd>
+              convênios etc. O prefixo do código é o grupo da fonte na tabela AUDESP do TCE-SP —
+              01 Tesouro municipal, 02 transferências e convênios estaduais (ex.: FUNDEB), 04 recursos
+              próprios da administração indireta (ex.: RPPS do IPS), 05 transferências e convênios
+              federais (ex.: SUS/MAC). O extra-orçamentário vem sem prefixo na origem e aparece numa
+              linha própria no gráfico.</dd>
+            <dt>Prazo liquidação → pagamento</dt>
+            <dd>Dias entre a liquidação (entrega atestada) e o pagamento, casando cada pagamento
+              orçamentário com a sua liquidação. A Lei 14.133 (art. 141) exige pagar na ordem
+              cronológica por fonte de recurso, salvo exceções justificadas.</dd>
+            <dt>Anulação de empenho</dt>
+            <dd>Cancelamento total ou parcial de um empenho (compromisso que não será executado). Em
+              massa no fim do ano, é o cancelamento de saldos no encerramento do exercício.</dd>
           </dl>
         </details>
         <div class="grid2">
@@ -372,8 +497,9 @@
           </div>
           <canvas id="ch-mapa"></canvas>
           <p class="contagem" style="margin:10px 0 0">
-            Função → subfunção → elemento de despesa. Toque num retângulo de elemento para ver o
-            nome completo; a tabela equivalente está disponível para leitores de tela.
+            Função → subfunção → elemento de despesa (pago pela data do pagamento). Tocar num
+            elemento prepara o Detalhamento já filtrado — você confere o período e o tamanho do
+            download antes de carregar. A tabela equivalente está disponível para leitores de tela.
           </p>
         </div>
         <div class="box" id="box-r100" hidden>
@@ -408,7 +534,7 @@
         <div class="box" id="box-pares" hidden>
           <div class="box-toggle">
             <h3>Santos × cidades pares — gasto por habitante</h3>
-            <select id="pares-funcao" aria-label="Função para comparar" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color:var(--navy)"></select>
+            <select id="pares-funcao" aria-label="Função para comparar" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color: var(--ink)"></select>
           </div>
           <p class="resumo-texto" id="pares-frase" style="font-size:14px;margin:0 0 10px"></p>
           <canvas id="ch-pares"></canvas>
@@ -419,14 +545,23 @@
       <!-- ── Alertas ── -->
       <section class="painel" id="painel-alertas">
         <p class="hero-sub" style="color:var(--muted);margin:0 0 14px">
-          Sinais automáticos por regras (fracionamento, concentração, recorrência, favorecido novo,
-          crescimento anômalo, pessoa física em elemento sensível, picos, extra-orçamentário).
-          Clique num alerta para abri-lo já filtrado na aba de favorecidos. Cada alerta é um ponto de
-          partida para requerimento de informação — não é conclusão de irregularidade.
+          Sinais automáticos por regras, separados em três classes: <strong>contexto</strong>
+          (escala e recorrência — informação, não achado), <strong>anomalia a conferir</strong>
+          (padrão que merece requerimento de informação) e <strong>inconsistência de dados</strong>
+          (problema na origem ou na cobertura da base). Clique num alerta para abrir o recorte que o
+          sustenta. Nenhum alerta é conclusão de irregularidade.
         </p>
-        <div class="filtros" style="grid-template-columns: 1fr 1fr">
-          <select id="alerta-tipo"><option value="">Tipo (todos)</option></select>
-          <select id="alerta-sev">
+        <p class="contagem" id="alertas-historico" hidden></p>
+        <div class="filtros filtros-alertas">
+          <select id="alerta-classe" aria-label="Classe do alerta">
+            <option value="conferir">A conferir (anomalias e inconsistências)</option>
+            <option value="">Todas as classes</option>
+            <option value="anomalia">Anomalia a conferir</option>
+            <option value="inconsistencia">Inconsistência de dados</option>
+            <option value="contexto">Contexto</option>
+          </select>
+          <select id="alerta-tipo" aria-label="Tipo de alerta"><option value="">Tipo (todos)</option></select>
+          <select id="alerta-sev" aria-label="Severidade">
             <option value="">Severidade (todas)</option>
             <option value="alta">Alta</option>
             <option value="media">Média</option>
@@ -434,19 +569,21 @@
           </select>
         </div>
         <div id="lista-alertas"></div>
-        <div class="vazio" id="alertas-vazio" hidden>Nenhum alerta com os limiares atuais.</div>
+        <div class="vazio" id="alertas-vazio" hidden></div>
       </section>
 
       <!-- ── Favorecidos ── -->
       <section class="painel" id="painel-favorecidos">
-        <div class="periodo-acoes" id="fav-modos" style="margin-bottom:12px">
-          <button class="btn primario" data-modo="todos" type="button">Todos</button>
-          <button class="btn" data-modo="pj" type="button">Pessoa jurídica (CNPJ)</button>
-          <button class="btn" data-modo="pf" type="button">Pessoa física (CPF)</button>
+        <div class="periodo-acoes" id="fav-modos" style="margin-bottom:12px" role="group" aria-label="Tipo de favorecido">
+          <button class="btn primario" data-modo="todos" type="button" aria-pressed="true">Todos</button>
+          <button class="btn" data-modo="privados" type="button" aria-pressed="false"
+                  title="Exclui Município, IPREV, CAPEP, bancos públicos e demais repasses institucionais">Fornecedores privados</button>
+          <button class="btn" data-modo="pj" type="button" aria-pressed="false">Pessoa jurídica (CNPJ)</button>
+          <button class="btn" data-modo="pf" type="button" aria-pressed="false">Pessoa física (CPF)</button>
         </div>
-        <div class="filtros" style="grid-template-columns: 2fr 1fr">
-          <input id="q" type="search" placeholder="Buscar por nome, CPF ou CNPJ..." />
-          <select id="f-elemento-fav"><option value="">Elemento de despesa (todos)</option></select>
+        <div class="filtros filtros-fav">
+          <input id="q" type="search" placeholder="Buscar por nome, CPF ou CNPJ..." aria-label="Buscar favorecido por nome, CPF ou CNPJ" />
+          <select id="f-elemento-fav" aria-label="Elemento de despesa"><option value="">Elemento de despesa (todos)</option></select>
         </div>
         <div class="barra">
           <span class="contagem" id="contagem" aria-live="polite">—</span>
@@ -456,10 +593,10 @@
           <table class="tabela-resp">
             <thead>
               <tr>
-                <th data-sort="nome">Favorecido</th>
-                <th data-sort="valor" class="r">Valor total</th>
-                <th data-sort="qtd" class="r">Pagamentos</th>
-                <th data-sort="meses" class="r">Meses</th>
+                <th data-sort="nome"><button type="button">Favorecido</button></th>
+                <th data-sort="valor" class="r"><button type="button">Valor total</button></th>
+                <th data-sort="qtd" class="r"><button type="button">Pagamentos</button></th>
+                <th data-sort="meses" class="r"><button type="button">Meses</button></th>
               </tr>
             </thead>
             <tbody id="corpo-fav"></tbody>
@@ -474,7 +611,14 @@
       <!-- ── Detalhamento (íntegra pesquisável) ── -->
       <section class="painel" id="painel-detalhe">
         <div class="box">
-          <h3>Selecione o período</h3>
+          <h3>Escolha a visão e o período</h3>
+          <div class="periodo-acoes" id="det-visao" role="group" aria-label="Visão do detalhamento">
+            <button class="btn primario" data-visao="exe" type="button"
+              title="Uma linha por empenho emitido no período, com o liquidado e o pago acumulados">Execução dos empenhos</button>
+            <button class="btn" data-visao="mov" type="button"
+              title="Cada empenho, liquidação e pagamento no mês da sua própria data">Movimentação no período</button>
+          </div>
+          <p class="det-explica" id="det-visao-explica"></p>
           <div class="periodo-acoes" id="periodo-rapido"></div>
           <div class="meses-grid" id="meses-grid"></div>
           <div class="barra" style="margin-top:12px">
@@ -487,8 +631,9 @@
         </div>
 
         <div id="det-resultado" hidden>
+          <p class="det-titulo" id="det-titulo"></p>
           <div class="det-acoes-topo">
-            <input id="det-q" type="search"
+            <input id="det-q" type="search" aria-label="Buscar em qualquer coluna"
               placeholder="Buscar em qualquer coluna (favorecido, elemento, programa, nº empenho)..." />
             <button class="btn" id="det-link" type="button"
               title="Copia um link que reabre esta consulta com os mesmos meses, filtros e ordenação">Copiar link</button>
@@ -503,14 +648,16 @@
             </details>
           </div>
           <div class="filtros det-filtros8" id="det-filtros">
-            <select id="f-tipo"><option value="">Tipo (todos)</option></select>
-            <select id="f-unidade_gestora"><option value="">Unidade gestora (todas)</option></select>
-            <select id="f-funcao"><option value="">Função / área (todas)</option></select>
-            <select id="f-subfuncao"><option value="">Subfunção (todas)</option></select>
-            <select id="f-programa"><option value="">Programa (todos)</option></select>
-            <select id="f-elemento_despesa"><option value="">Elemento de despesa (todos)</option></select>
-            <select id="f-fonte_recurso"><option value="">Fonte de recurso (todas)</option></select>
-            <select id="f-grupo_despesa"><option value="">Grupo de despesa (todos)</option></select>
+            <select id="f-fase" aria-label="Fase" hidden><option value="">Fase (todas)</option></select>
+            <select id="f-especie" aria-label="Espécie" hidden><option value="">Espécie (todas)</option></select>
+            <select id="f-tipo" aria-label="Tipo"><option value="">Tipo (todos)</option></select>
+            <select id="f-unidade_gestora" aria-label="Unidade gestora"><option value="">Unidade gestora (todas)</option></select>
+            <select id="f-funcao" aria-label="Função / área"><option value="">Função / área (todas)</option></select>
+            <select id="f-subfuncao" aria-label="Subfunção"><option value="">Subfunção (todas)</option></select>
+            <select id="f-programa" aria-label="Programa"><option value="">Programa (todos)</option></select>
+            <select id="f-elemento_despesa" aria-label="Elemento de despesa"><option value="">Elemento de despesa (todos)</option></select>
+            <select id="f-fonte_recurso" aria-label="Fonte de recurso"><option value="">Fonte de recurso (todas)</option></select>
+            <select id="f-grupo_despesa" aria-label="Grupo de despesa"><option value="">Grupo de despesa (todos)</option></select>
           </div>
           <div class="barra det-toolbar">
             <div class="acoes" id="det-metrica" role="group" aria-label="Métrica ativa da tabela">
@@ -521,7 +668,7 @@
             </div>
             <div class="acoes">
               <label class="contagem" for="det-grupo">Agrupar por:</label>
-              <select id="det-grupo">
+              <select id="det-grupo" aria-label="Agrupar por">
                 <option value="">nenhum (linha a linha)</option>
                 <option value="nome_favorecido">favorecido</option>
                 <option value="funcao">função</option>
@@ -533,8 +680,8 @@
             </div>
             <div class="acoes det-faixa">
               <label class="contagem" for="det-vmin">Valor</label>
-              <input id="det-vmin" type="number" min="0" step="1000" placeholder="mín R$" />
-              <input id="det-vmax" type="number" min="0" step="1000" placeholder="máx R$" />
+              <input id="det-vmin" aria-label="Valor mínimo (R$)" type="number" min="0" step="1000" placeholder="mín R$" />
+              <input id="det-vmax" aria-label="Valor máximo (R$)" type="number" min="0" step="1000" placeholder="máx R$" />
             </div>
           </div>
           <div id="det-chips" class="chips" hidden></div>
@@ -557,10 +704,13 @@
             <button class="btn" id="det-proxima" type="button">Próxima ›</button>
           </div>
           <p class="det-confianca">
-            Fonte: Portal da Transparência de Santos — estágios de empenho, liquidação e pagamento
-            somados por empenho; clique numa linha para ver os documentos de cada estágio.
-            Linhas <strong>Restos a pagar</strong> = pagamento de empenho de exercício anterior;
-            <strong>Extra-orçamentário</strong> = saída sem empenho (retenções e repasses).
+            Fonte: Portal da Transparência de Santos. Na <strong>execução dos empenhos</strong> os
+            estágios são somados por empenho; na <strong>movimentação</strong> cada documento aparece
+            na sua data. Clique numa linha para ver os documentos de cada estágio.
+            Tipos, conforme o campo do próprio portal: <strong>Restos a pagar</strong> (empenho de
+            exercício anterior), <strong>Extra-orçamentário</strong> (retenções e repasses) e
+            <strong>Empenho não localizado na base</strong> (orçamentário cujo empenho não veio no
+            endpoint — não é inferido como restos).
             <a href="#painel-geral" id="det-glossario-link">O que significa cada coluna</a> ·
             dados brutos: <span id="det-json-links"></span>.
           </p>
@@ -571,9 +721,10 @@
 
       <p class="rodape">
         Fonte: Portal da Transparência da Prefeitura de Santos (santos-sp.portaltp.com.br) —
-        API pública de pagamentos. Base de descoberta/triagem; dados informativos e não oficiais.
-        A íntegra linha-a-linha está na aba <strong>Detalhamento</strong> (pesquisável e exportável)
-        e também na planilha <strong>despesas.xlsx</strong>. <span id="atualizado"></span>
+        API pública de empenhos, liquidações e pagamentos. Base de descoberta/triagem; dados
+        informativos e não oficiais. A íntegra linha a linha está na aba <strong>Detalhamento</strong>
+        (pesquisável, exportável em CSV e com link para o JSON de cada mês). <span id="atualizado"></span>
+        <span id="cobertura"></span>
       </p>
     </div>
 
@@ -651,6 +802,6 @@
       </div>
     </div>
 
-    <script src="./despesas-app.js?v=13"></script>
+    <script defer src="./despesas-app.js?v=18"></script>
   </body>
 </html>

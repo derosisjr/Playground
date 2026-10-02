@@ -28,6 +28,12 @@ despesas/despesas.sqlite
 despesas/despesas.xlsx
 despesas/despesas.csv
 despesas/_briefing.*
+# reconciliação (2026-09): backup do sqlite v1, base candidata e respostas brutas — nunca versionados
+despesas/_backup/
+despesas/_candidato/
+despesas/_bruto/
+despesas/*.sqlite.bak-*
+despesas/_relatorio-*.json
 diario-oficial/diario.sqlite
 diario-oficial/_*
 indicadores/indicadores.sqlite
@@ -45,6 +51,9 @@ precos/precos.sqlite
 precos/_*
 # peças de MP, requerimentos e provas: o repo é público — nunca publicar (decisão 2026-08-15)
 REQUERIMENTOS/
+# mapa eleitoral: geografia da própria votação é inteligência de campanha, não mandato —
+# publicar entregaria a base aos 20 adversários (decisão 2026-08-17)
+mapa-eleitoral/
 # locks do Word e cache do pytest
 ~$*
 .pytest_cache/

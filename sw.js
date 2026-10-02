@@ -3,7 +3,9 @@
 //   • páginas/CSS/JS/imagens (mesma origem): network-first com fallback ao cache
 //     — o site continua sempre fresco (o CI commita código e dados todo dia) e
 //     ainda abre offline com a última versão vista;
-//   • *.json de dados: stale-while-revalidate ignorando a query string (os
+//   • dados de despesas (índice, meses, estágios, dossiês): network-first — ver
+//     DADOS_COERENTES;
+//   • demais *.json de dados: stale-while-revalidate ignorando a query string (os
 //     painéis pedem com `cache: "no-cache"` desde 2026-09; a normalização fica
 //     como rede de segurança para qualquer ?v= que sobreviva);
 //   • bases-atualizacao.json: network-first — é a fonte da verdade do "atualizado
@@ -11,7 +13,12 @@
 //     anterior e o `cache: "no-cache"` da página não valia de nada.
 "use strict";
 
-const CACHE = "gabinete-v2";  // v2: precos.html no núcleo + bases-atualizacao network-first
+const CACHE = "gabinete-v3";  // v3: dados de despesas network-first (índice e meses do mesmo export)
+
+// Dados de despesas que precisam ser do MESMO export: o índice aponta para meses,
+// estágios e dossiês; com stale-while-revalidate a página podia montar o índice de
+// hoje com o mês de ontem (ou o contrário). Rede primeiro; o cache só vale offline.
+const DADOS_COERENTES = /\/(despesas-index\.json|despesas\/.+\.json|favorecidos\/.+\.json)$/;
 
 // Núcleo pré-cacheado na instalação (melhor esforço: um 404 não derruba o resto).
 const NUCLEO = [
@@ -61,6 +68,18 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // CDN/fontes: deixa a rede cuidar
+
+  if (DADOS_COERENTES.test(url.pathname)) {
+    e.respondWith(
+      caches.open(CACHE).then((c) => {
+        const chave = chaveJson(req);
+        return fetch(req)
+          .then((r) => { if (r.ok) c.put(chave, r.clone()); return r; })
+          .catch(() => c.match(chave).then((cacheado) => cacheado || Response.error()));
+      })
+    );
+    return;
+  }
 
   if (url.pathname.endsWith(".json") && !url.pathname.endsWith("/bases-atualizacao.json")) {
     // dados: responde do cache na hora (se houver) e revalida por trás

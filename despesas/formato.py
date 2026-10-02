@@ -16,6 +16,7 @@ Notas da unificação (2026-07):
   - CÂMARA exige "MUNICIPAL" (evita pegar Câmara de Comércio etc.).
 """
 
+import hashlib
 import os
 import re
 import sys
@@ -50,12 +51,17 @@ _ENTE_RE = re.compile(
     r"CAIXA ECONOMICA FEDERAL|MINISTERIO|FAZENDA NACIONAL|"
     r"RECEITA|SECRETARIA DA RECEITA|TESOURO|"
     r"GOVERNO DO ESTADO|ESTADO DE SAO PAULO|FAZENDA DO ESTADO|"
-    r"FUNDO DE GARANTIA|FGTS|PASEP")
+    r"FUNDO DE GARANTIA|FGTS|PASEP|"
+    # empresas públicas/estatais dependentes do município (2026-09): a concentração
+    # delas numa função é esperada (COHAB = 100% de Habitação virava "anomalia")
+    r"COMPANHIA DE ENGENHARIA DE TRAFEGO|\bPRODESAN\b|\bCOHAB\b|"
+    r"\bSECRETARIA\b")   # órgãos (ex.: SECRETARIA DE TURISMO E VIAGENS, do Estado)
 
 
 # Exceções: nomes que casam com FUNDO/FUNDAÇÃO mas são entidades PRIVADAS
 # contratadas como fornecedoras (conferido na base em 2026-07).
-_NAO_ENTE_RE = re.compile(r"\bAFIP\b|\bFIPE\b|FUNDACAO GETULIO VARGAS|\bFGV\b")
+# SABESP: privatizada em jul/2024 — o nome ("…DO ESTADO DE SAO PAULO") casava como ente.
+_NAO_ENTE_RE = re.compile(r"\bAFIP\b|\bFIPE\b|FUNDACAO GETULIO VARGAS|\bFGV\b|SABESP|SANEAMENTO BASICO DO ESTADO")
 
 
 def eh_ente_publico(nome) -> bool:
@@ -63,3 +69,50 @@ def eh_ente_publico(nome) -> bool:
     if _NAO_ENTE_RE.search(n):
         return False
     return bool(_ENTE_RE.search(n))
+
+
+# ── Identidade do favorecido (2026-09) ────────────────────────────────────────
+# O Portal TP grafa o mesmo CNPJ de várias formas ("INSTITUTO DE PREVIDÊNCIA…",
+# "INSTITUTO DE PREVIDENCIA…", "IPREV - INST. PREV…"), e o ranking agrupava por
+# nome+documento enquanto o dossiê usava só o documento: entradas separadas no
+# ranking e um dossiê que mostrava só a última grafia. A identidade canônica é:
+#   - CNPJ completo (14 dígitos, sem máscara)  → "cnpj:<14 dígitos>"
+#   - CPF mascarado ("***.158.308-**")         → "cpf:<dígitos visíveis>|<nome normalizado>"
+#       (conservador: dígitos parciais NÃO bastam — só une com o mesmo nome)
+#   - documento atípico/incompleto             → "doc:<dígitos>|<nome normalizado>"
+#   - sem documento                            → "nome:<nome normalizado>"
+# Nome normalizado = maiúsculas, sem acento, espaços colapsados — o mesmo
+# algoritmo de Comum.identidadeFavorecido (comum.js); mudar um exige mudar o outro.
+def nome_normalizado(nome) -> str:
+    return " ".join(sem_acento(nome).split())
+
+
+def identidade_favorecido(nome, doc) -> tuple[str, str]:
+    """Devolve (chave canônica, tipo) — tipo ∈ {"cnpj", "cpf", "doc", "nome"}."""
+    doc = (doc or "").strip()
+    dig = re.sub(r"\D", "", doc)
+    if "*" not in doc and len(dig) == 14:
+        return "cnpj:" + dig, "cnpj"
+    n = nome_normalizado(nome)
+    if "*" in doc:
+        return f"cpf:{dig}|{n}", "cpf"
+    if dig:
+        return f"doc:{dig}|{n}", "doc"
+    return "nome:" + n, "nome"
+
+
+def slug_favorecido(chave: str) -> str:
+    """Slug do dossiê (favorecidos/<slug>.json): CNPJ vira os 14 dígitos (links
+    antigos ?f=<cnpj> continuam válidos); os demais, hash curto da chave canônica."""
+    if chave.startswith("cnpj:"):
+        return chave[5:]
+    return hashlib.md5(chave.encode("utf-8")).hexdigest()[:12]
+
+
+def nome_exibicao(grafias: dict) -> str:
+    """Escolha determinística do nome de exibição entre as grafias originais
+    (`{grafia: nº de lançamentos}`): sem caractere de substituição (U+FFFD, sinal de
+    codificação quebrada na origem) > mais lançamentos > mais longa > ordem alfabética."""
+    if not grafias:
+        return ""
+    return min(grafias, key=lambda g: ("�" in g, -grafias[g], -len(g), g))

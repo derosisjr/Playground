@@ -78,6 +78,10 @@ p { text-wrap: pretty; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+/* tabela ignora width/height de 1px e crescia até o tamanho do conteúdo — as tabelas
+   de Comum.chartAcessivel criavam rolagem horizontal no celular. Fora da tela à esquerda
+   (não gera rolagem) e sem mudar o display, que apagaria a semântica de tabela */
+table.sr-only { left: -10000px; }
 
 /* ── Skeleton de carregamento (base clara; a variante escura sobrescreve) ───── */
 .skel {

@@ -20,8 +20,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./comum.css?v=4" />
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="./comum.css?v=6" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
@@ -53,12 +53,40 @@
         padding: 16px 18px; margin-top: 18px; }
       .box h3 { margin: 0 0 12px; font-size: 15px; }
       .box canvas { max-height: 260px; }
+      /* modo escuro: o vermelho do tema claro fica ~2,5:1 sobre o card escuro */
+      html[data-tema="escuro"] { --red: #f97066; }
+
+      .voltar { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font-size: 13.5px; }
+      .voltar a { color: inherit; font-weight: 700; }
+      .nota { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0 0 10px; }
+      .comp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      @media (max-width: 760px) { .comp-grid { grid-template-columns: 1fr; } }
+      .comp-grid h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+      ul.comp { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+      ul.comp li { padding: 6px 0; border-top: 1px solid var(--line); }
+      ul.comp .v { font-family: "IBM Plex Mono", monospace; font-weight: 600; white-space: nowrap; }
+      ul.comp .p { color: var(--muted); font-size: 12px; }
+      .conciliacao { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 12px; }
+      @media (max-width: 640px) { .conciliacao { grid-template-columns: 1fr; } }
+      .conciliacao div { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; }
+      .conciliacao b { display: block; font-family: "IBM Plex Mono", monospace; font-size: 16px; margin-top: 2px; }
+      .conciliacao small { color: var(--muted); font-size: 12px; }
+      .outro-nome { display: inline-block; font-size: 10.5px; font-weight: 700; border: 1px solid var(--gold);
+        border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+      .cad dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13.5px; }
+      .cad dt { color: var(--muted); }
+      .cad dd { margin: 0; }
+      .sinal { border-left: 3px solid var(--red); padding: 6px 10px; margin-top: 10px; font-size: 13.5px; }
+      td.neg { color: var(--red); }
 
       .alerta { border: 1px solid var(--line); border-left: 4px solid var(--gold);
         border-radius: var(--r-sm); padding: 12px 14px; margin-top: 10px; background: var(--card); }
       .alerta.alta { border-left-color: var(--red); }
       .alerta .sev { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: .1em; color: var(--red); margin-right: 8px; }
+      .alerta .sev.classe { color: var(--muted); }
+      .alerta.classe-contexto { border-left-color: var(--line); }
+      .alerta.classe-contexto .sev { color: var(--muted); }   /* contexto não é achado: sem vermelho */
       .alerta .tit { font-weight: 700; font-size: 14px; }
       .alerta .det { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.5; }
 
@@ -91,7 +119,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=9"></script>
+    <script src="./comum.js?v=11"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -100,12 +128,17 @@
         <p class="hero-sub">
           <span id="fav-doc"></span>
           <span class="rank" id="fav-rank"></span>
+          <span id="fav-grafias" class="rank"></span>
           <span id="fav-atualizado"></span>
         </p>
       </div>
     </header>
 
     <div class="shell">
+      <nav class="voltar" aria-label="Navegação">
+        <a id="link-voltar" href="./despesas.html#favorecidos">← Voltar</a>
+        <a id="link-detalhe" href="./despesas.html#detalhe" hidden>Ver os pagamentos no Detalhamento ↗</a>
+      </nav>
       <!-- skeleton dos KPIs enquanto o dossiê carrega (o padrão de despesas.html) -->
       <div class="stats" id="stats-skel"><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div><div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div></div>
       <div class="vazio" id="carregando">Carregando o dossiê…</div>
@@ -123,16 +156,46 @@
           <canvas id="ch-funcao"></canvas>
         </div>
 
+        <div class="box" id="box-composicao" hidden>
+          <h3>Em quê, por quem e de que tipo</h3>
+          <p class="nota">Participação = quanto deste favorecido representa de tudo o que a Prefeitura
+            pagou naquele elemento de despesa no período.</p>
+          <div class="comp-grid">
+            <div><h4>Elemento de despesa</h4><ul class="comp" id="comp-elemento"></ul></div>
+            <div><h4>Unidade gestora</h4><ul class="comp" id="comp-unidade"></ul></div>
+            <div><h4>Tipo de pagamento</h4><ul class="comp" id="comp-tipo"></ul></div>
+          </div>
+        </div>
+
+        <div class="box" id="box-grafias" hidden>
+          <h3>Nomes com que aparece na origem</h3>
+          <p class="nota">O mesmo CNPJ pode vir grafado de formas diferentes. Quando o nome muda de verdade
+            (marcado “outro nome”), pode ser troca de razão social — vale conferir no cadastro da Receita.</p>
+          <div style="overflow-x:auto">
+            <table class="tabela-resp">
+              <thead><tr><th>Nome na origem</th><th style="text-align:right">Recebido</th><th style="text-align:right">Pagamentos</th><th>Período</th></tr></thead>
+              <tbody id="corpo-grafias"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="box" id="box-alertas" hidden>
           <h3>⚠ Alertas fiscais deste favorecido</h3>
           <div id="lista-alertas"></div>
         </div>
 
+        <div class="box cad" id="box-externo" hidden>
+          <h3>Consultas externas</h3>
+          <p class="nota" id="ext-links"></p>
+          <button class="btn" id="ext-cnpj" type="button">Consultar dados cadastrais (Receita Federal, via BrasilAPI)</button>
+          <div id="ext-resultado" aria-live="polite"></div>
+        </div>
+
         <div class="box" id="box-pagamentos">
-          <h3>Últimos pagamentos</h3>
+          <h3 id="tit-pagamentos">Últimos pagamentos</h3>
           <div style="overflow-x:auto">
             <table class="tabela-resp">
-              <thead><tr><th>Data</th><th>Função</th><th>Elemento</th><th>Unidade</th><th style="text-align:right">Valor</th></tr></thead>
+              <thead><tr><th>Data</th><th>Função</th><th>Elemento</th><th>Unidade</th><th>Tipo</th><th>Nº pagamento · empenho</th><th style="text-align:right">Valor</th></tr></thead>
               <tbody id="corpo-pagamentos"></tbody>
             </table>
           </div>
@@ -143,11 +206,13 @@
             <h3 style="margin:0">Lançamentos de execução — todos os meses</h3>
             <button class="btn" id="lanc-csv" type="button">Exportar CSV</button>
           </div>
+          <div class="conciliacao" id="lanc-conc" hidden></div>
           <p class="lanc-resumo" id="lanc-resumo"></p>
           <div class="vazio" id="lanc-carregando">Carregando os lançamentos…</div>
+          <div style="text-align:center"><button class="btn" id="lanc-carregar" type="button" hidden></button></div>
           <div id="lanc-conteudo" hidden>
             <div style="overflow-x:auto">
-              <table id="lanc-tabela">
+              <table id="lanc-tabela" class="tabela-resp">
                 <thead><tr id="lanc-cabecalho"></tr></thead>
                 <tbody id="lanc-corpo"></tbody>
               </table>
@@ -169,6 +234,6 @@
       </div>
     </div>
 
-    <script src="./favorecido-app.js?v=6"></script>
+    <script defer src="./favorecido-app.js?v=9"></script>
   </body>
 </html>
