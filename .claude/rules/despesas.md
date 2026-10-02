@@ -162,7 +162,22 @@ elemento (obras/engenharia × compras); o texto diz que o empenho não é o cont
 falta (objeto, modalidade, processo, contrato). **Histórico**: `aplicar_historico_alertas` marca
 `estado` `novo`/`persistente` (ou `sem_historico` na 1ª execução — não chama tudo de novo),
 `primeiro_em`, e move os que sumiram para `resolvidos` em `alertas-estado.json` (versionado,
-commitado pelo workflow). Hub e retrospectiva contam alta/média como antes.
+commitado pelo workflow).
+
+**Contagem e tetos (Lote D2, 2026-09-30).** "A conferir" = classe ≠ `contexto` (anomalias +
+inconsistências) — a MESMA conta no badge da aba, no hub (`index.html`), no "Em resumo"
+(`resumo.alertas_ativos`) e no card do raio-X; a retrospectiva mostra só `anomalia`. Os tetos
+(`CAP_POR_REGRA`=15, `MAX_ALERTAS`=120) são declarados: `alertas(…, contagem=dict)` preenche
+**`alertas_regras`** no índice (`{tipo: {candidatos, publicados}}` — em 2026-09: fracionamento 378,
+favorecido_recorrente 105, extra 57, pf_sensivel 42) e o painel escreve "os N maiores de M casos".
+**`pf_sensivel` é severidade média** (era alta; aluguel mensal de imóvel de PF é o caso típico —
+decisão do usuário: os nomes continuam públicos). **Links por identidade**: alertas de favorecido
+levam `dfav=<chave>` (filtro do Detalhamento por `Comum.identidadeFavorecido`, pega todas as
+grafias do CNPJ — `dq=<nome>` perdia "IPREV - INST. PREV…") e `dm` só com os meses em que o
+recorte tem pagamento (`meses_pag`); fracionamento usa os meses de emissão dos empenhos. Na aba:
+classe padrão "A conferir", regra com ≥ 3 alertas vira grupo recolhível, filtros na URL
+(`ac`/`at`/`as`; `ac=todas` = todas as classes) e aba no hash via `replaceState` em
+`selecionarAba` (+ `hashchange`) — Voltar depois de abrir um recorte restaura aba e filtros.
 
 ## Painel, raio-X, retrospectiva
 
@@ -183,11 +198,71 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=15`,
-`retrospectiva-app.js?v=6`, `favorecido-app.js?v=7`, `comum.js?v=9` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=18` (com `defer`, como o Chart.js),
+`retrospectiva-app.js?v=8`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
+
+**UI do painel (Lote D3, 2026-09-30).** Cards: total do período, acumulado jan–M (YoY), **último
+mês completo** vs média de 12 meses (`resumo.mes_ref`/`delta_media_pct` — o hub usa o mesmo mês)
+e **alertas a conferir** (link → `#alertas`). Chart.js/treemap e o app carregam com `defer`;
+`renderGraficosSeguro` mantém abas/alertas/tabelas funcionando se o CDN cair. Manifestos `meses`/
+`meses_movimento` trazem **`bytes`** por arquivo → `sel-info` mostra "download ≈ X MB" (só o que
+não está em `DET_PARTES`). `carregarPartes` usa `allSettled` + `r.ok`; a falha nomeia os meses e
+oferece "Tentar de novo" (`Comum.estadoErro`) baixando só o que faltou. Facetas: `indicesBase()`
+roda a busca/faixa/identidade UMA vez por filtragem. Favorecidos: modo **"Fornecedores
+privados"** (flag `ente_publico` no `top_favorecidos` e lista `entes_publicos` de chaves no
+índice — a heurística continua só em `formato.eh_ente_publico`), busca sem resultado oferece o
+raio-X na base inteira (o ranking é só o top-300), linhas focáveis (Enter abre a ficha),
+cabeçalhos com `<button>` + `aria-sort`, toggles com `aria-pressed` (`marcarAlternancia`). O mapa
+do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da movimentação e deixa
+o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
+extenso e período AAAA-MM. Modo escuro: textos em `var(--ink)` e vermelhos/âmbar claros
+(≥ 4,5:1). Service worker: dados de despesas network-first (`sw.js`, `CACHE` v3).
+
+**Raio-X (Lote D4, 2026-09-30).** O dossiê (`favorecidos/<slug>.json`) ganhou `por_elemento`
+(com `participacao_pct` = fatia do favorecido em todo o pago no elemento), `por_unidade`,
+`por_tipo`, `primeiro_pagamento`/`ultimo_pagamento`, `ultimos_pagamentos[].pagamento/empenho`,
+`grafias_detalhe` (total/qtd/período por nome da origem — a página marca **"outro nome"** quando
+os nomes não dividem metade das palavras: troca de razão social, p. ex. SABINO → OPUS) e
+`ente_publico`. O export materializa os pagamentos do top-300 numa temp table indexada
+(`pag_top`) — as consultas por favorecido refaziam o join com `fav_ident` na tabela inteira (o
+dossiê levava 180 s; agora ~5 s; export completo ~70 s). `dados/nomes-favorecidos.json` (chave →
+[nome, documento] de todas as identidades) deixa a rota `?nome=` achar quem está fora do top-300.
+Página: cards com o **ano da base** (não o último ano do favorecido) e o período de presença;
+série com todos os meses (lacunas = 0) e meses parciais claros; composição (elemento/UG/tipo);
+**consultas externas** só para CNPJ privado — link do Portal da Transparência federal
+(pessoa-jurídica: sanções CEIS/CNEP, contratos federais) e botão que consulta o cadastro da
+Receita via **BrasilAPI** no navegador (abertura, situação, CNAE, sócios), com sinal quando a
+empresa abriu < 12 meses antes do 1º pagamento da base (PNCP ficou de fora: o site recusou
+conexão na verificação, link não validado); lançamentos de execução **sob demanda** acima de
+~3 MB (botão com meses e MB), progresso e "Tentar de novo"; **faixa de conciliação** recebido ×
+pago sob empenhos dele × diferença, com as causas; "← Voltar" (history.back se veio do site) e
+ponte para o Detalhamento com `dfav` + meses em que recebeu. Rota `?doc=&nome=`: resolve a
+identidade (CNPJ → redireciona para `?f=` se houver dossiê; CPF mascarado sem nome → pede o
+nome; nome ambíguo → lista para escolher) e monta o dossiê com os **pagamentos reais** da
+movimentação (fase P, pela data do pagamento) + alertas do índice pela `chave`.
+
+**Análises (Lote D5, 2026-09-30).** No índice: **`prazos_pagamento`** (`prazos_pagamento()`: pagamento
+orçamentário — inclui restos a pagar, exclui extra — casado com a liquidação por UG + empenho + nº
+da liquidação (MIN(data) das liquidações não anuladas); por ano: mediana, p90 e faixas (antes da
+liquidação / ≤ 1 / 2–7 / 8–30 / 31–90 / > 90 dias); fornecedores com ≥ 10 pagamentos e ≥ R$ 1 mi,
+entes públicos fora: 10 mais rápidos e 10 mais lentos. Em 2025–26: mediana 6–7 dias, p90 21 dias);
+**`anulacoes`** (série mensal, por ano com % do empenhado, top 15 favorecidos; anulado > empenhado
+na base = `original_fora_da_base`, sem %); **`fim_de_exercicio`** (dezembro × média jan–nov de
+empenhado novo, liquidado, pago e anulado, só anos com dezembro completo — dez/2025: liquidado
+1,64×, anulado 5,9×); **`por_funcao_orcamentario`** (base do "De cada R$ 100" e do recibo — sem
+o extra-orçamentário, R$ 1,2 bi que só transita pelo caixa); **`por_programa`** (PPA, top 15, não
+é secretaria); **`por_fonte`** junta o extra-orçamentário numa linha (`FONTE_EXTRA`: a origem o
+grava sem o prefixo AUDESP do grupo de fonte e parecia fonte duplicada). Regras novas
+**`prazo_rapido`** (mediana ≤ 1 dia com a geral ≥ 5) e **`prazo_lento`** (mediana ≥ 60 dias) —
+anomalia média, triagem do art. 141 da Lei 14.133. `formato.eh_ente_publico` passou a incluir
+CET-Santos, PRODESAN, COHAB e SECRETARIA (a COHAB com 100% de Habitação era "anomalia") e a
+excluir a SABESP (privatizada em jul/2024). Export completo ~110 s (prazos ~22 s). Retrospectiva:
+`anos_detalhe[ano].top_fornecedores` (top 5 sem entes públicos) numa lista à parte, entes marcados
+na lista geral, comparação com o mesmo período do ano anterior (`resumo.yoy`), gráfico com
+`Comum.chartAcessivel` e redesenho no resize.
 
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 

@@ -118,7 +118,9 @@ window.Comum = (() => {
   function exportarCsv(nomeArquivo, cabecalhos, linhas) {
     const sep = ";";
     const esc = (v) => {
-      const s = String(v ?? "");
+      // número → vírgula decimal: com `;` como separador o Excel pt-BR lia "73298.35"
+      // como texto (não somava); sem separador de milhar para continuar numérico
+      const s = typeof v === "number" && Number.isFinite(v) ? String(v).replace(".", ",") : String(v ?? "");
       return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const out = [cabecalhos.map(esc).join(sep)];

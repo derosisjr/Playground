@@ -345,6 +345,13 @@ def test_raiox_e_ranking_coerentes(tmp_path, monkeypatch):
     assert d["total"] == idx["top_favorecidos"][0]["valor"] == 5_000.0
     assert len(d["serie_mensal"]) == 4 and round(sum(s["valor"] for s in d["serie_mensal"]), 2) == 5_000.0
     assert len(d["grafias"]) == 3
+    # composição do dossiê (Lote D4): as somas por dimensão fecham com o total
+    for campo in ("por_elemento", "por_unidade", "por_tipo"):
+        assert round(sum(x["valor"] for x in d[campo]), 2) == 5_000.0, campo
+    assert d["primeiro_pagamento"] <= d["ultimo_pagamento"]
+    assert len(d["grafias_detalhe"]) == 3 and round(sum(g["valor"] for g in d["grafias_detalhe"]), 2) == 5_000.0
+    assert all(0 < (e["participacao_pct"] or 0) <= 100 for e in d["por_elemento"])
+    assert d.get("ente_publico") is True          # IPREV: ente público (formato.eh_ente_publico)
 
 
 def test_cpf_mascarado_semelhante_nao_e_fundido():
@@ -487,6 +494,103 @@ def test_alertas_classes_links_e_documentos():
     assert all(a.get("id") and a.get("classe") and a.get("link") for a in lista)
     ids = [a["id"] for a in lista]
     assert len(ids) == len(set(ids))
+
+
+def test_alertas_contagem_de_candidatos_alem_do_teto(monkeypatch):
+    monkeypatch.setattr(export, "CAP_POR_REGRA", 2)
+    conn = db()
+    for i in range(5):        # 5 PFs em locação acima do limiar → 5 candidatos, 2 publicados
+        for mes in (1, 2):
+            add(conn, "pagamentos", 2025, mes, 60_000.0 + i, nome_favorecido=f"LOCADOR {i}",
+                documento_favorecido=f"***.{i:03d}.308-**", elemento_despesa="33903615000 - LOCAÇÃO DE IMÓVEIS")
+    contagem = {}
+    lista = export.alertas(conn, contagem=contagem)
+    pf = [a for a in lista if a["tipo"] == "pf_sensivel"]
+    assert len(pf) == 2 and contagem["pf_sensivel"] == {"candidatos": 5, "publicados": 2}
+    assert all(a["severidade"] == "media" for a in pf)       # aluguel de PF: não é "alta"
+
+
+def test_link_do_alerta_filtra_por_identidade_e_so_os_meses_do_favorecido():
+    conn = db()
+    for mes in (3, 7):
+        add(conn, "pagamentos", 2025, mes, 80_000.0, nome_favorecido="FULANO DE TAL",
+            documento_favorecido="***.123.456-**", elemento_despesa="33903615000 - LOCAÇÃO DE IMÓVEIS")
+    add(conn, "pagamentos", 2025, 5, 10.0, nome_favorecido="OUTRA LTDA")   # outro mês, outro favorecido
+    a = next(a for a in export.alertas(conn) if a["tipo"] == "pf_sensivel")
+    from urllib.parse import parse_qs, urlsplit
+    q = parse_qs(urlsplit(a["link"]).query)
+    assert q["dfav"] == [a["filtro"]["chave"]] and "dq" not in q      # identidade, não busca textual
+    assert q["dm"] == ["2025-03,2025-07"] and q["dv"] == ["mov"]
+
+
+def _liq_pag(conn, emp, liq, d_liq, d_pag, valor, nome, doc, tipo="Orçamentária"):
+    add(conn, "liquidacoes", 2025, int(d_liq[5:7]), valor, empenho=emp, liquidacao=liq, data=d_liq,
+        nome_favorecido=nome, documento_favorecido=doc)
+    add(conn, "pagamentos", 2025, int(d_pag[5:7]), valor, empenho=emp, liquidacao=liq, data=d_pag,
+        nome_favorecido=nome, documento_favorecido=doc, tipo_pagamento=tipo)
+
+
+def test_prazos_pagamento_e_alerta_de_fila(monkeypatch):
+    monkeypatch.setattr(export, "PRAZO_MIN_PAGS", 3)
+    monkeypatch.setattr(export, "PRAZO_MIN_VALOR", 1_000.0)
+    conn = db()
+    for i in range(4):   # fila normal: 10 dias
+        _liq_pag(conn, f"00001{i}/2025", f"L1{i}", "2025-03-01", "2025-03-11", 500.0, "FILA LTDA", "11.111.111/0001-11")
+    for i in range(3):   # pago no mesmo dia da liquidação
+        _liq_pag(conn, f"00002{i}/2025", f"L2{i}", "2025-04-02", "2025-04-02", 900.0, "RAPIDO LTDA", "22.222.222/0001-22")
+    for i in range(3):   # 100 dias de espera
+        _liq_pag(conn, f"00003{i}/2025", f"L3{i}", "2025-01-10", "2025-04-20", 800.0, "LENTO LTDA", "33.333.333/0001-33")
+    # extra-orçamentário (retenção) não entra na fila
+    _liq_pag(conn, "000040/2025", "L40", "2025-05-01", "2025-05-01", 50.0, "RETIDO", "44.444.444/0001-44",
+             tipo="Extra Orçamentário")
+    ident = export.preparar_identidades(conn)
+    p = export.prazos_pagamento(conn, ident)
+    a = p["por_ano"]["2025"]
+    assert a["pagamentos"] == 10 and p["mediana_geral_dias"] == 10
+    faixas = {f["faixa"]: f["qtd"] for f in a["faixas"]}
+    assert faixas["até 1 dia"] == 3 and faixas["8 a 30 dias"] == 4 and faixas["mais de 90 dias"] == 3
+    assert p["mais_rapidos"][0]["nome"] == "RAPIDO LTDA" and p["mais_lentos"][0]["nome"] == "LENTO LTDA"
+    tipos = {x["tipo"]: x for x in export.alertas(conn, ident, prazos=p) if x["tipo"].startswith("prazo_")}
+    assert set(tipos) == {"prazo_rapido", "prazo_lento"}
+    assert "art. 141" in tipos["prazo_rapido"]["detalhe"] and tipos["prazo_rapido"]["classe"] == "anomalia"
+
+
+def test_anulacoes_com_original_fora_da_base():
+    conn = db()
+    add(conn, "empenhos", 2025, 1, 1_000.0, empenho="000001/2025", nome_favorecido="NORMAL LTDA")
+    add(conn, "empenhos", 2025, 6, -250.0, empenho="000001/2025", especie="Anulação", nome_favorecido="NORMAL LTDA")
+    # só a anulação na base: o original é de 2024
+    add(conn, "empenhos", 2025, 2, -700.0, empenho="000099/2024", especie="Anulação", nome_favorecido="ANTIGA LTDA")
+    ident = export.preparar_identidades(conn)
+    a = export.anulacoes_empenho(conn, ident)
+    assert a["por_ano"]["2025"]["valor"] == 950.0 and a["por_ano"]["2025"]["qtd"] == 2
+    top = {x["nome"]: x for x in a["top_favorecidos"]}
+    assert top["NORMAL LTDA"]["pct_do_empenhado"] == 25.0
+    assert top["ANTIGA LTDA"]["pct_do_empenhado"] is None and top["ANTIGA LTDA"]["original_fora_da_base"]
+
+
+def test_fim_de_exercicio_compara_dezembro_com_jan_nov():
+    conn = db()
+    for mes in range(1, 12):
+        add(conn, "liquidacoes", 2025, mes, 100.0)
+        add(conn, "pagamentos", 2025, mes, 100.0)
+    add(conn, "liquidacoes", 2025, 12, 300.0)
+    add(conn, "pagamentos", 2025, 12, 150.0)
+    add(conn, "pagamentos", 2026, 2, 1.0, data="2026-02-28")   # base "fresca": dez/2025 completo
+    f = export.fim_de_exercicio(conn)
+    assert f["2025"]["liquidado"]["razao"] == 3.0 and f["2025"]["pago"]["razao"] == 1.5
+    assert "2026" not in f
+
+
+def test_extra_orcamentario_separado_na_fonte_e_fora_do_para_onde_vai():
+    conn = db()
+    add(conn, "pagamentos", 2025, 1, 1_000.0, fonte_recurso="01-1100000 - GERAL")
+    add(conn, "pagamentos", 2025, 1, 400.0, fonte_recurso="1100000 - GERAL", funcao="",
+        tipo_pagamento="Extra Orçamentário")
+    idx = export.agregados(conn)
+    fontes = {f["fonte"]: f["valor"] for f in idx["por_fonte"]}
+    assert fontes == {"01-1100000 - GERAL": 1_000.0, export.FONTE_EXTRA: 400.0}
+    assert idx["por_funcao_orcamentario"] == [{"funcao": "10 - SAÚDE", "valor": 1_000.0}]
 
 
 def test_alertas_consolidam_por_identidade():

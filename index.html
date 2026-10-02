@@ -6,7 +6,7 @@
     <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
-    <link rel="stylesheet" href="./comum.css?v=3" />
+    <link rel="stylesheet" href="./comum.css?v=5" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#07111f" />
@@ -441,7 +441,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=9"></script>
+    <script src="./comum.js?v=10"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -661,12 +661,15 @@
 
       pDespesas.then(({ dados: d }) => {
         const serie = d.series_mensais || [];
-        const ult = serie[serie.length - 1];
+        // último mês COMPLETO (resumo.mes_ref): o último da série costuma estar parcial na
+        // origem e aparecia aqui como uma queda que não existe
+        const ult = d.resumo?.mes_ref || serie[serie.length - 1];
         if (ult) {
           set("ind-pago-lbl", "Pago em " + MESES[ult.mes - 1] + "/" + ult.ano);
           indicador("ind-pago", compacto(ult.valor));
         } else esconder("ind-pago");
-        const ativos = (d.alertas || []).filter((a) => a.severidade === "alta" || a.severidade === "media").length;
+        // "a conferir" = anomalias + inconsistências (contexto não é achado) — mesma conta do painel e do resumo
+        const ativos = (d.alertas || []).filter((a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa").length;
         indicador("ind-alertas", ativos ? ativos + plural(ativos, " ativo", " ativos") : "nenhum ativo");
         if (d.atualizado_em) indicador("ind-atual", new Date(d.atualizado_em).toLocaleDateString("pt-BR"));
         else esconder("ind-atual");
