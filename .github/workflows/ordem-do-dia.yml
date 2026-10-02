@@ -1,8 +1,10 @@
 name: Briefing Ordem do Dia
 
 on:
-  schedule:
-    - cron: "0 22 * * 1,3"
+  # Cron DESATIVADO em 2026-10-02: o briefing migrou para a rotina /schedule com IA
+  # (cota Max, sem API key — ver ordem-do-dia/references/rotina-schedule.md). Este
+  # workflow fica só como socorro manual; exige ANTHROPIC_API_KEY e o perfil político,
+  # que é gitignored — sem ele o index.py falha (era a causa das falhas desde 17/08).
   workflow_dispatch:
     inputs:
       sessao_id:

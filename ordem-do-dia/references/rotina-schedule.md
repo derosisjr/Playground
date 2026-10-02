@@ -5,6 +5,10 @@
 > Molde: `diario-oficial/references/rotina-schedule.md` (as descobertas de rede/e-mail
 > de 2026-07-13 valem aqui também).
 
+> **Estado (2026-10-02):** rotina criada (`trig_0133JpRHyhgUtDngMZFKhbCT`, Opus 5.5). O prompt
+> efetivo tem um **passo 0** a mais, que grava o perfil político (gitignored) na cópia
+> descartável — o texto do perfil vive só na config privada da rotina, nunca neste repo.
+
 ## Prompt da rotina (colar ao criar via /schedule)
 
 ```
