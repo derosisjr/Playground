@@ -13,6 +13,13 @@ base (robusto à defasagem do portal); compara com os 7 dias anteriores.
 
 Reusa `conectar`/`alertas` de `export.py` e o padrão SMTP de `ordem-do-dia`.
 
+Alertas no briefing (2026-09): os favorecidos são consolidados por identidade
+(CNPJ), e a seleção dos 12 alertas prioriza NOVIDADE (alertas novos segundo
+despesas/alertas-estado.json) e DIVERSIDADE (no máximo 2 por regra e 1 por
+favorecido; inconsistências de dados e anomalias antes de contexto), em vez de
+repetir os maiores recebedores. Sem histórico, o e-mail diz isso em vez de
+chamar todo alerta de novo. Meses ainda incompletos na origem são declarados.
+
 Secrets/ambiente:
     GMAIL_USER            conta Gmail remetente
     GMAIL_APP_PASSWORD    App Password de 16 dígitos
@@ -24,6 +31,7 @@ Uso:
     python despesas/briefing.py --salvar despesas/_briefing.html  # preview HTML
     python despesas/briefing.py                                 # envia por e-mail
     python despesas/briefing.py --semana 7                      # tamanho da janela (dias)
+    python despesas/briefing.py --db X.sqlite --dry-run         # outra base (candidato)
 """
 
 import argparse
@@ -45,6 +53,8 @@ PAINEL_URL = "https://derosisjr.github.io/Playground/despesas.html"
 NAVY, GOLD, MUTED, LINE = "#07111f", "#c9a84c", "#667085", "#e4e7ec"
 RED, AMBER, SLATE = "#b42318", "#b54708", "#475467"
 TOP = 10
+MAX_ALERTAS_BRIEFING = 12
+MAX_POR_REGRA = 2          # diversidade: no máximo N alertas da mesma regra
 
 
 # ── Formatação ────────────────────────────────────────────────────────────────
@@ -100,9 +110,12 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
     mes_ly = soma_pago(date(ano - 1, mes, 1).isoformat(), fim_ly)
     ano_ly = soma_pago(date(ano - 1, 1, 1).isoformat(), fim_ly)
 
-    todos_fav = q(
-        "SELECT nome_favorecido k, ROUND(SUM(valor),2) s, COUNT(*) n FROM pagamentos "
-        "WHERE data BETWEEN ? AND ? GROUP BY nome_favorecido ORDER BY s DESC", ini, fim)
+    ident = export.preparar_identidades(conn)
+    nome = lambda chave: export._fav_campos(ident, chave)["nome"]  # noqa: E731
+    todos_fav = [{"k": nome(r["k"]), "chave": r["k"], "s": r["s"], "n": r["n"]} for r in q(
+        f"SELECT fi.chave k, ROUND(SUM(p.valor),2) s, COUNT(*) n FROM pagamentos p "
+        f"{export.FAV_JOIN.format(t='p')} WHERE p.data BETWEEN ? AND ? GROUP BY fi.chave ORDER BY s DESC",
+        ini, fim)]
     fav_publico = [r for r in todos_fav if eh_ente_publico(r["k"])]
     fav_demais = [r for r in todos_fav if not eh_ente_publico(r["k"])]
     total_publico = round(sum(r["s"] for r in fav_publico), 2)
@@ -127,9 +140,63 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
         "fav_publico": fav_publico[:TOP], "fav_demais": fav_demais[:TOP],
         "total_publico": total_publico, "total_demais": total_demais,
         "pagamentos": pagamentos, "funcoes": funcoes, "empenhos": empenhos,
-        "alertas": export.alertas(conn),
+        "alertas": selecionar_alertas(_todos := alertas_com_historico(conn, ident)),
+        "alertas_total": _todos,
+        "historico": HISTORICO_INFO,
         "execucao": export.execucao_agregada(conn)["por_ano"].get(str(ano)),
+        "mes_completo": export._mes_completo_ate(conn),
+        "cobertura": export.cobertura(conn),
     }
+
+
+HISTORICO_INFO = {"disponivel": False, "nota": ""}
+
+
+def alertas_com_historico(conn, ident) -> list[dict]:
+    """Alertas do export com o estado (novo/persistente) lido do arquivo de histórico,
+    SEM regravá-lo (quem grava é o export, no pipeline)."""
+    import json
+    cob = export.cobertura(conn)
+    lista = export.alertas(conn, ident, cob, export.execucao_agregada(conn, cob))
+    estado = {}
+    try:
+        with open(export.ALERTAS_ESTADO_PATH, encoding="utf-8") as f:
+            estado = json.load(f).get("alertas") or {}
+    except (OSError, ValueError):
+        estado = {}
+    HISTORICO_INFO["disponivel"] = bool(estado)
+    for a in lista:
+        h = estado.get(a["id"])
+        a["estado"] = "persistente" if h else ("novo" if estado else "sem_historico")
+        a["primeiro_em"] = h.get("primeiro_em") if h else None
+    HISTORICO_INFO["nota"] = ("" if estado else
+                              "Sem histórico anterior de alertas: não é possível dizer quais são novos.")
+    return lista
+
+
+def selecionar_alertas(lista: list[dict], maximo: int = MAX_ALERTAS_BRIEFING) -> list[dict]:
+    """Prioriza novidade e diversidade: novos antes de persistentes; inconsistências de
+    dados e anomalias antes de contexto; no máximo MAX_POR_REGRA por regra e 1 por
+    favorecido (identidade). Os grandes recebedores recorrentes (contexto) entram só
+    se sobrar espaço."""
+    ordem_classe = {"inconsistencia": 0, "anomalia": 1, "contexto": 2}
+    ordem_estado = {"novo": 0, "sem_historico": 1, "persistente": 2}
+    ordem_sev = {"alta": 0, "media": 1, "baixa": 2}
+    cand = sorted(lista, key=lambda a: (ordem_estado.get(a.get("estado"), 9),
+                                        ordem_classe.get(a.get("classe"), 9),
+                                        ordem_sev.get(a.get("severidade"), 9), -(a.get("valor") or 0)))
+    out, por_regra, por_fav = [], {}, set()
+    for a in cand:
+        chave = (a.get("filtro") or {}).get("chave")
+        if por_regra.get(a["tipo"], 0) >= MAX_POR_REGRA or (chave and chave in por_fav):
+            continue
+        out.append(a)
+        por_regra[a["tipo"]] = por_regra.get(a["tipo"], 0) + 1
+        if chave:
+            por_fav.add(chave)
+        if len(out) >= maximo:
+            break
+    return out
 
 
 # ── Render HTML (e-mail-safe: tabelas, CSS inline) ────────────────────────────
@@ -169,34 +236,56 @@ def montar_html(d: dict) -> str:
         return "<p>Sem dados de pagamentos na base.</p>"
 
     periodo = f"{data_br(d['ini'])} a {data_br(d['fim'])}"
+    # semana muito abaixo da média = quase sempre defasagem do portal, não queda de gasto
+    aviso_semana = (" · provável defasagem do portal: semana ainda incompleta na origem"
+                    if d["media_semanal"] and d["semana"] < 0.5 * d["media_semanal"] else "")
     cards = (
         _card("Pago na semana", compacto(d["semana"]),
-              f"{pct(d['semana'], d['media_semanal'])} vs. média semanal do ano") +
+              f"{pct(d['semana'], d['media_semanal'])} vs. média semanal do ano{aviso_semana}") +
         _card(f"Mês {d['mes_nome']}", compacto(d["mes_atual"]),
               f"{pct(d['mes_atual'], d['mes_ly'])} vs. ano anterior") +
         _card(f"Acumulado {d['ano']}", compacto(d["ano_atual"]),
               f"{pct(d['ano_atual'], d['ano_ly'])} vs. ano anterior")
     )
 
-    # alertas (alta/média)
+    # alertas: seleção por novidade e diversidade (ver selecionar_alertas)
     cor = {"alta": RED, "media": AMBER, "baixa": SLATE}
-    relevantes = [a for a in d["alertas"] if a["severidade"] in ("alta", "media")][:12]
+    classe_rot = {"contexto": "contexto", "anomalia": "conferir", "inconsistencia": "dados"}
+    relevantes = d["alertas"]
     if relevantes:
         itens = ""
         for a in relevantes:
             c = cor.get(a["severidade"], SLATE)
+            estado = a.get("estado")
+            tag_estado = (f'<span style="display:inline-block;font-size:10px;font-weight:700;'
+                          f'color:{NAVY};background:#fdf1cf;border-radius:6px;padding:1px 6px;'
+                          f'margin-right:8px">NOVO</span>' if estado == "novo" else "")
+            link = PAINEL_URL.replace("despesas.html", "") + a["link"].lstrip("./") if a.get("link") else PAINEL_URL
             itens += (
                 f'<tr><td style="padding:8px 10px;border-top:1px solid {LINE}">'
                 f'<span style="display:inline-block;font-size:10px;font-weight:700;'
                 f'text-transform:uppercase;color:#fff;background:{c};border-radius:6px;'
                 f'padding:1px 6px;margin-right:8px">{esc(a["severidade"])}</span>'
+                f'<span style="display:inline-block;font-size:10px;font-weight:700;'
+                f'text-transform:uppercase;color:{SLATE};border:1px solid {LINE};border-radius:6px;'
+                f'padding:1px 6px;margin-right:8px">{esc(classe_rot.get(a.get("classe"), ""))}</span>'
+                f'{tag_estado}'
                 f'<strong style="color:{NAVY};font-size:13px">{esc(a["titulo"])}</strong>'
-                f'<div style="color:{MUTED};font-size:12px;margin-top:2px">{esc(a["detalhe"])}</div>'
+                f'<div style="color:{MUTED};font-size:12px;margin-top:2px">{esc(a["detalhe"])} '
+                f'<a href="{esc(link)}" style="color:{NAVY}">abrir o recorte</a></div>'
                 f'</td><td align="right" style="padding:8px 10px;border-top:1px solid {LINE};'
-                f'font-size:13px;color:{NAVY};white-space:nowrap">{brl(a["valor"])}</td></tr>')
+                f'font-size:13px;color:{NAVY};white-space:nowrap">{brl(a["valor"]) if a.get("valor") else ""}</td></tr>')
+        hist = d.get("historico") or {}
+        nota_hist = (esc(hist["nota"]) if hist.get("nota") else
+                     "Alertas marcados NOVO não constavam do histórico anterior.")
         bloco_alertas = (
             f'<h3 style="font-size:15px;color:{NAVY};margin:26px 0 8px">'
-            f'Alertas fiscais vigentes ({len(relevantes)})</h3>'
+            f'Alertas para conferir ({len(relevantes)} de {len(d["alertas_total"])} vigentes — '
+            f'seleção por novidade e diversidade)</h3>'
+            f'<p style="color:{MUTED};font-size:12px;margin:0 0 8px">{nota_hist} Classes: '
+            f'<em>dados</em> = inconsistência na origem/cobertura; <em>conferir</em> = padrão que '
+            f'merece requerimento; <em>contexto</em> = escala/recorrência, não achado. Nenhum alerta '
+            f'é conclusão de irregularidade.</p>'
             f'<table width="100%" cellspacing="0" cellpadding="0" '
             f'style="border-collapse:collapse;border:1px solid {LINE};border-radius:10px;'
             f'overflow:hidden">{itens}</table>')
@@ -216,8 +305,12 @@ def montar_html(d: dict) -> str:
                    f"liquidado <strong>{compacto(exe['liquidado'])}</strong>",
                    f"pago <strong>{compacto(exe['pago'])}</strong>"]
         if exe.get("taxa_pagamento") is not None:
-            pedacos.append(f"dos empenhos do ano, <strong>{exe['taxa_liquidacao']:.0f}%</strong> "
+            bt = exe.get("base_taxa") or {}
+            cob = f" (sobre {bt['cobertura_pct']}% do empenhado, com original na base)" if bt.get("cobertura_pct") else ""
+            pedacos.append(f"dos empenhos do ano{cob}, <strong>{exe['taxa_liquidacao']:.0f}%</strong> "
                            f"liquidado e <strong>{exe['taxa_pagamento']:.0f}%</strong> pago")
+        elif exe.get("taxa_motivos"):
+            pedacos.append(f"taxa de execução não validada ({esc(exe['taxa_motivos'][0])})")
         bloco_exe = (
             f'<div style="margin:16px 0 0;padding:12px 14px;background:#fff;'
             f'border:1px solid {LINE};border-radius:10px;font-size:13px;color:{NAVY}">'
@@ -225,6 +318,20 @@ def montar_html(d: dict) -> str:
     else:
         bloco_exe = ""
 
+    # meses incompletos na origem (o portal publica com defasagem): declarados, não escondidos
+    mc = d.get("mes_completo")
+    cob = d.get("cobertura") or {}
+    avisos = []
+    if mc:
+        avisos.append(f"Último mês completo na base: {mc[1]:02d}/{mc[0]}; meses posteriores ainda "
+                      f"estão se preenchendo e não entram em comparações mensais.")
+    if cob.get("faltantes"):
+        avisos.append(f"{len(cob['faltantes'])} partição(ões) sem carga: {', '.join(cob['faltantes'][:4])}.")
+    if cob.get("duplicidade_sistematica"):
+        avisos.append(f"{len(cob['duplicidade_sistematica'])} partição(ões) vieram da origem em duplicidade "
+                      f"sistemática (linhas idênticas contadas uma vez).")
+    bloco_avisos = (f'<p style="color:{MUTED};font-size:12px;margin:12px 0 0">{esc(" ".join(avisos))}</p>'
+                    if avisos else "")
     sem = d["semana"] or 1
     split = (
         f'<div style="margin:24px 0 0;padding:12px 14px;background:#fff;'
@@ -269,6 +376,7 @@ def montar_html(d: dict) -> str:
   <tr><td style="padding:20px 24px">
     <table width="100%" cellspacing="8" cellpadding="0"><tr>{cards}</tr></table>
     {bloco_exe}
+    {bloco_avisos}
     {bloco_alertas}
     {t_fun}
     {t_fav}
@@ -294,7 +402,9 @@ def montar_texto(d: dict) -> str:
         f"Briefing Semanal de Despesas — Prefeitura de Santos",
         f"Período: {data_br(d['ini'])} a {data_br(d['fim'])}",
         "",
-        f"Pago na semana: {brl(d['semana'])} ({pct(d['semana'], d['media_semanal'])} vs. média semanal)",
+        f"Pago na semana: {brl(d['semana'])} ({pct(d['semana'], d['media_semanal'])} vs. média semanal)"
+        + (" — provável defasagem do portal: semana ainda incompleta na origem"
+           if d["media_semanal"] and d["semana"] < 0.5 * d["media_semanal"] else ""),
         f"Mês {d['mes_nome']}: {brl(d['mes_atual'])} | Acumulado {d['ano']}: {brl(d['ano_atual'])}",
         f"Fornecedores/terceiros: {brl(d['total_demais'])} | Entes públicos: {brl(d['total_publico'])}",
     ]
@@ -306,6 +416,17 @@ def montar_texto(d: dict) -> str:
             linha_exe += (f" | {exe['taxa_liquidacao']:.0f}% liq. / "
                           f"{exe['taxa_pagamento']:.0f}% pago dos empenhos do ano")
         linhas.append(linha_exe)
+    hist = d.get("historico") or {}
+    if d.get("alertas"):
+        linhas += ["", f"Alertas para conferir ({len(d['alertas'])} de {len(d['alertas_total'])}):"]
+        if hist.get("nota"):
+            linhas.append(f"  ({hist['nota']})")
+        for a in d["alertas"]:
+            tag = "[NOVO] " if a.get("estado") == "novo" else ""
+            linhas.append(f"  - {tag}[{a.get('classe', '')}/{a['severidade']}] {a['titulo']}")
+    mc = d.get("mes_completo")
+    if mc:
+        linhas += ["", f"Último mês completo na base: {mc[1]:02d}/{mc[0]} (meses posteriores ainda incompletos)."]
     linhas += [
         "",
         "Maiores fornecedores e terceiros da semana:",
@@ -352,7 +473,10 @@ def main():
                    help="Dias recuados da data mais recente p/ fugir da borda incompleta (padrão 7).")
     p.add_argument("--dry-run", action="store_true", help="Calcula e imprime; não envia.")
     p.add_argument("--salvar", metavar="PATH", help="Grava o HTML no arquivo (preview); não envia.")
+    p.add_argument("--db", help="SQLite alternativo (padrão: despesas/despesas.sqlite).")
     args = p.parse_args()
+    if args.db:
+        export.DB_PATH = args.db
 
     if not os.path.exists(export.DB_PATH):
         print(f"Banco não encontrado: {export.DB_PATH}. Rode o crawler primeiro.", file=sys.stderr)

@@ -15,7 +15,7 @@ requerimentos, favorecidos, endividamento, indicadores, preço comparado — car
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
 busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, `#alertas` etc. nas
-abas de despesas), `exportarCsv` (dialeto Excel pt-BR `;`+BOM), **modo escuro** (toggle na
+abas de despesas), `exportarCsv` (dialeto Excel pt-BR `;`+BOM; **número vira vírgula decimal** — passe número, não string de `toFixed`), **modo escuro** (toggle na
 topbar/hub, persiste em localStorage, default `prefers-color-scheme`; snippet inline anti-flash no
 `<head>` de cada página; `html[data-tema="escuro"]` no comum.css vence os `:root` locais por
 especificidade; páginas com Chart.js escutam o evento **`temamudou`** e repintam os gráficos em
@@ -24,14 +24,26 @@ memória via `definirCores()` + `Chart.getChart(id)?.destroy()` — SEM reload) 
 433.656). Favicon SVG + `og.png` + meta OG/Twitter em todas as páginas.
 
 Também na camada comum (2026-07): **tokens de raio** `--r-sm/--r-md/--r-lg` (10/14/16px — não usar
-raio fixo novo), `.sr-only`, **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**
+raio fixo novo), `.sr-only` (`table.sr-only` vai para `left:-10000px`: tabela ignora width 1px e gerava rolagem horizontal no celular), **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**
 (role=img + tabela oculta — usar em TODO gráfico novo), **`Comum.toast(msg)`** (no lugar de
 `alert()`), **`Comum.estadoErro(alvo, msg, aoTentar)`** (erro de fetch com "Tentar de novo" — o
 alvo deve ser um contêiner que o render de sucesso reconstrói), skeletons `.skel` (base clara no
 comum; cartões-skeleton estáticos nos `#stats` dos painéis), e **PWA** (`manifest.json` + `sw.js`:
-network-first p/ estáticos, stale-while-revalidate p/ `*.json` ignorando `?v=`; registrado no
+network-first p/ estáticos e p/ os dados de despesas (`despesas-index.json`, `despesas/**`, `favorecidos/**` — índice e meses do mesmo export), stale-while-revalidate p/ os demais `*.json` ignorando `?v=`; registrado no
 comum.js; bump de `CACHE` no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
 `<link>`/`<script>` — incrementar ao alterar comum.css/js ou um app.js.
+
+**Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
+preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
+sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página
+conforme a rolagem, com "Abrir ↗" sempre disponível; se a biblioteca não carregar, cai num
+`<iframe>` com o visualizador nativo. **Só funciona com PDF servido inline e com CORS**: a Câmara
+(`administrativo.camarasantos.sp.gov.br`, proposituras) manda `Access-Control-Allow-Origin: *` e
+renderiza em canvas. **Legislação NÃO usa**: o Legis da Prefeitura (`egov.santos.sp.gov.br`) manda
+`Content-Disposition: attachment` sem CORS — nem PDF.js nem `<iframe>` exibem, o link segue direto
+(testado em 2026-09). **Requerimentos NÃO usa**: o link é pasta do Drive. O DOM é inline sem CORS
+(só iframe). Proposituras intercepta o clique simples em `a.pdf` (`abrirPdfNoVisor`);
+Ctrl/⌘/Shift/botão do meio seguem para a nova aba.
 
 # Hub / Página inicial (`index.html`)
 

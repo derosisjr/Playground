@@ -26,6 +26,25 @@ window.Comum = (() => {
   const norm = (s) =>
     (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
+  // Identidade canônica do favorecido — ESPELHO de despesas/formato.py
+  // (identidade_favorecido): CNPJ completo → "cnpj:<14 dígitos>"; CPF mascarado →
+  // "cpf:<dígitos visíveis>|<NOME NORMALIZADO>" (dígitos parciais não bastam);
+  // documento atípico → "doc:…|nome"; sem documento → "nome:<NOME>". Nome
+  // normalizado = maiúsculas, sem acento, espaços colapsados. Mudar um lado
+  // exige mudar o outro (o índice de favorecidos e os dossiês usam esta chave).
+  const nomeNormalizado = (nome) =>
+    (nome || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()
+      .split(/\s+/).filter(Boolean).join(" ");
+  const identidadeFavorecido = (nome, doc) => {
+    doc = (doc || "").toString().trim();
+    const dig = doc.replace(/\D/g, "");
+    if (!doc.includes("*") && dig.length === 14) return "cnpj:" + dig;
+    const n = nomeNormalizado(nome);
+    if (doc.includes("*")) return "cpf:" + dig + "|" + n;
+    if (dig) return "doc:" + dig + "|" + n;
+    return "nome:" + n;
+  };
+
   // Formatação de moeda — UMA escala para o site inteiro (a mesma de
   // despesas/formato.py e do hub): R$ 8,61 bi · R$ 157,0 mi · R$ 500 mil · R$ 123.
   // Antes havia quatro variantes (1 ou 2 casas no "bi", 0 ou 1 no "mi") e o
@@ -99,7 +118,9 @@ window.Comum = (() => {
   function exportarCsv(nomeArquivo, cabecalhos, linhas) {
     const sep = ";";
     const esc = (v) => {
-      const s = String(v ?? "");
+      // número → vírgula decimal: com `;` como separador o Excel pt-BR lia "73298.35"
+      // como texto (não somava); sem separador de milhar para continuar numérico
+      const s = typeof v === "number" && Number.isFinite(v) ? String(v).replace(".", ",") : String(v ?? "");
       return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const out = [cabecalhos.map(esc).join(sep)];
@@ -139,6 +160,152 @@ window.Comum = (() => {
     el.innerHTML = `<div class="estado-erro" role="alert"><p>${escapar(mensagem)}</p>` +
       '<button type="button" class="btn">Tentar de novo</button></div>';
     el.querySelector("button").addEventListener("click", aoTentar);
+  }
+
+  // ── Visualizador de PDF embutido (Comum.visorPdf) ───────────────────────────
+  // PDF.js 6 (ESM no cdnjs), carregado sob demanda no 1º uso. Os PDFs da Câmara
+  // (proposituras) vêm com CORS aberto e renderizam em <canvas>, página a página
+  // conforme a rolagem. Se a biblioteca não carregar (CDN fora do ar), o visor cai
+  // para <iframe> com o visualizador nativo. "Abrir ↗" (nova aba) é a saída garantida.
+  // Só serve para PDF servido inline: o Legis da Prefeitura manda
+  // `Content-Disposition: attachment` (e sem CORS), então lá o link segue direto.
+  const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.3.289/";
+  let pdfjsPromessa = null, visorFundo = null, visorFocoAnterior = null;
+  let visorDoc = null, visorTask = null, visorObs = null;
+
+  function carregarPdfjs() {
+    if (!pdfjsPromessa) {
+      pdfjsPromessa = import(PDFJS + "pdf.min.mjs")
+        .then((m) => { m.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.mjs"; return m; })
+        .catch((e) => { pdfjsPromessa = null; throw e; });
+    }
+    return pdfjsPromessa;
+  }
+
+  function montarVisor() {
+    if (visorFundo) return;
+    visorFundo = document.createElement("div");
+    visorFundo.className = "visor-fundo";
+    visorFundo.hidden = true;
+    visorFundo.innerHTML =
+      '<div class="visor" role="dialog" aria-modal="true" aria-labelledby="visor-titulo">' +
+      '<div class="visor-cab">' +
+      '<div class="visor-tit"><strong id="visor-titulo"></strong>' +
+      '<span class="visor-pag" aria-live="polite"></span></div>' +
+      '<div class="visor-acoes">' +
+      '<a class="btn visor-abrir" target="_blank" rel="noopener">Abrir ↗</a>' +
+      '<button type="button" class="btn visor-fechar" aria-label="Fechar visualizador">✕</button>' +
+      "</div></div>" +
+      '<div class="visor-corpo" tabindex="0"></div>' +
+      "</div>";
+    document.body.appendChild(visorFundo);
+    visorFundo.querySelector(".visor-fechar").addEventListener("click", fecharVisor);
+    visorFundo.addEventListener("mousedown", (e) => { if (e.target === visorFundo) fecharVisor(); });
+    visorFundo.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); fecharVisor(); return; }
+      if (e.key !== "Tab") return;
+      // foco preso no diálogo (mesmo padrão da paleta): Tab circula pelos controles
+      const focaveis = [...visorFundo.querySelectorAll("a[href], button, .visor-corpo")];
+      const i = focaveis.indexOf(document.activeElement);
+      const prox = e.shiftKey ? (i <= 0 ? focaveis.length - 1 : i - 1)
+                              : (i >= focaveis.length - 1 ? 0 : i + 1);
+      e.preventDefault();
+      focaveis[prox].focus();
+    });
+  }
+
+  function fecharVisor() {
+    if (!visorFundo || visorFundo.hidden) return;
+    visorFundo.hidden = true;
+    document.body.style.overflow = "";
+    if (visorObs) { visorObs.disconnect(); visorObs = null; }
+    // PDF.js 6: o descarte é da tarefa de carga (PDFDocumentProxy não tem destroy)
+    if (visorTask) { visorTask.destroy(); visorTask = null; }
+    visorDoc = null;
+    visorFundo.querySelector(".visor-corpo").innerHTML = "";
+    if (visorFocoAnterior && typeof visorFocoAnterior.focus === "function") visorFocoAnterior.focus();
+    visorFocoAnterior = null;
+  }
+
+  async function visorPdf(url, titulo) {
+    montarVisor();
+    fecharVisor();
+    visorFocoAnterior = document.activeElement;
+    const corpo = visorFundo.querySelector(".visor-corpo");
+    const pagEl = visorFundo.querySelector(".visor-pag");
+    visorFundo.querySelector("#visor-titulo").textContent = titulo || "Documento";
+    visorFundo.querySelector(".visor-abrir").href = url;
+    pagEl.textContent = "";
+    corpo.innerHTML = '<p class="visor-aviso">Carregando o PDF…</p>';
+    visorFundo.hidden = false;
+    document.body.style.overflow = "hidden";
+    visorFundo.querySelector(".visor-fechar").focus();
+
+    let doc, task;
+    try {
+      const pdfjs = await carregarPdfjs();
+      task = pdfjs.getDocument({ url });
+      doc = await task.promise;
+    } catch (e) {
+      console.warn("visor pdf: visualizador nativo (sem CORS ou biblioteca indisponível):", e.message);
+      if (visorFundo.hidden) return;  // fechado antes de carregar
+      // navegador sem visualizador nativo (celular) mostra o quadro em branco: a
+      // dica aponta a saída
+      corpo.innerHTML = '<p class="visor-aviso visor-dica">Visualizador do navegador — se o documento não aparecer, use "Abrir ↗".</p>';
+      const f = document.createElement("iframe");
+      f.className = "visor-iframe";
+      f.src = url;
+      f.title = titulo || "Documento";
+      corpo.appendChild(f);
+      return;
+    }
+    if (visorFundo.hidden) { task.destroy(); return; }
+    visorDoc = doc;
+    visorTask = task;
+    corpo.innerHTML = "";
+    const total = doc.numPages;
+    const largura = Math.max(corpo.clientWidth - 32, 200);  // desconta o padding do corpo
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);   // nitidez sem canvas gigante
+    const paginas = [];
+    for (let n = 1; n <= total; n++) {
+      const c = document.createElement("canvas");
+      c.className = "visor-pagina";
+      c.dataset.n = n;
+      c.setAttribute("role", "img");
+      c.setAttribute("aria-label", "Página " + n + " de " + total);
+      corpo.appendChild(c);
+      paginas.push(c);
+    }
+    // a 1ª página dá a proporção às demais: placeholders com a altura certa
+    // evitam salto de rolagem enquanto cada página renderiza ao entrar na tela
+    const primeira = await doc.getPage(1);
+    const vp1 = primeira.getViewport({ scale: 1 });
+    const escala = largura / vp1.width;
+    const alturaPagina = Math.round(vp1.height * escala);
+    for (const c of paginas) { c.style.width = largura + "px"; c.style.height = alturaPagina + "px"; }
+    pagEl.textContent = "1 / " + total;
+
+    async function renderizar(c) {
+      if (c.dataset.ok || visorDoc !== doc) return;
+      c.dataset.ok = "1";
+      const page = await doc.getPage(+c.dataset.n);
+      const vp = page.getViewport({ scale: escala });
+      c.width = Math.round(vp.width * dpr);
+      c.height = Math.round(vp.height * dpr);
+      c.style.height = Math.round(vp.height) + "px";
+      const params = { canvas: c, canvasContext: c.getContext("2d"), viewport: vp };
+      if (dpr !== 1) params.transform = [dpr, 0, 0, dpr, 0, 0];
+      try { await page.render(params).promise; }
+      catch (e) { if (visorDoc === doc) throw e; }  // fechar no meio cancela o render: esperado
+    }
+    visorObs = new IntersectionObserver((ents) => {
+      for (const en of ents) if (en.isIntersecting) renderizar(en.target);
+    }, { root: corpo, rootMargin: "600px 0px" });
+    paginas.forEach((c) => visorObs.observe(c));
+    corpo.onscroll = () => {
+      const n = Math.min(total, Math.floor((corpo.scrollTop + corpo.clientHeight / 2) / (alturaPagina + 12)) + 1);
+      pagEl.textContent = n + " / " + total;
+    };
   }
 
   // ── Lista paginada com "Mostrar mais" ───────────────────────────────────────
@@ -462,5 +629,5 @@ window.Comum = (() => {
   }
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, paginador, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, POP_SANTOS };
+           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, identidadeFavorecido, nomeNormalizado, visorPdf, POP_SANTOS };
 })();

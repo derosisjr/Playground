@@ -67,12 +67,38 @@ Consequências a respeitar ao mexer neles:
   (ver `.claude/rules/proposituras.md`). Corrigido em despesas, endividamento, indicadores,
   proposituras e respostas-executivo em 2026-08; legis ganhou guarda de volume (≥ 3.000) e o
   crawler passou a sair 1 quando toda chamada falha, em 2026-09.
+- **Falha parcial não pode ficar verde.** O crawler de despesas (2026-09) sai **2** quando
+  alguma partição (estágio × mês) não foi atualizada (resposta inválida/suspeita) e 1 quando
+  nada funcionou; o `despesas.yml` publica o que ficou íntegro, escreve a lista no
+  `GITHUB_STEP_SUMMARY` e termina vermelho num passo final. A guarda de publicação é o
+  `despesas/verificar.py` (cobertura por partição, conservação, manifestos × arquivos, ranking ×
+  dossiês), não mais só o "total > R$ 4 bi".
 - **`.sqlite` em cache do Actions só é seguro se o crawl reconstruir o histórico sozinho.** O
   GitHub apaga cache sem acesso há 7 dias; cron semanal fica na corda bamba. Antes de mexer,
   conferir as duas propriedades juntas: *banco fora do git?* e *crawl limitado a um ano?* Se sim e
   sim, um despejo de cache congela a base para sempre. Hoje: despesas/endividamento/indicadores
   chamam o crawler sem `--ano` (autocuram), legis versiona o `.sqlite`, e proposituras ganhou um
   passo explícito de recarga quando o banco vem parcial.
+
+# Endurecimento (2026-09)
+
+- **Toda ação externa é pinada por SHA** com a versão em comentário
+  (`uses: actions/checkout@3d3c42e… # v7.0.1`). Versões em uso: checkout v7.0.1, setup-python
+  v7.0.0, cache v6.1.0, upload-artifact v7.0.1, setup-uv v10.0.1, zizmor-action v0.6.3. Para
+  atualizar: `gh api repos/<dono>/<ação>/git/ref/tags/<tag> --jq .object.sha` (se `type` for
+  `tag`, resolver o objeto de tag para o commit) e trocar SHA + comentário juntos.
+- **`zizmor.yml`** audita `.github/**` em PR, push no master, toda segunda e sob demanda
+  (`min-confidence: medium`; config em `.github/zizmor.yml`). Um `uses:` que volte a tag móvel
+  falha o job. Localmente: `pip install zizmor` e `zizmor --min-confidence medium .`.
+  Os workflows que fazem push precisam do token persistido pelo checkout (achado `artipacked`
+  de confiança baixa — por isso a mínima é `medium`); os dois que não fazem push
+  (`diario-oficial`, `ordem-do-dia`) usam `persist-credentials: false`.
+- **Dependências via uv** (`astral-sh/setup-uv` com versão fixa + `uv pip install --system`),
+  cache pelo hash do `requirements.txt` do módulo. A convenção local "sem virtualenv" não muda:
+  `--system` instala no Python do `setup-python`.
+- **`PYTHONUTF8=1`** no nível do workflow (é o padrão do Python 3.15, out/2026). No runner Linux
+  o locale já era UTF-8, então o efeito prático é blindar `open()` sem `encoding=` contra
+  mudança de imagem; a migração para 3.15 continua pendente de teste com `3.15-dev`.
 
 # Comandos úteis
 
