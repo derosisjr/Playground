@@ -44,9 +44,11 @@ pauta_md.py (scraping+PDF→MD) → skill briefing-ordem-do-dia (MD→briefing.m
   o ambiente das rotinas não abre a porta 587).
 - **Rotina criada** em 2026-10-02: `trig_0133JpRHyhgUtDngMZFKhbCT`, Opus 5.5, cron `0 22 * * 1,3`
   (19h BRT seg/qua), mesmo ambiente da rotina do DOM. **O perfil político vai embutido no
-  prompt da rotina** (config privada da conta), que o grava em `.claude/rules/perfil-politico.md`
-  na cópia descartável: o arquivo é gitignored e o clone da rotina não o teria. Ao mudar o perfil,
-  atualizar também o prompt da rotina. Em validação, `GMAIL_TO` fixo no prompt (só o vereador).
+  prompt da rotina** (config privada da conta), entre `<perfil>…</perfil>`, e é usado no lugar do
+  arquivo — **sem gravá-lo** (gravar em `.claude/` disparou o classificador da rotina): o arquivo é
+  gitignored e o clone da rotina não o teria. Ao mudar o perfil, atualizar também o prompt da rotina.
+- **Rede:** o ambiente (o mesmo do DOM) precisa liberar `administrativo.camarasantos.sp.gov.br`;
+  no 1º teste (02/10) o proxy devolveu 403 — ver checklist em `references/rotina-schedule.md`. Em validação, `GMAIL_TO` fixo no prompt (só o vereador).
 - **Config da rotina**: `references/rotina-schedule.md` (prompt literal + checklist:
   allowlist `administrativo.camarasantos.sp.gov.br`, token com gmail.send,
   `GMAIL_USER`, `GMAIL_TO`; modelo Opus 5).
