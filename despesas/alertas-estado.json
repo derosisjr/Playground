@@ -337,12 +337,6 @@
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: EL ESTRUTURA E EVENTOS LTDA em 2026-03"
   },
-  "e5d6d9e60c65": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-09-30",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: SECRETARIA DA FAZENDA E PLANEJAMENTO"
-  },
   "197f5abbc431": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
@@ -679,48 +673,118 @@
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
+  "ba869549d1e1": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
+  },
+  "ad02ab41663a": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: INSTITUTO NACIONAL DE PESQUISA E GESTÃO EM SAÚDE - INSAÚDE"
+  },
+  "79419f3b5a65": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: ASSOCIAÇÃO BENEFICENTE DE ASSISTÊNCIA SOCIAL E HOSPITALAR - PRÓ-SAÚDE"
+  },
+  "812698b64da7": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
+  },
+  "8d2e34800e19": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: BANCO BRADESCO S/A"
+  },
+  "c388add19167": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_lento",
+   "titulo": "Pago bem mais devagar que a fila: COMPASSO CONSTRUÇÕES, TERRAPLANAGEM E PAVIMENTAÇÃO LTDA"
+  },
   "aed7837c5b7c": {
-   "primeiro_em": "2026-09-29",
+   "primeiro_em": "2026-09-30",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "25417db50855": {
-   "primeiro_em": "2026-09-29",
+   "primeiro_em": "2026-09-30",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  }
+ },
+ "resolvidos": {
+  "aed7837c5b7c": {
+   "primeiro_em": "2026-09-29",
+   "ultimo_em": "2026-09-30",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS",
+   "resolvido_em": "2026-09-30"
+  },
+  "25417db50855": {
+   "primeiro_em": "2026-09-29",
+   "ultimo_em": "2026-09-30",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS",
+   "resolvido_em": "2026-09-30"
   },
   "dd28fe443c3f": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
-   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE",
+   "resolvido_em": "2026-09-30"
   },
   "03ce356608a4": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
-   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS",
+   "resolvido_em": "2026-09-30"
   },
   "0be11054e42c": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
-   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS",
+   "resolvido_em": "2026-09-30"
   },
   "2e039aa9d812": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
-   "titulo": "Extra-orçamentário relevante: ITAU UNIBANCO S.A."
+   "titulo": "Extra-orçamentário relevante: ITAU UNIBANCO S.A.",
+   "resolvido_em": "2026-09-30"
   },
   "e09387d71be0": {
    "primeiro_em": "2026-09-29",
    "ultimo_em": "2026-09-30",
    "tipo": "extra_orcamentario",
-   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS",
+   "resolvido_em": "2026-09-30"
+  },
+  "e5d6d9e60c65": {
+   "primeiro_em": "2026-09-29",
+   "ultimo_em": "2026-09-30",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: SECRETARIA DA FAZENDA E PLANEJAMENTO",
+   "resolvido_em": "2026-09-30"
+  },
+  "fc1cd119a029": {
+   "primeiro_em": "2026-09-30",
+   "ultimo_em": "2026-09-30",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: SECRETARIA DE TURISMO E VIAGENS",
+   "resolvido_em": "2026-09-30"
   }
- },
- "resolvidos": {}
+ }
 }

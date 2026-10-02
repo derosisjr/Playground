@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./comum.css?v=3" />
+    <link rel="stylesheet" href="./comum.css?v=5" />
     <style>
       :root { --red: #e07b39; }
       /* página sempre-escura (cores próprias): o toggle de tema não teria efeito aqui */
@@ -115,7 +115,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=9"></script>
+    <script src="./comum.js?v=10"></script>
     <script>Comum.topbar("despesas.html");</script>
 
     <div class="seletor-ano">
@@ -156,6 +156,12 @@
       <div class="rev cap-num">Para quem foi</div>
       <h2 class="rev">Os maiores favorecidos do ano.</h2>
       <ol class="lista-fav rev" id="lista-favorecidos"></ol>
+      <div id="bloco-fornecedores" hidden>
+        <h2 class="rev" style="margin-top:34px">E os maiores fornecedores privados.</h2>
+        <p class="rev prosa">Sem os entes públicos acima — Município, previdência e assistência dos
+          servidores, bancos públicos —, que são repasses e fluxos internos.</p>
+        <ol class="lista-fav rev" id="lista-fornecedores"></ol>
+      </div>
       <p class="rev nota-fonte">Clique num favorecido para abrir o raio-X completo.</p>
     </section>
 
@@ -179,6 +185,6 @@
       </div>
     </section>
 
-    <script src="./retrospectiva-app.js?v=7"></script>
+    <script src="./retrospectiva-app.js?v=8"></script>
   </body>
 </html>
