@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=3" />
+    <link rel="stylesheet" href="./comum.css?v=5" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -122,6 +122,11 @@
       .filtros-alertas { grid-template-columns: 1fr 1fr 1fr; }
       .filtros-fav { grid-template-columns: 2fr 1fr; }
       @media (max-width: 560px) { .filtros-alertas, .filtros-fav { grid-template-columns: 1fr; } }
+      .sub-h { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+      table.mini { font-size: 12.5px; width: 100%; }
+      table.mini td, table.mini th { padding: 6px 8px; }
+      table.mini td.r, table.mini th.r { text-align: right; white-space: nowrap; font-family: "IBM Plex Mono", monospace; }
+      table.mini a { color: inherit; }
       .stat-link { color: inherit; text-decoration: underline dotted var(--gold); text-underline-offset: 4px; }
       .fav-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
       th[data-sort] button { all: unset; cursor: pointer; font: inherit; }
@@ -363,6 +368,44 @@
           <canvas id="ch-execucao"></canvas>
           <p class="contagem nota-parcial" hidden></p>
         </div>
+        <div class="box" id="box-prazos" hidden>
+          <h3>Quanto a Prefeitura demora para pagar depois de liquidar</h3>
+          <p class="contagem" id="prazos-resumo" style="margin:0 0 10px"></p>
+          <div id="prazos-faixas" class="r100"></div>
+          <div class="grid2" style="margin-top:12px">
+            <div><h4 class="sub-h">Mais lentos (mediana de dias)</h4><div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Fornecedor</th><th class="r">Mediana</th><th class="r">Pagamentos</th><th class="r">Valor</th></tr></thead>
+              <tbody id="prazos-lentos"></tbody></table></div></div>
+            <div><h4 class="sub-h">Mais rápidos</h4><div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Fornecedor</th><th class="r">Mediana</th><th class="r">Pagamentos</th><th class="r">Valor</th></tr></thead>
+              <tbody id="prazos-rapidos"></tbody></table></div></div>
+          </div>
+          <p class="contagem" id="prazos-nota" style="margin:10px 0 0"></p>
+        </div>
+        <div class="grid2">
+          <div class="box" id="box-anulacoes" hidden>
+            <h3>Anulações de empenho</h3>
+            <p class="contagem" id="anul-resumo" style="margin:0 0 10px"></p>
+            <canvas id="ch-anulacoes"></canvas>
+            <h4 class="sub-h" style="margin-top:12px">Quem mais teve empenho anulado</h4>
+            <div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Favorecido</th><th class="r">Anulado</th><th class="r">% do empenhado</th></tr></thead>
+              <tbody id="anul-top"></tbody></table></div>
+          </div>
+          <div class="box" id="box-fim" hidden>
+            <h3>Fim de exercício — dezembro × média de jan a nov</h3>
+            <div class="tabela-wrap"><table class="tabela-resp mini">
+              <thead><tr><th>Ano · estágio</th><th class="r">Dezembro</th><th class="r">Média jan–nov</th><th class="r">Dez ÷ média</th></tr></thead>
+              <tbody id="fim-corpo"></tbody></table></div>
+            <p class="contagem" id="fim-nota" style="margin:10px 0 0"></p>
+          </div>
+        </div>
+        <div class="box" id="box-programa" hidden>
+          <h3>Por programa do PPA — o “para quê” do gasto (orçamentário)</h3>
+          <canvas id="ch-programa"></canvas>
+          <p class="contagem" style="margin:10px 0 0">Programas são temáticos e não correspondem 1 a 1 às
+            secretarias (ex.: “Gestão e apoio administrativo” aparece em várias áreas).</p>
+        </div>
         <details class="entenda">
           <summary>Entenda os termos deste painel</summary>
           <dl>
@@ -414,7 +457,18 @@
             <dd>A entidade que executa: Prefeitura, CAPEP, Instituto de Previdência (IPS) e fundações.</dd>
             <dt>Fonte de recurso</dt>
             <dd>De onde vem o dinheiro: recursos próprios do município, transferências do SUS,
-              convênios etc.</dd>
+              convênios etc. O prefixo do código é o grupo da fonte na tabela AUDESP do TCE-SP —
+              01 Tesouro municipal, 02 transferências e convênios estaduais (ex.: FUNDEB), 04 recursos
+              próprios da administração indireta (ex.: RPPS do IPS), 05 transferências e convênios
+              federais (ex.: SUS/MAC). O extra-orçamentário vem sem prefixo na origem e aparece numa
+              linha própria no gráfico.</dd>
+            <dt>Prazo liquidação → pagamento</dt>
+            <dd>Dias entre a liquidação (entrega atestada) e o pagamento, casando cada pagamento
+              orçamentário com a sua liquidação. A Lei 14.133 (art. 141) exige pagar na ordem
+              cronológica por fonte de recurso, salvo exceções justificadas.</dd>
+            <dt>Anulação de empenho</dt>
+            <dd>Cancelamento total ou parcial de um empenho (compromisso que não será executado). Em
+              massa no fim do ano, é o cancelamento de saldos no encerramento do exercício.</dd>
           </dl>
         </details>
         <div class="grid2">
@@ -748,6 +802,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=17"></script>
+    <script defer src="./despesas-app.js?v=18"></script>
   </body>
 </html>
