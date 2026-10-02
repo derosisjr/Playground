@@ -64,7 +64,11 @@ function desenharSerie(progresso) {
   }
 }
 
+let serieDesenhada = false;   // depois da animação, o resize redesenha o traço completo
+addEventListener("resize", Comum.debounce(() => { if (serieDesenhada) desenharSerie(1); }, 150));
+
 function animarSerie() {
+  serieDesenhada = true;
   if (reduzMotion) { desenharSerie(1); return; }
   const t0 = performance.now(), dur = 1600;
   (function tick(t) {
@@ -96,10 +100,18 @@ function render() {
   if (serieAno.length >= 2) {
     const maior = serieAno.reduce((a, b) => (b.valor > a.valor ? b : a));
     const menor = serieAno.reduce((a, b) => (b.valor < a.valor ? b : a));
+    // comparação com o mesmo período do ano anterior (resumo.yoy: jan–mês de referência)
+    const r = DADOS.resumo, yoy = r?.yoy;
+    const comp = yoy && r.mes_ref?.ano === ANO && yoy.pct != null
+      ? ` No acumulado, ${Math.abs(yoy.pct)}% ${yoy.pct >= 0 ? "acima" : "abaixo"} do mesmo período de ${ANO - 1} ` +
+        `(${compacto(yoy.anterior)}).` : "";
     el("t-serie").textContent =
       `O mês mais pesado foi ${MESES_N[maior.mes]} (${compacto(maior.valor)}); ` +
-      `o mais leve, ${MESES_N[menor.mes]} (${compacto(menor.valor)}).`;
+      `o mais leve, ${MESES_N[menor.mes]} (${compacto(menor.valor)}).` + comp;
   }
+  // equivalente acessível do gráfico desenhado à mão (a regra: todo gráfico usa chartAcessivel)
+  Comum.chartAcessivel("ch-serie", `Gasto pago por mês em ${ANO}, meses completos. Total: ${compacto(total)}.`,
+    ["Mês", "Pago"], serieAno.map((s) => [`${MESES_N[s.mes]}/${s.ano}`, compacto(s.valor)]));
 
   el("t-capita-sub").textContent =
     `É o gasto ${parcial ? "no ano até agora" : "do ano"} dividido por cada um dos ` +
@@ -119,27 +131,41 @@ function render() {
         <div class="trilho"><div class="fill" style="--w:${Math.round(f.valor / max * 100)}%"></div></div>
       </div>`).join("");
   }
+  // item da lista: link pelo slug (anos_detalhe já traz; o top-300 tem dossiê) e marca de ente público
+  const itemFav = (f, i) => {
+    const temDossie = (DADOS.top_favorecidos || []).some((t) => t.slug === f.slug);
+    const nome = temDossie
+      ? `<a href="./favorecido.html?f=${encodeURIComponent(f.slug)}">${esc(f.nome)}</a>`
+      : `<a href="./favorecido.html?doc=${encodeURIComponent(f.documento || "")}&nome=${encodeURIComponent(f.nome || "")}">${esc(f.nome)}</a>`;
+    return `<li><span class="pos">${i + 1}</span><span class="quem">${nome}` +
+      `${f.ente_publico ? ' <small style="color:#8794a6">· ente público</small>' : ""}</span>
+      <span class="qto">${compacto(f.valor)}</span></li>`;
+  };
   if (det?.top_favorecidos?.length) {
     el("cap-favorecidos").hidden = false;
-    el("lista-favorecidos").innerHTML = det.top_favorecidos.slice(0, 5).map((f, i) => {
-      const top = (DADOS.top_favorecidos || []).find((t) =>
-        t.nome === f.nome && (t.documento || "") === (f.documento || ""));
-      const nome = top?.slug
-        ? `<a href="./favorecido.html?f=${encodeURIComponent(top.slug)}">${esc(f.nome)}</a>`
-        : esc(f.nome);
-      return `<li><span class="pos">${i + 1}</span><span class="quem">${nome}</span>
-        <span class="qto">${compacto(f.valor)}</span></li>`;
-    }).join("");
+    el("lista-favorecidos").innerHTML = det.top_favorecidos.slice(0, 5).map(itemFav).join("");
+    if (det.top_fornecedores?.length) {
+      el("lista-fornecedores").innerHTML = det.top_fornecedores.map(itemFav).join("");
+      el("bloco-fornecedores").hidden = false;
+    }
   }
 
   // alertas (vigentes — só faz sentido no ano corrente da base)
   const ultimoAnoBase = Math.max(...DADOS.series_mensais.map((s) => s.ano));
-  const alertas = (DADOS.alertas || []).filter((a) => a.severidade !== "baixa");
+  // só anomalias: inconsistência é problema da origem, contexto não é achado.
+  // Destaques = o maior de cada regra (3 regras diferentes), cada um com o link do recorte.
+  const ordemSev = { alta: 0, media: 1, baixa: 2 };
+  const alertas = (DADOS.alertas || []).filter((a) => a.classe ? a.classe === "anomalia" : a.severidade !== "baixa");
   if (ANO === ultimoAnoBase && alertas.length) {
     el("cap-alertas").hidden = false;
     el("t-alertas-n").textContent = alertas.length;
-    el("lista-alertas").innerHTML = alertas.filter((a) => a.severidade === "alta").slice(0, 3)
-      .map((a) => `<div class="alerta-r"><div class="t">${esc(a.titulo)}</div>
+    const vistos = new Set();
+    const destaques = [...alertas]
+      .sort((a, b) => (ordemSev[a.severidade] ?? 9) - (ordemSev[b.severidade] ?? 9) || (b.valor || 0) - (a.valor || 0))
+      .filter((a) => !vistos.has(a.tipo) && vistos.add(a.tipo)).slice(0, 3);
+    el("lista-alertas").innerHTML = destaques
+      .map((a) => `<div class="alerta-r"><div class="t">${a.link
+          ? `<a href="${esc(a.link)}">${esc(a.titulo)}</a>` : esc(a.titulo)}</div>
         <div class="d">${esc(a.detalhe)}</div></div>`).join("");
   }
 

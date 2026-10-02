@@ -42,6 +42,11 @@ def test_ente_publico_positivos():
         "FUNDO PENITENCIARIO",
         "FUNDACAO PARQUE TECNOLOGICO DE SANTOS",
         "CÂMARA MUNICIPAL DE SANTOS",
+        # empresas públicas municipais (2026-09)
+        "CET - COMPANHIA DE ENGENHARIA DE TRAFEGO DE S",
+        "PRODESAN PROGRESSO E DESENVOLVIMENTO DE SANTOS SA",
+        "COHAB CIA HABITACAO DA BAIXADA SANTISTA",
+        "SECRETARIA DE TURISMO E VIAGENS",
     ]:
         assert eh_ente_publico(nome), nome
 
@@ -54,6 +59,7 @@ def test_ente_publico_negativos():
         "FUNDACAO INSTITUTO DE PESQUISAS ECONOMI.FIPE",
         "CAMARA DE DIRIGENTES LOJISTAS",
         "JOSE DA SILVA",
+        "CIA. DE SANEAMENTO BÁSICO DO ESTADO DE SÃO PAULO - SABESP",   # privatizada em 2024
     ]:
         assert not eh_ente_publico(nome), nome
 

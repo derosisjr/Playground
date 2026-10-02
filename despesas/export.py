@@ -38,7 +38,7 @@ import os
 import re
 import sqlite3
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime
 
 from formato import (brl, compacto as _brl_compacto, eh_ente_publico, fator, identidade_favorecido,
@@ -200,6 +200,14 @@ def preparar_identidades(conn) -> dict:
     return ident
 
 
+def _marcar_ente_publico(d: dict) -> dict:
+    """Flag p/ o painel separar fornecedores de entes públicos/repasses (Município,
+    IPREV, CAPEP…) — a heurística única é formato.eh_ente_publico; o JS não a replica."""
+    if eh_ente_publico(d.get("nome")):
+        d["ente_publico"] = True
+    return d
+
+
 def _fav_campos(ident: dict, chave: str) -> dict:
     o = ident.get(chave) or {"nome": "", "documento": "", "slug": slug_favorecido(chave), "grafias": []}
     d = {"nome": o["nome"], "documento": o["documento"], "chave": chave, "slug": o["slug"]}
@@ -283,6 +291,9 @@ def _mes_completo_ate(conn) -> tuple[int, int] | None:
 
 
 # ── Agregações para o painel (movimentação de PAGAMENTOS pela data) ──────────
+FONTE_EXTRA = "Extra-orçamentário (retenções e consignações)"
+
+
 def agregados(conn, ident: dict | None = None) -> dict:
     ident = ident if ident is not None else preparar_identidades(conn)
     total = _q(conn, "SELECT COALESCE(SUM(valor),0) s, COUNT(*) n FROM pagamentos")[0]
@@ -301,9 +312,21 @@ def agregados(conn, ident: dict | None = None) -> dict:
     por_elemento = _q(conn,
         "SELECT COALESCE(NULLIF(elemento_despesa,''),'(sem elemento)') k, SUM(valor) s, COUNT(*) n "
         "FROM pagamentos GROUP BY k ORDER BY s DESC LIMIT 50")
+    # extra-orçamentário numa linha só: a origem o grava SEM o prefixo do grupo de fonte
+    # ("1100000 - GERAL" × "01-1100000 - GERAL"), o que parecia fonte duplicada no gráfico
     por_fonte = _q(conn,
-        "SELECT COALESCE(NULLIF(fonte_recurso,''),'(sem fonte)') k, SUM(valor) s "
+        f"SELECT CASE WHEN tipo_pagamento LIKE '%Extra%' THEN '{FONTE_EXTRA}' "
+        "ELSE COALESCE(NULLIF(fonte_recurso,''),'(sem fonte)') END k, SUM(valor) s "
         "FROM pagamentos GROUP BY k ORDER BY s DESC LIMIT 50")
+    # "para onde vai o dinheiro" (De cada R$ 100, recibo) só com o ORÇAMENTÁRIO: retenções
+    # e consignações extra-orçamentárias só transitam pelo caixa
+    por_funcao_orc = _q(conn,
+        "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s FROM pagamentos "
+        "WHERE COALESCE(tipo_pagamento,'') NOT LIKE '%Extra%' GROUP BY k ORDER BY s DESC")
+    # programa do PPA (o "para quê"): temático, não mapeia 1:1 para secretaria
+    por_programa = _q(conn,
+        "SELECT COALESCE(NULLIF(programa,''),'(sem programa)') k, SUM(valor) s FROM pagamentos "
+        "WHERE COALESCE(tipo_pagamento,'') NOT LIKE '%Extra%' GROUP BY k ORDER BY s DESC LIMIT 15")
     por_unidade = _q(conn,
         "SELECT unidade_gestora k, SUM(valor) s FROM pagamentos GROUP BY k ORDER BY s DESC")
     # favorecidos consolidados por IDENTIDADE (CNPJ completo; CPF mascarado só com o mesmo nome)
@@ -352,9 +375,11 @@ def agregados(conn, ident: dict | None = None) -> dict:
         "por_funcao": [{"funcao": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]} for r in por_funcao],
         "por_elemento": [{"elemento": r["k"], "valor": round(r["s"], 2), "qtd": r["n"]} for r in por_elemento],
         "por_fonte": [{"fonte": r["k"], "valor": round(r["s"], 2)} for r in por_fonte],
+        "por_funcao_orcamentario": [{"funcao": r["k"], "valor": round(r["s"], 2)} for r in por_funcao_orc],
+        "por_programa": [{"programa": r["k"], "valor": round(r["s"], 2)} for r in por_programa],
         "por_unidade": [{"unidade": r["k"], "valor": round(r["s"], 2)} for r in por_unidade],
-        "top_favorecidos": [
-            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"])
+        "top_favorecidos": [_marcar_ente_publico(
+            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"]))
             for r in favorecidos
         ],
         "servico_divida": {
@@ -549,6 +574,143 @@ MESES_NOME = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho
 MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 
+# ── Prazo entre liquidação e pagamento (ordem cronológica — art. 141 da Lei 14.133) ──
+# Pagamento ORÇAMENTÁRIO casado com a liquidação pelo trio (UG, empenho, nº da liquidação).
+# Extra-orçamentário fica fora (retenção não entra na fila); restos a pagar ficam.
+PRAZO_FAIXAS = [(None, -1, "antes da liquidação"), (0, 1, "até 1 dia"), (2, 7, "2 a 7 dias"),
+                (8, 30, "8 a 30 dias"), (31, 90, "31 a 90 dias"), (91, None, "mais de 90 dias")]
+PRAZO_MIN_PAGS = 10          # favorecido com ao menos N pagamentos casados
+PRAZO_MIN_VALOR = 1_000_000  # ...e ao menos isto pago nesses pagamentos
+PRAZO_RAPIDO_DIAS = 1        # mediana ≤ isto (com a mediana geral ≥ PRAZO_GERAL_MIN) → triagem
+PRAZO_GERAL_MIN = 5
+PRAZO_LENTO_DIAS = 60        # mediana ≥ isto → atraso a conferir
+
+
+def _mediana(xs):
+    s = sorted(xs)
+    n = len(s)
+    if not n:
+        return None
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+
+def _pares_liq_pag(conn) -> list:
+    return _q(conn, f"""
+        SELECT fi.chave k, p.ano, p.valor v,
+               CAST(ROUND(julianday(p.data) - julianday(l.data)) AS INTEGER) d
+        FROM pagamentos p {FAV_JOIN.format(t='p')}
+        JOIN (SELECT unidade_gestora, empenho, liquidacao, MIN(data) data FROM liquidacoes
+              WHERE COALESCE(especie,'') NOT LIKE 'Anula%' GROUP BY 1, 2, 3) l
+          ON l.unidade_gestora = p.unidade_gestora AND l.empenho = p.empenho AND l.liquidacao = p.liquidacao
+        WHERE COALESCE(p.tipo_pagamento,'') NOT LIKE '%Extra%' AND p.valor > 0
+          AND COALESCE(p.especie,'') NOT LIKE 'Anula%' AND COALESCE(p.liquidacao,'') <> ''""")
+
+
+def prazos_pagamento(conn, ident: dict) -> dict:
+    """Distribuição dos dias entre liquidação e pagamento por ano e os favorecidos
+    (fornecedores) mais rápidos e mais lentos. `_linhas` (todos os favorecidos elegíveis)
+    alimenta as regras de alerta e sai do índice antes de gravar."""
+    pares = _pares_liq_pag(conn)
+    por_ano = {}
+    for ano in sorted({r["ano"] for r in pares}):
+        rs = [r for r in pares if r["ano"] == ano]
+        ds = [r["d"] for r in rs]
+        faixas = []
+        for a, b, rot in PRAZO_FAIXAS:
+            sel = [r for r in rs if (a is None or r["d"] >= a) and (b is None or r["d"] <= b)]
+            faixas.append({"faixa": rot, "qtd": len(sel), "valor": round(sum(r["v"] for r in sel), 2)})
+        por_ano[str(ano)] = {"pagamentos": len(rs), "valor": round(sum(r["v"] for r in rs), 2),
+                             "mediana_dias": _mediana(ds), "p90_dias": sorted(ds)[int(0.9 * (len(ds) - 1))],
+                             "faixas": faixas}
+    por_fav = defaultdict(list)
+    for r in pares:
+        por_fav[r["k"]].append(r)
+    linhas = []
+    for k, rs in por_fav.items():
+        f = _fav_campos(ident, k)
+        valor = sum(r["v"] for r in rs)
+        if len(rs) < PRAZO_MIN_PAGS or valor < PRAZO_MIN_VALOR or eh_ente_publico(f["nome"]):
+            continue
+        linhas.append({**f, "mediana_dias": _mediana([r["d"] for r in rs]), "pagamentos": len(rs),
+                       "valor": round(valor, 2)})
+    geral = _mediana([r["d"] for r in pares])
+    return {
+        "mediana_geral_dias": geral,
+        "casados": len(pares),
+        "por_ano": por_ano,
+        "mais_rapidos": sorted(linhas, key=lambda x: (x["mediana_dias"], -x["valor"]))[:10],
+        "mais_lentos": sorted(linhas, key=lambda x: (-x["mediana_dias"], -x["valor"]))[:10],
+        "criterio": (f"Pagamentos orçamentários (inclui restos a pagar) casados com a liquidação por UG, "
+                     f"empenho e nº da liquidação; fornecedores com ≥ {PRAZO_MIN_PAGS} pagamentos e "
+                     f"≥ {brl(PRAZO_MIN_VALOR)}; entes públicos fora."),
+        "_linhas": linhas,
+    }
+
+
+# ── Anulações de empenho ──────────────────────────────────────────────────────
+def anulacoes_empenho(conn, ident: dict) -> dict:
+    """Quanto do empenhado foi anulado, por mês e por favorecido (valores POSITIVOS;
+    a origem grava a anulação negativa)."""
+    serie = [{"ano": r["ano"], "mes": r["mes"], "qtd": r["n"], "valor": round(-r["s"], 2)} for r in _q(conn,
+        "SELECT ano, mes, COUNT(*) n, SUM(valor) s FROM empenhos WHERE especie LIKE 'Anula%' "
+        "GROUP BY ano, mes ORDER BY ano, mes")]
+    emp_ano = {r["ano"]: r["s"] for r in _q(conn,
+        "SELECT ano, SUM(valor) s FROM empenhos WHERE COALESCE(especie,'') NOT LIKE 'Anula%' GROUP BY ano")}
+    por_ano = {}
+    for s in serie:
+        a = por_ano.setdefault(str(s["ano"]), {"qtd": 0, "valor": 0.0})
+        a["qtd"] += s["qtd"]
+        a["valor"] = round(a["valor"] + s["valor"], 2)
+    for ano, a in por_ano.items():
+        base = emp_ano.get(int(ano)) or 0
+        a["pct_do_empenhado"] = round(100 * a["valor"] / base, 1) if base > 0 else None
+    top = []
+    for r in _q(conn, f"""
+            SELECT fi.chave k, COUNT(*) n, -SUM(e.valor) s FROM empenhos e {FAV_JOIN.format(t='e')}
+            WHERE e.especie LIKE 'Anula%' GROUP BY fi.chave ORDER BY s DESC LIMIT 15"""):
+        emp = _q(conn, f"""SELECT SUM(e.valor) s FROM empenhos e {FAV_JOIN.format(t='e')}
+                          WHERE fi.chave=? AND COALESCE(e.especie,'') NOT LIKE 'Anula%'""", r["k"])[0]["s"] or 0
+        # anulado > empenhado na base = o original é anterior a jan/2025 (fora da base):
+        # a razão não tem sentido e vira a marca original_fora_da_base
+        fora = not emp or r["s"] > emp
+        item = {**_fav_campos(ident, r["k"]), "anulacoes": r["n"], "valor": round(r["s"], 2),
+                "pct_do_empenhado": None if fora else round(100 * r["s"] / emp, 1)}
+        if fora:
+            item["original_fora_da_base"] = True
+        top.append(_marcar_ente_publico(item))
+    return {"serie": serie, "por_ano": por_ano, "top_favorecidos": top}
+
+
+# ── Fim de exercício: dezembro × média jan–nov ────────────────────────────────
+def fim_de_exercicio(conn) -> dict:
+    """Para cada ano com dezembro COMPLETO: empenhado (originais), liquidado, pago e
+    anulado em dezembro contra a média mensal de jan–nov (razão). Corrida de liquidação
+    e cancelamento de saldos no encerramento aparecem aqui."""
+    completo = _mes_completo_ate(conn)
+    p_completo = completo[0] * 100 + completo[1] if completo else 0
+    medidas = {
+        "empenhado": "SELECT ano, mes, SUM(valor) s FROM empenhos WHERE COALESCE(especie,'') NOT LIKE 'Anula%' "
+                     "AND COALESCE(especie,'') NOT LIKE 'Refor%' GROUP BY ano, mes",
+        "liquidado": "SELECT ano, mes, SUM(valor) s FROM liquidacoes GROUP BY ano, mes",
+        "pago": "SELECT ano, mes, SUM(valor) s FROM pagamentos GROUP BY ano, mes",
+        "anulado": "SELECT ano, mes, -SUM(valor) s FROM empenhos WHERE especie LIKE 'Anula%' GROUP BY ano, mes",
+    }
+    vals = {m: {(r["ano"], r["mes"]): r["s"] or 0 for r in _q(conn, sql)} for m, sql in medidas.items()}
+    out = {}
+    for ano in sorted({a for (a, _m) in vals["pago"]}):
+        if ano * 100 + 12 > p_completo:
+            continue
+        linha = {}
+        for m, v in vals.items():
+            jan_nov = [v.get((ano, k), 0) for k in range(1, 12)]
+            media = sum(jan_nov) / 11
+            dez = v.get((ano, 12), 0)
+            linha[m] = {"dezembro": round(dez, 2), "media_jan_nov": round(media, 2),
+                        "razao": round(dez / media, 2) if media else None}
+        out[str(ano)] = linha
+    return out
+
+
 def resumo_narrativo(conn, indice: dict) -> dict | None:
     series = indice.get("series_mensais") or []
     if len(series) < 3:
@@ -659,11 +821,14 @@ def anos_detalhe(conn, ident: dict | None = None) -> dict:
               for x in _q(conn,
                   "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
                   "FROM pagamentos WHERE ano=? GROUP BY k ORDER BY s DESC LIMIT 8", a)]
-        fav = [dict(_fav_campos(ident, x["k"]), valor=round(x["s"], 2))
-               for x in _q(conn,
-                   f"SELECT fi.chave k, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
-                   f"WHERE p.ano=? GROUP BY fi.chave ORDER BY s DESC LIMIT 6", a)]
-        out[str(a)] = {"por_funcao": fn, "top_favorecidos": fav}
+        todos = [_marcar_ente_publico(dict(_fav_campos(ident, x["k"]), valor=round(x["s"], 2)))
+                 for x in _q(conn,
+                     f"SELECT fi.chave k, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
+                     f"WHERE p.ano=? GROUP BY fi.chave ORDER BY s DESC LIMIT 60", a)]
+        # a lista geral é liderada por Município/IPREV/CAPEP (fluxos internos): os
+        # fornecedores privados vêm à parte
+        out[str(a)] = {"por_funcao": fn, "top_favorecidos": todos[:6],
+                       "top_fornecedores": [f for f in todos if not f.get("ente_publico")][:5]}
     return out
 
 
@@ -676,30 +841,67 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
     tops = indice.get("top_favorecidos") or []
     validos = set()
     dossies = {}
+    # total pago por elemento no período — p/ a participação do favorecido em cada elemento
+    tot_elem = {r["e"]: r["s"] for r in _q(conn,
+        "SELECT elemento_despesa e, SUM(valor) s FROM pagamentos GROUP BY elemento_despesa")}
+    # pagamentos do top-N materializados UMA vez, indexados pela identidade: cada consulta
+    # por favorecido refazia o join com fav_ident sobre a tabela inteira (300 × N varreduras
+    # — o dossiê sozinho passava de 3 minutos)
+    conn.execute("DROP TABLE IF EXISTS top_fav")
+    conn.execute("CREATE TEMP TABLE top_fav (chave TEXT PRIMARY KEY)")
+    conn.executemany("INSERT OR IGNORE INTO top_fav VALUES (?)", [(f["chave"],) for f in tops])
+    conn.execute("DROP TABLE IF EXISTS pag_top")
+    conn.execute(f"CREATE TEMP TABLE pag_top AS SELECT fi.chave chave, p.* FROM pagamentos p "
+                 f"{FAV_JOIN.format(t='p')} JOIN top_fav t ON t.chave = fi.chave")
+    conn.execute("CREATE INDEX temp.ix_pag_top ON pag_top(chave)")
+
+    def por_chave(select, grupo, ordem):
+        out = defaultdict(list)
+        for r in _q(conn, f"SELECT p.chave c, {select} FROM pag_top p "
+                          f"GROUP BY p.chave, {grupo} ORDER BY p.chave, {ordem}"):
+            out[r["c"]].append(r)
+        return out
+    agg_elem = por_chave("p.elemento_despesa k, SUM(p.valor) s", "p.elemento_despesa", "s DESC")
+    agg_ug = por_chave("p.unidade_gestora k, SUM(p.valor) s", "p.unidade_gestora", "s DESC")
+    agg_tipo = por_chave("p.tipo_pagamento k, SUM(p.valor) s, COUNT(*) n", "p.tipo_pagamento", "s DESC")
+    agg_nome = por_chave("p.nome_favorecido k, SUM(p.valor) s, COUNT(*) n, MIN(p.data) i, MAX(p.data) f",
+                         "p.nome_favorecido", "i")
     for rank, f in enumerate(tops, 1):
         chave, slug = f["chave"], f["slug"]
         validos.add(slug + ".json")
         serie = [{"ano": r["ano"], "mes": r["mes"], "valor": round(r["s"], 2)}
                  for r in _q(conn,
-                     f"SELECT p.ano, p.mes, SUM(p.valor) s FROM pagamentos p {FAV_JOIN.format(t='p')} "
-                     f"WHERE fi.chave=? GROUP BY p.ano, p.mes ORDER BY p.ano, p.mes", chave)]
+                     "SELECT p.ano, p.mes, SUM(p.valor) s FROM pag_top p "
+                     "WHERE p.chave=? GROUP BY p.ano, p.mes ORDER BY p.ano, p.mes", chave)]
         por_ano = {}
         for s in serie:
             por_ano[str(s["ano"])] = round(por_ano.get(str(s["ano"]), 0) + s["valor"], 2)
         funcoes = [{"funcao": r["k"], "valor": round(r["s"], 2)}
                    for r in _q(conn,
                        f"SELECT COALESCE(NULLIF(p.funcao,''),'(sem função)') k, SUM(p.valor) s "
-                       f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave=? "
-                       f"GROUP BY k ORDER BY s DESC LIMIT 6", chave)]
+                       "FROM pag_top p WHERE p.chave=? "
+                       "GROUP BY k ORDER BY s DESC LIMIT 6", chave)]
         ultimos = [{"data": r["data"], "valor": round(r["valor"], 2), "funcao": r["funcao"],
                     "elemento": r["elemento_despesa"], "unidade": r["unidade_gestora"],
-                    "tipo": r["tipo_pagamento"]}
+                    "tipo": r["tipo_pagamento"], "pagamento": r["pagamento"], "empenho": r["empenho"]}
                    for r in _q(conn,
                        f"SELECT p.data, p.valor, p.funcao, p.elemento_despesa, p.unidade_gestora, "
-                       f"p.tipo_pagamento FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave=? "
-                       f"ORDER BY p.data DESC, p.valor DESC LIMIT 50", chave)]
+                       "p.tipo_pagamento, p.pagamento, p.empenho FROM pag_top p "
+                       "WHERE p.chave=? ORDER BY p.data DESC, p.valor DESC LIMIT 50", chave)]
         meus_alertas = [a for a in indice.get("alertas", [])
                         if (a.get("filtro") or {}).get("chave") == chave]
+        # o que uma investigação pergunta primeiro: em quê, por quem, de que tipo, desde quando
+        elementos = [{"elemento": r["k"], "valor": round(r["s"], 2),
+                      "participacao_pct": round(100 * r["s"] / tot_elem[r["k"]], 1) if tot_elem.get(r["k"]) else None}
+                     for r in agg_elem[chave][:8]]
+        unidades = [{"unidade": r["k"], "valor": round(r["s"], 2)} for r in agg_ug[chave]]
+        tipos = [{"tipo": r["k"] or "(não informado)", "valor": round(r["s"], 2), "qtd": r["n"]} for r in agg_tipo[chave]]
+        # grafia × razão social: a origem pode trazer o mesmo CNPJ com outro NOME (troca de
+        # razão social) — total e datas por nome deixam isso visível
+        grafias_det = [{"nome": r["k"], "valor": round(r["s"], 2), "qtd": r["n"], "primeiro": r["i"], "ultimo": r["f"]}
+                       for r in agg_nome[chave]]
+        datas = {"i": min((g["primeiro"] for g in grafias_det if g["primeiro"]), default=None),
+                 "f": max((g["ultimo"] for g in grafias_det if g["ultimo"]), default=None)}
 
         # só regrava se o CONTEÚDO mudou: com `atualizado_em` novo a cada run, os
         # 290 dossiês viravam diff diário (2,8 MB/dia no histórico e cache do Pages
@@ -709,9 +911,15 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
             "grafias": f.get("grafias") or [f["nome"]], "rank": rank,
             "total": f["valor"], "qtd": f["qtd"], "meses": f["meses"],
             "por_ano": por_ano, "serie_mensal": serie, "por_funcao": funcoes,
+            "por_elemento": elementos, "por_unidade": unidades, "por_tipo": tipos,
+            "primeiro_pagamento": datas["i"], "ultimo_pagamento": datas["f"],
             "ultimos_pagamentos": ultimos, "alertas": meus_alertas,
             "atualizado_em": indice.get("atualizado_em"),
         }
+        if len(grafias_det) > 1:
+            dossies[slug]["grafias_detalhe"] = grafias_det
+        if f.get("ente_publico"):
+            dossies[slug]["ente_publico"] = True
     for slug, dossie in dossies.items():
         gravar_json_se_mudou(os.path.join(FAV_DIR, slug + ".json"), dossie, separators=(",", ":"))
 
@@ -735,10 +943,12 @@ def _link_fav(f: dict, tops_slugs: set) -> str:
 
 
 def _link_detalhe(**p) -> str:
-    """Link para o Detalhamento já filtrado (mesmas chaves curtas do despesas-app.js)."""
+    """Link para o Detalhamento já filtrado (mesmas chaves curtas do despesas-app.js).
+    `favorecido` = chave de identidade (dfav): pega todas as grafias do mesmo CNPJ,
+    o que a busca textual pelo nome (dq) não faz."""
     from urllib.parse import urlencode
     chaves = {"visao": "dv", "meses": "dm", "busca": "dq", "elemento": "del", "funcao": "df",
-              "tipo": "dt", "unidade": "du"}
+              "tipo": "dt", "unidade": "du", "favorecido": "dfav"}
     q = {chaves[k]: v for k, v in p.items() if v}
     return f"{PAINEL_URL}?{urlencode(q)}#detalhe"
 
@@ -757,19 +967,28 @@ def _limite_dispensa(ano: int, elemento: str) -> dict:
 
 
 def alertas(conn, ident: dict | None = None, cob: dict | None = None,
-            execucao: dict | None = None) -> list[dict]:
+            execucao: dict | None = None, contagem: dict | None = None,
+            prazos: dict | None = None) -> list[dict]:
     """Regras determinísticas. Cada alerta traz: id estável, classe (contexto /
     anomalia / inconsistência), severidade, filtro (com a chave de identidade),
-    link para o recorte e documentos que o sustentam."""
+    link para o recorte e documentos que o sustentam. Se `contagem` for um dict,
+    recebe por regra {"candidatos": N, "publicados": M} — os tetos (CAP_POR_REGRA,
+    MAX_ALERTAS) mostram só os maiores, e o painel precisa dizer quantos ficaram de fora."""
     ident = ident if ident is not None else preparar_identidades(conn)
     cob = cob or cobertura(conn)
     out = []
+    cand: dict[str, int] = defaultdict(int)
     tops_slugs = {o["slug"] for o in ident.values()}   # todo favorecido tem slug; o link ?f= só
     # funciona p/ top-300 — o export troca para ?doc= quando o dossiê não existe (ver main)
     fav = lambda chave: _fav_campos(ident, chave)  # noqa: E731
     completo = _mes_completo_ate(conn)
     p_completo = completo[0] * 100 + completo[1] if completo else None
-    meses_tudo = [f"{r['ano']}" for r in _q(conn, "SELECT DISTINCT ano FROM pagamentos ORDER BY ano")]
+
+    def meses_pag(where, *params) -> str:
+        """Meses (AAAA-MM) com pagamento no recorte — o link baixa só esses arquivos."""
+        return ",".join(f"{r['ano']}-{r['mes']:02d}" for r in _q(conn,
+            f"SELECT DISTINCT p.ano, p.mes FROM pagamentos p {FAV_JOIN.format(t='p')} "
+            f"WHERE {where} ORDER BY p.ano, p.mes", *params))
 
     def docs_pag(where, *params, limite=MAX_DOCS_ALERTA):
         return [{"data": r["data"], "doc": r["pagamento"], "empenho": r["empenho"], "ug": r["unidade_gestora"],
@@ -779,11 +998,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                                   f"WHERE {where} ORDER BY p.valor DESC LIMIT {limite}", *params)]
 
     # 1) Favorecido recorrente de alto valor — CONTEXTO (escala, não irregularidade)
-    for r in _q(conn,
+    recorrentes = _q(conn,
         f"SELECT fi.chave k, SUM(p.valor) s, COUNT(DISTINCT p.ano*100+p.mes) meses "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} GROUP BY fi.chave "
-        f"HAVING s >= ? AND meses >= ? ORDER BY s DESC LIMIT ?",
-        ALERTA_FAV_VALOR, ALERTA_FAV_MESES, CAP_POR_REGRA):
+        f"HAVING s >= ? AND meses >= ? ORDER BY s DESC",
+        ALERTA_FAV_VALOR, ALERTA_FAV_MESES)
+    cand["favorecido_recorrente"] = len(recorrentes)
+    for r in recorrentes[:CAP_POR_REGRA]:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("favorecido_recorrente", r["k"]),
@@ -808,8 +1029,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         base = tot_funcao.get(r["f"], 0) or 1
         pct = 100 * r["s"] / base
         if pct >= ALERTA_CONCENTRACAO_PCT and r["f"] != "(sem função)":
+            cand["concentracao"] += 1
             if n_conc >= CAP_POR_REGRA:
-                break
+                continue
             n_conc += 1
             f = fav(r["k"])
             publico = eh_ente_publico(f["nome"])
@@ -823,7 +1045,8 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                            (" Ente público/repasse institucional — concentração esperada." if publico else ""),
                 "valor": round(r["s"], 2),
                 "filtro": {"favorecido": f["nome"], "chave": r["k"], "funcao": r["f"]},
-                "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], funcao=r["f"]),
+                "link": _link_detalhe(visao="mov", favorecido=r["k"], funcao=r["f"],
+                    meses=meses_pag("fi.chave=? AND COALESCE(NULLIF(p.funcao,''),'(sem função)')=?", r["k"], r["f"])),
             })
 
     # 3) Pico mensal (sobre o total geral por mês) — só meses completos
@@ -848,11 +1071,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 })
 
     # 4) Extra-orçamentário relevante — CONTEXTO (retenções/consignações são esperadas)
-    for r in _q(conn,
+    extras = _q(conn,
         f"SELECT fi.chave k, p.elemento_despesa e, SUM(p.valor) s, COUNT(*) n "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE p.tipo_pagamento LIKE '%Extra%' "
-        f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC LIMIT 20",
-        ALERTA_EXTRA_VALOR):
+        f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
+        ALERTA_EXTRA_VALOR)
+    cand["extra_orcamentario"] = len(extras)
+    for r in extras[:20]:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("extra_orcamentario", r["k"], r["e"]),
@@ -861,7 +1086,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "detalhe": f"{brl(r['s'])} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"]},
-            "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], elemento=r["e"]),
+            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
+                meses=meses_pag("fi.chave=? AND p.elemento_despesa IS ? AND p.tipo_pagamento LIKE '%Extra%'",
+                                r["k"], r["e"])),
         })
 
     # 5) Possível fracionamento — TRIAGEM: conta EMPENHOS DISTINTOS (UG + nº) pelo
@@ -887,6 +1114,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         soma = round(sum(e["liquido"] for e in abaixo), 2)
         if len(abaixo) >= FRAC_MIN_EMPENHOS and soma >= FRAC_FATOR_TOTAL * lim["valor"]:
             candidatos.append((k, el, ano, abaixo, soma, lim, len(emps)))
+    cand["fracionamento"] = len(candidatos)
     for k, el, ano, abaixo, soma, lim, n_total in sorted(candidatos, key=lambda x: -x[4]):
         if n >= CAP_POR_REGRA:
             break
@@ -908,7 +1136,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "limite": lim,
             "documentos": docs,
             "informacoes_faltantes": FRAC_INFO_FALTANTE,
-            "link": _link_detalhe(visao="exe", meses=str(ano), busca=f["nome"], elemento=el),
+            # execução: cada empenho está no arquivo do mês em que foi emitido (1º documento)
+            "link": _link_detalhe(visao="exe", favorecido=k, elemento=el,
+                                  meses=",".join(sorted({(e["data"] or "")[:7] for e in abaixo} - {""})) or str(ano)),
         })
 
     # 6) Favorecido novo (1ª aparição recente) de alto valor
@@ -929,8 +1159,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]):
                 continue
+            cand["favorecido_novo"] += 1
             if n >= CAP_POR_REGRA:
-                break
+                continue
             n += 1
             out.append({
                 "id": _id_alerta("favorecido_novo", r["k"]),
@@ -960,8 +1191,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]) or r["v_atual"] < ALERTA_YOY_FATOR * r["v_ant"]:
                 continue
+            cand["crescimento_yoy"] += 1
             if n >= CAP_POR_REGRA:
-                break
+                continue
             n += 1
             per = f"jan–{MESES_ABREV[mlim - 1]}"
             out.append({
@@ -976,29 +1208,63 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "link": _link_fav(f, tops_slugs),
             })
 
-    # 8) Pessoa física (CPF) recebendo em elemento sensível
+    # 8) Pessoa física (CPF) recebendo em elemento sensível. Severidade MÉDIA (era
+    # alta): o caso típico é aluguel mensal fixo de imóvel de PF, padrão esperado —
+    # não pode ocupar sozinho o topo da lista (decisão de 2026-09-29).
     cond_elem = " OR ".join(f"p.elemento_despesa LIKE '{x}'" for x in ELEM_SENSIVEIS)
-    n = 0
-    for r in _q(conn,
+    pfs = _q(conn,
         f"SELECT fi.chave k, p.elemento_despesa e, SUM(p.valor) s, COUNT(*) qt "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave LIKE 'cpf:%' AND ({cond_elem}) "
         f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
-        ALERTA_PF_VALOR):
-        if n >= CAP_POR_REGRA:
-            break
-        n += 1
+        ALERTA_PF_VALOR)
+    cand["pf_sensivel"] = len(pfs)
+    for r in pfs[:CAP_POR_REGRA]:
         f = fav(r["k"])
         elem_curto = (r["e"] or "").split(" - ", 1)[-1][:40]
         out.append({
             "id": _id_alerta("pf_sensivel", r["k"], r["e"]),
-            "tipo": "pf_sensivel", "classe": CLASSE_ANOMALIA, "severidade": "alta",
+            "tipo": "pf_sensivel", "classe": CLASSE_ANOMALIA, "severidade": "media",
             "titulo": f"Pessoa física em {elem_curto}: {f['nome']}",
             "detalhe": f"{brl(r['s'])} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
             "documentos": docs_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"]),
-            "link": _link_detalhe(visao="mov", meses=",".join(meses_tudo), busca=f["nome"], elemento=r["e"]),
+            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
+                                  meses=meses_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"])),
         })
+
+    # 8b) Prazo liquidação → pagamento fora do padrão — TRIAGEM da ordem cronológica
+    # (art. 141 da Lei 14.133): pago muito mais rápido que a fila, ou muito mais devagar
+    # (atraso = risco de juros/reequilíbrio). A ordem vale por fonte de recurso e tem
+    # exceções justificadas (§1º) — o texto diz o que falta para concluir.
+    prz = prazos if prazos is not None else prazos_pagamento(conn, ident)
+    geral = prz.get("mediana_geral_dias")
+    linhas_prz = prz.get("_linhas") or []
+    for tipo, cond, ordem in (
+            ("prazo_rapido", lambda x: geral is not None and geral >= PRAZO_GERAL_MIN
+                                       and x["mediana_dias"] <= PRAZO_RAPIDO_DIAS,
+             lambda x: -x["valor"]),
+            ("prazo_lento", lambda x: x["mediana_dias"] >= PRAZO_LENTO_DIAS, lambda x: -x["mediana_dias"])):
+        achados = sorted((x for x in linhas_prz if cond(x)), key=ordem)
+        cand[tipo] = len(achados)
+        for x in achados[:CAP_POR_REGRA]:
+            rapido = tipo == "prazo_rapido"
+            out.append({
+                "id": _id_alerta(tipo, x["chave"]),
+                "tipo": tipo, "classe": CLASSE_ANOMALIA, "severidade": "media",
+                "titulo": (f"Pago bem mais rápido que a fila: {x['nome']}" if rapido
+                           else f"Pago bem mais devagar que a fila: {x['nome']}"),
+                "detalhe": (f"Mediana de {x['mediana_dias']:g} dia(s) entre liquidação e pagamento em "
+                            f"{x['pagamentos']} pagamentos ({brl(x['valor'])}), contra {geral:g} dia(s) no geral. "
+                            + ("Triagem de ordem cronológica (art. 141 da Lei 14.133): a ordem vale por fonte de "
+                               "recurso e admite exceções justificadas — confira a fonte e a justificativa."
+                               if rapido else
+                               "Atraso de pagamento pode gerar juros, correção e pedido de reequilíbrio — confira "
+                               "se houve glosa, pendência documental ou falta de caixa.")),
+                "valor": x["valor"],
+                "filtro": {"favorecido": x["nome"], "chave": x["chave"]},
+                "link": _link_fav(x, tops_slugs),
+            })
 
     # 9/10) Pico na série do próprio favorecido / elemento (z-score local) — meses completos
     def _picos_locais(campo_sql, tipo, valor_min, rotulo):
@@ -1028,12 +1294,13 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             p, s = anominos[-1]   # o mais recente
             achados.append((k, p, s, media, nome))
         achados.sort(key=lambda x: -x[2])
+        cand[tipo] = len(achados)
         for k, p, s, media, nome in achados[:CAP_POR_REGRA]:
             mes_txt = f"{p // 100}-{p % 100:02d}"
             if tipo == "pico_favorecido":
                 filtro = {"favorecido": nome, "chave": k, "ano": p // 100, "mes": p % 100}
                 docs = docs_pag("fi.chave=? AND p.ano=? AND p.mes=?", k, p // 100, p % 100)
-                link = _link_detalhe(visao="mov", meses=mes_txt, busca=nome)
+                link = _link_detalhe(visao="mov", meses=mes_txt, favorecido=k)
                 curto = nome
             else:
                 filtro = {"elemento": k, "ano": p // 100, "mes": p % 100}
@@ -1129,6 +1396,12 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
     ordem = {"alta": 0, "media": 1, "baixa": 2}
     ordem_classe = {CLASSE_INCONSISTENCIA: 0, CLASSE_ANOMALIA: 1, CLASSE_CONTEXTO: 2}
     out.sort(key=lambda a: (ordem.get(a["severidade"], 9), ordem_classe.get(a["classe"], 9), -a["valor"]))
+    if contagem is not None:
+        gerados = Counter(a["tipo"] for a in out)
+        publicados = Counter(a["tipo"] for a in out[:MAX_ALERTAS])
+        for tipo in gerados:   # regras sem teto: candidatos = gerados
+            contagem[tipo] = {"candidatos": max(cand.get(tipo, 0), gerados[tipo]),
+                              "publicados": publicados.get(tipo, 0)}
     return out[:MAX_ALERTAS]
 
 
@@ -1397,6 +1670,7 @@ def exportar_movimento_mensal(rows: list[dict]) -> list[dict]:
                     separators=(",", ":"))
         soma = {c: round(sum((r[c] or 0) for r in por_mes[periodo]), 2) for c in ("empenhado", "liquidado", "pago")}
         manifesto.append({"ano": ano, "mes": mes, "n": len(linhas), **soma,
+                          "bytes": os.path.getsize(os.path.join(MOV_DIR, arquivo)),
                           "arquivo": f"despesas/dados/mov/{arquivo}"})
     return manifesto
 
@@ -1458,6 +1732,7 @@ def exportar_detalhe_mensal(rows: list[dict]) -> list[dict]:
                           "empenhado": round(sum((l[iE] or 0) for l in linhas), 2),
                           "liquidado": round(sum((l[iL] or 0) for l in linhas), 2),
                           "valor": round(sum((l[iP] or 0) for l in linhas), 2),   # pago acumulado
+                          "bytes": os.path.getsize(os.path.join(DADOS_DIR, arquivo)),  # estimativa antes de baixar
                           "arquivo": f"despesas/dados/{arquivo}"})
     return manifesto
 
@@ -1531,7 +1806,7 @@ def exportar_estagios(conn, rows: list[dict]) -> int:
 #   indice-favorecidos.json identidade → meses onde aparece (a ficha baixa SÓ esses)
 # Chave = identidade canônica (formato.identidade_favorecido) — TEM de casar com
 # Comum.identidadeFavorecido() do comum.js.
-INDICES_LEVES = ("elementos.json", "pf-resumo.json", "indice-favorecidos.json")
+INDICES_LEVES = ("elementos.json", "pf-resumo.json", "indice-favorecidos.json", "nomes-favorecidos.json")
 PF_RESUMO_TOP = 1000
 
 
@@ -1629,7 +1904,17 @@ def main():
     indice = agregados(conn, ident)
     indice["cobertura"] = cob
     indice["execucao"] = execucao_agregada(conn, cob)
-    indice["alertas"] = alertas(conn, ident, cob, indice["execucao"])
+    # identidades classificadas como ente público (p/ o filtro "fornecedores privados"
+    # também quando o painel reagrega do detalhe por elemento)
+    indice["entes_publicos"] = sorted(k for k, o in ident.items() if eh_ente_publico(o["nome"]))
+    # análises (Lote D5): prazo liquidação→pagamento, anulações, fim de exercício
+    indice["prazos_pagamento"] = prazos_pagamento(conn, ident)
+    indice["anulacoes"] = anulacoes_empenho(conn, ident)
+    indice["fim_de_exercicio"] = fim_de_exercicio(conn)
+    indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
+    indice["alertas"] = alertas(conn, ident, cob, indice["execucao"], contagem=indice["alertas_regras"],
+                                prazos=indice["prazos_pagamento"])
+    indice["prazos_pagamento"].pop("_linhas", None)   # só alimenta as regras; fora do índice
     tops = {f["slug"] for f in indice["top_favorecidos"]}
     for a in indice["alertas"]:   # link ?f= só existe para o top-300; os demais vão pela rota por documento
         if a.get("link", "").startswith(RAIOX_URL + "?f=") and a["link"].split("?f=")[1] not in tops:
@@ -1645,6 +1930,11 @@ def main():
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["meses_movimento"] = exportar_movimento_mensal(movimento)
     exportar_indices_leves(execucao, movimento)
+    # nome de exibição + documento de TODAS as identidades (~7,8 mil): o raio-X por nome
+    # (?nome=) acha quem está fora do top-300 sem varrer os 45 MB da movimentação
+    gravar_json(os.path.join(DADOS_DIR, "nomes-favorecidos.json"),
+                {k: [o["nome"], o["documento"] or ""] for k, o in sorted(ident.items())},
+                separators=(",", ":"))
     n_estagios = exportar_estagios(conn, execucao)
     indice["campos_detalhe"] = CAMPOS_DETALHE
     indice["campos_movimento"] = CAMPOS_MOV
