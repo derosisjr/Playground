@@ -72,6 +72,7 @@ async function init() {
   renderGraficosSeguro();
   renderR100();
   renderRecibo();
+  renderAnalises();   // prazos, anulações, fim de exercício (tabelas; os gráficos vêm com os demais)
   ligarVistaFuncao();
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
@@ -207,7 +208,7 @@ function desviosSerie(serie) {
 
 function renderGraficos() {
   // rerender (troca de tema): solta os charts anteriores antes de recriar
-  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade"].forEach(id => {
+  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade", "ch-anulacoes", "ch-programa"].forEach(id => {
     const c = Chart.getChart(id);
     if (c) c.destroy();
   });
@@ -301,6 +302,7 @@ function renderGraficos() {
     `Gasto pago por unidade gestora. Primeira: ${un[0] ? un[0].unidade + ", " + compacto(un[0].valor) : "—"}.`,
     ["Unidade gestora", "Pago"], un.map(u => [u.unidade, compacto(u.valor)]));
 
+  renderGraficosAnalises();
   if (ARVORE) renderMapa();   // repinta na troca de tema
   if (PARES) renderPares();
 }
@@ -423,10 +425,110 @@ function ligarVistaFuncao() {
 }
 
 // "De cada R$ 100 pagos" — tradução do total em escala humana (barras proporcionais)
+// "Para onde vai o dinheiro" usa só o orçamentário (índice novo); índice antigo cai no total
+function baseParaOndeVai() {
+  const orc = DADOS.por_funcao_orcamentario;
+  if (orc?.length) return { fns: orc, total: orc.reduce((s, f) => s + f.valor, 0) };
+  return { fns: DADOS.por_funcao || [], total: DADOS.totais?.geral };
+}
+
+// link para o raio-X: dossiê pré-computado (top-300) ou a rota por documento/nome
+function linkRaiox(f) {
+  const top = (DADOS.top_favorecidos || []).find(t => t.chave === f.chave);
+  return top?.slug ? `./favorecido.html?f=${encodeURIComponent(top.slug)}`
+    : `./favorecido.html?doc=${encodeURIComponent(f.documento || "")}&nome=${encodeURIComponent(f.nome || "")}`;
+}
+const dias = (d) => d == null ? "—" : `${Number(d).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} d`;
+
+// ── Análises (Lote D5): prazo de pagamento, anulações, fim de exercício ──────
+function renderAnalises() {
+  const prz = DADOS.prazos_pagamento;
+  if (prz?.por_ano && Object.keys(prz.por_ano).length) {
+    const anos = Object.keys(prz.por_ano).sort();
+    const ult = anos[anos.length - 1], a = prz.por_ano[ult];
+    document.getElementById("prazos-resumo").textContent =
+      anos.map(k => `${k}: mediana de ${dias(prz.por_ano[k].mediana_dias)} entre a liquidação e o pagamento ` +
+                    `(90% em até ${dias(prz.por_ano[k].p90_dias)}; ${prz.por_ano[k].pagamentos.toLocaleString("pt-BR")} pagamentos)`).join(" · ");
+    const total = a.faixas.reduce((s, f) => s + f.qtd, 0) || 1;
+    const max = Math.max(...a.faixas.map(f => f.qtd)) || 1;
+    document.getElementById("prazos-faixas").innerHTML = a.faixas.filter(f => f.qtd || f.faixa !== "antes da liquidação").map(f => `
+      <div class="r100-linha">
+        <span class="r100-nome">${esc(f.faixa)}${f.faixa === "antes da liquidação" && f.qtd ? " ⚠" : ""}</span>
+        <span class="r100-barra" aria-hidden="true"><span class="r100-fill" style="width:${(100 * f.qtd / max).toFixed(1)}%"></span></span>
+        <span class="r100-vlr">${Math.round(100 * f.qtd / total)}%</span>
+      </div>`).join("");
+    const linha = (x) => `<tr><td data-label="Fornecedor"><a href="${linkRaiox(x)}">${esc(x.nome)}</a></td>
+      <td data-label="Mediana" class="r">${dias(x.mediana_dias)}</td>
+      <td data-label="Pagamentos" class="r">${x.pagamentos}</td>
+      <td data-label="Valor" class="r">${compacto(x.valor)}</td></tr>`;
+    document.getElementById("prazos-lentos").innerHTML = (prz.mais_lentos || []).map(linha).join("");
+    document.getElementById("prazos-rapidos").innerHTML = (prz.mais_rapidos || []).map(linha).join("");
+    document.getElementById("prazos-nota").textContent =
+      `Distribuição de ${ult}. ${prz.criterio} A Lei 14.133 (art. 141) manda pagar na ordem cronológica, ` +
+      "por fonte de recurso, com exceções justificadas: pagamento muito mais rápido ou muito mais lento que a " +
+      "fila é triagem para pedir a justificativa — não é conclusão. Os casos extremos viram alertas.";
+    document.getElementById("box-prazos").hidden = false;
+  }
+
+  const an = DADOS.anulacoes;
+  if (an?.por_ano && Object.keys(an.por_ano).length) {
+    document.getElementById("anul-resumo").textContent = Object.entries(an.por_ano).map(([k, v]) =>
+      `${k}: ${compacto(v.valor)} anulados em ${v.qtd.toLocaleString("pt-BR")} anulações` +
+      (v.pct_do_empenhado != null ? ` (${v.pct_do_empenhado.toLocaleString("pt-BR")}% do empenhado na base)` : "")).join(" · ");
+    document.getElementById("anul-top").innerHTML = (an.top_favorecidos || []).slice(0, 10).map(x => `
+      <tr><td data-label="Favorecido"><a href="${linkRaiox(x)}">${esc(x.nome)}</a>${x.ente_publico ? ' <span class="p" style="color:var(--muted)">· ente público</span>' : ""}</td>
+        <td data-label="Anulado" class="r">${compacto(x.valor)}</td>
+        <td data-label="% do empenhado" class="r">${x.pct_do_empenhado != null ? x.pct_do_empenhado.toLocaleString("pt-BR") + "%"
+          : '<span title="O empenho original é anterior a jan/2025 — fora da base">orig. anterior</span>'}</td></tr>`).join("");
+    document.getElementById("box-anulacoes").hidden = false;
+  }
+
+  const fim = DADOS.fim_de_exercicio;
+  if (fim && Object.keys(fim).length) {
+    const rot = { empenhado: "Empenhado (novos)", liquidado: "Liquidado", pago: "Pago", anulado: "Anulado" };
+    document.getElementById("fim-corpo").innerHTML = Object.entries(fim).map(([ano, m]) =>
+      Object.entries(rot).map(([k, r]) => m[k] ? `<tr><td data-label="Ano · estágio">${ano} · ${r}</td>
+        <td data-label="Dezembro" class="r">${compacto(m[k].dezembro)}</td>
+        <td data-label="Média jan–nov" class="r">${compacto(m[k].media_jan_nov)}</td>
+        <td data-label="Dez ÷ média" class="r"${m[k].razao >= 1.5 ? ' style="font-weight:800"' : ""}>${m[k].razao != null
+          ? m[k].razao.toLocaleString("pt-BR") + "×" : "—"}</td></tr>` : "").join("")).join("");
+    document.getElementById("fim-nota").textContent =
+      "Corrida de liquidação e cancelamento de saldos no encerramento do exercício aparecem aqui: liquidar em " +
+      "dezembro garante a inscrição em restos a pagar processados; anular em massa cancela empenhos sem execução. " +
+      "Só anos com dezembro completo na base.";
+    document.getElementById("box-fim").hidden = false;
+  }
+}
+
+// gráficos das análises (repintados na troca de tema junto com os demais)
+function renderGraficosAnalises() {
+  const an = DADOS.anulacoes;
+  if (an?.serie?.length) {
+    new Chart(document.getElementById("ch-anulacoes"), {
+      type: "bar",
+      data: { labels: an.serie.map(s => `${MESES[s.mes]}/${String(s.ano).slice(2)}`),
+              datasets: [{ data: an.serie.map(s => s.valor), backgroundColor: PALETA[7] }] },
+      options: chartOpts({ y: eixoReais() }),
+    });
+    Comum.chartAcessivel("ch-anulacoes", "Valor de empenhos anulados por mês.", ["Mês", "Anulado", "Anulações"],
+      an.serie.map(s => [`${MESES[s.mes]}/${s.ano}`, compacto(s.valor), String(s.qtd)]));
+  }
+  const pr = (DADOS.por_programa || []).slice(0, 12);
+  if (pr.length) {
+    new Chart(document.getElementById("ch-programa"), {
+      type: "bar",
+      data: { labels: pr.map(p => rotulo(nomeFuncao(p.programa))), datasets: [{ data: pr.map(p => p.valor), backgroundColor: NAVY }] },
+      options: chartOpts({ x: eixoReais() }, "y"),
+    });
+    Comum.chartAcessivel("ch-programa", "Pago orçamentário por programa do PPA (doze maiores).", ["Programa", "Pago"],
+      pr.map(p => [p.programa, compacto(p.valor)]));
+    document.getElementById("box-programa").hidden = false;
+  }
+}
+
 function renderR100() {
   const box = document.getElementById("box-r100");
-  const fns = DADOS.por_funcao || [];
-  const total = DADOS.totais?.geral;
+  const { fns, total } = baseParaOndeVai();
   if (!box || !fns.length || !total) return;
   const top = fns.slice(0, 8);
   const outros = total - top.reduce((s, f) => s + f.valor, 0);
@@ -440,7 +542,8 @@ function renderR100() {
       <span class="r100-vlr">R$ ${i.v.toFixed(2).replace(".", ",")}</span>
     </div>`).join("");
   document.getElementById("r100-nota").textContent =
-    `Distribuição do total pago no período (${compacto(total)}) por função de governo.`;
+    `Distribuição do pago ORÇAMENTÁRIO no período (${compacto(total)}) por função de governo — sem as ` +
+    "retenções e consignações extra-orçamentárias, que só transitam pelo caixa.";
   box.hidden = false;
 }
 
@@ -511,8 +614,7 @@ function renderComparativo() {
 // ── Recibo do contribuinte (didático, IPTU → funções) ────────────────────────
 function renderRecibo() {
   const box = document.getElementById("box-recibo");
-  const fns = DADOS.por_funcao || [];
-  const total = DADOS.totais?.geral;
+  const { fns, total } = baseParaOndeVai();
   if (!box || !fns.length || !total) return;
   const faixa = document.getElementById("recibo-faixa");
   const campo = document.getElementById("recibo-valor");
@@ -761,6 +863,7 @@ const ALERTA_LABELS = {
   dados_duplicidade: "Dados: duplicidade na origem", dados_particao: "Dados: coleta falhou",
   dados_cobertura: "Dados: cobertura incompleta", dados_taxa: "Dados: taxa não validada",
   dados_nao_localizado: "Dados: empenho não localizado",
+  prazo_rapido: "Pago bem mais rápido que a fila", prazo_lento: "Pago bem mais devagar que a fila",
 };
 const CLASSE_LABELS = { contexto: "Contexto", anomalia: "Anomalia a conferir", inconsistencia: "Inconsistência de dados" };
 const ESTADO_LABELS = { novo: "novo", persistente: "persistente", sem_historico: "sem histórico" };

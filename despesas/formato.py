@@ -51,12 +51,17 @@ _ENTE_RE = re.compile(
     r"CAIXA ECONOMICA FEDERAL|MINISTERIO|FAZENDA NACIONAL|"
     r"RECEITA|SECRETARIA DA RECEITA|TESOURO|"
     r"GOVERNO DO ESTADO|ESTADO DE SAO PAULO|FAZENDA DO ESTADO|"
-    r"FUNDO DE GARANTIA|FGTS|PASEP")
+    r"FUNDO DE GARANTIA|FGTS|PASEP|"
+    # empresas públicas/estatais dependentes do município (2026-09): a concentração
+    # delas numa função é esperada (COHAB = 100% de Habitação virava "anomalia")
+    r"COMPANHIA DE ENGENHARIA DE TRAFEGO|\bPRODESAN\b|\bCOHAB\b|"
+    r"\bSECRETARIA\b")   # órgãos (ex.: SECRETARIA DE TURISMO E VIAGENS, do Estado)
 
 
 # Exceções: nomes que casam com FUNDO/FUNDAÇÃO mas são entidades PRIVADAS
 # contratadas como fornecedoras (conferido na base em 2026-07).
-_NAO_ENTE_RE = re.compile(r"\bAFIP\b|\bFIPE\b|FUNDACAO GETULIO VARGAS|\bFGV\b")
+# SABESP: privatizada em jul/2024 — o nome ("…DO ESTADO DE SAO PAULO") casava como ente.
+_NAO_ENTE_RE = re.compile(r"\bAFIP\b|\bFIPE\b|FUNDACAO GETULIO VARGAS|\bFGV\b|SABESP|SANEAMENTO BASICO DO ESTADO")
 
 
 def eh_ente_publico(nome) -> bool:
