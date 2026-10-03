@@ -8,7 +8,7 @@ paths:
 Briefing político-jurídico da pauta das sessões da Câmara de Santos, por e-mail HTML,
 antes de cada sessão (segunda e quarta ~19h BRT).
 
-## Pipeline NOVO — rotina /schedule com IA (2026-08, em validação)
+## Pipeline NOVO — rotina /schedule com IA (criada em 2026-10-02, em validação)
 
 Mesma migração do Monitor do DOM: a inteligência sai do Python (API paga) e vai para uma
 **skill executada por rotina Claude Code em nuvem** (cota Max, sem API key). O Python fica
@@ -42,6 +42,13 @@ pauta_md.py (scraping+PDF→MD) → skill briefing-ordem-do-dia (MD→briefing.m
 - **`enviar.py`/`email_briefing.py`** — e-mail HTML (template movido do `index.py`); SMTP
   com fallback **Gmail API** via `gmail_api.py` (raiz — módulo comum com o monitor do DOM;
   o ambiente das rotinas não abre a porta 587).
+- **Rotina criada** em 2026-10-02: `trig_0133JpRHyhgUtDngMZFKhbCT`, Opus 5.5, cron `0 22 * * 1,3`
+  (19h BRT seg/qua), mesmo ambiente da rotina do DOM. **O perfil político vai embutido no
+  prompt da rotina** (config privada da conta), entre `<perfil>…</perfil>`, e é usado no lugar do
+  arquivo — **sem gravá-lo** (gravar em `.claude/` disparou o classificador da rotina): o arquivo é
+  gitignored e o clone da rotina não o teria. Ao mudar o perfil, atualizar também o prompt da rotina.
+- **Rede:** o ambiente (o mesmo do DOM) precisa liberar `administrativo.camarasantos.sp.gov.br`;
+  no 1º teste (02/10) o proxy devolveu 403 — ver checklist em `references/rotina-schedule.md`. Em validação, `GMAIL_TO` fixo no prompt (só o vereador).
 - **Config da rotina**: `references/rotina-schedule.md` (prompt literal + checklist:
   allowlist `administrativo.camarasantos.sp.gov.br`, token com gmail.send,
   `GMAIL_USER`, `GMAIL_TO`; modelo Opus 5).
@@ -63,9 +70,9 @@ continuação automática) + e-mail (via `email_briefing.py`). Precisa de
 
 - **Fonte de dados:** `https://administrativo.camarasantos.sp.gov.br/dispositivo/ideCustom/legislativo/ordem_dia_eletronica/publico/`
   (sessões no `<select id="selSessao">`; itens em `listagem.php?codigo=SESSION_ID`, divs `.documento`).
-- **Agendamento:** `.github/workflows/ordem-do-dia.yml`, cron `0 22 * * 1,3` (19h BRT,
-  seg e qua) enquanto a rotina está em validação; depois de estável, o cron é comentado e
-  fica só o `workflow_dispatch` (mesmo padrão do `diario-oficial.yml`).
+- **Agendamento:** cron do `.github/workflows/ordem-do-dia.yml` **desativado em 2026-10-02**
+  (falhava desde 17/08: o `index.py` lê o perfil gitignored); fica só o `workflow_dispatch`
+  como socorro manual — que também exige o perfil, ausente no runner.
 
 ```bash
 python ordem-do-dia/index.py                  # sessão mais recente (stdout)
