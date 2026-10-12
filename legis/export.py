@@ -32,8 +32,8 @@ XLSX_PATH = os.path.join(AQUI, "legis.xlsx")
 CSV_PATH = os.path.join(AQUI, "legis.csv")
 JSON_PATH = os.path.join(RAIZ, "legis-index.json")
 
-COLUNAS = ["id", "tipo", "numero", "ano", "data_norma", "titulo", "ementa",
-           "tags", "situacao", "url_legis", "url_pdf", "fonte", "data_coleta"]
+COLUNAS = ["id", "tipo", "numero", "ano", "data_norma", "titulo", "ementa", "descricao",
+           "tags", "situacao", "revogada_por", "url_legis", "url_pdf", "fonte", "data_coleta"]
 
 
 def ler_normas() -> list[dict]:
@@ -65,7 +65,7 @@ def exportar_xlsx(normas: list[dict]) -> None:
         ws.append([n.get(c, "") for c in COLUNAS])
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUNAS))}{len(normas)+1}"
-    larguras = {"titulo": 50, "ementa": 70, "tags": 30, "url_legis": 45, "url_pdf": 45}
+    larguras = {"titulo": 50, "ementa": 70, "descricao": 70, "tags": 30, "url_legis": 45, "url_pdf": 45}
     for i, c in enumerate(COLUNAS, 1):
         ws.column_dimensions[get_column_letter(i)].width = larguras.get(c, 14)
     wb.save(XLSX_PATH)
@@ -76,6 +76,11 @@ def exportar_json(normas: list[dict]) -> None:
     campos = ["id", "tipo", "numero", "ano", "data_norma", "titulo", "ementa",
               "tags", "situacao", "url_legis", "url_pdf"]
     dados = [{c: n.get(c, "") for c in campos} for n in normas]
+    # revogadora (id) só onde há — a imensa maioria não tem; a ementa oficial
+    # (`descricao`) fica fora do índice por tamanho (vai no CSV/XLSX)
+    for d, n in zip(dados, normas):
+        if n.get("revogada_por"):
+            d["revogada_por"] = n["revogada_por"]
     gravar_json(JSON_PATH, dados, separators=(",", ":"))
 
 
