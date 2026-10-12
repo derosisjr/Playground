@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -128,7 +128,7 @@
       .marca-quebra { font-size: 11px; font-weight: 700; white-space: nowrap; }
       .resumo-box { border-left: 3px solid var(--gold); margin-top: 16px; }
       .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-        letter-spacing: .18em; text-transform: uppercase; color: var(--gold);
+        letter-spacing: .18em; text-transform: uppercase; color: var(--gold-texto); /* --gold dava 2,3:1 no claro */
         font-weight: 600; margin: 0 0 8px; }
       .resumo-texto { font-size: 15px; line-height: 1.65; margin: 0; max-width: 78ch; }
 
@@ -137,6 +137,8 @@
 
       /* tabela quadrimestral */
       .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); overflow-x: auto; }
+      /* focável (tabindex=0) para rolar pelo teclado no celular */
+      .tabela-wrap:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       thead th { background: var(--navy2); color: #fff; text-align: right; padding: 10px 12px; font-weight: 700; white-space: nowrap; }
       thead th:first-child { text-align: left; }
@@ -177,7 +179,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -195,7 +197,7 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <h2 class="sec" id="semaforo">Semáforo Fiscal <span class="contagem" id="semaforo-quando"></span></h2>
       <p class="sec-sub">
         Cada mostrador compara um compromisso do município com a receita que ele tem para
@@ -262,7 +264,7 @@
         <span class="contagem" id="tab-contagem">—</span>
         <button class="btn" id="btn-csv" type="button">Exportar CSV</button>
       </div>
-      <div class="tabela-wrap">
+      <div class="tabela-wrap" tabindex="0" role="region" aria-label="Tabela quadrimestral (role na horizontal para ver todas as colunas)">
         <table>
           <thead>
             <tr>
@@ -308,7 +310,7 @@
         o documento oficial está no <a href="https://siconfi.tesouro.gov.br" rel="noopener">SICONFI</a>.
         Valores correntes, sem correção pela inflação. <span id="atualizado"></span>
       </p>
-    </div>
+    </main>
 
     <script src="./endividamento-app.js?v=7"></script>
   </body>

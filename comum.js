@@ -72,11 +72,13 @@ window.Comum = (() => {
     const nav = document.createElement("nav");
     nav.className = "topnav";
     nav.setAttribute("aria-label", "Painéis do site");
-    nav.innerHTML = '<div class="topnav-in">' + PAGINAS.map(([arq, nome, extra]) => {
+    // os links rolam numa faixa própria; busca e tema ficam fixos à direita
+    // (antes rolavam junto e saíam cortados no desktop de 1280–1440px)
+    nav.innerHTML = '<div class="topnav-in"><div class="topnav-links">' + PAGINAS.map(([arq, nome, extra]) => {
       const cls = [extra, arq === atual ? "atual" : ""].filter(Boolean).join(" ");
       const attrs = (cls ? ` class="${cls}"` : "") + (arq === atual ? ' aria-current="page"' : "");
       return `<a href="./${arq}"${attrs}>${escapar(nome)}</a>`;
-    }).join("") +
+    }).join("") + "</div>" +
       '<button type="button" class="topnav-busca" aria-label="Buscar em todas as bases">' +
       'Buscar <kbd>Ctrl K</kbd></button>' +
       '<button type="button" class="topnav-tema" aria-label="Alternar tema claro/escuro">' +
@@ -84,6 +86,22 @@ window.Comum = (() => {
     document.body.prepend(nav);
     nav.querySelector(".topnav-busca").addEventListener("click", abrirPaleta);
     nav.querySelector(".topnav-tema").addEventListener("click", alternarTema);
+    // celular: com 10 itens a faixa rola na horizontal e o item da página atual
+    // ficava fora da tela — centraliza-o. Mexe só no scrollLeft da faixa (efeito
+    // de scrollIntoView({inline:"center"}) sem nenhum risco de rolar a página na
+    // vertical, p.ex. quando a URL traz âncora como #art-79). Se o item já está
+    // inteiro à vista (desktop), não mexe. Repete após as fontes carregarem, que
+    // mudam a largura dos itens.
+    const centralizarAtual = () => {
+      const faixa = nav.querySelector(".topnav-links"), ativo = faixa.querySelector("a.atual");
+      if (!ativo || faixa.scrollWidth <= faixa.clientWidth) return;
+      const a = ativo.getBoundingClientRect(), f = faixa.getBoundingClientRect();
+      // 26px = esmaecimento da máscara na borda direita (ver .topnav-links no comum.css)
+      if (a.left >= f.left && a.right <= f.right - 26) return;
+      faixa.scrollLeft += (a.left + a.width / 2) - (f.left + faixa.clientWidth / 2);
+    };
+    centralizarAtual();
+    if (document.fonts) document.fonts.ready.then(centralizarAtual);
   }
 
   // ── Tema claro/escuro ───────────────────────────────────────────────────────

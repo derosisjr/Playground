@@ -16,6 +16,8 @@
   --ink: #0c1626;
   --muted: #5d6675;
   --line: #e2dccd;
+  /* cor de link de conteúdo (o escuro troca; ver regra genérica abaixo) */
+  --link: #0a58ca;
   /* escala de raios — controles (sm), caixas/cartões (md), modais (lg) */
   --r-sm: 10px;
   --r-md: 14px;
@@ -34,12 +36,17 @@ html[data-tema="escuro"] {
   --muted: #93a0b3;
   --line: #22375c;
   --bg: #0a1422;
+  --link: #7ab3ff;
 }
 html[data-tema="escuro"] body { background: var(--bg, #0a1422); color: var(--ink); }
 html[data-tema="escuro"] tbody tr:hover { background: #14243d; }
 html[data-tema="escuro"] .tipo-badge,
 html[data-tema="escuro"] .sit-badge { background: #1d3050; color: #cdd6e3; }
-html[data-tema="escuro"] a.pdf, html[data-tema="escuro"] a.det { color: #7ab3ff; }
+html[data-tema="escuro"] a.pdf, html[data-tema="escuro"] a.det { color: var(--link); }
+/* links de conteúdo sem cor própria: no escuro o azul padrão do navegador
+   (#0000ee) dá 1,75:1. Especificidade zerada pelo :where() — qualquer regra
+   da página (topbar, .cta a, .nota a, a.btn…) continua vencendo. */
+:where(html[data-tema="escuro"]) a { color: var(--link); }
 html[data-tema="escuro"] .filtros input, html[data-tema="escuro"] .filtros select,
 html[data-tema="escuro"] .btn, html[data-tema="escuro"] .mais {
   background: var(--card); color: var(--ink); border-color: var(--line);
@@ -182,21 +189,30 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 }
 .topnav-in {
   max-width: 1180px; margin: 0 auto; padding: 0 20px;
-  display: flex; align-items: stretch; gap: 2px;
+  display: flex; align-items: stretch;
+}
+/* só os links rolam; busca e tema (irmãos da faixa) ficam sempre à vista.
+   Espaçamento compactado (padding 9px, tracking .12em, sem gap) para os 10
+   itens + busca + tema caberem nos 1140px úteis — antes pediam 1226px e o
+   "Ctrl K" e o tema saíam cortados em 1280/1366/1440. */
+.topnav-links {
+  display: flex; align-items: stretch; flex: 1 1 auto; min-width: 0;
   overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
-.topnav-in::-webkit-scrollbar { display: none; }
+.topnav-links::-webkit-scrollbar { display: none; }
 /* pista de que há mais itens na rolagem (a scrollbar fica oculta) */
-@media (max-width: 900px) {
-  .topnav-in {
+@media (max-width: 1180px) {
+  .topnav-links {
     mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
     -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 26px), transparent 100%);
   }
+  /* folga no fim da rolagem: o último item (Escuta Pública) sai do esmaecimento */
+  .topnav-links::after { content: ""; flex: 0 0 22px; }
 }
 .topnav a {
   color: #8794a6; text-decoration: none; white-space: nowrap;
-  font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
-  padding: 12px 12px 10px; border-bottom: 2px solid transparent;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  padding: 12px 9px 10px; border-bottom: 2px solid transparent;
   transition: color .2s ease;
 }
 .topnav a:hover { color: var(--gold-bright); }
@@ -226,6 +242,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   font-size: 26px; margin-top: 4px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stats .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* celular: os 4 cartões empilhados ocupavam ~420px (meia tela) antes da busca e
+   dos filtros — vira uma grade 2×2 compacta */
+@media (max-width: 600px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+  .stats .stat { padding: 10px 12px; }
+  .stats .stat .rotulo { font-size: 10px; letter-spacing: .05em; }
+  .stats .stat .valor { font-size: 19px; overflow-wrap: anywhere; }
+  .stats .stat .sub { font-size: 11px; }
+}
 
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
 .acoes { display: flex; gap: 8px; }
@@ -236,14 +261,21 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .btn:hover { border-color: var(--gold); }
 .btn:disabled { opacity: .5; cursor: default; }
 
+/* ── Alvo de toque dos links de documento (WCAG 2.2, 2.5.8: mínimo de 24px) ──
+   "PDF ↗ / Detalhes ↗ / Resposta ↗" nas tabelas mediam ~19px de altura.
+   Só `a.` — `div.det` é outra coisa (texto de alerta em Despesas/Favorecido). */
+a.pdf, a.det { display: inline-block; min-height: 24px; padding: 3px 0; }
+
 /* ── Busca universal (paleta ⌘K) ────────────────────────────────────────────── */
 .topnav-busca {
-  margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+  margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex: none;
   background: none; border: 0; cursor: pointer; white-space: nowrap;
   color: #8794a6; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-  font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
   padding: 12px 0 10px 12px;
 }
+/* no celular/tablet não há Ctrl K — o atalho só ocupava a faixa dos links */
+@media (max-width: 900px) { .topnav-busca kbd { display: none; } }
 .topnav-busca kbd {
   font: inherit; font-size: 9.5px; border: 1px solid rgba(201, 168, 76, 0.35);
   border-radius: 4px; padding: 2px 6px; color: var(--gold-bright);
@@ -251,7 +283,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .topnav-busca:hover { color: var(--gold-bright); }
 .topnav-busca:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 .topnav-tema {
-  background: none; border: 0; cursor: pointer; color: #8794a6;
+  flex: none; background: none; border: 0; cursor: pointer; color: #8794a6;
   font-size: 14px; padding: 10px 0 8px 14px; line-height: 1;
 }
 .topnav-tema:hover { color: var(--gold-bright); }

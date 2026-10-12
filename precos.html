@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -67,6 +67,9 @@
       .section-tag { font-family: "IBM Plex Mono", monospace; font-size: 11px;
         letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
         margin: 38px 0 14px; }
+      /* nas abas o rótulo é <h2> (os h3 dos cartões vinham direto após o h1):
+         anula o negrito que o navegador dá ao h2 para manter o visual do <p> */
+      h2.section-tag { font-weight: inherit; }
       .painel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
         padding: 20px 22px; }
       .painel + .painel { margin-top: 16px; }
@@ -227,7 +230,7 @@
         </div>
 
         <section class="aba ativo" id="aba-comparacoes">
-        <p class="section-tag">Comparações publicadas</p>
+        <h2 class="section-tag">Comparações publicadas</h2>
         <div class="consulta" id="consulta" hidden>
           <input type="search" id="q" placeholder="Buscar item…" aria-label="Buscar comparação" />
           <label for="f-tema">Tema</label>
@@ -247,7 +250,7 @@
         </section>
 
         <section class="aba" id="aba-itens">
-          <p class="section-tag">O que Santos comprou</p>
+          <h2 class="section-tag">O que Santos comprou</h2>
           <p class="intro-aba">
             Todos os itens que o setor público municipal de Santos contratou com
             <strong>preço homologado</strong> — Prefeitura, Câmara, CAPEP, IPS, fundações e
@@ -284,7 +287,7 @@
       <p class="rodape-fonte" id="rodape"></p>
     </main>
 
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script src="./precos-app.js?v=7"></script>
     <script>Comum.topbar("precos.html");</script>
   </body>

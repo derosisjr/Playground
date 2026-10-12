@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -96,7 +96,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script>Comum.topbar("legis.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -110,7 +110,7 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <div class="stats" id="stats">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -119,10 +119,10 @@
       </div>
 
       <div class="filtros">
-        <input id="q" type="search" placeholder="Buscar por palavra-chave, ementa ou número..." />
-        <select id="tipo"><option value="">Todos os tipos</option></select>
-        <select id="ano"><option value="">Todos os anos</option></select>
-        <select id="tema"><option value="">Todos os temas</option></select>
+        <input id="q" type="search" aria-label="Buscar normas por palavra-chave, ementa ou número" placeholder="Buscar por palavra-chave, ementa ou número..." />
+        <select id="tipo" aria-label="Filtrar por tipo de norma"><option value="">Todos os tipos</option></select>
+        <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
+        <select id="tema" aria-label="Filtrar por tema"><option value="">Todos os temas</option></select>
         <select id="sit" aria-label="Filtrar por situação (inferida)">
           <option value="">Todas as situações</option>
           <option value="revogada">Revogadas</option>
@@ -167,7 +167,7 @@
         "Altera dispositivos da…"). Revogação só no corpo do texto ou tácita ("revogadas as
         disposições em contrário") não é detectada — "sem revogação registrada" não significa vigente.
       </p>
-    </div>
+    </main>
 
     <script src="./legis-app.js?v=5"></script>
   </body>

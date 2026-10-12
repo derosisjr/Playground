@@ -23,15 +23,32 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
         --gold-bright: #e3c977;
         --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
         --juris: #1d6fb8; --juris-bg: #e8f1fa;
-        --doutr: #b8861d; --doutr-bg: #faf3e2;
+        /* #b8861d dava 2,9:1 sobre --doutr-bg e 3,2:1 sobre o card; este dá 5,7:1 e 6,3:1 */
+        --doutr: #7a5b00; --doutr-bg: #faf3e2;
       }
+      /* ── Modo escuro ──────────────────────────────────────────────────
+         Esta página pintava texto com var(--navy) (#07111f), que o tema escuro
+         não redefine: ~1,1:1 sobre o card escuro. Aqui o texto passa a --ink. */
+      html[data-tema="escuro"] {
+        --juris: #7ab3ff; --juris-bg: rgba(122, 179, 255, 0.14);
+        --doutr: var(--gold); --doutr-bg: rgba(201, 168, 76, 0.14);
+      }
+      html[data-tema="escuro"] #q,
+      html[data-tema="escuro"] .h-titulo,
+      html[data-tema="escuro"] .h-capitulo,
+      html[data-tema="escuro"] .art-num,
+      html[data-tema="escuro"] .bloco .rot { color: var(--ink); }
+      html[data-tema="escuro"] .bloco { color: #c3cdda; }
+      html[data-tema="escuro"] .dica kbd { background: var(--card); color: var(--ink); }
+      html[data-tema="escuro"] .notas-toggle { background: var(--paper-2); color: var(--ink); }
+      html[data-tema="escuro"] .notas-toggle:hover { background: #14243d; }
       body { margin: 0; background: var(--bg); color: var(--navy);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -115,7 +132,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script>Comum.topbar("regimento.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -130,10 +147,10 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <div class="barra-busca">
         <div class="busca-wrap">
-          <input id="q" type="search" placeholder="Ex.: 79, quórum, questão de ordem, urgência…" />
+          <input id="q" type="search" aria-label="Buscar no Regimento por número de artigo ou palavra-chave" placeholder="Ex.: 79, quórum, questão de ordem, urgência…" />
         </div>
         <div class="dica">
           <span><kbd>/</kbd> foca a busca</span>
@@ -157,7 +174,7 @@
         informativo; confira a publicação oficial antes de invocar em sessão. As notas de
         interpretação conforme são curadas pelo gabinete e não substituem parecer jurídico.
       </p>
-    </div>
+    </main>
 
     <script src="./regimento-app.js?v=3"></script>
   </body>

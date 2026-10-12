@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -302,7 +302,7 @@
       /* "Em resumo" — narrativa do export + deltas nos cards */
       .resumo-box { border-left: 3px solid var(--gold); }
       .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-        letter-spacing: .18em; text-transform: uppercase; color: var(--gold);
+        letter-spacing: .18em; text-transform: uppercase; color: var(--gold-texto); /* --gold dava 2,3:1 no claro */
         font-weight: 600; margin: 0 0 8px; }
       .resumo-texto { font-size: 15px; line-height: 1.65; margin: 0; max-width: 78ch; }
       .delta { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600;
@@ -321,7 +321,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -336,12 +336,18 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <div class="stats" id="stats">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
+      </div>
+
+      <!-- "Em resumo" acima das abas: vale para o painel todo, não só para a Visão geral -->
+      <div class="box resumo-box" id="em-resumo" hidden>
+        <p class="resumo-rotulo">Em resumo</p>
+        <p class="resumo-texto"></p>
       </div>
 
       <div class="tabs" role="tablist">
@@ -353,10 +359,7 @@
 
       <!-- ── Visão geral ── -->
       <section class="painel ativo" id="painel-geral">
-        <div class="box resumo-box" id="em-resumo" hidden>
-          <p class="resumo-rotulo">Em resumo</p>
-          <p class="resumo-texto"></p>
-        </div>
+        <h2 class="sr-only">Visão geral</h2>
         <div class="box">
           <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
           <canvas id="ch-mensal"></canvas>
@@ -544,6 +547,7 @@
 
       <!-- ── Alertas ── -->
       <section class="painel" id="painel-alertas">
+        <h2 class="sr-only">Alertas fiscais</h2>
         <p class="hero-sub" style="color:var(--muted);margin:0 0 14px">
           Sinais automáticos por regras, separados em três classes: <strong>contexto</strong>
           (escala e recorrência — informação, não achado), <strong>anomalia a conferir</strong>
@@ -574,6 +578,7 @@
 
       <!-- ── Favorecidos ── -->
       <section class="painel" id="painel-favorecidos">
+        <h2 class="sr-only">Favorecidos</h2>
         <div class="periodo-acoes" id="fav-modos" style="margin-bottom:12px" role="group" aria-label="Tipo de favorecido">
           <button class="btn primario" data-modo="todos" type="button" aria-pressed="true">Todos</button>
           <button class="btn" data-modo="privados" type="button" aria-pressed="false"
@@ -610,6 +615,7 @@
 
       <!-- ── Detalhamento (íntegra pesquisável) ── -->
       <section class="painel" id="painel-detalhe">
+        <h2 class="sr-only">Detalhamento</h2>
         <div class="box">
           <h3>Escolha a visão e o período</h3>
           <div class="periodo-acoes" id="det-visao" role="group" aria-label="Visão do detalhamento">
@@ -726,7 +732,7 @@
         (pesquisável, exportável em CSV e com link para o JSON de cada mês). <span id="atualizado"></span>
         <span id="cobertura"></span>
       </p>
-    </div>
+    </main>
 
     <!-- ── Ficha do favorecido (modal) ── -->
     <div class="modal-overlay" id="fav-modal" hidden>

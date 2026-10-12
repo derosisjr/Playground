@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./comum.css?v=7" />
+    <link rel="stylesheet" href="./comum.css?v=8" />
     <style>
       :root { --red: #e07b39; }
       /* página sempre-escura (cores próprias): o toggle de tema não teria efeito aqui */
@@ -57,7 +57,8 @@
       .gigante { font-family: "IBM Plex Mono", monospace; font-weight: 600;
         font-size: clamp(46px, 9vw, 110px); line-height: 1; letter-spacing: -0.02em;
         display: block; margin-top: 26px; font-variant-numeric: tabular-nums; }
-      .nota-fonte { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #6b7789;
+      /* #6b7789 dava 4,07:1 no escuro; #93a0b3 (o --muted do tema escuro) dá ~5,8:1 até no topo do gradiente */
+      .nota-fonte { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #93a0b3;
         margin-top: 14px; letter-spacing: .04em; }
 
       /* revelação por scroll */
@@ -115,9 +116,10 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=15"></script>
+    <script src="./comum.js?v=16"></script>
     <script>Comum.topbar("despesas.html");</script>
 
+    <main>
     <div class="seletor-ano">
       <label class="sr-only" for="ano" style="position:absolute;left:-9999px">Ano</label>
       <select id="ano" aria-label="Escolher o ano da retrospectiva"></select>
@@ -184,6 +186,7 @@
         <a href="./index.html">Todas as bases</a>
       </div>
     </section>
+    </main>
 
     <script src="./retrospectiva-app.js?v=8"></script>
   </body>
