@@ -4,7 +4,8 @@ on:
   # Cron DESATIVADO em 2026-10-02: o briefing migrou para a rotina /schedule com IA
   # (cota Max, sem API key — ver ordem-do-dia/references/rotina-schedule.md). Este
   # workflow fica só como socorro manual; exige ANTHROPIC_API_KEY e o perfil político,
-  # que é gitignored — sem ele o index.py falha (era a causa das falhas desde 17/08).
+  # que é gitignored — no CI vem do secret PERFIL_POLITICO (sem ele o index.py para
+  # com mensagem clara; antes era FileNotFoundError, causa das falhas desde 17/08).
   workflow_dispatch:
     inputs:
       sessao_id:
@@ -51,6 +52,7 @@ jobs:
       - name: Gerar briefing e enviar por e-mail
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PERFIL_POLITICO: ${{ secrets.PERFIL_POLITICO }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_TO: ${{ secrets.GMAIL_TO }}
