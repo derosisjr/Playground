@@ -70,6 +70,7 @@ import html
 import json
 import math
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -307,6 +308,37 @@ def validar_resposta(fonte: str, ano: int, mes: int, dados) -> list[str]:
     return problemas
 
 
+# A origem muda a largura dos códigos sem aviso: desde 2026-09-30 os números de
+# empenho/liquidação/pagamento vêm com 8 dígitos ("00000504/2026" em vez de
+# "0000504/2026") e, desde 2026-08, o grupo de despesa com 11 ("33000000000 - …"
+# em vez de "330000000000 - …"). Sem normalizar, o casamento pagamento→empenho por
+# texto exato quebrava (72% de "empenho não localizado" em out/2026) e a mesma
+# categoria aparecia duas vezes. A forma canônica é a histórica.
+CAMPOS_NUMERO_DOC = ("empenho", "liquidacao", "pagamento")
+LARGURA_NUMERO_DOC = 7
+LARGURA_GRUPO = 12
+_RE_NUMERO_DOC = re.compile(r"^\s*(\d+)\s*/\s*(\d{4})\s*$")
+_RE_GRUPO = re.compile(r"^(\d{11})(\s*-.*)$", re.S)
+
+
+def numero_documento(valor):
+    """'00000504/2026' → '0000504/2026' (largura histórica). Outros formatos passam."""
+    if not isinstance(valor, str):
+        return valor
+    m = _RE_NUMERO_DOC.match(valor)
+    if not m:
+        return valor
+    return f"{int(m.group(1)):0{LARGURA_NUMERO_DOC}d}/{m.group(2)}"
+
+
+def codigo_grupo(valor):
+    """'33000000000 - X' → '330000000000 - X' (largura histórica). Outros passam."""
+    if not isinstance(valor, str):
+        return valor
+    m = _RE_GRUPO.match(valor)
+    return f"{m.group(1).ljust(LARGURA_GRUPO, '0')}{m.group(2)}" if m else valor
+
+
 def normalizar(fonte: str, ano: int, mes: int, dados: list) -> tuple[list[dict], int]:
     """Converte o array da origem em linhas do banco (sem a entidade-demonstração).
     Devolve (itens, descartados_demo)."""
@@ -321,6 +353,10 @@ def normalizar(fonte: str, ano: int, mes: int, dados: list) -> tuple[list[dict],
         except (TypeError, ValueError):
             valor = 0.0
         item = {c: d.get(c) for c in cols}
+        for c in CAMPOS_NUMERO_DOC:
+            if c in item:
+                item[c] = numero_documento(item[c])
+        item["grupo_despesa"] = codigo_grupo(item.get("grupo_despesa"))
         item["ano"] = int(ano)
         item["mes"] = int(mes)
         item["data"] = _data_iso(d.get("data"))
