@@ -16,6 +16,8 @@
   --ink: #0c1626;
   --muted: #5d6675;
   --line: #e2dccd;
+  /* cor de link de conteúdo (o escuro troca; ver regra genérica abaixo) */
+  --link: #0a58ca;
   /* escala de raios — controles (sm), caixas/cartões (md), modais (lg) */
   --r-sm: 10px;
   --r-md: 14px;
@@ -34,12 +36,17 @@ html[data-tema="escuro"] {
   --muted: #93a0b3;
   --line: #22375c;
   --bg: #0a1422;
+  --link: #7ab3ff;
 }
 html[data-tema="escuro"] body { background: var(--bg, #0a1422); color: var(--ink); }
 html[data-tema="escuro"] tbody tr:hover { background: #14243d; }
 html[data-tema="escuro"] .tipo-badge,
 html[data-tema="escuro"] .sit-badge { background: #1d3050; color: #cdd6e3; }
-html[data-tema="escuro"] a.pdf, html[data-tema="escuro"] a.det { color: #7ab3ff; }
+html[data-tema="escuro"] a.pdf, html[data-tema="escuro"] a.det { color: var(--link); }
+/* links de conteúdo sem cor própria: no escuro o azul padrão do navegador
+   (#0000ee) dá 1,75:1. Especificidade zerada pelo :where() — qualquer regra
+   da página (topbar, .cta a, .nota a, a.btn…) continua vencendo. */
+:where(html[data-tema="escuro"]) a { color: var(--link); }
 html[data-tema="escuro"] .filtros input, html[data-tema="escuro"] .filtros select,
 html[data-tema="escuro"] .btn, html[data-tema="escuro"] .mais {
   background: var(--card); color: var(--ink); border-color: var(--line);
