@@ -673,3 +673,35 @@ def test_servico_divida_recorte_do_indice(tmp_path, monkeypatch):
     assert gravado["dados_ate"] == "2026-09-30"
     # carimbo novo sem dado novo não regrava (não vira diff diário)
     assert export.exportar_servico_divida(dict(indice, atualizado_em="2026-10-02T00:00:00")) is False
+
+def test_reajuste_pf_acima_do_ipca():
+    mensal = {(2025, m): 10_000 for m in range(1, 7)}
+    mensal.update({(2025, m): 12_000 for m in range(7, 13)})
+    ipca = {"2025-02": 100.0, "2025-11": 104.0}
+    r = export.reajuste_pf(mensal, (2025, 1), (2025, 12), ipca)
+    assert round(r["reajuste"], 4) == 0.2
+    assert round(r["ipca"], 4) == 0.04
+    assert round(r["excesso"], 4) == 0.16
+    assert r["recente"] is False
+
+
+def test_reajuste_pf_serie_curta_e_inicio_recente():
+    r = export.reajuste_pf({(2025, 9): 5_000, (2025, 10): 5_000}, (2025, 1), (2025, 12), {})
+    assert r["reajuste"] is None and r["excesso"] is None
+    assert r["recente"] is True and r["desde"] == (2025, 9)
+
+
+def test_reajuste_pf_ignora_mes_corrente_parcial():
+    mensal = {(2025, m): 1_000 for m in range(1, 7)}
+    mensal[(2025, 7)] = 9_000          # mês parcial/atípico após o último completo
+    r = export.reajuste_pf(mensal, (2025, 1), (2025, 6), {"2025-02": 1, "2025-05": 1})
+    assert r["reajuste"] == 0
+
+
+def test_prioridade_pf_ordena_excesso_depois_recente_depois_valor():
+    acima = {"excesso": 0.10, "recente": False}
+    recente = {"excesso": 0.0, "recente": True}
+    comum = {"excesso": None, "recente": False}
+    ordem = sorted([("comum", comum, 9e6), ("recente", recente, 1e5), ("acima", acima, 2e5)],
+                   key=lambda t: export._prioridade_pf(t[1], t[2]))
+    assert [t[0] for t in ordem] == ["acima", "recente", "comum"]

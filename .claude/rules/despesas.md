@@ -26,7 +26,7 @@ na classificação das linhas (abaixo).
 **A API devolve misturada a entidade-demo da plataforma Portal TP** ("PREFEITURA MUNICIPAL
 DEMONSTRAÇÃO", dados de um município de Rondônia — R$ 696 mi em 2025 detectados no levantamento de
 2026-07): o crawler descarta na coleta (`UG_EXCLUIR="DEMONSTRA"`) e **expurga do cache** a cada
-execução (`expurgar_demo()` em `abrir_db`). **A API NÃO expõe unidade orçamentária (secretaria)**; o
+execução (`expurgar_demo()` em `abrir_db`). **A origem muda a largura dos códigos sem aviso**: desde 2026-09-30 os nºs de empenho/liquidação/pagamento vêm com 8 dígitos e, desde 2026-08, o `grupo_despesa` com 11 — `normalizar()` devolve tudo à largura histórica (`numero_documento`, `codigo_grupo`), senão o casamento `UG|nº` por texto exato quebra (72% de "não localizado" em out/2026). `verificar.py` falha se um mês passar de 25% do pago sem empenho localizado. **A API NÃO expõe unidade orçamentária (secretaria)**; o
 único campo de unidade é `unidade_gestora` (a entidade: Prefeitura, CAPEP, IPS, fundações). O recorte
 por órgão usa **`funcao`** como proxy de área/secretaria.
 
@@ -172,7 +172,7 @@ inconsistências) — a MESMA conta no badge da aba, no hub (`index.html`), no "
 **`alertas_regras`** no índice (`{tipo: {candidatos, publicados}}` — em 2026-09: fracionamento 378,
 favorecido_recorrente 105, extra 57, pf_sensivel 42) e o painel escreve "os N maiores de M casos".
 **`pf_sensivel` é severidade média** (era alta; aluguel mensal de imóvel de PF é o caso típico —
-decisão do usuário: os nomes continuam públicos). **Links por identidade**: alertas de favorecido
+decisão do usuário: os nomes continuam públicos). Dentro da regra, os 15 publicados são escolhidos por **prioridade** (`_prioridade_pf`): valor mensal típico (mediana de 3 meses nas pontas da série) com reajuste ≥ 5 p.p. acima do IPCA do intervalo (`precos/ipca.json`), depois pagamentos iniciados dentro da base, depois valor; o índice leva `reajuste`/`reajuste_ipca` e o detalhe diz "reajuste acima da inflação ou imóvel novo". **Links por identidade**: alertas de favorecido
 levam `dfav=<chave>` (filtro do Detalhamento por `Comum.identidadeFavorecido`, pega todas as
 grafias do CNPJ — `dq=<nome>` perdia "IPREV - INST. PREV…") e `dm` só com os meses em que o
 recorte tem pagamento (`meses_pag`); fracionamento usa os meses de emissão dos empenhos. Na aba:

@@ -75,6 +75,7 @@ Consequências a respeitar ao mexer neles:
   (ver `.claude/rules/proposituras.md`). Corrigido em despesas, endividamento, indicadores,
   proposituras e respostas-executivo em 2026-08; legis ganhou guarda de volume (≥ 3.000) e o
   crawler passou a sair 1 quando toda chamada falha, em 2026-09.
+- **Falha vira issue.** `alerta-falhas.yml` (diário, 21:30 UTC) abre ou comenta uma issue `[falha] <workflow>` para cada workflow que falhou nas últimas 25 h (`.github/scripts/alerta_falhas.py`, `--dry-run` local). Feche a issue depois de corrigir; enquanto aberta, falhas novas entram como comentário. Antes disso nada avisava: o Briefing ficou 16 execuções vermelho (ago–out/2026).
 - **Falha parcial não pode ficar verde.** O crawler de despesas (2026-09) sai **2** quando
   alguma partição (estágio × mês) não foi atualizada (resposta inválida/suspeita) e 1 quando
   nada funcionou; o `despesas.yml` publica o que ficou íntegro, escreve a lista no

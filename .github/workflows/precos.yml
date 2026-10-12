@@ -68,8 +68,10 @@ jobs:
 
       # O cache é só aceleração. A fonte da verdade é precos/espelho/*.jsonl.gz,
       # versionado — cache do Actions expira em 7 dias e o backfill custa horas.
+      # restore/save separados: o post-step do `actions/cache` só salva com o job
+      # verde, e a coleta cortada pelo tempo (11/10/2026) jogava fora o sqlite.
       - name: Restaurar base SQLite (cache)
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: precos/precos.sqlite
           key: precos-db-${{ github.run_id }}
@@ -121,6 +123,7 @@ jobs:
         run: python precos/export.py
 
       - name: Commitar (se houver e for íntegro)
+        id: integro
         if: always()
         run: |
           OK=$(python - <<'PY'
@@ -175,9 +178,19 @@ jobs:
             exit 1
           fi
 
+      # Sem `always()` este passo era pulado quando a coleta estourava o tempo,
+      # e o progresso parcial que a checagem acima aprovou se perdia (11/10/2026).
       - name: Commitar e publicar
+        if: always() && steps.integro.outcome == 'success'
         uses: ./.github/actions/commitar
         with:
           caminhos: precos-index.json precos/dados precos/espelho precos/ipca.json
           mensagem: "chore: atualiza Preço comparado"
           sem-mudancas: "Sem mudancas nos precos."
+
+      - name: Salvar base SQLite (cache)
+        if: always() && steps.integro.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: precos/precos.sqlite
+          key: precos-db-${{ github.run_id }}

@@ -51,6 +51,7 @@ def _ano_do_numero(numero: str) -> int | str:
 
 
 _EPOCH_SHEETS = datetime(1899, 12, 30)  # serial 0 do Sheets/Excel
+_SERIAL_MAX = 73051  # 01/01/2100: acima disso não é data real da planilha
 
 
 def _data(valor) -> str:
@@ -60,7 +61,18 @@ def _data(valor) -> str:
     if isinstance(valor, bool):
         return ""
     if isinstance(valor, (int, float)):
-        return (_EPOCH_SHEETS + timedelta(days=int(valor))).strftime("%d/%m/%Y")
+        if 0 < valor < _SERIAL_MAX:
+            return (_EPOCH_SHEETS + timedelta(days=int(valor))).strftime("%d/%m/%Y")
+        # Data digitada sem barras (ex.: 13082026) vira número gigante na planilha;
+        # recupera ddmmaaaa se for válida, senão avisa e segue sem a data.
+        txt = str(int(valor)) if valor == int(valor) else ""
+        if len(txt) in (7, 8):
+            try:
+                return datetime.strptime(txt.zfill(8), "%d%m%Y").strftime("%d/%m/%Y")
+            except ValueError:
+                pass
+        print(f"Aviso: data inválida na planilha: {valor!r}", file=sys.stderr)
+        return ""
     return str(valor).strip()
 
 
