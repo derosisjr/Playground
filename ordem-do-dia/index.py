@@ -51,7 +51,17 @@ def carregar_system_prompt() -> str:
             return f.read().strip()
 
     base = _ler(os.path.join(AQUI, "references", "briefing-system-prompt.md"))
-    perfil = _ler(os.path.join(RAIZ, ".claude", "rules", "perfil-politico.md"))
+    # O perfil é gitignored (repo público): no CI vem do secret PERFIL_POLITICO; local,
+    # do arquivo. Sem nenhum dos dois o disparo manual quebrava com FileNotFoundError
+    # (16 falhas, ago–out/2026) — agora explica o que falta.
+    perfil = os.environ.get("PERFIL_POLITICO", "").strip()
+    if not perfil:
+        arq = os.path.join(RAIZ, ".claude", "rules", "perfil-politico.md")
+        if not os.path.exists(arq):
+            raise EnvironmentError(
+                "Perfil político ausente: defina o secret PERFIL_POLITICO (conteúdo de "
+                ".claude/rules/perfil-politico.md) ou rode localmente com o arquivo.")
+        perfil = _ler(arq)
     composicao = _ler(os.path.join(AQUI, "references", "composicao-camara.md"))
     return (base
             .replace("[[PERFIL_DO_VEREADOR]]", perfil)
