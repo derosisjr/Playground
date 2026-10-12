@@ -107,6 +107,12 @@ jobs:
           # coletados há mais tempo primeiro; teto de 300 (~31 páginas de listagem +
           # 1 detalhes.php por item, poucos minutos) — o resto entra na execução seguinte.
           python proposituras/crawler.py --ano "$((ANO - 1))" --pendentes --limite 300
+          # Quatro anos antes disso (hoje a legislatura 2021–2024): 65–133 projetos por
+          # ano fora da situação final em out/2026. Teto menor — mexem pouco — e a
+          # rotação por "coletado há mais tempo" cobre todos em poucas execuções.
+          for A in $(seq "$((ANO - 5))" "$((ANO - 2))"); do
+            python proposituras/crawler.py --ano "$A" --pendentes --limite 100
+          done
           python proposituras/export.py
 
       # Guarda anti-truncamento: se o cache foi perdido, a base teria só o ano

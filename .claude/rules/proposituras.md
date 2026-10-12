@@ -18,7 +18,7 @@ varre `filtro.php` (form `pesquisa_autor`, `tipo=4`) por ano, coletando **metada
 situação/palavra-chave. Páginas em **ISO-8859-1** (`from_encoding="iso-8859-1"`). PK = `cod`.
 Carga inicial completa roda local; `.github/workflows/proposituras.yml` reprocessa o ano corrente
 semanalmente (`--forcar`) para manter situação/tramitação atualizadas e, desde 2026-10, revisita o
-**ano anterior** com `--pendentes --limite 300`: relista o ano e recoleta só os projetos que, no
+**ano anterior** com `--pendentes --limite 300` (e os quatro anos antes dele com `--limite 100` cada): relista o ano e recoleta só os projetos que, no
 banco, não estão em **situação final** (`situacao_final()`: `local_atual` na "Divisão de Arquivo
 Público" ou situação "Transformado" — o campo `situacao` é "Encaminhado" em 98% dos itens e não
 serve; local vazio conta como pendente), os coletados há mais tempo primeiro. Antes, o laço normal
