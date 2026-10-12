@@ -8,9 +8,11 @@ CREATE TABLE IF NOT EXISTS normas (
     ano         INTEGER,
     data_norma  TEXT,                  -- DD/MM/AAAA (best-effort)
     titulo      TEXT,                  -- texto do título (h1) após o "»"
-    ementa      TEXT,                  -- descrição longa, quando houver
+    ementa      TEXT,                  -- descrição longa, quando houver (badges do Legis)
+    descricao   TEXT,                  -- ementa oficial (<p class="descricao">) — base da situação
     tags        TEXT,                  -- temas curtos, separados por "; " (denormalizado)
-    situacao    TEXT,                  -- vazio na fase 1 (vigente/revogada vem depois)
+    situacao    TEXT,                  -- INFERIDA: revogada | revogada parcialmente | alterada | '' (sem registro)
+    revogada_por INTEGER,              -- id da norma revogadora (total ou parcial) mais recente
     url_legis   TEXT,                  -- /legis/documents/{id}
     url_pdf     TEXT,                  -- /legis/documents/{id}/download
     fonte       TEXT,                  -- "Legis Prefeitura de Santos"

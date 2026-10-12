@@ -13,6 +13,10 @@ on:
         description: "Reprocessar normas já no banco (true)"
         required: false
         default: "false"
+      revisitar:
+        description: "Normas já gravadas a revisitar (mais antigas primeiro; ~0,4 s cada)"
+        required: false
+        default: "1000"
 
 permissions:
   contents: write
@@ -47,17 +51,28 @@ jobs:
       - name: Instalar dependencias
         run: uv pip install --system -r legis/requirements.txt
 
-      - name: Crawl incremental + export
+      # Testes ANTES do crawl (padrão de precos.yml): parser de revogação quebrado
+      # gravaria situação errada no índice público.
+      - name: Testes
+        run: python -m pytest legis/tests -q
+
+      # Revisita: além das novas do ano, reprocessa as N normas verificadas há mais
+      # tempo (ementa oficial + mudanças no Legis). 1000 × ~0,4 s ≈ 7 min — cabe
+      # folgado nos 30 min; a base inteira (~3,9 mil) gira em ~4 semanas.
+      - name: Crawl incremental + revisita + export
         env:
           # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
           ANO_INPUT: ${{ github.event.inputs.ano }}
           FORCAR_INPUT: ${{ github.event.inputs.forcar }}
+          REVISITAR_INPUT: ${{ github.event.inputs.revisitar }}
         run: |
           ANO="$ANO_INPUT"
           [ -z "$ANO" ] && ANO="$(date +%Y)"
           FORCAR=""
           [ "$FORCAR_INPUT" = "true" ] && FORCAR="--forcar"
-          python legis/crawler.py --ano "$ANO" $FORCAR
+          REVISITAR="${REVISITAR_INPUT:-1000}"
+          case "$REVISITAR" in ''|*[!0-9]*) REVISITAR=1000 ;; esac
+          python legis/crawler.py --ano "$ANO" $FORCAR --revisitar "$REVISITAR"
           python legis/export.py
 
       # Guarda anti-truncamento (padrão de proposituras.yml). Era o único

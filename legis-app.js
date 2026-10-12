@@ -4,6 +4,7 @@
 let NORMAS = [];
 let filtradas = [];
 let pag = null;  // Comum.paginador — montado no init
+let POR_ID = new Map();  // id → norma (para achar a revogadora)
 
 const el = (id) => document.getElementById(id);
 // utilitários da camada comum (eram cópias locais idênticas em cada painel)
@@ -30,9 +31,11 @@ function aplicarFiltros() {
   const tipo = el("tipo").value;
   const ano = el("ano").value;
   const tema = norm(el("tema").value);
+  const sit = el("sit").value;
 
   filtradas = NORMAS.filter((n) => {
     if (tipo && n.tipo !== tipo) return false;
+    if (sit && (n.situacao || "nenhuma") !== sit) return false;
     if (ano && String(n.ano) !== ano) return false;
     if (tema && !n._tags.includes(tema)) return false;
     if (termos.length && !termos.every((t) => n._busca.includes(t))) return false;
@@ -44,7 +47,7 @@ function aplicarFiltros() {
   atualizarResumo();
   el("csv").disabled = filtradas.length === 0;
   Comum.gravarParams({
-    q: el("q").value.trim(), tipo, ano, tema: el("tema").value,
+    q: el("q").value.trim(), tipo, ano, tema: el("tema").value, sit,
   });
 }
 
@@ -72,12 +75,36 @@ function atualizarResumo() {
 // Exporta o resultado filtrado (mesmas colunas da tabela)
 function exportarCSV() {
   if (!filtradas.length) return;
-  const campos = ["tipo", "numero", "ano", "data_norma", "ementa", "tags", "url_pdf"];
+  const campos = ["tipo", "numero", "ano", "data_norma", "ementa", "tags", "situacao", "url_pdf"];
   Comum.exportarCsv(
     `legislacao-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
     campos,
     filtradas.map((n) => campos.map((c) => n[c]))
   );
+}
+
+// "Lei nº 3.386/2017" — rótulo curto da norma revogadora
+function rotuloNorma(n) {
+  const curto = { "Lei ordinária": "Lei", "Lei complementar": "LC" }[n.tipo] || n.tipo;
+  return `${curto} nº ${n.numero}${n.ano ? "/" + n.ano : ""}`;
+}
+
+// Selo de situação. Tudo aqui é INFERIDO da ementa da norma posterior — o Legis
+// não publica a situação — e o texto diz isso.
+const SELOS = {
+  "revogada": ["sit-rev", "Revogada"],
+  "revogada parcialmente": ["sit-parc", "Revogada em parte"],
+  "alterada": ["sit-alt", "Alterada"],
+};
+function seloHTML(n) {
+  const s = SELOS[n.situacao];
+  if (!s) return "";
+  const r = n.revogada_por && POR_ID.get(n.revogada_por);
+  const por = r
+    ? ` por <a href="${escapar(r.url_legis)}" target="_blank" rel="noopener">${escapar(rotuloNorma(r))} ↗</a>`
+    : "";
+  return `<div class="sit-linha"><span class="sit ${s[0]}">${s[1]}</span>` +
+    `<span class="sit-por">${por} <span class="sit-inf">(inferido da ementa da norma posterior)</span></span></div>`;
 }
 
 function linhaHTML(n) {
@@ -90,7 +117,7 @@ function linhaHTML(n) {
     <td data-label="Número" class="num">${escapar(n.numero)}</td>
     <td data-label="Ano">${escapar(n.ano)}</td>
     <td data-label="Data">${escapar(n.data_norma)}</td>
-    <td data-label="Ementa">${escapar(desc)}${temas}</td>
+    <td data-label="Ementa">${seloHTML(n)}${escapar(desc)}${temas}</td>
     <td data-label="Temas" class="tags">${escapar(n.tags)}</td>
     <td data-label="Documento"><a class="pdf" href="${escapar(n.url_pdf)}" target="_blank" rel="noopener">PDF ↗</a></td>
   </tr>`;
@@ -112,15 +139,16 @@ async function init() {
     n._busca = norm([n.numero, n.ano, n.titulo, n.ementa, n.tags, n.tipo].join(" "));
     n._tags = norm(n.tags);
   }
+  POR_ID = new Map(NORMAS.map((n) => [n.id, n]));
   preencherSelects();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
   const p = Comum.lerParams();
-  for (const id of ["q", "tipo", "ano", "tema"]) {
+  for (const id of ["q", "tipo", "ano", "tema", "sit"]) {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
-  ["tipo", "ano", "tema"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
+  ["tipo", "ano", "tema", "sit"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   pag = Comum.paginador({
     corpo: "corpo", mais: "mais", contagem: "contagem", linha: linhaHTML,
     rotulo: (lista, mostrando) =>
@@ -128,7 +156,7 @@ async function init() {
   });
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", () => {
-    for (const id of ["q", "tipo", "ano", "tema"]) el(id).value = "";
+    for (const id of ["q", "tipo", "ano", "tema", "sit"]) el(id).value = "";
     aplicarFiltros();
   });
   aplicarFiltros();

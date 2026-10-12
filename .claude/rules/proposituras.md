@@ -17,7 +17,15 @@ varre `filtro.php` (form `pesquisa_autor`, `tipo=4`) por ano, coletando **metada
 `proposituras.html`+`proposituras-app.js` é o painel (vanilla/CDN) com filtros subtipo/ano/autor/
 situação/palavra-chave. Páginas em **ISO-8859-1** (`from_encoding="iso-8859-1"`). PK = `cod`.
 Carga inicial completa roda local; `.github/workflows/proposituras.yml` reprocessa o ano corrente
-semanalmente (`--forcar`) para manter situação/tramitação atualizadas. **Só `proposituras-index.json`
+semanalmente (`--forcar`) para manter situação/tramitação atualizadas e, desde 2026-10, revisita o
+**ano anterior** com `--pendentes --limite 300` (e os quatro anos antes dele com `--limite 100` cada): relista o ano e recoleta só os projetos que, no
+banco, não estão em **situação final** (`situacao_final()`: `local_atual` na "Divisão de Arquivo
+Público" ou situação "Transformado" — o campo `situacao` é "Encaminhado" em 98% dos itens e não
+serve; local vazio conta como pendente), os coletados há mais tempo primeiro. Antes, o laço normal
+pulava quem já estava no banco e 374 projetos de 2025 fora do arquivo (154 "Aguardando
+Pautação") ficavam congelados na última passada do ano. Anos anteriores a esse continuam sem
+revisita (em 2024 eram ~100 fora do arquivo). Testes em `proposituras/tests` (no `testes.yml`).
+**Só `proposituras-index.json`
 e o código são versionados**; `.sqlite` (~68M, pesado por causa da tramitação), `.xlsx` e `.csv`
 ficam no `.gitignore` — o `.sqlite` persiste entre execuções do workflow via cache do Actions
 (há guarda anti-truncamento no commit). Outros tipos (Indicação, Moção, Ofício, Requerimento) e o
@@ -54,6 +62,9 @@ Ao mexer em qualquer workflow com `.sqlite` em cache, verificar as duas propried
 ```bash
 # Proposituras — amostra sem gravar
 python proposituras/crawler.py --ano 2026 --limite 5 --dry-run
+
+# Proposituras — revisita do ano anterior (só fora de situação final), amostra sem gravar
+python proposituras/crawler.py --ano 2025 --pendentes --limite 3 --dry-run
 
 # Proposituras — carga de um ano (com tramitação)
 python proposituras/crawler.py --ano 2026

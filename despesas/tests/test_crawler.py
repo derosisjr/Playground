@@ -105,3 +105,32 @@ def test_data_iso():
     assert crawler._data_iso("2026-03-07T00:00:00") == "2026-03-07"
     assert crawler._data_iso(None) == ""
     assert crawler._data_iso("") == ""
+
+
+def test_numero_documento_volta_a_largura_historica():
+    # 2026-09-30: a origem passou a mandar 8 dígitos; o casamento é por texto exato.
+    assert crawler.numero_documento("00000504/2026") == "0000504/2026"
+    assert crawler.numero_documento("0000504/2026") == "0000504/2026"
+    assert crawler.numero_documento("12345678/2026") == "12345678/2026"
+    for v in ("", None, "s/n"):
+        assert crawler.numero_documento(v) == v
+
+
+def test_codigo_grupo_volta_a_largura_historica():
+    assert crawler.codigo_grupo("33000000000 - OUTRAS") == "330000000000 - OUTRAS"
+    assert crawler.codigo_grupo("330000000000 - OUTRAS") == "330000000000 - OUTRAS"
+    assert crawler.codigo_grupo("33 - OUTRAS") == "33 - OUTRAS"
+    assert crawler.codigo_grupo(None) is None
+
+
+def test_normalizar_formatos_novo_e_antigo_dao_o_mesmo_hash():
+    antigo = {**ITEM_API, "empenho": "0000504/2026", "liquidacao": "0025195/2026",
+              "pagamento": "0001234/2026", "grupo_despesa": "330000000000 - OUTRAS"}
+    novo = {**ITEM_API, "empenho": "00000504/2026", "liquidacao": "00025195/2026",
+            "pagamento": "00001234/2026", "grupo_despesa": "33000000000 - OUTRAS"}
+    (a,), _ = crawler.normalizar("pagamentos", 2026, 1, [antigo])
+    (b,), _ = crawler.normalizar("pagamentos", 2026, 1, [novo])
+    assert b["empenho"] == "0000504/2026"
+    assert b["liquidacao"] == "0025195/2026"
+    assert b["grupo_despesa"] == "330000000000 - OUTRAS"
+    assert a["hash"] == b["hash"]

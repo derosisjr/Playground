@@ -11,7 +11,7 @@ paths:
 Compartilhada por todas as páginas (sem build): tokens navy/gold, **topbar fixa** de navegação
 entre painéis (`Comum.topbar("<pagina>.html")`; o hub não a usa; inclui Indicadores e Escuta Pública),
 **busca universal Ctrl+K/"/"** (paleta sobre 8 fontes — regimento, proposituras, legislação,
-requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda; "art 79" abre o artigo direto; no Regimento o
+requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" abre o artigo direto; no Regimento o
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
 busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, `#alertas` etc. nas
@@ -30,7 +30,9 @@ raio fixo novo), `.sr-only` (`table.sr-only` vai para `left:-10000px`: tabela ig
 alvo deve ser um contêiner que o render de sucesso reconstrói), skeletons `.skel` (base clara no
 comum; cartões-skeleton estáticos nos `#stats` dos painéis), e **PWA** (`manifest.json` + `sw.js`:
 network-first p/ estáticos e p/ os dados de despesas (`despesas-index.json`, `despesas/**`, `favorecidos/**` — índice e meses do mesmo export), stale-while-revalidate p/ os demais `*.json` ignorando `?v=`; registrado no
-comum.js; bump de `CACHE` no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
+comum.js; desde a v4 (2026-10) são dois caches — estáticos, onde gravar um arquivo apaga as
+outras `?v=`/query do mesmo caminho, e dados `*.json`, com teto de 60 entradas descartando as
+mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
 `<link>`/`<script>` — incrementar ao alterar comum.css/js ou um app.js.
 
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco

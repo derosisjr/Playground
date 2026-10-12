@@ -979,7 +979,9 @@ function renderAlertas() {
   const tetoHtml = (tipo, n) => {
     const r = DADOS.alertas_regras?.[tipo];
     return r && r.candidatos > r.publicados
-      ? `<div class="teto">Mostrando os ${n} maiores de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra.</div>` : "";
+      ? `<div class="teto">Mostrando os ${n} ${tipo === "pf_sensivel"
+          ? "prioritários (reajuste acima do IPCA, depois início recente, depois valor)"
+          : "maiores"} de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra.</div>` : "";
   };
   const feitos = new Set();
   cont.innerHTML = vis.map(a => {
