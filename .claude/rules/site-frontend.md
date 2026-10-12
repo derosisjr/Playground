@@ -30,7 +30,9 @@ raio fixo novo), `.sr-only` (`table.sr-only` vai para `left:-10000px`: tabela ig
 alvo deve ser um contêiner que o render de sucesso reconstrói), skeletons `.skel` (base clara no
 comum; cartões-skeleton estáticos nos `#stats` dos painéis), e **PWA** (`manifest.json` + `sw.js`:
 network-first p/ estáticos e p/ os dados de despesas (`despesas-index.json`, `despesas/**`, `favorecidos/**` — índice e meses do mesmo export), stale-while-revalidate p/ os demais `*.json` ignorando `?v=`; registrado no
-comum.js; bump de `CACHE` no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
+comum.js; desde a v4 (2026-10) são dois caches — estáticos, onde gravar um arquivo apaga as
+outras `?v=`/query do mesmo caminho, e dados `*.json`, com teto de 60 entradas descartando as
+mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
 `<link>`/`<script>` — incrementar ao alterar comum.css/js ou um app.js.
 
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
