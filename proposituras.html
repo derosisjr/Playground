@@ -128,7 +128,7 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <div class="stats" id="stats">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -138,11 +138,11 @@
       <div class="chips" id="chips"></div>
 
       <div class="filtros">
-        <input id="q" type="search" placeholder="Buscar por palavra-chave, ementa, número ou autor..." />
-        <select id="subtipo"><option value="">Todos os subtipos</option></select>
-        <select id="ano"><option value="">Todos os anos</option></select>
-        <select id="autor"><option value="">Todos os autores</option></select>
-        <select id="local"><option value="">Todos os locais</option></select>
+        <input id="q" type="search" aria-label="Buscar proposituras por palavra-chave, ementa, número ou autor" placeholder="Buscar por palavra-chave, ementa, número ou autor..." />
+        <select id="subtipo" aria-label="Filtrar por subtipo"><option value="">Todos os subtipos</option></select>
+        <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
+        <select id="autor" aria-label="Filtrar por autor"><option value="">Todos os autores</option></select>
+        <select id="local" aria-label="Filtrar por local de tramitação"><option value="">Todos os locais</option></select>
       </div>
 
       <div class="barra">
@@ -174,7 +174,7 @@
         <br />
         Cobertura desta fase: apenas proposituras do tipo <strong>Projeto</strong>.
       </p>
-    </div>
+    </main>
 
     <script src="./proposituras-app.js?v=7"></script>
   </body>

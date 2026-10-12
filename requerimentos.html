@@ -104,7 +104,7 @@
       </div>
     </header>
 
-    <div class="shell">
+    <main class="shell">
       <div class="stats" id="stats">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -113,9 +113,9 @@
       </div>
 
       <div class="filtros">
-        <input id="q" type="search" placeholder="Buscar por número, assunto ou palavra-chave..." />
-        <select id="ano"><option value="">Todos os anos</option></select>
-        <select id="status">
+        <input id="q" type="search" aria-label="Buscar requerimentos por número, assunto ou palavra-chave" placeholder="Buscar por número, assunto ou palavra-chave..." />
+        <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
+        <select id="status" aria-label="Filtrar por situação da resposta">
           <option value="">Todas as situações</option>
           <option value="sim">Só respondidos (mérito)</option>
           <option value="nao">Tudo sem resposta de mérito</option>
@@ -153,7 +153,7 @@
         e da resposta do prefeito — pode exigir login na conta do gabinete. Caráter
         informativo; a página canônica de cada item fica no sistema da Câmara.
       </p>
-    </div>
+    </main>
 
     <script src="./requerimentos-app.js?v=5"></script>
   </body>
