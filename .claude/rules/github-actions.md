@@ -44,7 +44,7 @@ verificação (`testes.yml`, `zizmor.yml`) e não commitam; os pushes de dados d
 `GITHUB_TOKEN`, que não dispara workflow — ninguém precisa de `[skip ci]`.
 
 **`testes.yml` (2026-10)** roda em PR e push no master que toquem código: as suítes em passos
-separados (`despesas/tests`+`comum/tests`, `precos/tests` e o `unittest` de
+separados (`despesas/tests`+`comum/tests`, `precos/tests`, `proposituras/tests` e o `unittest` de
 `respostas-executivo` — os módulos `crawler`/`export` colidem num mesmo pytest) e
 `.github/scripts/checar_versoes.py`, que falha se um `.js`/`.css` local carregado por HTML não
 tiver `?v=` ou se a mesma URL aparecer com versões diferentes entre páginas. Suíte nova entra

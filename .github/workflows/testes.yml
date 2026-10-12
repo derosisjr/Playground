@@ -12,6 +12,7 @@ on:
       - "comum/**"
       - "despesas/**"
       - "precos/**"
+      - "proposituras/**"
       - "respostas-executivo/**"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
@@ -24,6 +25,7 @@ on:
       - "comum/**"
       - "despesas/**"
       - "precos/**"
+      - "proposituras/**"
       - "respostas-executivo/**"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
@@ -64,12 +66,15 @@ jobs:
           cache-dependency-glob: |
             despesas/requirements.txt
             precos/requirements.txt
+            proposituras/requirements.txt
 
       # Os testes de respostas-executivo só usam a biblioteca padrão + comum/ —
       # as libs do Google do requirements.txt dele não são necessárias aqui.
       - name: Instalar dependencias
         id: deps
-        run: uv pip install --system -r despesas/requirements.txt -r precos/requirements.txt
+        run: >-
+          uv pip install --system -r despesas/requirements.txt -r precos/requirements.txt
+          -r proposituras/requirements.txt
 
       # Passos SEPARADOS de propósito: despesas/tests e precos/tests importam cada um
       # o seu `crawler`/`export` pelo sys.path e colidem num mesmo processo pytest.
@@ -81,6 +86,10 @@ jobs:
       - name: Testes — preços
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: python -m pytest precos/tests -q
+
+      - name: Testes — proposituras (revisita do ano anterior)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest proposituras/tests -q
 
       - name: Testes — respostas do Executivo (classificador)
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}

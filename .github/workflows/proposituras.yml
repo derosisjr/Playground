@@ -100,6 +100,13 @@ jobs:
           FORCAR="--forcar"
           [ "$FORCAR_INPUT" = "false" ] && FORCAR=""
           python proposituras/crawler.py --ano "$ANO" $FORCAR
+          # Ano anterior: o --forcar acima só cobre o ano corrente e o laço normal pula
+          # quem já está no banco — em out/2026, 374 projetos de 2025 fora do arquivo
+          # (154 "Aguardando Pautação") estavam congelados na última passada de 2025.
+          # Revisita só os que não estão em situação final (arquivo/transformado), os
+          # coletados há mais tempo primeiro; teto de 300 (~31 páginas de listagem +
+          # 1 detalhes.php por item, poucos minutos) — o resto entra na execução seguinte.
+          python proposituras/crawler.py --ano "$((ANO - 1))" --pendentes --limite 300
           python proposituras/export.py
 
       # Guarda anti-truncamento: se o cache foi perdido, a base teria só o ano
