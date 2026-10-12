@@ -11,7 +11,7 @@ paths:
 Compartilhada por todas as páginas (sem build): tokens navy/gold, **topbar fixa** de navegação
 entre painéis (`Comum.topbar("<pagina>.html")`; o hub não a usa; inclui Indicadores e Escuta Pública),
 **busca universal Ctrl+K/"/"** (paleta sobre 8 fontes — regimento, proposituras, legislação,
-requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda; "art 79" abre o artigo direto; no Regimento o
+requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" abre o artigo direto; no Regimento o
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
 busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, `#alertas` etc. nas
