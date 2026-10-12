@@ -81,7 +81,8 @@ def _get(url, params=None, tentativas=5, timeout=90):
     esse tipo de estrangulamento; desistir em ~30 s perderia a cidade inteira.
     """
     return http.get_json(url, params, tentativas=tentativas, passo=15, timeout=timeout,
-                         headers=_UA, ok_vazio=(204, 404), silencioso=True)
+                         headers=_UA, ok_vazio=(204, 404))  # retries visíveis no log:
+    # em 11/10/2026 a coleta passou 68 min sem uma linha de saída antes de estourar
 
 
 def municipal(contratacao: dict) -> bool:
