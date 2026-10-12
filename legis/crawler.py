@@ -22,6 +22,12 @@ Uso:
     python legis/crawler.py --tipo 6                          # um tipo inteiro
     python legis/crawler.py                                   # tudo (carga completa)
     python legis/crawler.py --forcar                          # reprocessa existentes
+    python legis/crawler.py --ano 2026 --revisitar 1000       # + revisita 1000 já gravadas
+    python legis/crawler.py --so-situacao                     # só recalcula situação (sem rede)
+
+Situação (revogada / revogada parcialmente / alterada): o Legis não a publica;
+é INFERIDA da ementa oficial (`descricao`) das normas posteriores — ver
+`legis/revogacoes.py`. Recalculada no fim de toda execução, sobre o banco todo.
 """
 
 import argparse
@@ -32,7 +38,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # raiz do repo: comum/
 from comum.saida import configurar_stdio  # noqa: E402
 from comum import http  # noqa: E402
+from revogacoes import calcular_situacoes  # noqa: E402  (legis/ está no path: é o dir do script)
 import time
+from collections import Counter
 from datetime import datetime
 
 import requests
@@ -167,6 +175,8 @@ def detalhar(docid: int, tipo: str, ano: int | None) -> dict:
         else:
             temas.append(texto)
     ementa = " ".join(ementa_partes)
+    # ementa oficial (o que a norma faz: "REVOGA A LEI Nº ..."); base da situação inferida
+    descricao = " ".join(_txt(soup.select_one("p.descricao")).split())
 
     return {
         "id": docid,
@@ -177,7 +187,7 @@ def detalhar(docid: int, tipo: str, ano: int | None) -> dict:
         "titulo": titulo,
         "ementa": ementa,
         "tags": "; ".join(temas),
-        "situacao": "",
+        "descricao": descricao,
         "url_legis": url,
         "url_pdf": f"{url}/download",
         "fonte": FONTE,
@@ -191,6 +201,12 @@ def abrir_db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     with open(SCHEMA_PATH, encoding="utf-8") as f:
         conn.executescript(f.read())
+    # migração de bancos anteriores à situação (2026-10): só acrescenta colunas
+    existentes = {r[1] for r in conn.execute("PRAGMA table_info(normas)")}
+    for col, tipo in (("descricao", "TEXT"), ("revogada_por", "INTEGER")):
+        if col not in existentes:
+            conn.execute(f"ALTER TABLE normas ADD COLUMN {col} {tipo}")
+    conn.commit()
     return conn
 
 
@@ -199,11 +215,15 @@ def ids_existentes(conn: sqlite3.Connection) -> set[int]:
 
 
 def upsert(conn: sqlite3.Connection, n: dict) -> None:
+    # situacao/revogada_por ficam de fora: são do recálculo (recalcular_situacao),
+    # e o ON CONFLICT preserva o que já estava gravado (INSERT OR REPLACE apagava)
     cols = ["id", "tipo", "numero", "ano", "data_norma", "titulo", "ementa",
-            "tags", "situacao", "url_legis", "url_pdf", "fonte", "data_coleta"]
+            "tags", "descricao", "url_legis", "url_pdf", "fonte", "data_coleta"]
     placeholders = ",".join("?" for _ in cols)
+    atualiza = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
     conn.execute(
-        f"INSERT OR REPLACE INTO normas ({','.join(cols)}) VALUES ({placeholders})",
+        f"INSERT INTO normas ({','.join(cols)}) VALUES ({placeholders}) "
+        f"ON CONFLICT(id) DO UPDATE SET {atualiza}",
         [n[c] for c in cols],
     )
     conn.execute("DELETE FROM temas WHERE norma_id = ?", (n["id"],))
@@ -213,7 +233,39 @@ def upsert(conn: sqlite3.Connection, n: dict) -> None:
     )
 
 
+def recalcular_situacao(conn: sqlite3.Connection) -> dict[int, dict]:
+    """Recalcula situacao/revogada_por do banco todo a partir das ementas gravadas
+    (sem rede, ~1 s). Zera antes: uma inferência que deixou de valer some."""
+    conn.row_factory = sqlite3.Row
+    normas = [dict(r) for r in conn.execute(
+        "SELECT id, tipo, numero, ano, descricao FROM normas")]
+    conn.row_factory = None
+    sit = calcular_situacoes(normas)
+    conn.execute("UPDATE normas SET situacao = '', revogada_por = NULL")
+    conn.executemany(
+        "UPDATE normas SET situacao = ?, revogada_por = ? WHERE id = ?",
+        [(s["situacao"], s["revogada_por"], alvo) for alvo, s in sit.items()],
+    )
+    conn.commit()
+    return sit
+
+
+def revisitar_ids(conn: sqlite3.Connection, teto: int, pular: set[int]) -> list[tuple]:
+    """As `teto` normas verificadas há mais tempo (data_coleta mais antiga) —
+    revisita incremental: preenche a ementa oficial das antigas e pega mudanças
+    no Legis sem reprocessar a base inteira a cada execução."""
+    linhas = conn.execute(
+        "SELECT id, tipo, ano FROM normas ORDER BY data_coleta, id").fetchall()
+    return [l for l in linhas if l[0] not in pular][:teto]
+
+
 # ── Orquestração ──────────────────────────────────────────────────────────────
+def _resumo_situacao(sit: dict[int, dict]) -> None:
+    c = Counter(s["situacao"] for s in sit.values())
+    print("Situação inferida das ementas: "
+          + (", ".join(f"{k}: {v}" for k, v in sorted(c.items())) or "nenhuma"), file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crawler do Legis — índice de metadados")
     parser.add_argument("--tipo", type=int, help="ID do tópico de tipo (ver TIPOS). Padrão: todos.")
@@ -221,12 +273,25 @@ def main():
     parser.add_argument("--limite", type=int, default=0, help="Máx. de normas a processar (0=todas).")
     parser.add_argument("--forcar", action="store_true", help="Reprocessa normas já no banco.")
     parser.add_argument("--dry-run", action="store_true", help="Não grava no banco (só imprime).")
+    parser.add_argument("--revisitar", type=int, default=0,
+                        help="Além das novas, reprocessa até N normas já gravadas "
+                             "(as verificadas há mais tempo primeiro). 0 = nenhuma.")
+    parser.add_argument("--so-situacao", action="store_true",
+                        help="Só recalcula a situação a partir das ementas gravadas (sem rede).")
     args = parser.parse_args()
+
+    if args.so_situacao:
+        conn = abrir_db()
+        sit = recalcular_situacao(conn)
+        conn.close()
+        _resumo_situacao(sit)
+        return
 
     tipos = {args.tipo: TIPOS.get(args.tipo, f"Tópico {args.tipo}")} if args.tipo else dict(TIPOS)
 
     conn = None if args.dry_run else abrir_db()
     existentes = ids_existentes(conn) if conn else set()
+    processados_agora: set[int] = set()  # a revisita não repete o que já veio nesta execução
     processados = 0
     sucessos = erros = 0  # chamadas de rede ok / com erro — decidem o exit code no fim
 
@@ -275,6 +340,7 @@ def main():
                     upsert(conn, n)
                     conn.commit()
                     existentes.add(did)
+                    processados_agora.add(did)
                 processados += 1
                 time.sleep(PAUSA)
             if args.limite and processados >= args.limite:
@@ -282,9 +348,28 @@ def main():
         if args.limite and processados >= args.limite:
             break
 
+    revisitadas = 0
+    if conn and args.revisitar > 0:
+        alvos_rev = revisitar_ids(conn, args.revisitar, pular=processados_agora)
+        print(f"== Revisita: {len(alvos_rev)} normas já gravadas (mais antigas primeiro) ==",
+              file=sys.stderr)
+        for did, tipo, ano in alvos_rev:
+            try:
+                n = detalhar(did, tipo, ano)
+                sucessos += 1
+            except Exception as e:
+                erros += 1
+                print(f"  ERRO revisita doc {did}: {e} — pulando.", file=sys.stderr)
+                continue
+            upsert(conn, n)
+            conn.commit()
+            revisitadas += 1
+            time.sleep(PAUSA)
+
     if conn:
+        _resumo_situacao(recalcular_situacao(conn))
         conn.close()
-    print(f"Concluído: {processados} normas processadas "
+    print(f"Concluído: {processados} normas processadas, {revisitadas} revisitadas "
           f"({sucessos} chamadas ok, {erros} com erro).", file=sys.stderr)
 
     # Falha visível (mesmo padrão de despesas/crawler.py): se TUDO que se tentou
