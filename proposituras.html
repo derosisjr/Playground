@@ -65,13 +65,6 @@
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px;
         margin: 0 0 14px; }
       @media (max-width: 820px) { .filtros { grid-template-columns: 1fr 1fr; } }
-      /* celular: busca e filtros sobem para antes dos chips de subtipo — com os
-         chips (~10 subtipos) no meio, a busca só aparecia depois da 1ª tela */
-      @media (max-width: 600px) {
-        .shell { display: flex; flex-direction: column; }
-        .stats { order: -2; }
-        .filtros { order: -1; }
-      }
       .filtros input, .filtros select {
         width: 100%; padding: 11px 12px; border: 1px solid var(--line);
         border-radius: var(--r-sm); background: var(--card); font: inherit; color: var(--navy); }
@@ -142,8 +135,8 @@
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
       </div>
-      <div class="chips" id="chips"></div>
-
+      <!-- busca e filtros antes dos chips de subtipo: no celular a busca cai na
+           1ª tela, e a ordem do Tab é a mesma da leitura em qualquer largura -->
       <div class="filtros">
         <input id="q" type="search" aria-label="Buscar proposituras por palavra-chave, ementa, número ou autor" placeholder="Buscar por palavra-chave, ementa, número ou autor..." />
         <select id="subtipo" aria-label="Filtrar por subtipo"><option value="">Todos os subtipos</option></select>
@@ -151,6 +144,7 @@
         <select id="autor" aria-label="Filtrar por autor"><option value="">Todos os autores</option></select>
         <select id="local" aria-label="Filtrar por local de tramitação"><option value="">Todos os locais</option></select>
       </div>
+      <div class="chips" id="chips"></div>
 
       <div class="barra">
         <span class="contagem" id="contagem" aria-live="polite">Carregando…</span>
