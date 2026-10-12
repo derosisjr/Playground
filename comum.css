@@ -243,6 +243,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .btn:hover { border-color: var(--gold); }
 .btn:disabled { opacity: .5; cursor: default; }
 
+/* ── Alvo de toque dos links de documento (WCAG 2.2, 2.5.8: mínimo de 24px) ──
+   "PDF ↗ / Detalhes ↗ / Resposta ↗" nas tabelas mediam ~19px de altura.
+   Só `a.` — `div.det` é outra coisa (texto de alerta em Despesas/Favorecido). */
+a.pdf, a.det { display: inline-block; min-height: 24px; padding: 3px 0; }
+
 /* ── Busca universal (paleta ⌘K) ────────────────────────────────────────────── */
 .topnav-busca {
   margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
