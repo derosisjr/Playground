@@ -408,7 +408,8 @@ def listar_arquivos_pasta(drive, pasta_id: str) -> list[dict]:
         res = drive.files().list(
             q=f"'{pasta_id}' in parents and trashed = false "
               "and mimeType != 'application/vnd.google-apps.folder'",
-            fields="nextPageToken, files(id, name, webViewLink, createdTime, size)",
+            fields="nextPageToken, files(id, name, webViewLink, createdTime, size, "
+                   "capabilities/canDelete)",
             supportsAllDrives=True, includeItemsFromAllDrives=True,
             pageToken=token,
         ).execute()
@@ -430,6 +431,8 @@ def limpar_duplicatas(drive, arquivos: list[dict]) -> list[dict]:
         if len(grupo) > 1:
             grupo.sort(key=lambda x: x.get("createdTime", ""))  # mantém a mais antiga
             for extra in grupo[1:]:
+                if extra.get("capabilities", {}).get("canDelete") is False:
+                    continue  # cópia de outro dono: apagar dá 403 em toda execução
                 try:
                     drive.files().delete(
                         fileId=extra["id"], supportsAllDrives=True).execute()
@@ -535,7 +538,7 @@ def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
     indice: dict[str, dict] = {}
     for aba in ABAS:
         info = {"col_resp": -1, "col_dataresp": -1, "col_situacao": -1,
-                "col_merito": -1, "mapa": {}}
+                "col_merito": -1, "mapa": {}, "cab": [], "n_linhas": 0}
         indice[aba] = info
         try:
             res = sheets.spreadsheets().values().get(
@@ -548,6 +551,8 @@ def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
         if not valores:
             continue
         cab = valores[0]
+        info["cab"] = cab
+        info["n_linhas"] = len(valores)
         idx_num = _idx_coluna_numero(cab)
         info["col_resp"] = _idx_header(cab, "Resposta")
         info["col_dataresp"] = _idx_header(cab, "Data da resposta")
@@ -618,15 +623,37 @@ def atualizar_classificacao(sheets, sheet_id: str, aba: str, info: dict, linha: 
             ).execute()
 
 
-def anexar_linha(sheets, sheet_id: str, aba: str, valores: dict) -> None:
-    linha = [valores.get(col, "") for col in ABAS[aba]["colunas"]]
-    sheets.spreadsheets().values().append(
+def montar_linha(cab: list[str], valores: dict) -> list[str]:
+    """Posiciona cada valor sob a coluna de mesmo nome no cabeçalho REAL da aba
+    (comparação sem acento). Colunas da planilha sem valor ficam vazias; valores
+    sem coluna correspondente são descartados."""
+    linha = [""] * len(cab)
+    for col, val in valores.items():
+        i = _idx_header(cab, col)
+        if i >= 0:
+            linha[i] = val
+    return linha
+
+
+def anexar_linha(sheets, sheet_id: str, aba: str, info: dict, valores: dict) -> None:
+    """Grava `valores` na 1ª linha livre da aba, alinhado ao cabeçalho real.
+
+    Antes usava `values().append` com a ordem fixa de ABAS: se a planilha tinha
+    colunas em outra ordem (ou a detecção de tabela do append errava o início),
+    tudo entrava deslocado — a data da sessão ia parar em Número e criava as
+    linhas-fantasma de Requerimentos."""
+    cab = info.get("cab") or []
+    if not cab:
+        raise RuntimeError(f"Aba '{aba}' sem cabeçalho — não dá para alinhar a linha.")
+    linha = montar_linha(cab, valores)
+    n = info.get("n_linhas", 1) + 1
+    sheets.spreadsheets().values().update(
         spreadsheetId=sheet_id,
-        range=f"'{aba}'!A1",
+        range=f"'{aba}'!A{n}:{_col_letra(len(cab) - 1)}{n}",
         valueInputOption="USER_ENTERED",
-        insertDataOption="INSERT_ROWS",
         body={"values": [linha]},
     ).execute()
+    info["n_linhas"] = n
 
 
 def _hyperlink(url: str, texto: str, sep: str) -> str:
@@ -914,6 +941,11 @@ def main():
         if not sheet_id or not pasta_raiz:
             raise EnvironmentError("Defina SHEET_ID e DRIVE_FOLDER_ID.")
         drive, sheets = _google_services()
+        # Sem as colunas de classificação a situação nunca era gravada: todo item
+        # parecia "sem veredito", era rebaixado e reclassificado todo dia e saía
+        # no log e no e-mail como resposta nova (~576 por execução, out/2026).
+        for aba in ABAS:
+            garantir_colunas(sheets, sheet_id, aba)
         indice = carregar_planilha(sheets, sheet_id)
         # separador de argumentos de fórmula conforme o locale da planilha
         try:
@@ -955,14 +987,24 @@ def main():
             aba, valores, pasta_url, resposta_nova = processar_item(
                 detalhes, drive, pasta_raiz, args.dry_run, sep, classificar_tudo)
 
-            # Item já respondido de mérito: só registra de novo se chegou RESPOSTA
-            # nova no Drive (sinal robusto, imune ao reformato de data da planilha).
-            if (ja_respondido and sit_atual == cls.RESPONDIDO and not resposta_nova
+            # Item que já tem Resposta na planilha: só vai ao log/e-mail se chegou
+            # PDF de resposta novo no Drive (sinal robusto, imune ao reformato de
+            # data da planilha). Sem novidade, apenas grava a reclassificação, se
+            # mudou — em silêncio.
+            if (ja_respondido and not resposta_nova
                     and not args.forcar and not cods_alvo):
+                nova_sit = valores.get(COL_SITUACAO)
+                if nova_sit is not None and nova_sit != sit_atual and not args.dry_run:
+                    atualizar_classificacao(sheets, sheet_id, aba, info,
+                                            existente["linha"], valores)
+                    existente["sit"] = nova_sit
+                    print(f"  Reclassificado em silêncio: {detalhes['numero']} "
+                          f"({sit_atual or '—'} → {nova_sit})", file=sys.stderr)
                 continue
 
             rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
-            acao = ("resposta nova" if ja_respondido
+            acao = ("resposta nova" if resposta_nova and ja_respondido
+                    else "reprocessa" if ja_respondido
                     else "atualiza" if existente else "nova linha")
             print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
 
@@ -978,9 +1020,9 @@ def main():
                     existente["resp"] = True
                     existente["sit"] = valores.get(COL_SITUACAO, sit_atual)
                 else:
-                    anexar_linha(sheets, sheet_id, aba, valores)
+                    anexar_linha(sheets, sheet_id, aba, info, valores)
                     info["mapa"][num] = {
-                        "linha": -1, "resp": True,
+                        "linha": info["n_linhas"], "resp": True,
                         "sit": valores.get(COL_SITUACAO, ""),
                     }
                 log_entradas.append({
