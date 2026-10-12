@@ -966,6 +966,57 @@ def _limite_dispensa(ano: int, elemento: str) -> dict:
             "exercicio": ano, "norma": lim["norma"], "verificacao": lim["verificacao"]}
 
 
+# ── Prioridade dentro de pf_sensivel ─────────────────────────────────────────
+# Aluguel mensal fixo de imóvel de PF é o padrão esperado; o que merece olhar é
+# reajuste acima da inflação ou contrato que começou dentro do mandato.
+IPCA_JSON = os.path.join(RAIZ, "precos", "ipca.json")
+PF_JANELA = 3            # meses de cada ponta para o valor mensal típico (mediana)
+PF_EXCESSO_MIN = 0.05    # reajuste acima do IPCA a partir de 5 p.p. ganha destaque
+
+
+def _ipca_serie() -> dict:
+    try:
+        with open(IPCA_JSON, encoding="utf-8") as f:
+            return json.load(f).get("serie") or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _mediana(xs: list) -> float:
+    xs = sorted(xs)
+    n = len(xs)
+    return (xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2) if n else 0.0
+
+
+def reajuste_pf(mensal: dict, inicio_base: tuple, ultimo_completo: tuple, ipca: dict) -> dict:
+    """Mede, numa série {(ano, mes): valor}, o reajuste do valor mensal típico entre
+    a 1ª e a última janela de PF_JANELA meses com pagamento (até `ultimo_completo`),
+    contra o IPCA do mesmo intervalo. Devolve {reajuste, ipca, excesso, recente,
+    desde} — `None` onde não dá para medir (série curta, IPCA ausente)."""
+    meses = sorted(k for k, v in mensal.items() if v > 0 and k <= ultimo_completo)
+    out = {"reajuste": None, "ipca": None, "excesso": None,
+           "recente": bool(meses) and meses[0] > inicio_base, "desde": meses[0] if meses else None}
+    if len(meses) < 2 * PF_JANELA:
+        return out
+    ini, fim = meses[:PF_JANELA], meses[-PF_JANELA:]
+    v_ini = _mediana([mensal[k] for k in ini])
+    v_fim = _mediana([mensal[k] for k in fim])
+    if v_ini <= 0:
+        return out
+    out["reajuste"] = v_fim / v_ini - 1
+    a = ipca.get(f"{ini[len(ini) // 2][0]}-{ini[len(ini) // 2][1]:02d}")
+    b = ipca.get(f"{fim[len(fim) // 2][0]}-{fim[len(fim) // 2][1]:02d}")
+    if a and b:
+        out["ipca"] = b / a - 1
+        out["excesso"] = out["reajuste"] - out["ipca"]
+    return out
+
+
+def _prioridade_pf(m: dict, soma: float) -> tuple:
+    acima = m["excesso"] is not None and m["excesso"] >= PF_EXCESSO_MIN
+    return (not acima, -(m["excesso"] or 0) if acima else 0, not m["recente"], -soma)
+
+
 def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             execucao: dict | None = None, contagem: dict | None = None,
             prazos: dict | None = None) -> list[dict]:
@@ -1218,14 +1269,39 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
         ALERTA_PF_VALOR)
     cand["pf_sensivel"] = len(pfs)
+    # Prioridade: reajuste acima do IPCA, depois início dentro da base, depois valor.
+    mensal_pf: dict = defaultdict(dict)
+    if pfs:
+        for m in _q(conn,
+                f"SELECT fi.chave k, p.elemento_despesa e, p.ano a, p.mes m, SUM(p.valor) v "
+                f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave LIKE 'cpf:%' AND ({cond_elem}) "
+                f"GROUP BY 1, 2, 3, 4"):
+            mensal_pf[(m["k"], m["e"])][(m["a"], m["m"])] = m["v"]
+    lim = _q(conn, "SELECT MIN(ano*100+mes) i, MAX(ano*100+mes) f FROM pagamentos")[0]
+    inicio_base = (lim["i"] // 100, lim["i"] % 100) if lim["i"] else (0, 0)
+    ult = (lim["f"] // 100, lim["f"] % 100) if lim["f"] else (0, 0)
+    ultimo_completo = (ult[0] - 1, 12) if ult[1] == 1 else (ult[0], ult[1] - 1)  # mês corrente é parcial
+    ipca = _ipca_serie()
+    medidas = {(r["k"], r["e"]): reajuste_pf(mensal_pf[(r["k"], r["e"])], inicio_base, ultimo_completo, ipca)
+               for r in pfs}
+    pfs = sorted(pfs, key=lambda r: _prioridade_pf(medidas[(r["k"], r["e"])], r["s"]))
     for r in pfs[:CAP_POR_REGRA]:
         f = fav(r["k"])
         elem_curto = (r["e"] or "").split(" - ", 1)[-1][:40]
+        m = medidas[(r["k"], r["e"])]
+        extra = ""
+        if m["excesso"] is not None and m["excesso"] >= PF_EXCESSO_MIN:
+            extra = (f" Valor mensal típico subiu {m['reajuste']:.0%} contra IPCA de {m['ipca']:.0%} "
+                     f"no mesmo intervalo — reajuste acima da inflação ou imóvel novo; confira o contrato.")
+        elif m["recente"] and m["desde"]:
+            extra = f" Pagamentos começaram em {MESES_ABREV[m['desde'][1] - 1]}/{m['desde'][0]}, dentro da base."
         out.append({
             "id": _id_alerta("pf_sensivel", r["k"], r["e"]),
             "tipo": "pf_sensivel", "classe": CLASSE_ANOMALIA, "severidade": "media",
             "titulo": f"Pessoa física em {elem_curto}: {f['nome']}",
-            "detalhe": f"{brl(r['s'])} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.",
+            "detalhe": f"{brl(r['s'])} em {r['qt']} pagamentos a pessoa física — {(r['e'] or '')[:50]}.{extra}",
+            "reajuste": None if m["reajuste"] is None else round(m["reajuste"], 4),
+            "reajuste_ipca": None if m["ipca"] is None else round(m["ipca"], 4),
             "valor": round(r["s"], 2),
             "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
             "documentos": docs_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"]),
