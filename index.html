@@ -652,12 +652,16 @@
         return dinheiro((d.totais.por_ano || {})[String(ano)] || 0);
       }, (d) => d.atualizado_em && new Date(d.atualizado_em));
 
-      // "Escuta pública" — 1,7 KB; o campo `ativa` governa a pill de estado.
+      // "Escuta pública" — 1,7 KB. Aberta = `ativa` E dentro do período: mesma regra
+      // de consulta-app.js (só `ativa` deixava o hub dizendo "aberta" após o fim).
       stat(carregar("./consulta/consultas/prioridades-2026.json"), "stat-consulta", (c) => {
         const bairros = (c.bairros || []).length, np = (c.propostas || []).length;
-        set("stat-consulta-lbl", plural(np, "proposta em votação", "propostas em votação") +
+        const hoje = new Date().toISOString().slice(0, 10);
+        const aberta = c.ativa && !(c.periodo && c.periodo.fim && hoje > c.periodo.fim);
+        set("stat-consulta-lbl", (aberta ? plural(np, "proposta em votação", "propostas em votação")
+          : plural(np, "proposta", "propostas")) +
           (bairros ? ` · ${bairros} ${plural(bairros, "bairro", "bairros")}` : ""));
-        if (c.ativa) selo("selo-consulta", "aberta", "verde");
+        if (aberta) selo("selo-consulta", "aberta", "verde");
         // encerrada é estado neutro: o vermelho do ramp quer dizer "acima do limite"
         else selo("selo-consulta", "encerrada", "cinza");
         return contagem(np);
