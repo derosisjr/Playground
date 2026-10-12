@@ -129,7 +129,7 @@ jobs:
       - name: Commitar e publicar
         uses: ./.github/actions/commitar
         with:
-          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json favorecidos
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/servico-divida.json favorecidos
           mensagem: "chore: atualiza base de Despesas"
           sem-mudancas: "Sem mudancas na base."
 

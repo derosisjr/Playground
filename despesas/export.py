@@ -69,6 +69,9 @@ JSON_PATH = os.path.join(RAIZ, "despesas-index.json")
 FAV_DIR = os.path.join(RAIZ, "favorecidos")       # raio-X por favorecido (versionado; favorecido.html)
 ARVORE_PATH = os.path.join(AQUI, "arvore.json")   # hierarquia função→subfunção→elemento (treemap)
 ALERTAS_ESTADO_PATH = os.path.join(AQUI, "alertas-estado.json")  # histórico de alertas (versionado)
+# recorte do índice só com o serviço da dívida (~1 KB): o painel de Endividamento baixava
+# os ~400 KB do despesas-index.json inteiro só para ler esse bloco
+SERVICO_DIVIDA_PATH = os.path.join(AQUI, "servico-divida.json")
 PAINEL_URL = "./despesas.html"
 RAIOX_URL = "./favorecido.html"
 
@@ -1870,9 +1873,19 @@ def exportar_indices_leves(rows: list[dict], mov: list[dict] | None = None) -> N
                 separators=(",", ":"))
 
 
+def exportar_servico_divida(indice: dict) -> bool:
+    """Grava `despesas/servico-divida.json` (lido por endividamento-app.js) a partir do
+    bloco `servico_divida` do índice. Só regrava se o dado mudou (ignora o carimbo)."""
+    return gravar_json_se_mudou(SERVICO_DIVIDA_PATH, {
+        "atualizado_em": indice.get("atualizado_em"),
+        "dados_ate": indice.get("dados_ate"),
+        **(indice.get("servico_divida") or {"por_ano": [], "credores": []}),
+    }, separators=(",", ":"))
+
+
 def main():
     global DB_PATH, CSV_PATH, XLSX_PATH, DADOS_DIR, MOV_DIR, ESTAGIOS_DIR, JSON_PATH, FAV_DIR, ARVORE_PATH, \
-        ALERTAS_ESTADO_PATH
+        ALERTAS_ESTADO_PATH, SERVICO_DIVIDA_PATH
     p = argparse.ArgumentParser(description="Export da base de Despesas → JSON/CSV/XLSX")
     p.add_argument("--db", default=DB_PATH, help="SQLite de entrada (padrão: despesas/despesas.sqlite)")
     p.add_argument("--saida", help="Diretório de saída alternativo (candidato): reproduz a árvore do repo lá dentro")
@@ -1888,6 +1901,7 @@ def main():
         JSON_PATH = os.path.join(base, "despesas-index.json")
         FAV_DIR = os.path.join(base, "favorecidos")
         ARVORE_PATH = os.path.join(base, "despesas", "arvore.json")
+        SERVICO_DIVIDA_PATH = os.path.join(base, "despesas", "servico-divida.json")
         # o estado dos alertas do repo é a referência de histórico; o candidato grava a sua cópia
         estado_repo = ALERTAS_ESTADO_PATH
         ALERTAS_ESTADO_PATH = os.path.join(base, "despesas", "alertas-estado.json")
@@ -1947,6 +1961,7 @@ def main():
                              "ok": abs(pago_exe - indice["totais"]["geral"]) < 1 and
                                    abs(pago_mov - indice["totais"]["geral"]) < 1}
     gravar_json(JSON_PATH, indice, separators=(",", ":"))
+    exportar_servico_divida(indice)
 
     exportar_csv(execucao)
     try:
