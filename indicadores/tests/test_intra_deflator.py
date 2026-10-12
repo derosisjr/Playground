@@ -10,9 +10,32 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import export  # noqa: E402
-import fontes  # noqa: E402
+import importlib.util
+
+_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _DIR)
+
+
+def _carregar(nome, arquivo):
+    """Importa pelo caminho com nome único: export.py/fontes.py existem em vários
+    módulos do repo e colidiriam no sys.modules ao rodar as suítes juntas."""
+    spec = importlib.util.spec_from_file_location(nome, os.path.join(_DIR, arquivo))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+fontes = _carregar("indicadores_fontes", "fontes.py")
+# o export.py faz `import fontes`: aponta para o de indicadores só durante a carga
+_anterior = sys.modules.get("fontes")
+sys.modules["fontes"] = fontes
+try:
+    export = _carregar("indicadores_export", "export.py")
+finally:
+    if _anterior is None:
+        sys.modules.pop("fontes", None)
+    else:
+        sys.modules["fontes"] = _anterior
 
 COL = "Despesas Empenhadas"
 # recorte real do DCA 2023 de Santos (I-D), valores em R$

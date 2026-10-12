@@ -8,8 +8,15 @@ equivalente. O resumo nunca pode comparar a dívida total através dessa quebra.
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import export  # noqa: E402
+import importlib.util
+
+_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# importa pelo caminho com nome único: há export.py em vários módulos do repo e
+# eles colidiriam no sys.modules ao rodar as suítes juntas
+_spec = importlib.util.spec_from_file_location(
+    "endividamento_export", os.path.join(_DIR, "export.py"))
+export = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(export)
 
 
 def _p(ano, q, dc, prec, pct=10.0):
