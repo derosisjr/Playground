@@ -133,6 +133,8 @@
 
       /* tabela quadrimestral */
       .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); overflow-x: auto; }
+      /* focável (tabindex=0) para rolar pelo teclado no celular */
+      .tabela-wrap:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       thead th { background: var(--navy2); color: #fff; text-align: right; padding: 10px 12px; font-weight: 700; white-space: nowrap; }
       thead th:first-child { text-align: left; }
@@ -255,7 +257,7 @@
         <span class="contagem" id="tab-contagem">—</span>
         <button class="btn" id="btn-csv" type="button">Exportar CSV</button>
       </div>
-      <div class="tabela-wrap">
+      <div class="tabela-wrap" tabindex="0" role="region" aria-label="Tabela quadrimestral (role na horizontal para ver todas as colunas)">
         <table>
           <thead>
             <tr>
