@@ -233,6 +233,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
   font-size: 26px; margin-top: 4px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stats .stat .sub { color: var(--muted); font-size: 12px; margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* celular: os 4 cartões empilhados ocupavam ~420px (meia tela) antes da busca e
+   dos filtros — vira uma grade 2×2 compacta */
+@media (max-width: 600px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+  .stats .stat { padding: 10px 12px; }
+  .stats .stat .rotulo { font-size: 10px; letter-spacing: .05em; }
+  .stats .stat .valor { font-size: 19px; overflow-wrap: anywhere; }
+  .stats .stat .sub { font-size: 11px; }
+}
 
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
 .acoes { display: flex; gap: 8px; }

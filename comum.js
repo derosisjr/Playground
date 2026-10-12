@@ -84,6 +84,22 @@ window.Comum = (() => {
     document.body.prepend(nav);
     nav.querySelector(".topnav-busca").addEventListener("click", abrirPaleta);
     nav.querySelector(".topnav-tema").addEventListener("click", alternarTema);
+    // celular: com 10 itens a faixa rola na horizontal e o item da página atual
+    // ficava fora da tela — centraliza-o. Mexe só no scrollLeft da faixa (efeito
+    // de scrollIntoView({inline:"center"}) sem nenhum risco de rolar a página na
+    // vertical, p.ex. quando a URL traz âncora como #art-79). Se o item já está
+    // inteiro à vista (desktop), não mexe. Repete após as fontes carregarem, que
+    // mudam a largura dos itens.
+    const centralizarAtual = () => {
+      const faixa = nav.querySelector(".topnav-in"), ativo = faixa.querySelector("a.atual");
+      if (!ativo || faixa.scrollWidth <= faixa.clientWidth) return;
+      const a = ativo.getBoundingClientRect(), f = faixa.getBoundingClientRect();
+      // 26px = esmaecimento da máscara na borda direita (ver .topnav-in no comum.css)
+      if (a.left >= f.left && a.right <= f.right - 26) return;
+      faixa.scrollLeft += (a.left + a.width / 2) - (f.left + faixa.clientWidth / 2);
+    };
+    centralizarAtual();
+    if (document.fonts) document.fonts.ready.then(centralizarAtual);
   }
 
   // ── Tema claro/escuro ───────────────────────────────────────────────────────
