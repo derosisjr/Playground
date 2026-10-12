@@ -1,0 +1,93 @@
+name: Testes
+
+# Roda as suítes Python e a guarda de cache-busting em todo PR e push no master
+# que toque código. Antes, os testes só rodavam DENTRO dos crons de base
+# (despesas.yml, precos.yml, respostas-executivo.yml): um PR quebrado só aparecia
+# no cron seguinte, já mesclado. Os pushes de dados dos crons usam o GITHUB_TOKEN
+# e não disparam este workflow.
+
+on:
+  pull_request:
+    paths:
+      - "comum/**"
+      - "despesas/**"
+      - "precos/**"
+      - "respostas-executivo/**"
+      - ".github/scripts/**"
+      - ".github/workflows/testes.yml"
+      - "**.html"
+      - "**.js"
+      - "**.css"
+  push:
+    branches: [master]
+    paths:
+      - "comum/**"
+      - "despesas/**"
+      - "precos/**"
+      - "respostas-executivo/**"
+      - ".github/scripts/**"
+      - ".github/workflows/testes.yml"
+      - "**.html"
+      - "**.js"
+      - "**.css"
+  workflow_dispatch:
+
+permissions: {}
+
+# UTF-8 como codificação padrão do Python (vira o padrão no 3.15, out/2026).
+env:
+  PYTHONUTF8: "1"
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false  # este workflow não faz push
+
+      - name: Configurar Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: |
+            despesas/requirements.txt
+            precos/requirements.txt
+
+      # Os testes de respostas-executivo só usam a biblioteca padrão + comum/ —
+      # as libs do Google do requirements.txt dele não são necessárias aqui.
+      - name: Instalar dependencias
+        id: deps
+        run: uv pip install --system -r despesas/requirements.txt -r precos/requirements.txt
+
+      # Passos SEPARADOS de propósito: despesas/tests e precos/tests importam cada um
+      # o seu `crawler`/`export` pelo sys.path e colidem num mesmo processo pytest.
+      # `!cancelled()` faz uma suíte quebrada não esconder o resultado das outras.
+      - name: Testes — despesas + comum
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest despesas/tests comum/tests -q
+
+      - name: Testes — preços
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest precos/tests -q
+
+      - name: Testes — respostas do Executivo (classificador)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m unittest discover -s respostas-executivo -p "testes_*.py"
+
+      # Todo .js/.css local carregado por HTML precisa de ?v=N, e a mesma URL com a
+      # mesma versão em todas as páginas (senão o visitante roda versões misturadas).
+      - name: Cache-busting (?v=) coerente entre páginas
+        if: ${{ !cancelled() }}
+        run: python .github/scripts/checar_versoes.py

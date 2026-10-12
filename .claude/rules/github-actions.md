@@ -26,7 +26,7 @@ paths:
 unificar sem testar cada fonte), `comum/formato.py` (`sem_acento` com `forma`/`caixa`,
 `brl`, `compacto`, `fator`), `comum/saida.py` (`configurar_stdio`) e `comum/escrita.py`
 (gravação atômica). Scripts entram com `sys.path.append(<raiz>)` após `import sys`. Testes em
-`comum/tests` rodam no `despesas.yml`. Envio de e-mail (5 cópias SMTP) ficou fora da
+`comum/tests` rodam no `despesas.yml` e no `testes.yml`. Envio de e-mail (5 cópias SMTP) ficou fora da
 consolidação de 2026-09: mudar exige testar envio real.
 
 # Padrões dos workflows
@@ -39,8 +39,16 @@ faz `git add`/`commit` e, antes do `push`, **`git pull --rebase --autostash` com
 Usam `actions/checkout@v5` **sem `fetch-depth`** (histórico raso, 1 commit — o pull traz só o que
 falta). Não há `concurrency:` geral: os workflows tocam arquivos distintos e o rebase resolve a
 corrida; a exceção é o par `precos`/`precos-backfill`, que escreve o mesmo `precos/espelho` e por
-isso divide o grupo `concurrency: precos-espelho`. Não há workflow com gatilho `on: push`, por isso
-ninguém precisa de `[skip ci]`.
+isso divide o grupo `concurrency: precos-espelho`. Os únicos gatilhos `on: push` são de
+verificação (`testes.yml`, `zizmor.yml`) e não commitam; os pushes de dados dos crons usam o
+`GITHUB_TOKEN`, que não dispara workflow — ninguém precisa de `[skip ci]`.
+
+**`testes.yml` (2026-10)** roda em PR e push no master que toquem código: as suítes em passos
+separados (`despesas/tests`+`comum/tests`, `precos/tests` e o `unittest` de
+`respostas-executivo` — os módulos `crawler`/`export` colidem num mesmo pytest) e
+`.github/scripts/checar_versoes.py`, que falha se um `.js`/`.css` local carregado por HTML não
+tiver `?v=` ou se a mesma URL aparecer com versões diferentes entre páginas. Suíte nova entra
+como passo novo lá.
 
 Consequências a respeitar ao mexer neles:
 - **Nunca fazer dois workflows escreverem o mesmo arquivo** (fora do par serializado acima). Os
