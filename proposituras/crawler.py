@@ -24,6 +24,7 @@ Uso:
     python proposituras/crawler.py                                   # tudo (carga completa)
     python proposituras/crawler.py --forcar                          # reprocessa existentes
     python proposituras/crawler.py --sem-tramitacao                  # pula detalhes.php (mais rápido)
+    python proposituras/crawler.py --ano 2025 --pendentes --limite 300  # revisita os não finalizados
 """
 
 import argparse
@@ -222,6 +223,33 @@ def upsert(conn: sqlite3.Connection, p: dict, tramites: list[dict]) -> None:
     )
 
 
+# ── Situação final ────────────────────────────────────────────────────────────
+# Levantado no proposituras-index.json de 2026-10 (7.094 projetos): o campo
+# `situacao` da listagem é "Encaminhado" em 6.948 deles e não distingue nada; quem
+# diz onde o projeto parou é `local_atual`. 5.337 estão na "Divisão de Arquivo
+# Público" — 80–90% de cada ano de 2012 a 2023 —, inclusive todos os
+# "Transformado" (viraram norma). Os demais estão em trânsito: comissões
+# ("CCJ - Assinatura de Parecer"), gabinetes, "Diretoria Legislativa - Aguardando
+# Pautação" (154 de 2025), "Prazo Para Sanção/Veto". Local vazio (862, sem padrão
+# por ano) não é tratado como final: é barato revisitar e não há como saber.
+def situacao_final(local_atual: str | None, situacao: str | None) -> bool:
+    """True se o projeto chegou ao fim da tramitação (arquivado ou transformado em norma)."""
+    return "arquiv" in (local_atual or "").lower() or (situacao or "").strip().lower() == "transformado"
+
+
+def selecionar_pendentes(listados: list[dict], gravados: dict[int, tuple]) -> list[dict]:
+    """Dos itens listados num ano, os que merecem nova coleta: os que não estão no
+    banco e os que estavam em situação NÃO final na última coleta (inclui os que
+    acabaram de ser arquivados — a coleta registra o estado final). Os coletados há
+    mais tempo vêm primeiro (os novos antes de todos), para o teto girar entre
+    execuções sem deixar ninguém de fora por muito tempo.
+    `gravados`: cod -> (local_atual, situacao, data_coleta)."""
+    cands = [i for i in listados
+             if i["cod"] not in gravados or not situacao_final(*gravados[i["cod"]][:2])]
+    cands.sort(key=lambda i: gravados.get(i["cod"], ("", "", ""))[2] or "")
+    return cands
+
+
 # ── Orquestração ──────────────────────────────────────────────────────────────
 def anos_alvo(arg_ano: int | None) -> list[int | str]:
     if arg_ano:
@@ -231,6 +259,66 @@ def anos_alvo(arg_ano: int | None) -> list[int | str]:
     return list(range(corrente, ANO_MIN - 1, -1)) + ["Anteriores"]
 
 
+def listar_ano(ano: int | str) -> list[dict]:
+    """Todos os itens da listagem de um ano (página a página até não vir item novo)."""
+    offset, vistos, itens_ano = 0, set(), []
+    while True:
+        try:
+            itens = coletar_pagina(ano, offset)
+        except Exception as e:
+            print(f"  ERRO ao listar ano {ano} (offset {offset}): {e} — listagem parcial.", file=sys.stderr)
+            break
+        novos = [i for i in itens if i["cod"] not in vistos]
+        if not novos:
+            break
+        for i in novos:
+            vistos.add(i["cod"])
+        itens_ano.extend(novos)
+        offset += PAGINA_TAMANHO
+        time.sleep(PAUSA)
+    return itens_ano
+
+
+def processar_item(conn, item: dict, sem_tramitacao: bool, dry_run: bool) -> None:
+    """Consulta a tramitação (se pedida) e grava (ou só imprime, no dry-run)."""
+    tramites = []
+    if not sem_tramitacao:
+        try:
+            tramites = coletar_tramitacao(item["cod"])
+        except Exception as e:
+            print(f"  Aviso: tramitação do cod {item['cod']} falhou: {e}", file=sys.stderr)
+        if tramites:
+            item["data_situacao"] = tramites[0]["data"]
+        time.sleep(PAUSA)
+    if dry_run:
+        print(f"  [{item['subtipo']}] nº {item['numero']} — {item['autor']} | "
+              f"sit={item['situacao']} | local={item['local_atual']} | {(item['ementa'])[:60]}")
+    else:
+        upsert(conn, item, tramites)
+        conn.commit()
+
+
+def revisitar_pendentes(conn, ano: int, teto: int, sem_tramitacao: bool, dry_run: bool) -> int:
+    """Recoleta, num ano já fechado, só os projetos que não estavam em situação final.
+
+    O cron reprocessa o ano corrente com --forcar; sem isto, um projeto do ano
+    anterior ainda em tramitação ficava para sempre no estado da última passada
+    (o laço normal pula quem já está no banco)."""
+    listados = listar_ano(ano)
+    gravados = {}
+    if conn is not None:
+        gravados = {r[0]: (r[1], r[2], r[3]) for r in conn.execute(
+            "SELECT cod, local_atual, situacao, data_coleta FROM proposituras WHERE ano = ?", (ano,))}
+    todos = selecionar_pendentes(listados, gravados)
+    alvo = todos[:teto] if teto else todos
+    print(f"== Projeto — ano {ano}, pendentes: {len(listados)} listados, {len(todos)} fora de "
+          f"situação final; revisitando {len(alvo)}" + (f" (teto {teto})" if teto else "") + " ==",
+          file=sys.stderr)
+    for item in alvo:
+        processar_item(conn, item, sem_tramitacao, dry_run)
+    return len(alvo)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Crawler de Proposituras (Câmara de Santos) — tipo Projeto")
     parser.add_argument("--ano", type=int, help="Ano específico. Padrão: todos (corrente→2012 + Anteriores).")
@@ -238,9 +326,26 @@ def main():
     parser.add_argument("--forcar", action="store_true", help="Reprocessa itens já no banco.")
     parser.add_argument("--sem-tramitacao", action="store_true", help="Não consulta detalhes.php (pula histórico).")
     parser.add_argument("--dry-run", action="store_true", help="Não grava no banco (só imprime).")
+    parser.add_argument("--pendentes", action="store_true",
+                        help="Com --ano: recoleta só os itens do ano fora de situação final "
+                             "(não arquivados), os coletados há mais tempo primeiro; --limite vira o teto.")
     args = parser.parse_args()
+    if args.pendentes and not args.ano:
+        parser.error("--pendentes exige --ano")
 
     conn = None if args.dry_run else abrir_db()
+
+    if args.pendentes:
+        # no dry-run lê o banco (se houver) só para escolher, sem gravar nada
+        leitura = conn
+        if leitura is None and os.path.exists(DB_PATH):
+            leitura = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        n = revisitar_pendentes(leitura, args.ano, args.limite, args.sem_tramitacao, args.dry_run)
+        if leitura is not None:
+            leitura.close()
+        print(f"Concluído: {n} proposituras revisitadas.", file=sys.stderr)
+        return
+
     existentes = ids_existentes(conn) if conn else set()
     processados = 0
 
@@ -263,22 +368,8 @@ def main():
                     break
                 if item["cod"] in existentes and not args.forcar:
                     continue
-                tramites = []
-                if not args.sem_tramitacao:
-                    try:
-                        tramites = coletar_tramitacao(item["cod"])
-                    except Exception as e:
-                        print(f"  Aviso: tramitação do cod {item['cod']} falhou: {e}", file=sys.stderr)
-                    if tramites:
-                        item["data_situacao"] = tramites[0]["data"]
-                    time.sleep(PAUSA)
-
-                if args.dry_run:
-                    print(f"  [{item['subtipo']}] nº {item['numero']} — {item['autor']} | "
-                          f"sit={item['situacao']} | {(item['ementa'])[:70]}")
-                else:
-                    upsert(conn, item, tramites)
-                    conn.commit()
+                processar_item(conn, item, args.sem_tramitacao, args.dry_run)
+                if not args.dry_run:
                     existentes.add(item["cod"])
                 processados += 1
             if args.limite and processados >= args.limite:

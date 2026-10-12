@@ -410,19 +410,25 @@ def carregar_santos(conn, dry_run=False):
         if dry_run:
             print(f"  {q.get('slug')}: {ncp}")
             continue
+        # Já carregada: listar o ano inteiro do CNPJ de novo custava centenas de
+        # chamadas por consulta, toda semana (11/10/2026: 68 min). Só os
+        # resultados ainda não pedidos seguem abaixo.
+        ja = conn.execute("SELECT itens_status FROM contratacao WHERE ncp=?", (ncp,)).fetchone()
+        carregada = bool(ja) and ja["itens_status"] == "ok"
         try:
-            achou = fontes.listar(f"{ano}0101", f"{ano}1231", 6, cnpj=cnpj) or []
-            achou += fontes.listar(f"{ano}0101", f"{ano}1231", 8, cnpj=cnpj) or []
-            meta = next((c for c in achou if c.get("sequencialCompra") == seq), None)
-            if meta:
-                conn.execute(
-                    "INSERT OR REPLACE INTO contratacao(ncp,ibge,cnpj,razao_social,ano,"
-                    "sequencial,modalidade,modalidade_nome,objeto,srp,valor_estimado,"
-                    "valor_homologado,situacao,processo,unidade_orgao,data_publicacao,"
-                    "itens_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pendente')",
-                    _linha_contratacao(meta, fontes.IBGE_SANTOS))
-                conn.commit()
-            n += carregar_itens(conn, ncp, cnpj, ano, seq)
+            if not carregada:
+                achou = fontes.listar(f"{ano}0101", f"{ano}1231", 6, cnpj=cnpj) or []
+                achou += fontes.listar(f"{ano}0101", f"{ano}1231", 8, cnpj=cnpj) or []
+                meta = next((c for c in achou if c.get("sequencialCompra") == seq), None)
+                if meta:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO contratacao(ncp,ibge,cnpj,razao_social,ano,"
+                        "sequencial,modalidade,modalidade_nome,objeto,srp,valor_estimado,"
+                        "valor_homologado,situacao,processo,unidade_orgao,data_publicacao,"
+                        "itens_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pendente')",
+                        _linha_contratacao(meta, fontes.IBGE_SANTOS))
+                    conn.commit()
+                n += carregar_itens(conn, ncp, cnpj, ano, seq)
             # o preço de Santos é a âncora: seus resultados são sempre buscados
             for it in conn.execute(
                     "SELECT numero_item FROM item WHERE ncp=? AND tem_resultado=1 "

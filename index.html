@@ -439,7 +439,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=14"></script>
+    <script src="./comum.js?v=16"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -652,12 +652,16 @@
         return dinheiro((d.totais.por_ano || {})[String(ano)] || 0);
       }, (d) => d.atualizado_em && new Date(d.atualizado_em));
 
-      // "Escuta pública" — 1,7 KB; o campo `ativa` governa a pill de estado.
+      // "Escuta pública" — 1,7 KB. Aberta = `ativa` E dentro do período: mesma regra
+      // de consulta-app.js (só `ativa` deixava o hub dizendo "aberta" após o fim).
       stat(carregar("./consulta/consultas/prioridades-2026.json"), "stat-consulta", (c) => {
         const bairros = (c.bairros || []).length, np = (c.propostas || []).length;
-        set("stat-consulta-lbl", plural(np, "proposta em votação", "propostas em votação") +
+        const hoje = new Date().toISOString().slice(0, 10);
+        const aberta = c.ativa && !(c.periodo && c.periodo.fim && hoje > c.periodo.fim);
+        set("stat-consulta-lbl", (aberta ? plural(np, "proposta em votação", "propostas em votação")
+          : plural(np, "proposta", "propostas")) +
           (bairros ? ` · ${bairros} ${plural(bairros, "bairro", "bairros")}` : ""));
-        if (c.ativa) selo("selo-consulta", "aberta", "verde");
+        if (aberta) selo("selo-consulta", "aberta", "verde");
         // encerrada é estado neutro: o vermelho do ramp quer dizer "acima do limite"
         else selo("selo-consulta", "encerrada", "cinza");
         return contagem(np);
@@ -706,6 +710,11 @@
         const n = total(r);
         if (!n) return esconder("ind-req");
         const resp = Array.isArray(r) ? r.filter((x) => x.respondido).length : r.respondidos;
+        // Mesma regra do painel: sem classificação de mérito na base, "respondido"
+        // é só "tem algum retorno" (inclui pedido de prorrogação).
+        const comMerito = Array.isArray(r) && r.some((x) => x.data_resposta_merito ||
+          (x.situacao && x.situacao !== "respondido" && x.situacao !== "pendente"));
+        if (!comMerito) document.querySelector("#ind-req .ind-lbl").textContent = "Requerimentos com retorno";
         indicador("ind-req", Math.round((resp / n) * 100) + "% · " + resp + " de " + n);
       }).catch(() => esconder("ind-req"));
 

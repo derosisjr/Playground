@@ -31,6 +31,10 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 PISO_TOTAL = 4_000_000_000     # sanidade grosseira (mandato completo ≈ R$ 8 bi)
+# Fração do pago de um mês cujo empenho não está na base. Histórico 2025–ago/2026:
+# 0–8% (globais de dezembro do exercício anterior).
+LIMITE_NAO_LOCALIZADO = 0.25
+PISO_NL_PAGO = 5_000_000      # meses com pago menor (ex.: mês corrente no dia 1) não contam
 TOL = 1.0                      # tolerância em R$ nas somas (arredondamento a 2 casas)
 
 
@@ -129,6 +133,14 @@ def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
     # 6) piso de escala
     if total < PISO_TOTAL:
         falhas.append(f"total geral {total:,.0f} abaixo do piso de sanidade {PISO_TOTAL:,.0f}")
+
+    # 7) casamento pagamento → empenho: a conservação não enxerga quando a origem
+    # muda o formato do nº de empenho (out/2026: 72% do pago virou "não localizado").
+    for s in (idx.get("execucao") or {}).get("serie") or []:
+        pago, nl = s.get("pago") or 0, s.get("nao_localizado") or 0
+        if pago >= PISO_NL_PAGO and nl / pago > LIMITE_NAO_LOCALIZADO:
+            falhas.append(f"{s['ano']}-{s['mes']:02d}: {nl / pago:.0%} do pago com empenho não localizado "
+                          f"(limite {LIMITE_NAO_LOCALIZADO:.0%}) — formato do nº de empenho mudou na origem?")
     return falhas
 
 

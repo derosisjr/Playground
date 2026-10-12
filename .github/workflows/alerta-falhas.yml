@@ -1,0 +1,45 @@
+name: Alerta de falhas
+
+# Nenhum workflow avisava quando falhava (Briefing ficou 16 execuções vermelho,
+# Respostas parou de publicar e Preços perdeu uma coleta sem ninguém saber).
+# Uma vez por dia, abre ou atualiza uma issue "[falha] <workflow>" para cada
+# workflow que falhou nas últimas 25 h — a issue notifica por e-mail.
+#
+# Varredura agendada, e não `workflow_run`/passo `if: failure()` em cada
+# workflow: um arquivo só, sem tocar nos 10 workflows e sem gatilho privilegiado.
+
+on:
+  schedule:
+    - cron: "30 21 * * *"  # 18h30 BRT: depois de todos os crons do dia
+  workflow_dispatch:
+    inputs:
+      janela_horas:
+        description: "Janela em horas (padrão 25)"
+        required: false
+        default: "25"
+
+permissions: {}
+
+env:
+  PYTHONUTF8: "1"
+
+jobs:
+  alertar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Abrir/atualizar issues de falha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JANELA_HORAS: ${{ github.event.inputs.janela_horas }}
+        run: python .github/scripts/alerta_falhas.py

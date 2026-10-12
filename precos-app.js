@@ -68,20 +68,29 @@ const mesBr = (s) => (s ? s.slice(5, 7) + "/" + s.slice(0, 4) : "—");
  * varredura visual. Na tabela a notação é sempre "×"; a frase por extenso fica
  * para o cartão e o detalhe, onde há espaço e uma comparação de cada vez.
  */
+// A razão é UMA só (export.razao_publicada: corrigida pelo IPCA quando há as
+// duas pontas) e sai sempre com este formato — manchete, cartão, lista e
+// detalhe. A frase em % é derivada do mesmo número, nunca de outro campo.
+const fmtRazao = (r) =>
+  r.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "×";
+
 function farol(razao, curto) {
   if (razao == null) return { cls: "neutro", txt: "sem mediana", ico: "•" };
-  const mult = razao.toFixed(2).replace(".", ",") + "×";
+  const mult = fmtRazao(razao);
+  const p = Math.round((razao - 1) * 100);
+  const pctTxt = (p > 0 ? "+" : p < 0 ? "−" : "") + Math.abs(p) + "%";
   if (razao >= 2)
-    return { cls: "acima", ico: "▲",
-             txt: curto ? mult : razao.toFixed(1).replace(".", ",") + "× a mediana" };
+    return { cls: "acima", ico: "▲", txt: curto ? mult : mult + " a mediana" };
   if (razao > 1.05)
-    return { cls: "atencao", ico: "▲",
-             txt: curto ? mult : "+" + Math.round((razao - 1) * 100) + "% vs mediana" };
+    return { cls: "atencao", ico: "▲", txt: curto ? mult : `${pctTxt} vs mediana (${mult})` };
   if (razao < 0.95)
-    return { cls: "ok", ico: "▼",
-             txt: curto ? mult : "−" + Math.round((1 - razao) * 100) + "% vs mediana" };
-  return { cls: "ok", ico: "=", txt: curto ? mult : "na mediana" };
+    return { cls: "ok", ico: "▼", txt: curto ? mult : `${pctTxt} vs mediana (${mult})` };
+  return { cls: "ok", ico: "=",
+           txt: curto ? mult : (p ? `na faixa da mediana: ${pctTxt} (${mult})` : `na mediana (${mult})`) };
 }
+
+// rótulo curto da base da razão, para não esconder que ela é corrigida
+const notaRazao = (c) => (c.razao_base === "ipca" ? "diferença corrigida pelo IPCA" : null);
 
 function el(tag, attrs, ...filhos) {
   const n = document.createElement(tag);
@@ -171,6 +180,7 @@ function cartaoComparacao(c) {
   meta.append(document.createTextNode(
     c.modo === "mediana"
       ? `${c.pares.n} preços em ${c.pares.n_cidades} cidades · `
+        + (notaRazao(c) ? notaRazao(c) + " · " : "")
       : `${c.pares.n} referência(s) pontual(is) · `));
   meta.append(el("span", { cls: "selo-conf", txt: "confiança " + (c.confianca_min || "—") }));
   cartao.append(meta);
@@ -491,6 +501,13 @@ function renderDetalhe() {
   precos.append(b3);
   cab.append(precos);
   cab.append(el("span", { cls: "farol " + f.cls }, f.ico + " " + f.txt));
+  if (d.razao != null) {
+    const base = (INDICE && INDICE.ipca && INDICE.ipca.base) || null;
+    cab.append(el("p", { cls: "meta", txt: d.razao_base === "ipca"
+      ? `Diferença calculada com os preços corrigidos pelo IPCA até ${base ? mesBr(base + "-01") : "o último mês publicado"} `
+        + "(colunas \"Corrigido\" abaixo); os valores acima são os nominais, como pagos."
+      : "Diferença calculada com os preços nominais (sem correção pelo IPCA para todas as observações)." }));
+  }
 
   const meta = el("p", { cls: "meta" });
   meta.textContent = d.modo === "mediana"
@@ -503,7 +520,9 @@ function renderDetalhe() {
   if (d.economia_se_mediana) {
     const e = el("p", { cls: "meta" });
     e.textContent = `Se tivesse pago a mediana dos pares, a diferença sobre a quantidade `
-      + `contratada seria de ${brl(d.economia_se_mediana)} — projeção aritmética, não economia realizável.`;
+      + `contratada seria de ${brl(d.economia_se_mediana)}`
+      + (d.razao_base === "ipca" ? " (em valores corrigidos pelo IPCA)" : "")
+      + ` — projeção aritmética, não economia realizável.`;
     cab.append(e);
   }
   alvo.append(cab);
@@ -849,7 +868,8 @@ function renderHero() {
   // o máximo, não o primeiro do array: depender da ordem do export tornaria o
   // número-âncora refém de uma decisão de ordenação lá do outro lado
   const pior = comps.reduce((a, b) => (b.razao > a.razao ? b : a));
-  n.textContent = pior.razao.toFixed(1).replace(".", ",") + "×";
+  n.textContent = fmtRazao(pior.razao);
+  // o resumo do export já diz se a razão é corrigida pelo IPCA
   ctx.textContent = `a mediana das cidades-par no caso mais extremo (${pior.titulo}). `
     + (INDICE.resumo || "");
 }
