@@ -106,6 +106,40 @@ def test_resumo_narra_o_pior_caso():
     assert "Placas" in txt and "1 de 2" in txt
 
 
+# ── razão única (manchete × cartão × resumo) ────────────────────────────────
+
+def test_razao_usa_precos_corrigidos_quando_ha_as_duas_pontas():
+    """Caso real da agulha: nominal 0,0737/0,0695 = 1,06; corrigida
+    0,0752/0,072 = 1,04. Publica-se UMA razão: a corrigida."""
+    rz = export.razao_publicada(0.0737, 0.0695, 0.0752, 0.072)
+    assert rz["base"] == "ipca"
+    assert rz["razao"] == 1.044 and rz["delta_pct"] == 4.4
+    assert (rz["santos"], rz["mediana"]) == (0.0752, 0.072)
+
+
+def test_razao_cai_para_nominal_sem_correcao_completa():
+    rz = export.razao_publicada(0.0737, 0.0695, 0.0752, None)
+    assert rz["base"] == "nominal" and rz["razao"] == 1.06
+
+
+def test_razao_sem_mediana_e_nula():
+    rz = export.razao_publicada(0.07, None, None, None)
+    assert rz["razao"] is None and rz["delta_pct"] is None
+
+
+def test_razao_e_delta_sao_o_mesmo_numero():
+    rz = export.razao_publicada(2.0, 1.0, 1.5, 1.2)
+    assert round(100 * (rz["razao"] - 1), 1) == rz["delta_pct"]
+
+
+def test_resumo_usa_virgula_e_duas_casas():
+    comps = [{"modo": "mediana", "titulo": "Agulha", "razao": 1.044, "delta_pct": 4.4,
+              "razao_base": "ipca", "pares": {"n": 4, "n_cidades": 3}}]
+    txt = export._resumo(comps)
+    assert "1,04× a mediana" in txt and "1.1×" not in txt
+    assert "corrigidos pelo IPCA" in txt
+
+
 # ── catálogo "O que Santos comprou" ─────────────────────────────────────────
 
 NCP_A = "58200015000183-1-000011/2026"
