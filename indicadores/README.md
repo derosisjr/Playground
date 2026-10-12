@@ -33,7 +33,11 @@ guarda anti-truncamento (não publica índice incompleto). Fontes toleram falha
 individual (IBGE às vezes é lento a partir dos runners do GitHub; a base
 mantém a carga anterior).
 
-Decisões: valores **correntes** (sem deflator; anotado no rodapé); indicadores
+Decisões: valores em R$ **do último ano da série**, corrigidos pela média anual
+do IPCA (`precos/ipca.json`; fatores publicados em `deflator` no índice; ano sem
+IPCA completo fica fora — desde 2026-10, antes eram correntes); pessoal e
+investimento **sem a modalidade 91** (intraorçamentária — o patronal ao RPPS
+próprio contava duas vezes; `fontes.FISCAL_SEM_INTRA`); indicadores
 mostrados no **último ano divulgado**, nunca interpolados; a série de gasto usa
 **só o SICONFI** (metodologia idêntica entre municípios — a Base de Despesas
 local cobre outra visão, caixa/mandato). Referência **média SP** só nos

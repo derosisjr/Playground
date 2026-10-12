@@ -108,6 +108,16 @@ FISCAL_CONTAS = {
     "investimento": ("DCA-Anexo I-D", "4.4.00.00.00", "Despesas Empenhadas"),
 }
 
+# Contas de DESPESA do I-D cuja linha de topo soma a modalidade 91 — "aplicação
+# direta decorrente de operação entre órgãos, fundos e entidades" (intraorçamen-
+# tária): despesa de um órgão do município paga a outro, sobretudo a contribuição
+# patronal ao RPPS próprio. Sem descontá-la a mesma despesa conta duas vezes (o
+# patronal pago ao instituto e, depois, a aposentadoria que ele paga em 3.1.90.01)
+# e a comparação pune quem tem RPPS próprio. Verificado no DCA 2023: Santos
+# 3.1.00 = R$ 2.129 mi = 3.1.90 (R$ 1.716 mi) + 3.1.91 (R$ 413 mi); SJC tem
+# R$ 165 mi de 3.1.91; Mauá não tem modalidade 91.
+FISCAL_SEM_INTRA = {"pessoal", "investimento"}
+
 # Funções orçamentárias acompanhadas (código no DCA → tema do painel).
 FUNCOES = {"10": "saude", "12": "educacao"}
 
@@ -147,6 +157,22 @@ def _valor_conta(itens: list[dict], conta: str, coluna: str):
     return None
 
 
+def conta_intra(conta: str) -> str:
+    """'3.1.00.00.00' → '3.1.91.00.00': mesma categoria/grupo, modalidade 91."""
+    partes = conta.split(".")
+    partes[2] = "91"
+    return ".".join(partes)
+
+
+def valor_sem_intra(itens: list[dict], conta: str, coluna: str):
+    """Valor da conta de topo MENOS a modalidade 91 (intraorçamentária).
+    Sem linha 91 no DCA, nada a descontar."""
+    total = _valor_conta(itens, conta, coluna)
+    if total is None:
+        return None
+    return round(total - (_valor_conta(itens, conta_intra(conta), coluna) or 0.0), 2)
+
+
 def baixar_fiscal(ano: int, ibge7: str) -> dict:
     """Agrega as contas fiscais (tributos, receita corrente, pessoal, investimento)
     de um município/ano a partir dos anexos I-C e I-D. Devolve {chave: valor}."""
@@ -155,7 +181,10 @@ def baixar_fiscal(ano: int, ibge7: str) -> dict:
     for chave, (anexo, conta, coluna) in FISCAL_CONTAS.items():
         if anexo not in cache:
             cache[anexo] = baixar_dca(ano, ibge7, anexo)
-        v = _valor_conta(cache[anexo], conta, coluna)
+        if chave in FISCAL_SEM_INTRA:
+            v = valor_sem_intra(cache[anexo], conta, coluna)
+        else:
+            v = _valor_conta(cache[anexo], conta, coluna)
         if v is not None:
             saida[chave] = v
     return saida
