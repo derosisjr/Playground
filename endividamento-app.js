@@ -52,6 +52,7 @@ async function init() {
   renderSemaforo();
   renderResumo();
   renderGraficos();
+  renderNotasQuebra();
   renderEstatais();
   renderServicoDivida();   // fonte secundária (Radar de Despesas); some se falhar
   renderTabela();
@@ -132,15 +133,71 @@ function linhaLimite(rotulo, valor, cor, n) {
 }
 
 function opts(fmtY, comLegenda) {
+  const S = (DADOS && DADOS.serie) || [];
   return {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: "index", intersect: false },
     plugins: {
       legend: { display: !!comLegenda, labels: { boxWidth: 14, boxHeight: 3, font: { size: 11 } } },
-      tooltip: { callbacks: { label: (c) => `${c.dataset.label || ""}: ${fmtY(c.parsed.y)}` } },
+      tooltip: { callbacks: {
+        label: (c) => `${c.dataset.label || ""}: ${fmtY(c.parsed.y)}`,
+        footer: (itens) => (itens.length && S[itens[0].dataIndex] && S[itens[0].dataIndex].quebra
+          ? "Quebra contábil: não compare com os pontos anteriores" : ""),
+      } },
     },
     scales: { y: { ticks: { callback: (v) => fmtY(v) } } },
   };
+}
+
+// Quebras de série (DADOS.quebras, curadas em endividamento/export.py): linha
+// vertical tracejada entre o ponto anterior e o da quebra, com rótulo. Comparar
+// valores através dela mede a mudança de critério contábil, não a dívida.
+function indicesQuebra() {
+  const S = DADOS.serie || [];
+  return S.map((p, i) => (p.quebra ? i : -1)).filter(i => i > 0);
+}
+
+function pluginQuebras(indices) {
+  return {
+    id: "quebras",
+    afterDatasetsDraw(chart) {
+      if (!indices.length) return;
+      const { ctx, chartArea: a, scales: { x } } = chart;
+      ctx.save();
+      ctx.strokeStyle = COR_ALERTA;
+      ctx.fillStyle = COR_ALERTA;
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.font = "700 11px Manrope, sans-serif";
+      indices.forEach(i => {
+        const px = (x.getPixelForValue(i - 1) + x.getPixelForValue(i)) / 2;
+        ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+        const aDireita = px > a.left + (a.right - a.left) * 0.6;
+        ctx.textAlign = aDireita ? "right" : "left";
+        ctx.fillText("quebra contábil", px + (aDireita ? -5 : 5), a.top + 12);
+      });
+      ctx.restore();
+    },
+  };
+}
+
+function renderNotasQuebra() {
+  const qs = DADOS.quebras || [];
+  document.querySelectorAll("[data-quebra]").forEach(el => {
+    if (!qs.length) { el.hidden = true; return; }
+    el.innerHTML = qs.map(q =>
+      `<b>⚠ Quebra contábil no ${esc(q.rotulo)}${el.dataset.quebra === "tabela" ? " (†)" : ""}:</b> ${esc(q.nota)}`).join("<br>");
+    el.hidden = false;
+  });
+}
+
+// frase curta p/ as descrições acessíveis dos gráficos afetados
+function avisoQuebraTexto() {
+  const qs = DADOS.quebras || [];
+  return qs.length
+    ? " Atenção: quebra contábil em " + qs.map(q => q.rotulo).join(", ") +
+      " (reclassificação dos precatórios); não compare valores de antes e depois."
+    : "";
 }
 
 function renderGraficos() {
@@ -153,6 +210,7 @@ function renderGraficos() {
   const S = DADOS.serie || [];
   const labels = S.map(rotuloQ);
   const n = S.length;
+  const quebra = [pluginQuebras(indicesQuebra())];
 
   // Dívida bruta × líquida
   new Chart(document.getElementById("ch-divida"), {
@@ -164,6 +222,7 @@ function renderGraficos() {
         tension: .25, borderWidth: 2, pointRadius: 2, fill: false },
     ] },
     options: opts(compacto, true),
+    plugins: quebra,
   });
 
   // DCL % da RCL vs limites
@@ -176,6 +235,7 @@ function renderGraficos() {
       linhaLimite("Alerta (108%)", 108, COR_ALERTA, n),
     ] },
     options: opts((v) => pct(v, 0), true),
+    plugins: quebra,
   });
 
   // Pessoal % da RCL vs limites
@@ -198,6 +258,7 @@ function renderGraficos() {
         backgroundColor: GOLD, borderRadius: 4, maxBarThickness: 26 },
     ] },
     options: opts(compacto, false),
+    plugins: quebra,
   });
 
   // Restos a pagar × caixa
@@ -215,22 +276,24 @@ function renderGraficos() {
   // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
   const u = S[S.length - 1] || {};
   const vc = (v) => (v != null ? compacto(v) : "—");
+  const aviso = avisoQuebraTexto();
+  const rotA = (p) => p.rotulo + (p.quebra ? " (quebra contábil)" : "");
   Comum.chartAcessivel("ch-divida",
-    `Dívida bruta e líquida por quadrimestre. Em ${u.rotulo || "—"}: bruta ${vc(u.dc)}, líquida ${vc(u.dcl)}.`,
+    `Dívida bruta e líquida por quadrimestre. Em ${u.rotulo || "—"}: bruta ${vc(u.dc)}, líquida ${vc(u.dcl)}.${aviso}`,
     ["Quadrimestre", "Dívida bruta", "Dívida líquida"],
-    S.map(p => [p.rotulo, vc(p.dc), vc(p.dcl)]));
+    S.map(p => [rotA(p), vc(p.dc), vc(p.dcl)]));
   Comum.chartAcessivel("ch-dcl-pct",
-    `Dívida consolidada líquida em percentual da RCL, contra o limite legal de 120% e o alerta de 108%. Em ${u.rotulo || "—"}: ${pct(u.dcl_pct)}.`,
+    `Dívida consolidada líquida em percentual da RCL, contra o limite legal de 120% e o alerta de 108%. Em ${u.rotulo || "—"}: ${pct(u.dcl_pct)}.${aviso}`,
     ["Quadrimestre", "DCL/RCL"],
-    S.map(p => [p.rotulo, pct(p.dcl_pct)]));
+    S.map(p => [rotA(p), pct(p.dcl_pct)]));
   Comum.chartAcessivel("ch-pessoal",
     `Despesa com pessoal em percentual da RCL, contra o limite legal de 54% e o alerta de 48,6%. Em ${u.rotulo || "—"}: ${pct(u.pessoal_pct)}.`,
     ["Quadrimestre", "Pessoal/RCL"],
     S.map(p => [p.rotulo, pct(p.pessoal_pct)]));
   Comum.chartAcessivel("ch-precatorios",
-    `Precatórios vencidos e não pagos por quadrimestre. Em ${u.rotulo || "—"}: ${vc(u.precatorios)}.`,
+    `Precatórios vencidos e não pagos por quadrimestre. Em ${u.rotulo || "—"}: ${vc(u.precatorios)}.${aviso}`,
     ["Quadrimestre", "Precatórios vencidos"],
-    S.map(p => [p.rotulo, vc(p.precatorios)]));
+    S.map(p => [rotA(p), vc(p.precatorios)]));
   Comum.chartAcessivel("ch-caixa",
     `Caixa bruto contra restos a pagar por quadrimestre. Em ${u.rotulo || "—"}: caixa ${vc(u.caixa_bruta)}, restos a pagar ${vc(u.rp)}.`,
     ["Quadrimestre", "Caixa bruto", "Restos a pagar"],
@@ -355,8 +418,9 @@ function desenharServicoDivida() {
 function renderTabela() {
   const S = [...(DADOS.serie || [])].reverse();   // mais recente primeiro
   document.getElementById("tab-corpo").innerHTML = S.map(p => `
-    <tr>
-      <td>${esc(p.rotulo)}</td>
+    <tr${p.quebra ? ' class="linha-quebra"' : ""}>
+      <td>${esc(p.rotulo)}${p.quebra
+        ? ` <span class="marca-quebra" title="${esc(p.quebra)}">† quebra contábil</span>` : ""}</td>
       <td class="num">${p.dc != null ? esc(compacto(p.dc)) : "—"}</td>
       <td class="num">${p.dcl != null ? esc(compacto(p.dcl)) : "—"}</td>
       <td class="num">${p.rcl != null ? esc(compacto(p.rcl)) : "—"}</td>
@@ -373,8 +437,9 @@ function exportarCsv() {
   const S = DADOS.serie || [];
   Comum.exportarCsv("endividamento-santos.csv",
     ["Período", "Dívida bruta (R$)", "Dívida líquida (R$)", "RCL (R$)",
-     "DCL/RCL (%)", "Pessoal/RCL (%)", "Op. crédito/RCL (%)", "Precatórios vencidos (R$)"],
-    S.map(p => [p.rotulo, p.dc, p.dcl, p.rcl, p.dcl_pct, p.pessoal_pct, p.opcred_pct, p.precatorios]));
+     "DCL/RCL (%)", "Pessoal/RCL (%)", "Op. crédito/RCL (%)", "Precatórios vencidos (R$)", "Observação"],
+    S.map(p => [p.rotulo, p.dc, p.dcl, p.rcl, p.dcl_pct, p.pessoal_pct, p.opcred_pct, p.precatorios,
+                p.quebra ? "Quebra contábil: " + p.quebra : ""]));
 }
 
 init();
