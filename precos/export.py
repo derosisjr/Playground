@@ -97,6 +97,32 @@ def _observacao(conn, a, base, serie_ipca, base_mes):
     }
 
 
+def razao_publicada(p_santos, mediana, p_santos_corr, mediana_corr) -> dict:
+    """A razão ÚNICA que o painel publica — manchete, cartão, lista, paleta e
+    resumo leem este mesmo número (antes a manchete dizia "1,1×" e o cartão
+    "+6%", ambos nominais, enquanto a razão corrigida era 1,04).
+
+    Corrigida pelo IPCA quando as duas pontas têm correção (preço de Santos e
+    mediana corrigida — que só existe se TODAS as observações foram corrigidas);
+    senão, nominal. `base` diz qual das duas é: "ipca" ou "nominal".
+    `santos`/`mediana` são o par usado, para quem derivar algo (ex.: projeção)
+    não voltar a misturar bases."""
+    if p_santos_corr and mediana_corr:
+        a, b, base = p_santos_corr, mediana_corr, "ipca"
+    elif p_santos and mediana:
+        a, b, base = p_santos, mediana, "nominal"
+    else:
+        return {"razao": None, "delta_pct": None, "base": None,
+                "santos": None, "mediana": None}
+    return {"razao": round(a / b, 3), "delta_pct": round(100 * (a / b - 1), 1),
+            "base": base, "santos": a, "mediana": b}
+
+
+def fmt_razao(razao: float) -> str:
+    """'1,04×' — duas casas e vírgula decimal, igual ao painel (fmtRazao)."""
+    return f"{razao:.2f}".replace(".", ",") + "×"
+
+
 def _estatistica(obs, base_mes):
     precos = sorted(o["preco"] for o in obs)
     n = len(precos)
@@ -157,16 +183,17 @@ def montar_comparacao(conn, q, serie_ipca, base_mes):
 
     modo = "mediana" if est["n"] >= N_MINIMO_MEDIANA else "referencias_pontuais"
     mediana = est["mediana"]
-    delta = razao = None
-    if modo == "mediana" and mediana:
-        razao = round(p_santos / mediana, 3)
-        delta = round(100 * (p_santos / mediana - 1), 1)
+    p_santos_corr = _corrigir(serie_ipca, p_santos, d_santos, base_mes)
+    rz = (razao_publicada(p_santos, mediana, p_santos_corr, est["mediana_corrigida"])
+          if modo == "mediana" else razao_publicada(None, None, None, None))
+    razao, delta, razao_base = rz["razao"], rz["delta_pct"], rz["base"]
 
+    # projeção na MESMA base da razão (corrigida ou nominal) — nunca misturar
     economia = None
-    if (modo == "mediana" and mediana and p_santos > mediana
+    if (razao is not None and rz["santos"] > rz["mediana"]
             and est["n"] >= N_MIN_EXTRAPOLACAO
             and est["n_cidades"] >= CIDADES_MIN_EXTRAPOLACAO):
-        economia = round((p_santos - mediana) * (ref["quantidade"] or 0), 2)
+        economia = round((rz["santos"] - rz["mediana"]) * (ref["quantidade"] or 0), 2)
 
     contr = conn.execute("SELECT * FROM contratacao WHERE ncp=?",
                          (ref["ncp"],)).fetchone()
@@ -179,7 +206,7 @@ def montar_comparacao(conn, q, serie_ipca, base_mes):
         "objeto": contr["objeto"] if contr else None,
         "modalidade": contr["modalidade_nome"] if contr else None,
         "processo": contr["processo"] if contr else None,
-        "preco_corrigido": _corrigir(serie_ipca, p_santos, d_santos, base_mes),
+        "preco_corrigido": p_santos_corr,
         "url": (fontes.url_publica(contr["cnpj"], contr["ano"], contr["sequencial"])
                 if contr else None),
     }
@@ -195,7 +222,7 @@ def montar_comparacao(conn, q, serie_ipca, base_mes):
         "slug": q["slug"], "titulo": q.get("titulo"), "tema": q.get("tema"),
         "unidade": q.get("unidade_canonica"), "base": base,
         "santos": santos_leve, "pares": est, "delta_pct": delta, "razao": razao,
-        "economia_se_mediana": economia,
+        "razao_base": razao_base, "economia_se_mediana": economia,
         "confianca_min": ("media" if "media" in confs else "alta") if confs else None,
         "modo": modo, "avaliados": r["avaliados"], "descartados": r["descartados"],
         "cidades": sorted({o["cidade"] for o in obs}),
@@ -207,7 +234,7 @@ def montar_comparacao(conn, q, serie_ipca, base_mes):
         "slug": q["slug"], "titulo": q.get("titulo"), "tema": q.get("tema"),
         "base": base, "unidade": q.get("unidade_canonica"),
         "santos": santos, "pares": est, "delta_pct": delta, "razao": razao,
-        "economia_se_mediana": economia, "modo": modo,
+        "razao_base": razao_base, "economia_se_mediana": economia, "modo": modo,
         "observacoes": obs,
         "avaliados": r["avaliados"], "descartados": r["descartados"],
         "motivos_descarte": dict(sorted(r["motivos"].items(), key=lambda kv: -kv[1])),
@@ -335,10 +362,13 @@ def _resumo(comparacoes):
         return (f"Nas {len(pub)} comparações com mediana, Santos pagou igual ou abaixo "
                 "da mediana das cidades-par em todas.")
     pior = max(acima, key=lambda c: c["razao"] or 0)
+    corrigida = (" (preços corrigidos pelo IPCA)"
+                 if pior.get("razao_base") == "ipca" else "")
     return (f"Em {len(acima)} de {len(pub)} comparações com mediana, Santos pagou acima "
             f"da mediana das cidades-par. A maior diferença é "
-            f"\"{pior['titulo']}\": {pior['razao']:.1f}× a mediana de "
-            f"{pior['pares']['n']} preços em {pior['pares']['n_cidades']} cidades.")
+            f"\"{pior['titulo']}\": {fmt_razao(pior['razao'])} a mediana de "
+            f"{pior['pares']['n']} preços em {pior['pares']['n_cidades']} cidades"
+            f"{corrigida}.")
 
 
 def main():

@@ -29,7 +29,7 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.join(DIR, "ipca.json")
 sys.path.append(os.path.dirname(DIR))  # raiz: comum/
 from comum.escrita import gravar_json  # noqa: E402
-ANO_INICIAL = 2020
+ANO_INICIAL = 2019  # 2019: 1º ano da série do Custo por Resultado (indicadores/), que deflaciona por aqui
 
 SIDRA = ("https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/2266"
          "/p/{periodos}")

@@ -30,6 +30,18 @@ SAIDA = os.path.join(RAIZ, "endividamento-index.json")
 
 RCL_MINIMA_PLAUSIVEL = 1_000_000_000  # Santos: RCL ~R$ 3,5 bi; < R$ 1 bi = truncado
 
+# Quebras de série conhecidas (curadoria): quadrimestres em que a dívida
+# registrada no RGF muda por critério contábil, não por pagamento/contratação.
+# Comparar valores através de uma quebra mede a mudança de regra, não a dívida.
+# (ano, quadrimestre) → nota exibida no gráfico e na tabela do painel.
+QUEBRAS = {
+    (2025, 3): ("Os precatórios foram reclassificados no RGF. "
+                "A dívida consolidada registrada cai de cerca de R$ 1,0 bilhão "
+                "para R$ 522 milhões e os precatórios vencidos, de R$ 540 milhões "
+                "para R$ 63 milhões — sem os precatórios, a dívida quase não se "
+                "move. Não compare valores de antes e depois deste ponto."),
+}
+
 # console do Windows pode ser cp1252; a saída do script é utf-8
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -148,19 +160,69 @@ def _brl_compacto(v: float) -> str:
     return f"R$ {n} {'milhões' if abs(n) >= 2 else 'milhão'}"
 
 
-def _resumo(serie: list[dict], ponto: dict, semaforo: list[dict]) -> str:
+def anotar_quebras(serie: list[dict], quebras: dict = QUEBRAS) -> list[dict]:
+    """Marca na série os pontos de quebra (campo `quebra` com a nota) e devolve
+    a lista [{ano, q, rotulo, nota}] na ordem da série. Só anota quebras que
+    caem dentro da série — nota de período ausente seria ruído."""
+    lista = []
+    for p in serie:
+        nota = quebras.get((p["ano"], p["q"]))
+        if nota:
+            p["quebra"] = nota
+            lista.append({"ano": p["ano"], "q": p["q"], "rotulo": p["rotulo"], "nota": nota})
+        else:
+            p.pop("quebra", None)
+    return lista
+
+
+def variacao_sem_precatorios(serie: list[dict], ponto: dict):
+    """Variação da dívida consolidada SEM os precatórios vencidos, do primeiro
+    ponto que discrimina precatórios até `ponto`. É a única comparação longa que
+    atravessa a reclassificação de 2025 sem medir a mudança de regra.
+    Devolve (ponto_inicial, valor_inicial, valor_final, var_pct) ou None."""
+    if ponto.get("dc") is None or ponto.get("precatorios") is None:
+        return None
+    base = next((p for p in serie
+                 if p.get("dc") and p.get("precatorios") is not None), None)
+    if not base or base is ponto:
+        return None
+    ini = base["dc"] - base["precatorios"]
+    fim = ponto["dc"] - ponto["precatorios"]
+    if ini <= 0:
+        return None
+    return base, ini, fim, (fim / ini - 1) * 100
+
+
+def _resumo(serie: list[dict], ponto: dict, semaforo: list[dict],
+            quebras: list[dict] | None = None) -> str:
     partes = []
     partes.append(
         f"No {ponto['rotulo'].replace('quad.', 'quadrimestre de')}, a dívida "
         f"consolidada de Santos era de {_brl_compacto(ponto['dc'])} — "
         f"{ponto['dc_pct']:.1f}% da receita corrente líquida".replace(".", ","))
-    primeiro = next((p for p in serie if p["dc"]), None)
-    if primeiro and primeiro is not ponto and primeiro["dc"]:
-        var = (ponto["dc"] / primeiro["dc"] - 1) * 100
+    # Nunca comparar a dívida total através de uma quebra contábil: o número
+    # mediria a mudança de critério. Com quebra na série, a comparação longa
+    # exclui os precatórios (a parte reclassificada) e diz isso por extenso.
+    quebras = quebras or []
+    var_sp = variacao_sem_precatorios(serie, ponto) if quebras else None
+    if quebras and var_sp:
+        base, ini, fim, var = var_sp
         verbo = "cresceu" if var >= 0 else "caiu"
+        q = quebras[-1]
         partes.append(
-            f"desde o {primeiro['rotulo']}, ela {verbo} "
-            f"{abs(var):.0f}% em valores correntes")
+            f"a comparação com anos anteriores precisa excluir os precatórios, "
+            f"reclassificados no RGF a partir do {q['rotulo']} (quebra contábil, "
+            f"não pagamento): sem eles, a dívida {verbo} {abs(var):.0f}% em "
+            f"valores correntes desde o {base['rotulo']}, de {_brl_compacto(ini)} "
+            f"para {_brl_compacto(fim)}")
+    elif not quebras:
+        primeiro = next((p for p in serie if p["dc"]), None)
+        if primeiro and primeiro is not ponto and primeiro["dc"]:
+            var = (ponto["dc"] / primeiro["dc"] - 1) * 100
+            verbo = "cresceu" if var >= 0 else "caiu"
+            partes.append(
+                f"desde o {primeiro['rotulo']}, ela {verbo} "
+                f"{abs(var):.0f}% em valores correntes")
     fora = [m["nome"].lower() for m in semaforo if m["cor"] == "vermelho"]
     aviso = [m["nome"].lower() for m in semaforo if m["cor"] == "amarelo"]
     if fora:
@@ -183,6 +245,8 @@ def montar(conn) -> dict:
 
     serie = [_ponto(ano, q, per) for (ano, q), per in sorted(dados.items())]
     serie = [p for p in serie if p["dc"] is not None or p["pessoal"] is not None]
+
+    quebras = anotar_quebras(serie)
 
     ultimo = serie[-1]
     per_ultimo = dados[(ultimo["ano"], ultimo["q"])]
@@ -208,8 +272,9 @@ def montar(conn) -> dict:
         },
         "semaforo": semaforo,
         "serie": serie,
+        "quebras": quebras,
         "estatais": estatais,
-        "resumo": _resumo(serie, ultimo, semaforo),
+        "resumo": _resumo(serie, ultimo, semaforo, quebras),
     }
 
 

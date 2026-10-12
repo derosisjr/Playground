@@ -439,7 +439,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=12"></script>
+    <script src="./comum.js?v=15"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -710,6 +710,11 @@
         const n = total(r);
         if (!n) return esconder("ind-req");
         const resp = Array.isArray(r) ? r.filter((x) => x.respondido).length : r.respondidos;
+        // Mesma regra do painel: sem classificação de mérito na base, "respondido"
+        // é só "tem algum retorno" (inclui pedido de prorrogação).
+        const comMerito = Array.isArray(r) && r.some((x) => x.data_resposta_merito ||
+          (x.situacao && x.situacao !== "respondido" && x.situacao !== "pendente"));
+        if (!comMerito) document.querySelector("#ind-req .ind-lbl").textContent = "Requerimentos com retorno";
         indicador("ind-req", Math.round((resp / n) * 100) + "% · " + resp + " de " + n);
       }).catch(() => esconder("ind-req"));
 

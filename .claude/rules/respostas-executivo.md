@@ -69,6 +69,13 @@ mundo; rodada longa, ~1h). Enquanto a coluna estiver vazia o painel cai em `Data
 resposta`, que na prática coincide na maioria dos casos (o bloco mais recente costuma ser
 justamente o de mérito).
 
+**Painel sem classificação na base (2026-10):** enquanto nenhuma linha do índice tiver
+situação além de `respondido`/`pendente` **e** nenhuma `data_resposta_merito`, o export está no
+fallback "tem pasta no Drive" — e o painel (`baseClassificada()` em `requerimentos-app.js`) **não
+fala em mérito**: rotula "com algum retorno da Prefeitura (inclui prorrogações; classificação de
+mérito pendente)", troca o texto do topo, os rótulos do filtro e some com os filtros de trâmite.
+Basta uma linha classificada para voltar à métrica de mérito.
+
 ## Comandos úteis
 
 ```bash

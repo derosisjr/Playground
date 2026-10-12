@@ -426,7 +426,7 @@ window.Comum = (() => {
         s: "Santos R$ " + Number(c.santos.preco).toLocaleString("pt-BR", {
              minimumFractionDigits: c.santos.preco < 1 ? 4 : 2,
              maximumFractionDigits: c.santos.preco < 1 ? 4 : 2 }) + "/" + c.unidade +
-           (c.razao ? " · " + c.razao.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) +
+           (c.razao ? " · " + c.razao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
                       "× a mediana de " + c.pares.n_cidades + " cidades"
                     : " · " + c.pares.n + " referência(s)"),
         url: "./precos.html?c=" + encodeURIComponent(c.slug),

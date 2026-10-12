@@ -27,6 +27,10 @@ import fontes  # noqa: E402
 
 BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "indicadores.sqlite")
 ANO_INICIAL = 2019  # série pré-mandato dá contexto ao debate de orçamento
+# Nome da fonte fiscal no controle_carga. Mudar a regra de extração (ex.: 2026-10,
+# desconto da modalidade intraorçamentária) exige incrementar a versão: anos
+# encerrados não são rebaixados, e o cache do Actions guardaria o valor antigo.
+FONTE_FISCAL = "fiscal-v2"
 
 
 def conectar():
@@ -87,7 +91,7 @@ def carregar_fiscal(conn, ano: int, dry_run=False) -> int:
             print("  fiscal:", ln)
         return len(linhas)
     conn.executemany("INSERT OR REPLACE INTO fiscal VALUES (?,?,?,?)", linhas)
-    conn.execute("INSERT OR REPLACE INTO controle_carga VALUES ('fiscal', ?)", (ano,))
+    conn.execute("INSERT OR REPLACE INTO controle_carga VALUES (?, ?)", (FONTE_FISCAL, ano))
     conn.commit()
     return len(linhas)
 
@@ -163,7 +167,7 @@ def main():
     conn = conectar()
     ja = {f: {r["ano"] for r in conn.execute(
               "SELECT ano FROM controle_carga WHERE fonte=?", (f,))}
-          for f in ("dca", "fiscal")}
+          for f in ("dca", FONTE_FISCAL)}
     ano_corrente = date.today().year
 
     def _anos_a_baixar(fonte):
@@ -184,7 +188,7 @@ def main():
             except Exception as e:  # noqa: BLE001
                 falhas.append(f"dca {ano}: {e}")
     if args.fonte in (None, "fiscal"):
-        for ano in _anos_a_baixar("fiscal"):
+        for ano in _anos_a_baixar(FONTE_FISCAL):
             try:
                 n = carregar_fiscal(conn, ano, args.dry_run)
                 print(f"fiscal {ano}: {n} linhas")

@@ -122,6 +122,10 @@
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
       .box canvas { height: 300px !important; width: 100% !important; }
+      /* quebra de série (reclassificação contábil) — aviso em texto, nunca só cor */
+      .nota-quebra { color: var(--muted); font-size: 12.5px; line-height: 1.6; margin: 10px 0 0; max-width: 90ch; }
+      tr.linha-quebra td { border-bottom: 2px dashed var(--line); }  /* tabela: mais recente no topo */
+      .marca-quebra { font-size: 11px; font-weight: 700; white-space: nowrap; }
       .resumo-box { border-left: 3px solid var(--gold); margin-top: 16px; }
       .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
         letter-spacing: .18em; text-transform: uppercase; color: var(--gold);
@@ -173,7 +177,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=12"></script>
+    <script src="./comum.js?v=15"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -215,13 +219,16 @@
       <div class="box">
         <h3>Dívida consolidada — bruta e líquida (R$)</h3>
         <canvas id="ch-divida"></canvas>
+        <p class="nota-quebra" data-quebra hidden></p>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><canvas id="ch-dcl-pct"></canvas></div>
+        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><canvas id="ch-dcl-pct"></canvas>
+          <p class="nota-quebra" data-quebra hidden></p></div>
         <div class="box"><h3>Despesa com pessoal em % da RCL — limite: 54%</h3><canvas id="ch-pessoal"></canvas></div>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Precatórios vencidos e não pagos (R$)</h3><canvas id="ch-precatorios"></canvas></div>
+        <div class="box"><h3>Precatórios vencidos e não pagos (R$)</h3><canvas id="ch-precatorios"></canvas>
+          <p class="nota-quebra" data-quebra hidden></p></div>
         <div class="box"><h3>Restos a pagar × caixa disponível (R$)</h3><canvas id="ch-caixa"></canvas></div>
       </div>
 
@@ -266,6 +273,7 @@
           <tbody id="tab-corpo"></tbody>
         </table>
       </div>
+      <p class="nota-quebra" data-quebra="tabela" hidden></p>
       </div>
 
       <h2 class="sec">Entenda os termos</h2>
@@ -302,6 +310,6 @@
       </p>
     </div>
 
-    <script src="./endividamento-app.js?v=6"></script>
+    <script src="./endividamento-app.js?v=7"></script>
   </body>
 </html>

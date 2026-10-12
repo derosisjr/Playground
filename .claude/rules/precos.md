@@ -188,6 +188,13 @@ Preço **nominal e corrigido lado a lado** (IPCA de `ipca.py`, SIDRA/IBGE t1737 
 fallback SGS/BCB 433) — corrigir em silêncio seria tão desonesto quanto ignorar a inflação; o
 último IPCA publicado defasa ~1 mês, então a base de correção nunca é "hoje".
 
+**Razão única (2026-10):** `razao`/`delta_pct` saem de `export.razao_publicada()` — **corrigida
+pelo IPCA** quando há as duas pontas (preço de Santos e `mediana_corrigida`), senão nominal;
+`razao_base` diz qual (`"ipca"`/`"nominal"`) e a projeção `economia_se_mediana` usa o mesmo par.
+Manchete, cartão, lista, paleta ⌘K e resumo mostram esse mesmo número, sempre com 2 casas e
+vírgula (`1,04×`; a frase em % do cartão é derivada dele). Antes a manchete dizia "1,1×"
+(`toFixed(1)`), o cartão "+6%" e o resumo "1.1×" — todos nominais, enquanto a corrigida era 1,04.
+
 Saída: **`precos-index.json`** (raiz, manifesto leve) + **`precos/dados/<slug>.json`** (um shard
 por comparação, baixado só ao abrir). Toda observação carrega a **URL da fonte no PNCP** — o
 export aborta se faltar. Cada comparação publica o denominador ("avaliados 214 · 9 comparáveis ·

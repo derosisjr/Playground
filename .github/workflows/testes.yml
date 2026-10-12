@@ -14,6 +14,8 @@ on:
       - "precos/**"
       - "proposituras/**"
       - "legis/**"
+      - "endividamento/**"
+      - "indicadores/**"
       - "respostas-executivo/**"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
@@ -28,6 +30,8 @@ on:
       - "precos/**"
       - "proposituras/**"
       - "legis/**"
+      - "endividamento/**"
+      - "indicadores/**"
       - "respostas-executivo/**"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
@@ -77,6 +81,7 @@ jobs:
         run: >-
           uv pip install --system -r despesas/requirements.txt -r precos/requirements.txt
           -r proposituras/requirements.txt -r legis/requirements.txt
+          -r endividamento/requirements.txt -r indicadores/requirements.txt
 
       # Passos SEPARADOS de propósito: despesas/tests e precos/tests importam cada um
       # o seu `crawler`/`export` pelo sys.path e colidem num mesmo processo pytest.
@@ -96,6 +101,10 @@ jobs:
       - name: Testes — legislação (revogações inferidas)
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: python -m pytest legis/tests -q
+
+      - name: Testes — endividamento + indicadores
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest endividamento/tests indicadores/tests -q
 
       - name: Testes — respostas do Executivo (classificador)
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}

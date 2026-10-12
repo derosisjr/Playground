@@ -14,6 +14,20 @@ const ROTULOS = {
   so_encaminhamento: "Só encaminhamento ↗",
 };
 
+// A classificação de mérito (classificar.py → colunas "Situação da resposta" e
+// "Data da resposta de mérito" da planilha) só vale quando já chegou à base.
+// Antes disso o export cai em "tem pasta no Drive" = respondido — o que inclui
+// pedidos de prorrogação e ofícios de encaminhamento. Chamar isso de mérito
+// inflava o painel (93% "com resposta de mérito" com 0 de 622 classificados).
+// Detecção: alguma situação além de respondido/pendente OU alguma data de mérito.
+let CLASSIFICADO = true;
+function baseClassificada(itens) {
+  return itens.some((i) =>
+    (i.situacao && i.situacao !== "respondido" && i.situacao !== "pendente")
+    || i.data_resposta_merito);
+}
+const TXT_RETORNO = "com algum retorno da Prefeitura (inclui prorrogações; classificação de mérito pendente)";
+
 const el = (id) => document.getElementById(id);
 // utilitários da camada comum (eram cópias locais idênticas em cada painel)
 const norm = Comum.norm;
@@ -78,11 +92,18 @@ function atualizarResumo() {
     ? Math.round(prazos.reduce((s, d) => s + d, 0) / prazos.length)
     : null;
 
-  const cards = [
+  const de = `${respondidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`;
+  const cards = CLASSIFICADO ? [
     { rotulo: "Requerimentos", valor: total.toLocaleString("pt-BR"), sub: "no filtro atual" },
-    { rotulo: "Respondidos", valor: `${pct}%`, sub: `${respondidos.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} — com resposta de mérito` },
+    { rotulo: "Respondidos", valor: `${pct}%`, sub: `${de} — com resposta de mérito` },
     { rotulo: "Sem resposta de mérito", valor: semMerito.toLocaleString("pt-BR"), sub: tramite ? `${tramite.toLocaleString("pt-BR")} só receberam trâmite` : "aguardando o Executivo" },
     { rotulo: "Tempo médio de resposta", valor: media == null ? "—" : `${media} dias`, sub: "entre a sessão e a resposta de mérito" },
+  ] : [
+    // sem classificação na base: o mesmo número, com o nome que ele tem de fato
+    { rotulo: "Requerimentos", valor: total.toLocaleString("pt-BR"), sub: "no filtro atual" },
+    { rotulo: "Com algum retorno", valor: `${pct}%`, sub: `${de} — ${TXT_RETORNO}` },
+    { rotulo: "Sem nenhum retorno", valor: semMerito.toLocaleString("pt-BR"), sub: "aguardando o Executivo" },
+    { rotulo: "Tempo médio de retorno", valor: media == null ? "—" : `${media} dias`, sub: "entre a sessão e a data de resposta registrada (pode ser prorrogação)" },
   ];
   el("stats").innerHTML = cards
     .map((c) => `<div class="stat">
@@ -102,6 +123,27 @@ function exportarCSV() {
     campos,
     filtradas.map((i) => campos.map((c) => (c === "respondido" ? (i[c] ? "sim" : "não") : i[c])))
   );
+}
+
+// Base sem classificação de mérito: textos e filtros deixam de prometer mérito.
+function semClassificacao() {
+  ROTULOS.respondido = "Retorno ↗";
+  const intro = el("intro-merito");
+  if (intro) {
+    intro.textContent = "A classificação das respostas (mérito × pedido de prorrogação × " +
+      "ofício de encaminhamento) ainda não chegou a esta base: por ora, conta-se como " +
+      "retorno qualquer documento enviado pela Prefeitura, inclusive pedidos de prorrogação de prazo.";
+  }
+  const sel = el("status");
+  const opt = (v) => sel.querySelector(`option[value="${v}"]`);
+  opt("sim").textContent = "Só com algum retorno";
+  opt("nao").textContent = "Sem nenhum retorno";
+  // sem classificação as situações de trâmite não existem na base (filtrar daria
+  // vazio) e "pendente" coincide com "nao" — links com ?status=pendente caem em "nao"
+  for (const v of ["so_prorrogacao", "so_encaminhamento", "pendente"]) {
+    const o = opt(v);
+    if (o) o.remove();
+  }
 }
 
 function linhaHTML(i) {
@@ -132,11 +174,14 @@ async function init() {
     return;
   }
   for (const i of ITENS) i._busca = norm([i.numero, i.assunto, i.status, i.ano].join(" "));
+  CLASSIFICADO = baseClassificada(ITENS);
+  if (!CLASSIFICADO) semClassificacao();
   preencherSelects();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
   const p = Comum.lerParams();
   for (const id of ["q", "ano", "status"]) {
-    const v = p.get(id);
+    let v = p.get(id);
+    if (id === "status" && v === "pendente" && !CLASSIFICADO) v = "nao";
     if (v) el(id).value = v;
   }
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
@@ -145,7 +190,8 @@ async function init() {
     corpo: "corpo", mais: "mais", contagem: "contagem", linha: linhaHTML,
     rotulo: (lista, mostrando) => {
       const respondidos = lista.filter((i) => i.respondido).length;
-      return `${lista.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} com resposta de mérito — exibindo ${mostrando.toLocaleString("pt-BR")}`;
+      const qual = CLASSIFICADO ? "com resposta de mérito" : "com algum retorno da Prefeitura";
+      return `${lista.length.toLocaleString("pt-BR")} requerimento(s) — ${respondidos.toLocaleString("pt-BR")} ${qual} — exibindo ${mostrando.toLocaleString("pt-BR")}`;
     },
   });
   el("csv").addEventListener("click", exportarCSV);

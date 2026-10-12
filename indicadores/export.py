@@ -4,7 +4,10 @@
 Junta o gasto liquidado por função (SICONFI/DCA — série completa 2019+, incl.
 o exercício mais recente já publicado; metodologia idêntica entre municípios)
 com os indicadores de resultado (IBGE), tudo per capita onde couber.
-Valores em reais correntes (sem deflator na v1 — anotado no painel).
+Valores monetários em REAIS DO ÚLTIMO ANO da série, corrigidos pela média anual
+do IPCA (precos/ipca.json, SIDRA/IBGE) — comparar R$ de 2019 com R$ de 2025 sem
+deflator chamava inflação de aumento de gasto. Ano sem IPCA completo fica fora
+das séries em R$ (nunca se mistura nominal com real). Os fatores vão no índice.
 
 O resumo por tema é determinístico (template, sem IA): compara o primeiro e o
 último ano da série de gasto e o indicador-chave nas duas pontas disponíveis.
@@ -34,6 +37,44 @@ TEMAS = {
     "educacao": {"nome": "Educação", "funcao": "12", "indicador_chave": "ideb_iniciais"},
 }
 SP = "35"  # referência estadual gravada como "municipio" na tabela indicadores
+IPCA = os.path.join(RAIZ, "precos", "ipca.json")
+
+
+# ── Deflator (IPCA médio anual) ──────────────────────────────────────────────
+def carregar_ipca(caminho: str = IPCA):
+    """{'fonte', 'serie': {'AAAA-MM': número-índice}} ou None se faltar."""
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def media_anual(serie: dict, ano: int):
+    """Média do número-índice nos 12 meses do ano; None se faltar algum mês
+    (ano em curso ou fora da série) — fator parcial seria inventado."""
+    vals = [serie.get(f"{ano}-{m:02d}") for m in range(1, 13)]
+    if any(v is None for v in vals):
+        return None
+    return sum(vals) / 12
+
+
+def fatores_reais(serie: dict, anos) -> tuple:
+    """(ano_base, {ano: fator}) para levar valores anuais a R$ do ano_base.
+    ano_base = último ano dos dados com IPCA completo; anos sem IPCA completo
+    (ou posteriores à base) ficam sem fator."""
+    medias = {a: media_anual(serie or {}, a) for a in sorted(set(anos))}
+    com_ipca = [a for a, m in medias.items() if m]
+    if not com_ipca:
+        return None, {}
+    base = max(com_ipca)
+    return base, {a: round(medias[base] / m, 6)
+                  for a, m in medias.items() if m and a <= base}
+
+
+def _real(valor, ano, fatores):
+    f = fatores.get(ano)
+    return round(valor * f, 2) if (valor is not None and f) else None
 
 
 def _pop(populacao: dict, municipio: str, ano: int):
@@ -45,6 +86,11 @@ def _pop(populacao: dict, municipio: str, ano: int):
         return None
     mais_perto = min(anos, key=lambda a: abs(a - ano))
     return populacao[(municipio, mais_perto)]
+
+
+def _rotulo_real(nome: str, ano_base) -> str:
+    """'… por habitante (R$)' → '… por habitante (R$ de 2025)'."""
+    return nome.replace("(R$)", f"(R$ de {ano_base})") if ano_base else nome
 
 
 def _fmt_pct(v: float) -> str:
@@ -59,9 +105,12 @@ def _num(v: float) -> str:
     return f"{v:g}".replace(".", ",")
 
 
-def montar(conn) -> dict:
+def montar(conn, ipca: dict | None = None) -> dict:
     populacao = {(r["municipio"], r["ano"]): r["valor"]
                  for r in conn.execute("SELECT * FROM populacao")}
+    anos_dados = [r[0] for r in conn.execute(
+        "SELECT ano FROM gasto_externo UNION SELECT ano FROM fiscal")]
+    ano_base, fatores = fatores_reais((ipca or {}).get("serie"), anos_dados)
     temas = {}
     for slug_tema, meta in TEMAS.items():
         # gasto per capita por ano — Santos + comparáveis
@@ -70,9 +119,10 @@ def montar(conn) -> dict:
                 "SELECT municipio, ano, valor FROM gasto_externo WHERE funcao=? "
                 "ORDER BY ano", (meta["funcao"],)):
             p = _pop(populacao, r["municipio"], r["ano"])
-            if not p:
+            real = _real(r["valor"], r["ano"], fatores)
+            if not p or real is None:
                 continue
-            gasto.setdefault(r["ano"], {})[r["municipio"]] = round(r["valor"] / p, 2)
+            gasto.setdefault(r["ano"], {})[r["municipio"]] = round(real / p, 2)
         gasto_pc = [{"ano": ano,
                      "santos": vals.get("3548500"),
                      "comparaveis": {m: v for m, v in vals.items() if m != "3548500"}}
@@ -88,13 +138,21 @@ def montar(conn) -> dict:
             "indicador_chave": meta["indicador_chave"],
             "gasto_per_capita": gasto_pc,
             "indicadores": indicadores,
-            "resumo": _resumo(meta, gasto_pc, indicadores),
+            "resumo": _resumo(meta, gasto_pc, indicadores, ano_base),
         }
 
-    temas["fiscal"] = _tema_fiscal(conn, populacao)
+    temas["fiscal"] = _tema_fiscal(conn, populacao, fatores, ano_base)
     return {
         "gerado_em": datetime.now().isoformat(timespec="seconds"),
         "comparaveis": fontes.COMPARAVEIS,
+        # valores em R$ estão em reais de `ano_base`; fator = multiplicador
+        # aplicado ao valor corrente de cada ano (desfaz: divida pelo fator)
+        "deflator": {
+            "indice": "IPCA — média anual do número-índice",
+            "fonte": (ipca or {}).get("fonte"),
+            "ano_base": ano_base,
+            "fatores": {str(a): f for a, f in sorted(fatores.items())},
+        },
         "temas": temas,
     }
 
@@ -130,8 +188,9 @@ def _indicador_ibge(conn, slug, populacao):
     }
 
 
-def _tema_fiscal(conn, populacao):
-    """Tema Fiscal (modo série): indicadores derivados do SICONFI, per capita/%%."""
+def _tema_fiscal(conn, populacao, fatores, ano_base):
+    """Tema Fiscal (modo série): indicadores derivados do SICONFI, per capita/%%.
+    Os per capita em R$ saem em reais de `ano_base`; percentuais não mudam."""
     fiscal = {}
     for r in conn.execute("SELECT municipio, ano, conta, valor FROM fiscal"):
         fiscal.setdefault((r["municipio"], r["ano"]), {})[r["conta"]] = r["valor"]
@@ -148,7 +207,8 @@ def _tema_fiscal(conn, populacao):
                 val = round(base / div * 100, 1) if div else None
             elif info.get("per_capita"):
                 p = _pop(populacao, mun, ano)
-                val = round(base / p, 2) if p else None
+                real = _real(base, ano, fatores)
+                val = round(real / p, 2) if (p and real is not None) else None
             else:
                 val = base
             if val is not None:
@@ -160,8 +220,11 @@ def _tema_fiscal(conn, populacao):
         if not pontos:
             continue
         anos_santos = [p["ano"] for p in pontos if p["santos"] is not None]
+        nome = info["nome"]
+        if info.get("per_capita"):
+            nome = _rotulo_real(nome, ano_base)
         indicadores.append({
-            "slug": slug, "nome": info["nome"], "melhor": info["melhor"],
+            "slug": slug, "nome": nome, "melhor": info["melhor"],
             "fonte": "Tesouro Nacional/SICONFI", "formato": info["formato"],
             "ultimo_ano": max(anos_santos) if anos_santos else pontos[-1]["ano"],
             "serie": pontos,
@@ -170,12 +233,13 @@ def _tema_fiscal(conn, populacao):
         "nome": "Fiscal", "modo": "serie",
         "indicador_chave": "receita_propria_pc",
         "gasto_per_capita": [], "indicadores": indicadores,
-        "resumo": _resumo_fiscal(indicadores),
+        "resumo": _resumo_fiscal(indicadores, ano_base),
     }
 
 
-def _resumo_fiscal(indicadores) -> str:
-    """Frase determinística sobre receita própria e investimento per capita."""
+def _resumo_fiscal(indicadores, ano_base=None) -> str:
+    """Frase determinística sobre receita própria e investimento per capita
+    (em reais de `ano_base`, já corrigidos pelo IPCA)."""
     def var(slug):
         ind = next((i for i in indicadores if i["slug"] == slug), None)
         if not ind:
@@ -187,26 +251,30 @@ def _resumo_fiscal(indicadores) -> str:
     if rp:
         a, b = rp
         v = (b["santos"] / a["santos"] - 1) * 100
-        partes.append(f"A arrecadação própria por habitante foi de {_brl(a['santos'])} "
+        partes.append(f"Em reais de {ano_base}, corrigidos pelo IPCA, a arrecadação "
+                      f"própria por habitante foi de {_brl(a['santos'])} "
                       f"em {a['ano']} a {_brl(b['santos'])} em {b['ano']} "
-                      f"({_fmt_pct(v)}, valores correntes)")
+                      f"({_fmt_pct(v)} em termos reais)")
     inv = var("investimento_pc")
     if inv:
         a, b = inv
         partes.append(f"O investimento por habitante passou de {_brl(a['santos'])} "
-                      f"({a['ano']}) a {_brl(b['santos'])} ({b['ano']})")
+                      f"({a['ano']}) a {_brl(b['santos'])} ({b['ano']}), "
+                      f"também em reais de {ano_base}")
     return (". ".join(partes) + ".") if partes else ""
 
 
-def _resumo(meta, gasto_pc, indicadores) -> str:
-    """Frase determinística: variação do gasto vs variação do indicador-chave."""
+def _resumo(meta, gasto_pc, indicadores, ano_base=None) -> str:
+    """Frase determinística: variação REAL do gasto (R$ de `ano_base`, IPCA)
+    vs variação do indicador-chave."""
     if len(gasto_pc) < 2:
         return ""
     g0, g1 = gasto_pc[0], gasto_pc[-1]
     var_gasto = (g1["santos"] / g0["santos"] - 1) * 100
-    frase = (f"O gasto por habitante em {meta['nome'].lower()} foi de "
+    frase = (f"Em reais de {ano_base}, corrigidos pelo IPCA, o gasto por habitante "
+             f"em {meta['nome'].lower()} foi de "
              f"{_brl(g0['santos'])} em {g0['ano']} a {_brl(g1['santos'])} "
-             f"em {g1['ano']} ({_fmt_pct(var_gasto)}, valores correntes).")
+             f"em {g1['ano']} ({_fmt_pct(var_gasto)} em termos reais).")
     chave = next((i for i in indicadores if i["slug"] == meta["indicador_chave"]), None)
     if chave:
         pts = [p for p in chave["serie"] if p["santos"] is not None
@@ -236,7 +304,13 @@ def main():
 
     conn = sqlite3.connect(BASE)
     conn.row_factory = sqlite3.Row
-    indice = montar(conn)
+    ipca = carregar_ipca()
+    if not ipca or not ipca.get("serie"):
+        raise SystemExit(f"ABORTANDO: IPCA ausente em {IPCA} — sem deflator o "
+                         "painel voltaria a chamar inflação de aumento de gasto")
+    indice = montar(conn, ipca)
+    print(f"deflator: IPCA médio anual · reais de {indice['deflator']['ano_base']} · "
+          f"fatores {indice['deflator']['fatores']}")
 
     for slug, t in indice["temas"].items():
         print(f"{slug} [{t['modo']}]: {len(t['indicadores'])} indicadores "

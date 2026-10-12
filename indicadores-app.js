@@ -40,6 +40,7 @@
         const p = Comum.lerParams().get("tema");
         if (p && d.temas[p]) tema = p;
         renderAbas();
+        renderNotaValores();
         renderTema();
       })
       .catch(() => {
@@ -90,14 +91,31 @@
   // cores estáveis para as linhas por município no modo série
   const CORES_MUN = ["#c9a84c", "#1d6fb8", "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
 
+  // Ano-base dos valores em R$ (o export corrige pelo IPCA médio anual); null
+  // em índice antigo, ainda em valores correntes — aí o painel diz isso.
+  function anoBaseReal() {
+    return (DADOS.deflator && DADOS.deflator.ano_base) || null;
+  }
+
+  function renderNotaValores() {
+    const base = anoBaseReal();
+    $("nota-valores").textContent = base
+      ? `Valores em reais de ${base}, corrigidos pela inflação (média anual do IPCA/IBGE) — ` +
+        "comparar anos em valores correntes confundiria inflação com aumento de gasto. " +
+        "Percentuais e indicadores de resultado não são corrigidos."
+      : "Valores em reais correntes, sem correção pela inflação.";
+  }
+
   function renderTema() {
     const t = temaAtual();
+    const base = anoBaseReal();
     $("pergunta").hidden = !t.resumo;
     $("pergunta-txt").innerHTML = Comum.escapar(t.resumo)
       .replace(/(R\$ [\d.,]+|[+−-]\d+%|\d+[\d.,]*\s*\(\d{4}\))/g, "<b>$1</b>");
-    $("pergunta-fonte").textContent = t.modo === "serie"
+    $("pergunta-fonte").textContent = (t.modo === "serie"
       ? "Comparação entre municípios de porte similar — fontes no rodapé."
-      : "Comparação entre as pontas disponíveis de cada série — fontes no rodapé.";
+      : "Comparação entre as pontas disponíveis de cada série — fontes no rodapé.") +
+      (base ? ` Valores em R$ de ${base}, corrigidos pelo IPCA.` : "");
 
     // título do cartão do gráfico muda conforme o modo
     $("titulo-grafico").textContent = t.modo === "serie"
@@ -160,7 +178,7 @@
 
     const sobe = ind.melhor === "maior" ? "melhora" : "piora";
     $("legenda").innerHTML =
-      `<span><span class="sw" style="background:${COR.gasto}"></span>Gasto por habitante (base ${anoBase} = 100)</span>` +
+      `<span><span class="sw" style="background:${COR.gasto}"></span>Gasto por habitante${anoBaseReal() ? " corrigido pelo IPCA" : ""} (base ${anoBase} = 100)</span>` +
       `<span><span class="sw" style="background:${COR.indicador}"></span>${Comum.escapar(ind.nome)} — linha subindo = ${sobe}</span>` +
       (temSp ? `<span><span class="sw" style="background:${COR.texto}"></span>tendência da média do Estado de SP</span>` : "") +
       `<span><span class="sw" style="background:${COR.ambar};height:10px"></span>distância gasto × resultado</span>`;
@@ -181,7 +199,7 @@
     desenhar(anos, datasets, `índice (${anoBase} = 100)`, (c) => {
       const ano = anos[c.dataIndex];
       if (c.datasetIndex === 0)
-        return ` Gasto: ${brl(gastoPorAno.get(ano))}/hab (índice ${c.formattedValue})`;
+        return ` Gasto: ${brl(gastoPorAno.get(ano))}/hab${anoBaseReal() ? ` em R$ de ${anoBaseReal()}` : ""} (índice ${c.formattedValue})`;
       if (c.datasetIndex === 1) {
         const v = indPorAno.get(ano);
         return v == null ? null : ` ${ind.nome}: ${fmt(ind.formato, v)} (índice ${c.formattedValue})`;
