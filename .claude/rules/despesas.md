@@ -129,7 +129,8 @@ movimentação (totais, séries, por função/elemento/fonte/unidade, top-300 po
 erro; `faltantes`, `com_erro`, `duplicidade_sistematica`, `integra`), **`execucao`**, **alertas**,
 `alertas_historico`, `resumo` (com `meses_parciais`), `anos_detalhe`, `meses`, `meses_movimento`,
 `limites_dispensa`, `conservacao`; (b) detalhe mensal (execução) e (c) movimentação mensal; (d)
-`despesas/arvore.json` (treemap); (e) índices leves em `dados/` (`elementos.json`, `pf-resumo.json`,
+`despesas/arvore.json` (treemap) e `despesas/servico-divida.json` (recorte `servico_divida` p/ o
+painel de Endividamento, só regrava se o dado mudou); (e) índices leves em `dados/` (`elementos.json`, `pf-resumo.json`,
 `indice-favorecidos.json`); (f) `dados/estagios/AAAA-MM.json` (documentos E/L/P por `"UG|empenho"`,
 particionado pelo mês da linha de execução; espécie omitida quando "Original"); (g) dossiês
 `favorecidos/<slug>.json`; (h) **`despesas/alertas-estado.json`** (histórico de alertas).
@@ -297,7 +298,7 @@ passo final do `despesas.yml` às segundas (`date +%u = 1`) ou `workflow_dispatc
 Testes → cache do `.sqlite` → crawler (partições sem carga; depois `--ano corrente --forcar`, ou
 tudo com `reconciliar_tudo=true`) com tratamento dos códigos 1 (aborta) e 2 (publica e falha no
 fim, lista no `GITHUB_STEP_SUMMARY`) → `export.py` → **`verificar.py --tolerar-erros`** → commit de
-`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json favorecidos`
+`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/servico-divida.json favorecidos`
 → briefing → passo "Falha parcial" (vermelho se alguma partição não atualizou).
 
 ## Recuperação e reconciliação da base (procedimento)

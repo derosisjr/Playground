@@ -26,7 +26,7 @@ window.addEventListener("temamudou", () => {
 });
 
 let DADOS = null;
-let SD = null;   // bloco servico_divida do despesas-index.json (cacheado p/ repintar)
+let SD = null;   // serviço da dívida (despesas/servico-divida.json; cacheado p/ repintar)
 
 // ── Formatação ───────────────────────────────────────────────────────────────
 // camada comum: mesma escala de moeda do hub (R$ 8,61 bi · R$ 641,1 mi)
@@ -285,9 +285,16 @@ function nomeCredor(s) {
 
 async function renderServicoDivida() {
   try {
-    const r = await fetch("./despesas-index.json", { cache: "no-cache" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const sd = (await r.json()).servico_divida;
+    // recorte de ~1 KB gerado pelo despesas/export.py; se ainda não existir (404),
+    // cai no índice inteiro (~400 KB), de onde o recorte é tirado
+    let sd;
+    const r = await fetch("./despesas/servico-divida.json", { cache: "no-cache" });
+    if (r.ok) sd = await r.json();
+    else {
+      const ri = await fetch("./despesas-index.json", { cache: "no-cache" });
+      if (!ri.ok) throw new Error("HTTP " + ri.status);
+      sd = (await ri.json()).servico_divida;
+    }
     if (!sd || !sd.credores || !sd.credores.length) return;
     SD = sd;
   } catch (e) { return; }  // sem a base de despesas, a seção simplesmente não aparece

@@ -660,6 +660,20 @@ def test_briefing_seleciona_por_novidade_e_diversidade():
     assert len(sel) <= 12
 
 
+def test_servico_divida_recorte_do_indice(tmp_path, monkeypatch):
+    """O painel de Endividamento lê só este recorte (~1 KB) em vez do índice inteiro."""
+    destino = tmp_path / "servico-divida.json"
+    monkeypatch.setattr(export, "SERVICO_DIVIDA_PATH", str(destino))
+    sd = {"por_ano": [{"ano": 2025, "tipo": "juros", "valor": 10.0}],
+          "credores": [{"nome": "CAIXA", "valor": 10.0, "qtd": 1}]}
+    indice = {"atualizado_em": "2026-10-01T00:00:00", "dados_ate": "2026-09-30", "servico_divida": sd}
+    assert export.exportar_servico_divida(indice) is True
+    gravado = json.loads(destino.read_text(encoding="utf-8"))
+    assert gravado["por_ano"] == sd["por_ano"] and gravado["credores"] == sd["credores"]
+    assert gravado["dados_ate"] == "2026-09-30"
+    # carimbo novo sem dado novo não regrava (não vira diff diário)
+    assert export.exportar_servico_divida(dict(indice, atualizado_em="2026-10-02T00:00:00")) is False
+
 def test_reajuste_pf_acima_do_ipca():
     mensal = {(2025, m): 10_000 for m in range(1, 7)}
     mensal.update({(2025, m): 12_000 for m in range(7, 13)})

@@ -50,7 +50,9 @@ lê `endividamento-index.json`; entrada em `PAGINAS` no `comum.js`.
 **Seção "Serviço da dívida" (cross-módulo):** os credores e o pago em juros/amortização
 vêm do bloco `servico_divida` do `despesas-index.json` (gerado por `despesas/export.py`:
 grupos de despesa com prefixo 32=juros, 46=amortização; credores agrupados por documento).
-O painel busca esse JSON como fonte secundária e a seção some se ele faltar.
+O painel lê o recorte **`despesas/servico-divida.json`** (~1 KB, mesmo bloco, gravado pelo
+export desde 2026-10 — antes baixava os ~400 KB do índice inteiro), com fallback ao
+`despesas-index.json` se o recorte der 404; a seção some se nenhum dos dois vier.
 
 **Seção "Dívida das estatais" (curadoria manual):** CET, PRODESAN e COHAB têm
 contabilidade societária própria e ficam FORA do RGF/SICONFI. Os números vêm de

@@ -1,5 +1,5 @@
 // Service worker do site — PWA leve para uso em campo (plenário, rua, sinal ruim).
-// Estratégias:
+// Estratégias (por tipo de recurso — inalteradas desde a v3):
 //   • páginas/CSS/JS/imagens (mesma origem): network-first com fallback ao cache
 //     — o site continua sempre fresco (o CI commita código e dados todo dia) e
 //     ainda abre offline com a última versão vista;
@@ -11,9 +11,24 @@
 //   • bases-atualizacao.json: network-first — é a fonte da verdade do "atualizado
 //     há N dias" do hub; servido do cache, o hub anunciava as datas da visita
 //     anterior e o `cache: "no-cache"` da página não valia de nada.
+//
+// Arrumação do armazenamento (v4, 2026-10) — até a v3 era um cache único que só crescia:
+//   • ESTÁTICOS (CACHE_ESTATICOS): a chave inclui a query (`comum.js?v=11`, páginas
+//     com filtros na URL). Ao gravar um recurso, as entradas do MESMO caminho com
+//     outra query são apagadas — fica só a última versão vista de cada arquivo
+//     (antes, cada `?v=` novo e cada combinação de filtros virava uma entrada eterna);
+//   • DADOS (CACHE_DADOS, todo *.json): teto de TETO_DADOS entradas, descartando as
+//     gravadas há mais tempo (LRU simples: `Cache.keys()` devolve na ordem de inserção
+//     e um `put` na mesma chave move a entrada para o fim). Os dossiês e meses de
+//     despesas acumulavam sem limite;
+//   • `activate` apaga qualquer cache cujo nome não seja um dos dois atuais (inclui o
+//     antigo `gabinete-v3`). Mudou a estratégia ou o layout? Suba o sufixo `-vN`.
 "use strict";
 
-const CACHE = "gabinete-v3";  // v3: dados de despesas network-first (índice e meses do mesmo export)
+const CACHE_ESTATICOS = "gabinete-estaticos-v4";
+const CACHE_DADOS = "gabinete-dados-v4";
+const CACHES_ATUAIS = [CACHE_ESTATICOS, CACHE_DADOS];
+const TETO_DADOS = 60;
 
 // Dados de despesas que precisam ser do MESMO export: o índice aponta para meses,
 // estágios e dossiês; com stale-while-revalidate a página podia montar o índice de
@@ -42,7 +57,7 @@ const NUCLEO = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) =>
+    caches.open(CACHE_ESTATICOS).then((c) =>
       Promise.allSettled(NUCLEO.map((url) => c.add(url)))
     ).then(() => self.skipWaiting())
   );
@@ -51,7 +66,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((nomes) => Promise.all(nomes.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
+      .then((nomes) => Promise.all(nomes.filter((n) => !CACHES_ATUAIS.includes(n)).map((n) => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -63,6 +78,23 @@ function chaveJson(req) {
   return u.href;
 }
 
+// Grava um dado e apara o cache de dados ao teto (as entradas mais antigas saem).
+async function gravarDado(chave, resp) {
+  const c = await caches.open(CACHE_DADOS);
+  await c.put(chave, resp);
+  const chaves = await c.keys();
+  const excesso = chaves.length - TETO_DADOS;
+  if (excesso > 0) await Promise.all(chaves.slice(0, excesso).map((k) => c.delete(k)));
+}
+
+// Grava um estático e apaga as outras versões (outra query) do mesmo caminho.
+async function gravarEstatico(req, resp) {
+  const c = await caches.open(CACHE_ESTATICOS);
+  const irmas = await c.keys(req, { ignoreSearch: true });
+  await Promise.all(irmas.filter((k) => k.url !== req.url).map((k) => c.delete(k)));
+  await c.put(req, resp);
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -70,13 +102,13 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== self.location.origin) return; // CDN/fontes: deixa a rede cuidar
 
   if (DADOS_COERENTES.test(url.pathname)) {
+    const chave = chaveJson(req);
     e.respondWith(
-      caches.open(CACHE).then((c) => {
-        const chave = chaveJson(req);
-        return fetch(req)
-          .then((r) => { if (r.ok) c.put(chave, r.clone()); return r; })
-          .catch(() => c.match(chave).then((cacheado) => cacheado || Response.error()));
-      })
+      fetch(req)
+        .then((r) => { if (r.ok) e.waitUntil(gravarDado(chave, r.clone()).catch(() => {})); return r; })
+        .catch(() => caches.open(CACHE_DADOS)
+          .then((c) => c.match(chave))
+          .then((cacheado) => cacheado || Response.error()))
     );
     return;
   }
@@ -84,14 +116,14 @@ self.addEventListener("fetch", (e) => {
   if (url.pathname.endsWith(".json") && !url.pathname.endsWith("/bases-atualizacao.json")) {
     // dados: responde do cache na hora (se houver) e revalida por trás
     e.respondWith(
-      caches.open(CACHE).then(async (c) => {
+      caches.open(CACHE_DADOS).then(async (c) => {
         const chave = chaveJson(req);
         const cacheado = await c.match(chave);
         const daRede = fetch(req)
-          .then((r) => { if (r.ok) c.put(chave, r.clone()); return r; })
+          .then((r) => { if (r.ok) e.waitUntil(gravarDado(chave, r.clone()).catch(() => {})); return r; })
           .catch(() => null);
         // sem o waitUntil o navegador pode encerrar o worker assim que o cache
-        // responde — antes de o c.put acontecer — e o JSON ficaria congelado
+        // responde — antes de o put acontecer — e o JSON ficaria congelado
         e.waitUntil(daRede);
         return cacheado || daRede.then((r) => r || Response.error());
       })
@@ -103,7 +135,7 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(req)
       .then((r) => {
-        if (r.ok) caches.open(CACHE).then((c) => c.put(req, r.clone()));
+        if (r.ok) e.waitUntil(gravarEstatico(req, r.clone()).catch(() => {}));
         return r;
       })
       .catch(() =>

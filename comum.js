@@ -353,7 +353,10 @@ window.Comum = (() => {
   }
 
   // ── Busca universal (⌘K / Ctrl+K / "/") ─────────────────────────────────────
-  // Fontes carregadas SOB DEMANDA no 1º uso e cacheadas em memória.
+  // Fontes carregadas SOB DEMANDA e cacheadas em memória. As pequenas vêm na 1ª
+  // abertura; as `grande: true` (proposituras ~5 MB, legislação ~1,4 MB, despesas
+  // ~0,4 MB — antes eram ~7 MB baixados e parseados a cada 1º Ctrl+K) só quando a
+  // busca tem MIN_GRANDES caracteres, ou de imediato na própria página da base.
   // Cada item vira {t: título, s: subtítulo, url, h: haystack normalizado}.
   const FONTES = [
     { id: "regimento", rotulo: "Regimento Interno", url: "./regimento-index.json",
@@ -364,14 +367,16 @@ window.Comum = (() => {
         h: norm("art artigo " + a.numero + " " + (a.texto_busca || "")),
         numArt: String(a.numero).toLowerCase(),
       })) },
-    { id: "proposituras", rotulo: "Proposituras", url: "./proposituras-index.json",
+    { id: "proposituras", rotulo: "Proposituras", url: "./proposituras-index.json", grande: true,
+      paginas: ["proposituras.html"],
       mapear: (d) => d.map((p) => ({
         t: (p.subtipo || "Projeto") + " " + p.numero,
         s: (p.ementa || "").slice(0, 110),
         url: "./proposituras.html?q=" + encodeURIComponent(p.numero || ""),
         h: norm([p.subtipo, p.numero, p.ementa, p.autor].join(" ")),
       })) },
-    { id: "legis", rotulo: "Legislação", url: "./legis-index.json",
+    { id: "legis", rotulo: "Legislação", url: "./legis-index.json", grande: true,
+      paginas: ["legis.html"],
       mapear: (d) => d.map((n) => ({
         t: (n.tipo || "Norma") + " " + n.numero + "/" + n.ano,
         s: (n.ementa || n.titulo || "").slice(0, 110),
@@ -385,7 +390,8 @@ window.Comum = (() => {
         url: "./requerimentos.html?q=" + encodeURIComponent(i.numero || ""),
         h: norm([i.numero, i.assunto, i.ano].join(" ")),
       })) },
-    { id: "favorecidos", rotulo: "Despesas · favorecidos", url: "./despesas-index.json",
+    { id: "favorecidos", rotulo: "Despesas · favorecidos", url: "./despesas-index.json", grande: true,
+      paginas: ["despesas.html", "favorecido.html"],
       mapear: (d) => (d.top_favorecidos || []).map((f) => ({
         t: f.nome,
         s: compacto(f.valor) + " no mandato",
@@ -441,16 +447,23 @@ window.Comum = (() => {
           h: norm("gasto per capita habitante " + t.nome),
         }])) },
   ];
+  const MIN_GRANDES = 3;      // nº de caracteres da busca que libera as fontes grandes
   const cacheFontes = {};     // id -> array de itens (ou "erro")
-  let carregouFontes = false;
-  let paletaFundo = null, paletaInput = null, paletaRes = null;
+  const pedidas = new Set();  // ids cujo fetch já saiu (carregando ou prontas)
+  let paletaFundo = null, paletaInput = null, paletaRes = null, paletaStatus = null;
   let planos = [];            // resultados achatados p/ navegação por teclado
   let sel = 0;
 
-  function carregarFontes() {
-    if (carregouFontes) return;
-    carregouFontes = true;
+  const paginaDaBase = (f) => (f.paginas || []).includes(
+    paginaAtual || location.pathname.split("/").pop() || "index.html");
+  const liberaGrandes = (q) => norm(q).trim().length >= MIN_GRANDES;
+  // a fonte entra na busca agora? (grande só com busca longa ou na própria página)
+  const fonteAtiva = (f, q) => !f.grande || paginaDaBase(f) || liberaGrandes(q);
+
+  function carregarFontes(q) {
     for (const f of FONTES) {
+      if (pedidas.has(f.id) || !fonteAtiva(f, q)) continue;
+      pedidas.add(f.id);
       fetch(f.url, { cache: "no-cache" })
         .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then((d) => { cacheFontes[f.id] = f.mapear(d); })
@@ -472,6 +485,7 @@ window.Comum = (() => {
     const art = alvoArtigo(q);
     const grupos = [];
     for (const f of FONTES) {
+      if (!fonteAtiva(f, q)) continue;
       const itens = cacheFontes[f.id];
       if (itens === "erro") continue;
       if (!itens) { grupos.push({ f, carregando: true, hits: [] }); continue; }
@@ -494,9 +508,21 @@ window.Comum = (() => {
     planos = [];
     // aviso honesto quando alguma base falhou (antes era omitida em silêncio)
     const falhas = FONTES.filter((f) => cacheFontes[f.id] === "erro").map((f) => f.rotulo);
-    const avisoFalhas = falhas.length
+    let avisoFalhas = falhas.length
       ? `<div class="paleta-vazio paleta-falhas" role="presentation">⚠ Fora do ar agora: ${escapar(falhas.join(", "))}.</div>`
       : "";
+    // anúncio p/ leitor de tela (role=status): carga das bases e nº de resultados
+    const pendentes = FONTES.filter((f) => pedidas.has(f.id) && !cacheFontes[f.id]).map((f) => f.rotulo);
+    paletaRes.setAttribute("aria-busy", String(pendentes.length > 0));
+    const status = !norm(q).trim() ? ""
+      : pendentes.length ? "Carregando " + pendentes.join(", ") + "…"
+      : grupos.reduce((n, g) => n + g.hits.length, 0) + " resultado(s).";
+    if (paletaStatus.textContent !== status) paletaStatus.textContent = status;
+    const adiadas = FONTES.filter((f) => !fonteAtiva(f, q)).map((f) => f.rotulo);
+    if (norm(q).trim() && adiadas.length) {
+      avisoFalhas += `<div class="paleta-vazio" role="presentation">Digite ${MIN_GRANDES} letras ou mais ` +
+        `para buscar também em ${escapar(adiadas.join(", "))}.</div>`;
+    }
     if (!norm(q).trim()) {
       paletaRes.innerHTML = '<div class="paleta-vazio" role="presentation">Digite para buscar em Despesas, ' +
         "Proposituras, Legislação, Requerimentos, Regimento, Endividamento, Indicadores e Preço comparado.<br>" +
@@ -549,13 +575,19 @@ window.Comum = (() => {
       'aria-controls="paleta-listbox" aria-autocomplete="list" ' +
       'placeholder="Buscar em tudo: favorecido, lei, projeto, art. 79…" />' +
       '<div class="paleta-res" id="paleta-listbox" role="listbox" aria-label="Resultados"></div>' +
+      '<div class="paleta-status sr-only" role="status" aria-live="polite"></div>' +
       '<div class="paleta-dicas"><span>↑↓ navegar</span><span>↵ abrir</span><span>esc fechar</span></div>' +
       "</div>";
     document.body.appendChild(paletaFundo);
     paletaInput = paletaFundo.querySelector(".paleta-q");
     paletaRes = paletaFundo.querySelector(".paleta-res");
+    paletaStatus = paletaFundo.querySelector(".paleta-status");
 
-    paletaInput.addEventListener("input", () => { sel = 0; renderPaleta(); });
+    paletaInput.addEventListener("input", () => {
+      sel = 0;
+      carregarFontes(paletaInput.value);  // libera as fontes grandes ao chegar a MIN_GRANDES
+      renderPaleta();
+    });
     paletaFundo.addEventListener("mousedown", (e) => {
       if (e.target === paletaFundo) fecharPaleta();
     });
@@ -588,7 +620,7 @@ window.Comum = (() => {
 
   function abrirPaleta() {
     montarPaleta();
-    carregarFontes();
+    carregarFontes("");
     focoAnterior = document.activeElement;
     paletaFundo.hidden = false;
     document.body.style.overflow = "hidden";
