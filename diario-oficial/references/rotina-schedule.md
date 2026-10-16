@@ -8,7 +8,8 @@
 ```
 Analise a edição de hoje do Diário Oficial de Santos e publique os atos na planilha.
 
-1. Instale as dependências: pip install -r diario-oficial/requirements.txt
+1. Instale as dependências: python -m pip install -r diario-oficial/requirements.txt
+   (`python -m pip`, não `pip`: no ambiente da rotina o `pip` aponta para outro Python)
 2. Para cada dia útil dos últimos 3 dias (cobre atrasos; a dedup evita repetição):
    a. Gere o MD: python diario-oficial/dom_md.py --data AAAA-MM-DD --out /tmp/ed-AAAA-MM-DD.md
       (se o script disser que a edição não existe, pule o dia — sábado/domingo não têm edição)
