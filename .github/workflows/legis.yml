@@ -87,10 +87,19 @@ jobs:
             echo "ABORTANDO commit: índice parcial ($N < 3000)."
             exit 1
           fi
+          # Ementas oficiais (legis/ementas.json): 2.003 em 2026-10-12 e só crescem com a
+          # revisita. Queda abaixo do piso = coluna `descricao` perdida ou HTML do Legis
+          # mudou (a revisita regravaria vazio) — a situação inferida sai das mesmas ementas.
+          E=$(python -c "import json;print(len(json.load(open('legis/ementas.json',encoding='utf-8'))))")
+          echo "legis/ementas.json com $E ementas oficiais."
+          if [ "$E" -lt 1500 ]; then
+            echo "ABORTANDO commit: ementas oficiais esvaziadas ($E < 1500)."
+            exit 1
+          fi
 
       - name: Commitar atualizacoes (se houver)
         uses: ./.github/actions/commitar
         with:
-          caminhos: legis/legis.sqlite legis-index.json
+          caminhos: legis/legis.sqlite legis-index.json legis/ementas.json
           mensagem: "chore: atualiza base Legis"
           sem-mudancas: "Sem mudancas na base."
