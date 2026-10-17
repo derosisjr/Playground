@@ -295,7 +295,7 @@
             <span class="ind-val" id="ind-pago-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-alertas" href="./despesas.html#alertas">
-            <span class="ind-lbl">Alertas fiscais</span>
+            <span class="ind-lbl">Alertas a conferir</span>
             <span class="ind-val" id="ind-alertas-val"><span class="skel"></span></span>
           </a>
           <a class="ind" id="ind-req" href="./requerimentos.html">
@@ -375,7 +375,7 @@
           <span class="cartao-topo"><span class="tag">Câmara · Requerimentos</span></span>
           <h3 id="t-requerimentos">Requerimentos &amp; Respostas</h3>
           <p class="desc">Requerimentos do mandato e as respostas do Executivo — busca por
-             número, assunto e ano, com link direto para a resposta da prefeitura no Drive.</p>
+             número, assunto e ano, com a situação de cada pedido.</p>
           <div class="stat" aria-busy="true"><span class="val" id="stat-requerimentos"><span class="skel"></span></span>
             <span class="lbl" id="stat-requerimentos-lbl">requerimentos monitorados</span>
             <span class="quando" id="stat-requerimentos-quando"></span></div>
@@ -386,9 +386,9 @@
           <span class="cartao-topo"><span class="tag">Câmara · Regimento Interno</span></span>
           <h3 id="t-regimento">Regimento Interno</h3>
           <p class="desc">Busca relâmpago ao Regimento da Câmara (Res. 16/2019) por número de
-             artigo ou palavra-chave — com jurisprudência e doutrina anotadas para uso em plenário.</p>
+             artigo ou palavra-chave — o texto de cada artigo à mão para uso em plenário.</p>
           <div class="stat" aria-busy="true"><span class="val" id="stat-regimento"><span class="skel"></span></span>
-            <span class="lbl">artigos indexados</span>
+            <span class="lbl" id="stat-regimento-lbl">artigos indexados</span>
             <span class="quando" id="stat-regimento-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
@@ -423,12 +423,14 @@
           <span class="cartao-topo tem-selo"><span class="tag">Gabinete · Escuta pública</span><span
             class="selo" id="selo-consulta" hidden></span></span>
           <h3 id="t-consulta">Escuta pública</h3>
-          <p class="desc">Vote nas prioridades do seu bairro e diga onde a Prefeitura deveria
-             gastar primeiro — leva 1 minuto e não pede cadastro.</p>
+          <p class="desc">Consulta do mandato sobre as prioridades de cada bairro — onde a
+             Prefeitura deveria gastar primeiro, em votação rápida e sem cadastro.</p>
           <div class="stat" aria-busy="true"><span class="val" id="stat-consulta"><span class="skel"></span></span>
             <span class="lbl" id="stat-consulta-lbl">propostas em votação</span>
             <span class="quando" id="stat-consulta-quando"></span></div>
-          <span class="abrir">Participar <span class="arw">→</span></span>
+          <!-- "Participar" só com a consulta aberta (o JS troca); fechada, convidar a
+               votar prometia o que a página não entrega -->
+          <span class="abrir"><span id="consulta-cta">Ver consulta</span> <span class="arw">→</span></span>
         </a>
       </div>
 
@@ -551,10 +553,13 @@
       // ~0,85 MB gzip por visita nova, mais o parse na main thread). O CI publica as
       // contagens no bases-atualizacao.json; sem a chave (arquivo antigo), cai no
       // fetch do índice — por isso quem consome trata os dois formatos (`total`).
-      function contagemOuIndice(arquivo) {
+      // `completa` diz se a contagem leve traz tudo o que o hub usa dela; senão (arquivo
+      // gerado por versão antiga do script) cai no índice inteiro.
+      function contagemOuIndice(arquivo, completa = () => true) {
         return pMeta.then((m) => {
           const c = m.contagens && m.contagens[arquivo];
-          return (c && typeof c.n === "number") ? { dados: c, modificado: null } : carregar("./" + arquivo);
+          return (c && typeof c.n === "number" && completa(c))
+            ? { dados: c, modificado: null } : carregar("./" + arquivo);
         });
       }
       const total = (d) => (Array.isArray(d) ? d.length : d.n);
@@ -597,7 +602,14 @@
       function esconder(...ids) { ids.forEach((id) => { const e = el(id); if (e) e.hidden = true; }); }
 
       const pDespesas = carregar("./despesas-index.json");
-      const pRequerimentos = contagemOuIndice("requerimentos-index.json");
+      // sem `classificada` o hub não sabe se "respondidos" é mérito ou só retorno
+      const pRequerimentos = contagemOuIndice("requerimentos-index.json",
+        (c) => typeof c.classificada === "boolean");
+      // A base tem classificação de mérito? Mesma regra do painel (baseClassificada).
+      const classificada = (r) => (Array.isArray(r)
+        ? r.some((x) => x.data_resposta_merito ||
+            (x.situacao && x.situacao !== "respondido" && x.situacao !== "pendente"))
+        : r.classificada === true);
       const pLegis = contagemOuIndice("legis-index.json");
 
       stat(pDespesas, "stat-despesas", (d) => dinheiro(d.totais.geral),
@@ -661,7 +673,7 @@
         set("stat-consulta-lbl", (aberta ? plural(np, "proposta em votação", "propostas em votação")
           : plural(np, "proposta", "propostas")) +
           (bairros ? ` · ${bairros} ${plural(bairros, "bairro", "bairros")}` : ""));
-        if (aberta) selo("selo-consulta", "aberta", "verde");
+        if (aberta) { selo("selo-consulta", "aberta", "verde"); set("consulta-cta", "Participar"); }
         // encerrada é estado neutro: o vermelho do ramp quer dizer "acima do limite"
         else selo("selo-consulta", "encerrada", "cinza");
         return contagem(np);
@@ -671,10 +683,20 @@
 
       // Extras dinâmicos nos rótulos dos cartões
       pRequerimentos.then(({ dados: r }) => {
+        // "pendente" é só uma das situações sem mérito (há também prazo prorrogado e
+        // só encaminhamento): o número é de quem ainda não recebeu resposta de mérito
         const pend = Array.isArray(r) ? r.filter((x) => !x.respondido).length : r.n - r.respondidos;
-        if (pend) set("stat-requerimentos-lbl",
-          `requerimentos monitorados · ${num(pend)} ${plural(pend, "pendente", "pendentes")}`);
+        if (pend) set("stat-requerimentos-lbl", `requerimentos monitorados · ${num(pend)} ` +
+          (classificada(r) ? "sem resposta de mérito" : "sem retorno"));
       }).catch(() => {});
+
+      // Notas do Regimento: só falar delas quando existirem
+      pMeta.then((m) => {
+        const c = m.contagens && m.contagens["regimento-notas.json"];
+        const k = c && c.artigos_com_nota;
+        if (k) set("stat-regimento-lbl",
+          `artigos indexados · ${num(k)} com ${plural(k, "nota", "notas")}`);
+      });
 
       pLegis.then(({ dados: L }) => {
         let ult = L.ultima_lei;   // contagem leve do CI (mesma regra abaixo)
@@ -700,8 +722,12 @@
           indicador("ind-pago", compacto(ult.valor));
         } else esconder("ind-pago");
         // "a conferir" = anomalias + inconsistências (contexto não é achado) — mesma conta do painel e do resumo
-        const ativos = (d.alertas || []).filter((a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa").length;
-        indicador("ind-alertas", ativos ? ativos + plural(ativos, " ativo", " ativos") : "nenhum ativo");
+        const conferir = (d.alertas || []).filter((a) => a.classe ? a.classe !== "contexto" : a.severidade !== "baixa");
+        // quantos surgiram nesta rodada: o total sozinho parecia novidade todo dia
+        const novos = conferir.filter((a) => a.estado === "novo").length;
+        indicador("ind-alertas", conferir.length
+          ? num(conferir.length) + (novos ? ` · ${num(novos)} ${plural(novos, "novo", "novos")}` : "")
+          : "nenhum");
         if (d.atualizado_em) indicador("ind-atual", new Date(d.atualizado_em).toLocaleDateString("pt-BR"));
         else esconder("ind-atual");
       }).catch(() => esconder("ind-pago", "ind-alertas", "ind-atual"));
@@ -711,10 +737,9 @@
         if (!n) return esconder("ind-req");
         const resp = Array.isArray(r) ? r.filter((x) => x.respondido).length : r.respondidos;
         // Mesma regra do painel: sem classificação de mérito na base, "respondido"
-        // é só "tem algum retorno" (inclui pedido de prorrogação).
-        const comMerito = Array.isArray(r) && r.some((x) => x.data_resposta_merito ||
-          (x.situacao && x.situacao !== "respondido" && x.situacao !== "pendente"));
-        if (!comMerito) document.querySelector("#ind-req .ind-lbl").textContent = "Requerimentos com retorno";
+        // é só "tem algum retorno" (inclui pedido de prorrogação). Antes a regra só
+        // olhava o array — com a contagem leve o rótulo errava para "com retorno".
+        if (!classificada(r)) document.querySelector("#ind-req .ind-lbl").textContent = "Requerimentos com retorno";
         indicador("ind-req", Math.round((resp / n) * 100) + "% · " + resp + " de " + n);
       }).catch(() => esconder("ind-req"));
 

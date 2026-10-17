@@ -52,7 +52,8 @@ Ctrl/⌘/Shift/botão do meio seguem para a nova aba.
 Porta de entrada do site (GitHub Pages serve da raiz). Página estática (navy/gold, sem build) em
 **grade uniforme de cartões** — decisão do usuário (2026-07): bento grid e sparkline nos cartões
 foram testados e REJEITADOS; o layout calmo e simétrico é intocável, inovação de apresentação vai
-para páginas dedicadas. Hero com **régua de indicadores** (pago no mês, alertas ativos → `#alertas`,
+para páginas dedicadas. Hero com **régua de indicadores** (pago no mês, alertas a conferir
+→ `#alertas` com "· N novos" quando `estado === "novo"` — o total sozinho parecia novidade todo dia —,
 % requerimentos respondidos, data da base). (Os antigos Radar de Pauta e Radar de Gastos foram
 removidos em 2026-07: o Briefing Ordem do Dia e a Base de Despesas cobrem os mesmos casos de uso
 com dados automáticos.)
@@ -109,6 +110,16 @@ qualquer mexida ali:
   Precedência no `stat()`: data dentro do próprio JSON (`atualizado_em`/`gerado_em`) > git >
   `Last-Modified`. O 5º argumento de `stat()` é a chave nesse índice — obrigatório para os índices
   em formato de array (proposituras, legis, requerimentos, regimento), que não têm onde guardar data.
+- **Contagens leves (`contagens` no `bases-atualizacao.json`)** substituem o download dos índices
+  grandes. `contagemOuIndice(arquivo, completa)` só aceita a contagem se ela trouxer tudo o que o
+  hub usa (senão baixa o índice): requerimentos exige `classificada` (mesma regra de
+  `baseClassificada()` do painel) — sem ela o rótulo errava para "com retorno" num número que já
+  era só mérito (out/2026); o cartão fala em "N sem resposta de mérito", não "pendentes" (pendente é
+  só uma das situações). `regimento-notas.json` → `artigos_com_nota`: o cartão do Regimento só fala
+  de notas quando há alguma.
+- **Texto do cartão não promete o que a página não entrega**: as `.desc` são estáticas (trocar por
+  JS mudaria a altura da fileira); o que depende de estado vai em rótulo/CTA — a Escuta pública
+  diz "Ver consulta" e só vira "Participar" com a consulta aberta.
 
 Previews locais do hub vão em `_preview-*.html` na raiz (gitignored, servidos por
 `python -m http.server`), nunca no scratchpad: por `file://` o `fetch` dos JSON é bloqueado por CORS.

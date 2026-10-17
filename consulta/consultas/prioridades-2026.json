@@ -3,7 +3,7 @@
   "titulo": "Qual a prioridade do seu bairro?",
   "descricao": "Escuta pública do mandato: diga com o que a Prefeitura deveria gastar melhor o seu dinheiro. Leva menos de 1 minuto, não pede nome nem telefone.",
   "periodo": { "inicio": "2026-07-15", "fim": "2026-09-30" },
-  "ativa": true,
+  "ativa": false,
   "propostas": [
     { "id": "p1", "texto": "Recapeamento e tapa-buraco deveriam ter cronograma público por bairro, com prazos e ordem de prioridade." },
     { "id": "p2", "texto": "A fila de consultas e exames na rede municipal deveria ser publicada na internet, com tempo médio de espera por especialidade." },
