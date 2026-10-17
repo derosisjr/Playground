@@ -59,7 +59,7 @@ def banco(tmp_path):
         (1, 1, "10/02/2026 09:00:00", "DIRETORIA LEGISLATIVA", "PUBLICADO."),
         (2, 0, "13/10/2026 11:43:50", "DIRETORIA LEGISLATIVA  -  AGUARDANDO PAUTAÇÃO", DESPACHO_LONGO),
         (2, 1, "08/05/2026 10:00:00", "DIVISÃO DE APOIO ÀS COMISSÕES", "PARA PARECER."),
-        (3, 0, "01/06/2026 08:00:00", PAUTA.upper(), "PARA PAUTAÇÃO."),
+        (3, 0, "01/06/2026 08:00:00", "SECRETARIA LEGISLATIVA", "PARA PAUTAÇÃO."),  # ≠ local_atual
         (4, 0, "15/12/2025 08:00:00", "PROPOSITURA TRANSFORMADA", "LEI Nº 4.700."),
         (5, 0, "05/05/2024 08:00:00", "DIRETORIA LEGISLATIVA", ""),
     ]
@@ -93,7 +93,7 @@ def test_chaves_antigas_presentes_e_tram_em_todos(indice):
     for p in indice:
         assert list(p)[:len(CHAVES_ANTIGAS)] == CHAVES_ANTIGAS
         assert p["tram"] in (0, 1) and isinstance(p["tram"], int)
-        assert "ua" in p
+        assert set(p) - set(CHAVES_ANTIGAS) <= {"tram", "ua", "ual", "uad"}
 
 
 def test_tram_segue_a_regra_do_crawler(indice):
@@ -105,18 +105,22 @@ def test_tram_segue_a_regra_do_crawler(indice):
 
 def test_ultimo_andamento(indice):
     por = {p["numero"]: p for p in indice}
-    assert por["10/2026"]["ua"] == "2026-10-13"   # ISO, sem hora, do andamento de ordem 0
-    assert por["1/2026"]["ua"] == "2026-02-20"    # ua também nos que não tramitam
-    assert por["7/2026"]["ua"] == ""              # sem tramitação gravada
-    # ual/uad só nos em tramitação
+    # ua e uad só nos em tramitação (sempre os dois); ual, além disso, só se acrescenta algo
     for p in indice:
-        assert ("ual" in p) == ("uad" in p) == (p["tram"] == 1)
-    assert por["10/2026"]["ual"] == "DIRETORIA LEGISLATIVA - AGUARDANDO PAUTAÇÃO"  # espaços colapsados
+        assert ("ua" in p) == ("uad" in p) == (p["tram"] == 1)
+        assert "ual" not in p or p["tram"] == 1
+    assert por["10/2026"]["ua"] == "2026-10-13"   # ISO, sem hora, do andamento de ordem 0
+    assert por["7/2026"]["ua"] == ""              # em tramitação, sem tramitação gravada
+    assert "ua" not in por["1/2026"]              # arquivado: sem ua
+    # ual só quando difere de local_atual (sem caixa nem espaços) — o JS faz p.ual || p.local_atual
+    assert "ual" not in por["10/2026"]            # "DIRETORIA LEGISLATIVA  -  AGUARDANDO PAUTAÇÃO" = local_atual
+    assert por["2/2026"]["ual"] == "SECRETARIA LEGISLATIVA"
+    assert por["33/2024"]["ual"] == "DIRETORIA LEGISLATIVA"   # local_atual vazio
+    assert "ual" not in por["7/2026"]             # sem tramitação: nada a acrescentar
     assert por["2/2026"]["uad"] == "PARA PAUTAÇÃO."
-    assert por["33/2024"]["ual"] == "DIRETORIA LEGISLATIVA" and por["33/2024"]["uad"] == ""
-    assert por["7/2026"]["ual"] == "" and por["7/2026"]["uad"] == ""
+    assert por["33/2024"]["uad"] == "" and por["7/2026"]["uad"] == ""
     uad = por["10/2026"]["uad"]
-    assert len(uad) <= 120 and uad.endswith("…") and "\n" not in uad
+    assert len(uad) <= 80 and uad.endswith("…") and "\n" not in uad
     colapsado = " ".join(DESPACHO_LONGO.split())
     corpo = uad[:-1]
     assert colapsado.startswith(corpo)
@@ -127,14 +131,14 @@ def test_ultimo_andamento(indice):
     ("", ""),
     (None, ""),
     ("  A\n\nB  ", "A B"),
-    ("X" * 120, "X" * 120),                        # no limite: intacto
-    ("PALAVRA " * 20, ("PALAVRA " * 15).strip() + "…"),   # 15 palavras = 119 + "…"
-    ("PALAVRAS " * 20, ("PALAVRAS " * 13).strip() + "…"),  # corte cairia no meio da 14ª
-    ("Y" * 130, "Y" * 119 + "…"),                  # sem espaço: corte seco
+    ("X" * 80, "X" * 80),                          # no limite: intacto
+    ("PALAVRA " * 20, ("PALAVRA " * 10).strip() + "…"),   # 10 palavras = 79 + "…"
+    ("PALAVRAS " * 20, ("PALAVRAS " * 8).strip() + "…"),   # a 9ª não cabe inteira
+    ("Y" * 130, "Y" * 79 + "…"),                   # sem espaço: corte seco
 ], ids=["vazio", "none", "espacos", "no-limite", "fim-de-palavra", "meio-de-palavra", "sem-espaco"])
 def test_resumir(texto, esperado):
     r = export.resumir(texto)
-    assert r == esperado and len(r) <= 120
+    assert r == esperado and len(r) <= 80
 
 
 def test_saida_nao_toca_o_indice_versionado(banco, tmp_path):

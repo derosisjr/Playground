@@ -9,8 +9,8 @@ Lê `proposituras/proposituras.sqlite` e gera:
   - proposituras-index.json (raiz)   (índice consumido pelo painel proposituras.html)
 
 Ordem: data da propositura (mais recente primeiro), depois ano e número numérico.
-O índice traz, além dos metadados, `tram`/`ua` em todos os itens e `ual`/`uad` só
-nos em tramitação — contrato em .claude/rules/proposituras.md.
+O índice traz, além dos metadados, `tram` em todos os itens e `ua`/`uad` (mais `ual`,
+quando difere do local atual) só nos em tramitação — contrato em .claude/rules/proposituras.md.
 
 Uso:
     python proposituras/export.py
@@ -65,7 +65,7 @@ def chave_ordem(p: dict) -> tuple:
             _numero(p["numero"]), p["cod"])
 
 
-def resumir(texto: str | None, limite: int = 120) -> str:
+def resumir(texto: str | None, limite: int = 80) -> str:
     """Espaços e quebras de linha colapsados; acima de `limite`, corta na última palavra
     inteira e fecha com "…" (o total, com o "…", não passa de `limite`)."""
     t = " ".join((texto or "").split())
@@ -144,16 +144,20 @@ def exportar_json(props: list[dict], ultimos: dict[int, dict], caminho: str = JS
     campos = ["cod", "tipo", "subtipo", "numero", "ano", "data_propositura",
               "autor", "ementa", "local_atual", "situacao", "url_detalhes", "url_pdf"]
     dados = [{c: p.get(c, "") for c in campos} for p in props]
-    # `tram` e `ua` em todos (o `tram` sempre presente é o que separa índice novo de antigo
-    # no painel); local e despacho do último andamento só nos em tramitação (~1,7 mil de
-    # ~7 mil) — nos arquivados seriam peso sem uso
+    # `tram` em todos (sempre presente: é o que separa índice novo de antigo no painel);
+    # data e despacho do último andamento só nos em tramitação (~1,7 mil de ~7 mil), e o
+    # local só quando acrescenta algo ao `local_atual` (o JS faz `p.ual || p.local_atual`)
+    # — enxugado em 2026-10 para caber no orçamento de gzip do índice
     for d, p in zip(dados, props):
-        u = ultimos.get(p["cod"]) or {}
         d["tram"] = 0 if situacao_final(p["local_atual"], p["situacao"]) else 1
+        if not d["tram"]:
+            continue
+        u = ultimos.get(p["cod"]) or {}
         d["ua"] = _data_iso(u.get("data") or p.get("data_situacao"))
-        if d["tram"]:
-            d["ual"] = " ".join((u.get("local") or "").split())
-            d["uad"] = resumir(u.get("despacho"))
+        ual = " ".join((u.get("local") or "").split())
+        if ual and ual.upper() != " ".join((p["local_atual"] or "").split()).upper():
+            d["ual"] = ual
+        d["uad"] = resumir(u.get("despacho"))
     gravar_json(caminho, dados, separators=(",", ":"))
     return sum(d["tram"] for d in dados)
 

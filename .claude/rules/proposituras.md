@@ -38,30 +38,34 @@ cruzamento propositura→lei sancionada ficam para fases futuras.
 DESC, subtipo, numero` de texto, e a lista abria em "PDL 1, 10, 11…". CSV/XLSX saem na mesma
 ordem. As 12 chaves antigas (`cod` … `url_pdf`) continuam iguais e na mesma ordem; o painel,
 a paleta Ctrl+K (`comum.js`) e o hub não leem as novas. **Contrato dos acréscimos:**
-- `tram` (int 0|1, **em todo item**): 1 = em tramitação = `not situacao_final(local_atual,
-  situacao)` — a mesma função do crawler, importada. Sempre presente: `"tram" in p` separa
-  índice novo de antigo no JS.
-- `ua` (string, em todo item): data do último andamento em **ISO `aaaa-mm-dd`** (sem hora), do
-  despacho de ordem 0 da tramitação (= `data_situacao`); `""` se não há tramitação gravada (14
-  itens em 08/2026). ISO de propósito: ordena como texto e vira `Date` sem parser; para exibir,
+- `tram` (int 0|1, **em todo item**): 1 = `not situacao_final(local_atual, situacao)` — a
+  mesma função do crawler, importada (a regra NÃO muda por causa do painel). Sempre presente:
+  `"tram" in p` separa índice novo de antigo no JS.
+- `ua` (string, **só com `tram`=1**): data do último andamento em **ISO `aaaa-mm-dd`** (sem
+  hora), do despacho de ordem 0 da tramitação (= `data_situacao`); `""` se não há tramitação
+  gravada. ISO de propósito: ordena como texto e vira `Date` sem parser; para exibir,
   `ua.split("-").reverse().join("/")` (o `dataBr` de `precos-app.js`).
-- `ual` (string, **só com `tram`=1**): local do último andamento como a tramitação escreve
-  (CAIXA ALTA, espaços colapsados); `""` se não há tramitação. Igual a `local_atual` (sem
-  caixa) em ~96% dos que têm local; o que acrescenta é o local dos que têm `local_atual` vazio.
-- `uad` (string, **só com `tram`=1**): despacho do último andamento, quebras e espaços
-  colapsados, **≤ 120 caracteres** — acima disso cortado na última palavra inteira + "…"
-  (`resumir()`); `""` se o despacho é vazio. Texto em CAIXA ALTA, às vezes com assinatura.
+- `uad` (string, **só com `tram`=1**, junto com `ua`): despacho do último andamento, quebras e
+  espaços colapsados, **≤ 80 caracteres** — acima disso cortado na última palavra inteira +
+  "…" (`resumir()`); `""` se o despacho é vazio. CAIXA ALTA, às vezes com assinatura.
+- `ual` (string, **só com `tram`=1 e só quando acrescenta algo**): local do último andamento
+  como a tramitação escreve (CAIXA ALTA, espaços colapsados), omitido quando vazio ou igual a
+  `local_atual` sem contar caixa e espaços. Exibir com **`p.ual || p.local_atual`**. Em 08/08:
+  847 itens — 815 com `local_atual` vazio e 32 em que o local difere.
 
-Custo medido na base de 08/08 (7.016 itens, 1.745 com `tram`=1): **+454 KB bruto, +98 KB
-gzip** (`uad` 186/46 KB, `ua` 126/27, `ual` 79/12, `tram` 63/3; a nova ordem sozinha +7 KB gzip).
+Enxugado em 2026-10 (`ua` só em tramitação, `uad` de 120 para 80, `ual` só quando difere): na
+base de 08/08 (7.016 itens, 1.745 com `tram`=1) o índice foi de 4,96 MB para **5,23 MB — +270
+KB bruto, +64 KB gzip** (era +454 KB / +98 KB com o contrato inicial).
 
-**`tram`=1 NÃO é só "tramitando" [Verificar no painel].** A regra é a da revisita, que trata
-local vazio como pendente porque revisitar é barato: 829 dos 1.745 (08/08) — 871 dos 1.731 no
-índice de 15/10 — têm `local_atual` vazio. Desses 829, 226 têm o último andamento em
-"PROPOSITURA TRANSFORMADA" (nas amostras, PL convertido em PLC: "TRANSFORMAÇÃO DO P.L. Nº
-116/2022 NO P.L.C. Nº 25/2023") e 258 têm despacho de anexação a outro projeto ("ANEXAD…" no
-`uad`); sobram 345 sem sinal nenhum. Não chamar esses de "em tramitação" sem ressalva; afinar
-`situacao_final()` (o que também pouparia revisitas) é decisão pendente.
+**Chip "em tramitação" do painel = `tram === 1 && local_atual`** (local atual não vazio): 916
+itens em 08/08, 860 no índice de 15/10. `tram`=1 sozinho NÃO é "tramitando": a regra é a da
+revisita, que trata local vazio como pendente porque revisitar é barato — 829 dos 1.745 (871
+dos 1.731 em 15/10) têm `local_atual` vazio e **ficam fora do chip**. Atenção: o critério não
+pode ser `p.ual || p.local_atual` — 815 desses 829 TÊM `ual`, que é o local do último andamento
+e não um local atual: 226 em "PROPOSITURA TRANSFORMADA" (nas amostras, PL convertido em PLC:
+"TRANSFORMAÇÃO DO P.L. Nº 116/2022 NO P.L.C. Nº 25/2023"), 294 com despacho de anexação a outro
+projeto (no texto inteiro do despacho) e 309 sem sinal. Afinar `situacao_final()` (o que também
+pouparia revisitas) segue como decisão pendente.
 
 Para testar o export sem sobrescrever o índice versionado: `--db` (outro SQLite) e `--saida
 <pasta>` (índice, CSV e XLSX vão todos para lá).
