@@ -21,6 +21,32 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 - **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `31 8 * * 1-5` (05h31 BRT, dias úteis).
 - **Painel de Requerimentos & Respostas (`requerimentos.html` + `requerimentos-app.js`):** cartão "Requerimentos" na seção Bases de dados do hub. `respostas-executivo/export.py` lê a aba `requerimentos` da planilha (via Sheets API, reusando `_google_services`/`_idx_header` de `index.py`) e gera `requerimentos-index.json` na raiz — array com número, ano, assunto, datas, situação, `respondido` e `url_resposta`. **O índice é público: só saem as chaves de `CAMPOS_PUBLICOS` (`export.py`)** e o `main()` aborta com exit 1 se aparecer outra. A coluna interna "Status atual" da planilha **não vai ao site** — até out/2026 ela era publicada e exibida como "Situação", vazando anotações do gabinete ("ok (Falar com o Rui)", "não sei se cabe reiterar", links de entrega de documentos). A coluna "Situação" do painel mostra os rótulos públicos da classificação (`SITUACAO_ROTULO` em `requerimentos-app.js`, espelho de `classificar.ROTULOS`). Linha cujo Número não casa `^\d{1,5}/\d{4}$` (ex.: data, como as linhas-fantasma de set/2026) é descartada com aviso. A lógica de montagem vive em `montar_itens()` (testável sem Google: `testes_export.py`). **A coluna `Resposta` é uma fórmula `=HYPERLINK(...)`**, então o export lê com `valueRenderOption="FORMULA"` e extrai a URL do Drive por regex. O painel (vanilla, sem acento, paginado) tem busca + filtros de ano/situação e link para a pasta no Drive (exige login do gabinete) ou badge "Pendente". O JSON é gerado e commitado pelo passo final do `respostas-executivo.yml` (com guarda anti-base-vazia). `--dry-run` no export imprime contagens sem gravar.
 
+## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
+
+- **Regra (`prazos.py`)**: LOM art. 58, XVIII — informações "dentro de quinze dias (...), salvo
+  prorrogação, a seu pedido e por igual período" (texto conferido no Legis, doc. 9596).
+  `vence_em` = sessão + 15 dias corridos (+15 se `so_prorrogacao`); vazio para respondido. Conta
+  da **data da sessão**: a planilha não registra o protocolo na Prefeitura (as colunas "Data do
+  Protocolo na PMS" e "Prazo" existem e estão vazias) — o painel diz isso na nota de método. Em
+  17/10/2026: 0 de 530 respostas de mérito em ≤15 dias, 116 em ≤30, mediana 43; 87 sem mérito,
+  todos vencidos.
+- **Secretaria (`secretarias.py`)**: sigla da coluna "Secretaria" da planilha (texto livre da
+  assessoria, ~75% preenchida), com sinônimos unificados (COMUNICAÇÃO→SECOM, SAÚDE→SMS,
+  SED´S→SEDS) e o que não é secretaria esvaziado ("NÃO SEI", "#NAME?", "GERAL", "EMPRESAS", nome
+  de fornecedor). Atenção ao NFKD: o acento agudo solto vira espaço ("SED S").
+- **Desdobramentos**: `cita` = pedidos anteriores citados no assunto ("Resposta ao requerimento
+  210/2025 - …"), só os que existem na base; o painel monta a volta ("desdobrado em").
+- **Painel**: KPIs com mediana (não média) e "N de M em até 15 dias"; coluna Prazo em texto
+  ("há 555 dias · venceu em…"); filtros `prazo` (fora / respondidos depois de 15 / em até 15),
+  `sec` e `ordem` (mais recentes = padrão, mais atrasados, número) na URL; `?n=` mostra um pedido
+  e os que o desdobram; "Copiar reiteração" (texto-base, revisar antes de protocolar) e "Copiar
+  lista de cobrança" via `Comum.copiar`; **resumo público por secretaria** (decisão do usuário,
+  17/10) só com cobertura ≥ 50% no ano filtrado, siglas com < 5 pedidos agrupadas em "Outras".
+  Índice antigo (sem `vence_em`) degrada: filtros de prazo/secretaria e o resumo somem.
+- **`garantir_colunas` só cria as colunas de classificação** (as que a automação grava). Antes
+  completava todas as de `ABAS` e, em 12/10/2026, criou "Ordem", "Prazo" e "Data do Protocolo na
+  PMS" vazias no fim da aba — podem ser apagadas à mão sem que voltem.
+
 ## Nem todo anexo é resposta (`classificar.py`)
 
 A Prefeitura manda três coisas pelo mesmo canal "Resposta anexada", e contar as três

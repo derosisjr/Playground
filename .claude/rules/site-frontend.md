@@ -27,7 +27,9 @@ Também na camada comum (2026-07): **tokens de raio** `--r-sm/--r-md/--r-lg` (10
 raio fixo novo), `.sr-only` (`table.sr-only` vai para `left:-10000px`: tabela ignora width 1px e gerava rolagem horizontal no celular), **`Comum.chartAcessivel(canvas, descricao, cabecalhos, linhas)`**
 (role=img + tabela oculta — usar em TODO gráfico novo), **`Comum.toast(msg)`** (no lugar de
 `alert()`), **`Comum.estadoErro(alvo, msg, aoTentar)`** (erro de fetch com "Tentar de novo" — o
-alvo deve ser um contêiner que o render de sucesso reconstrói), skeletons `.skel` (base clara no
+alvo deve ser um contêiner que o render de sucesso reconstrói), **`Comum.copiar(texto, aviso)`**
+(área de transferência com reserva em textarea+execCommand e toast; devolve true/false — rascunhos,
+listas e citações), skeletons `.skel` (base clara no
 comum; cartões-skeleton estáticos nos `#stats` dos painéis), e **PWA** (`manifest.json` + `sw.js`:
 network-first p/ estáticos e p/ os dados de despesas (`despesas-index.json`, `despesas/**`, `favorecidos/**` — índice e meses do mesmo export), stale-while-revalidate p/ os demais `*.json` ignorando `?v=`; registrado no
 comum.js; desde a v4 (2026-10) são dois caches — estáticos, onde gravar um arquivo apaga as
@@ -115,7 +117,9 @@ qualquer mexida ali:
   hub usa (senão baixa o índice): requerimentos exige `classificada` (mesma regra de
   `baseClassificada()` do painel) — sem ela o rótulo errava para "com retorno" num número que já
   era só mérito (out/2026); o cartão fala em "N sem resposta de mérito", não "pendentes" (pendente é
-  só uma das situações). `regimento-notas.json` → `artigos_com_nota`: o cartão do Regimento só fala
+  só uma das situações), mais o prazo da Lei Orgânica vencido (`fora_do_prazo` da contagem leve, ou
+  `vence_em` do índice inteiro): "monitorados · 87 sem resposta de mérito, todos fora do prazo" —
+  medido em ≤ 2 linhas a 1366/980/390 px. `regimento-notas.json` → `artigos_com_nota`: o cartão do Regimento só fala
   de notas quando há alguma.
 - **Texto do cartão não promete o que a página não entrega**: as `.desc` são estáticas (trocar por
   JS mudaria a altura da fileira); o que depende de estado vai em rótulo/CTA — a Escuta pública

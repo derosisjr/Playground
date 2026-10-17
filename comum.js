@@ -169,6 +169,29 @@ window.Comum = (() => {
     toastTimer = setTimeout(() => toastEl.classList.remove("ver"), 2600);
   }
 
+  // ── Copiar texto (rascunhos de requerimento, links, citações) ───────────────
+  // A API da área de transferência exige contexto seguro e permissão; fora disso
+  // (http local, navegador antigo) cai no textarea + execCommand. Devolve true/false
+  // e avisa por toast nos dois casos.
+  async function copiar(texto, aviso = "Copiado para a área de transferência") {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = texto;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { /* sem cópia neste navegador */ }
+      ta.remove();
+      if (!ok) { toast("Não foi possível copiar — selecione o texto à mão"); return false; }
+    }
+    toast(aviso);
+    return true;
+  }
+
   // ── Estado de erro padrão com "Tentar de novo" ──────────────────────────────
   // alvo: elemento ou id; aoTentar: callback que refaz a carga (ex.: init).
   function estadoErro(alvo, mensagem, aoTentar) {
@@ -679,5 +702,5 @@ window.Comum = (() => {
   }
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, paginador, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, toast, estadoErro, identidadeFavorecido, nomeNormalizado, visorPdf, POP_SANTOS };
+           alternarTema, temaAtual, chartAcessivel, toast, copiar, estadoErro, identidadeFavorecido, nomeNormalizado, visorPdf, POP_SANTOS };
 })();

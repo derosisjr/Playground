@@ -109,6 +109,17 @@ def contagens():
                 (r.get("situacao") not in ("respondido", "pendente", None, ""))
                 or r.get("data_resposta_merito") for r in reqs),
         }
+        # prazo da LOM vencido (o export grava `vence_em`; respostas-executivo/prazos.py)
+        if any("vence_em" in r for r in reqs):
+            hoje = datetime.now(timezone.utc).date()
+
+            def vencido(r):
+                try:
+                    limite = datetime.strptime(r.get("vence_em") or "", "%d/%m/%Y").date()
+                except ValueError:
+                    return False
+                return r.get("situacao") != "respondido" and hoje > limite
+            out["requerimentos-index.json"]["fora_do_prazo"] = sum(1 for r in reqs if vencido(r))
     except (OSError, ValueError) as e:
         print(f"  aviso: contagem de requerimentos falhou: {e}", file=sys.stderr)
     try:

@@ -33,6 +33,20 @@ def test_requerimentos_classificados(tmp_path, monkeypatch):
     assert c["classificada"] is True
 
 
+def test_fora_do_prazo_so_com_vence_em(tmp_path, monkeypatch):
+    monkeypatch.setattr(ba, "RAIZ", Path(tmp_path))
+    _gravar(tmp_path, "requerimentos-index.json", [
+        {"numero": "1/2025", "situacao": "pendente", "respondido": False, "vence_em": "19/02/2025"},
+        {"numero": "2/2025", "situacao": "so_prorrogacao", "respondido": False, "vence_em": "31/12/2999"},
+        {"numero": "3/2025", "situacao": "respondido", "respondido": True, "vence_em": ""},
+    ])
+    assert ba.contagens()["requerimentos-index.json"]["fora_do_prazo"] == 1
+    # índice antigo (sem vence_em): a chave não aparece e o hub não fala de prazo
+    _gravar(tmp_path, "requerimentos-index.json", [
+        {"numero": "1/2025", "situacao": "pendente", "respondido": False}])
+    assert "fora_do_prazo" not in ba.contagens()["requerimentos-index.json"]
+
+
 def test_requerimentos_sem_classificacao(tmp_path, monkeypatch):
     # fallback do export ("tem pasta no Drive"): só respondido/pendente, sem data de mérito
     monkeypatch.setattr(ba, "RAIZ", Path(tmp_path))
