@@ -133,12 +133,15 @@ erro; `faltantes`, `com_erro`, `duplicidade_sistematica`, `integra`), **`execuca
 painel de Endividamento, só regrava se o dado mudou); (e) índices leves em `dados/` (`elementos.json`, `pf-resumo.json`,
 `indice-favorecidos.json`); (f) `dados/estagios/AAAA-MM.json` (documentos E/L/P por `"UG|empenho"`,
 particionado pelo mês da linha de execução; espécie omitida quando "Original"); (g) dossiês
-`favorecidos/<slug>.json`; (h) **`despesas/alertas-estado.json`** (histórico de alertas).
-`--db X --saida DIR` gera tudo num diretório candidato sem tocar no repo. **Mês completo** =
+`favorecidos/<slug>.json`; (h) **`despesas/alertas-estado.json`** (histórico de alertas, `versao: 2`);
+(i) **`despesas/alertas-candidatos.json`** (todos os casos das regras, `campos`+`linhas`; CSV no
+painel); (j) **`despesas/historico/alteracoes-AAAA.jsonl.gz`** (alterações da origem, só-acréscimo —
+ver Lote 2). `--db X --saida DIR` gera tudo num diretório candidato sem tocar no repo (copia do
+repo o estado dos alertas e a pasta `historico/`, que só crescem). **Mês completo** =
 último cujo fim está a mais de `DEFASAGEM_DIAS`=15 da data mais recente da base (o portal publica
 com semanas de atraso); meses posteriores ficam fora de YoY, picos e resumo, e o resumo os declara.
 `despesas/formato.py` é a camada comum do módulo: `brl`/`compacto`/`pct`, `eh_ente_publico()`
-(exceções privadas AFIP/FIPE/FGV) e a identidade. **`despesas/verificar.py`** (no workflow, no lugar
+(revisada no Lote 2 — ver abaixo) e a identidade. **`despesas/verificar.py`** (no workflow, no lugar
 da guarda "total > R$ 4 bi", que ficou como sanidade) confere cobertura, conservação, manifestos ×
 arquivos, série × movimentação e ranking × dossiês; **`despesas/comparar.py`** compara dois
 conjuntos de artefatos (e duas bases) e explica as diferenças por causa.
@@ -186,7 +189,7 @@ classe padrão "A conferir", regra com ≥ 3 alertas vira grupo recolhível, fil
 abas Visão geral (movimentação; bloco de execução com taxa validada ou motivo + razões brutas;
 glossário com os tipos e as duas visões; linha de **cobertura** no rodapé), Alertas (filtro por
 classe/tipo/severidade, nota de histórico, badge NOVO, documentos em `<details>`, clique → `link`),
-Favorecidos (ranking por identidade, "N grafias na origem", ficha filtra pela identidade) e
+Favorecidos (ranking por identidade, "N grafias na origem"; o nome abre o raio-X) e
 **Detalhamento** (seletor de visão exe/mov; estado completo na URL `dv/dm/dq/df/del/dfa/des/…`
 via `Comum.gravarParams`; facetas, chips, métrica ativa, colunas por visão, agrupar com subtotais,
 ficha do empenho com estágios, CSV com recorte). `favorecido.html` (raio-X) tem duas rotas:
@@ -199,7 +202,7 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=18` (com `defer`, como o Chart.js),
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=20` (com `defer`, como o Chart.js),
 `retrospectiva-app.js?v=8`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
@@ -215,7 +218,8 @@ oferece "Tentar de novo" (`Comum.estadoErro`) baixando só o que faltou. Facetas
 roda a busca/faixa/identidade UMA vez por filtragem. Favorecidos: modo **"Fornecedores
 privados"** (flag `ente_publico` no `top_favorecidos` e lista `entes_publicos` de chaves no
 índice — a heurística continua só em `formato.eh_ente_publico`), busca sem resultado oferece o
-raio-X na base inteira (o ranking é só o top-300), linhas focáveis (Enter abre a ficha),
+raio-X na base inteira (o ranking é só o top-300), nome do favorecido = link do raio-X (a ficha
+modal saiu no Lote 2; a linha inteira também abre),
 cabeçalhos com `<button>` + `aria-sort`, toggles com `aria-pressed` (`marcarAlternancia`). O mapa
 do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da movimentação e deixa
 o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
@@ -265,6 +269,94 @@ excluir a SABESP (privatizada em jul/2024). Export completo ~110 s (prazos ~22 s
 na lista geral, comparação com o mesmo período do ano anterior (`resumo.yoy`), gráfico com
 `Comum.chartAcessivel` e redesenho no resize.
 
+## Alertas v2, histórico versionado e publicidade (Lote 2, 2026-10)
+
+**Fracionamento v2** (`candidatos_alertas`, regra 5): agrupa por **(unidade gestora, favorecido,
+elemento, exercício do empenho)** — o art. 75, § 1º, I da Lei 14.133 soma o despendido no exercício
+pela mesma UG (a v1 somava UGs: 2+2 em UGs diferentes disparava). Só **empenho ordinário** conta
+(tipo vazio = ordinário); global/estimativo (em geral ligados a contrato) ficam fora da conta e
+aparecem só no detalhe ("Fora da conta: N…"); empenho sem o original na base (exercício incerto)
+fica fora. **Manutenção de veículos** (33903919 serviço e 33903039 peças) usa o limite do art. 75, I
+(coluna `engenharia` de `LIMITES_DISPENSA`; o § 7º — pequenas compras de manutenção fora da soma —
+não é aplicado, [Verificar]). **Etiqueta do PNCP**: `espelho_pncp()` lê `precos/espelho/3548500-*.jsonl.gz`
+(stdlib, cache por processo); por empenho, numa janela de **24 meses antes** (ata vale 1 ano + 1,
+art. 84): CNPJ vencedor de pregão com SRP → `provavel_ata`; pregão sem SRP → `vencedor_pregao`; só
+dispensa → `dispensa_pncp`. O alerta leva `etiqueta`, `etiqueta_alcance` [k de n empenhos] e
+`pncp` (nº de controle, processo, objeto, link `pncp.gov.br/app/editais/{cnpj}/{ano}/{seq}`); o texto
+ressalva que o espelho cobre só pregão eletrônico e dispensa publicados desde jan/2025 ("sem
+registro" ≠ "sem licitação"). Contratação revogada/anulada/suspensa não conta. **Continuidade**:
+id v2 = sha1(fracionamento, UG, chave, elemento, ano) e `ids_anteriores` = o id v1 (sem UG).
+Em 2026-10-17 (base fresca): 392 → 343 candidatos; 151 com `provavel_ata`, 12 `vencedor_pregao`, 4
+`dispensa_pncp`; nenhum `provavel_ata` publicado (vão por último).
+
+**`pago_acima_liquidado`** (anomalia média — classe pendente de decisão do usuário): por (UG,
+empenho, nº da liquidação), soma dos pagamentos > valor da liquidação, direto no SQLite
+(`pago_acima_liquidado()`; `CAMPOS_MOV` intocado). Fora: extra-orçamentário (retenções com o mesmo
+nº) e "Restos a Pagar Processados" (nº de liquidação de outro exercício). Exige: liquidação na base
+com o original e saldo > 0; pagamento orçamentário com o empenho original na base; favorecido que
+não é ente público; excesso ≥ `PAGO_ACIMA_MIN` (R$ 100) na liquidação **e no empenho inteiro**
+(excesso só na liquidação = nº trocado entre parcelas); nenhuma partição envolvida com erro ou
+duplicidade sistemática. Linhas idênticas NÃO são deduplicadas (há estornos repetidos legítimos).
+"Exatamente o dobro com ≥ 2 pagamentos distintos" → título "Liquidação paga duas vezes". Funil em
+2026-10-17: 4.396 empenhos com pago > liquidado (todos os tipos, R$ 164 mi) → 1.276 sem extra (R$ 124
+mi) → 1.521 liquidações (orçamentária + RP não processados, R$ 68,4 mi), das quais 1.389 sem a
+liquidação na base (R$ 62,2 mi — lacuna da origem), 32 sem original/saldo ≤ 0, 53 orçamentárias sem
+empenho original, 11 de ente público (folha/previdência), 20 com o empenho equilibrado, 6 em partição
+duplicada → **9 publicadas** (R$ 86,9 mil; nenhum "dobro"). Documentos: a liquidação e os pagamentos;
+link: execução com `emp=UG|nº` (abre a ficha do empenho).
+
+**Candidatos × publicados** (`candidatos_alertas()` → `aplicar_historico_alertas()` sobre TODOS →
+`publicar()`; `alertas()` mantém assinatura e retorno = publicados, sem histórico — briefing e testes
+antigos). Ordem dentro da regra (`_prioridade_publicacao`): **novo antes de persistente** (sem
+histórico empata com persistente), depois a prioridade própria (valor; pf_sensivel por
+`_prioridade_pf`; prazo_lento pela mediana), `provavel_ata` por último; teto `CAP_POR_REGRA`=15
+(`CAP_ESPECIAL` extra=20; `SEM_TETO` pico_mensal e dados_*); teto global `MAX_ALERTAS`=120 corta
+**contexto** primeiro. Documentos e links caros (`_completar`) só para os publicados. Um alerta
+deslocado pelo teto continua no estado (não vira "resolvido" nem volta "novo"). **`alertas-estado.json`
+`versao: 2`** guarda todos os candidatos, sem `ultimo_em` (mudava ~680 linhas/dia; ninguém lia); na
+migração de um estado v1 (só publicados), candidato fora dele fica `sem_historico` por um dia. O
+índice: `alertas_regras` conta candidatos de toda regra; `alertas_historico.novos/persistentes` =
+publicados, `alertas_historico.candidatos` = todos.
+
+**Histórico versionado de alterações** (`exportar_historico_alteracoes`): `linhas_historico` do SQLite
+(motivos `removido`/`substituido`; duplicidade fica de fora — já está na cobertura) vai para
+`despesas/historico/alteracoes-AAAA.jsonl.gz` (AAAA = ano da partição), **só-acréscimo**: lê o
+versionado, acrescenta o que falta (chave hash+repetição+motivo+registrado_em), nunca apaga — o SQLite
+do cache pode ser despejado. Descarta o **artefato de largura** (7→8 dígitos em 2026-09-30 e a volta
+depois da correção): linha cuja forma normalizada (`crawler.numero_documento`/`codigo_grupo` + hash)
+ainda está na partição. Campos enxutos: `em f p m h r ug emp liq pag data esp valor fav doc elem tipo`.
+gzip com `mtime=0` (mesmo conteúdo = mesmos bytes).
+
+**Ente público (revisão)** — `formato.eh_ente_publico`, na ordem: exceções públicas explícitas
+(PRODESAN, COHAB, CET-Santos); guarda de forma **privada** (começa com Associação/Federação/Sindicato,
+contém "Fundação de Apoio", LTDA/EIRELI/ME/EPP) + exceções nominais (AFIP, FIPE, FGV, SABESP);
+FUNDAÇÃO só pela lista curada `FUNDACOES_PUBLICAS` (FAMS, Pró-Esporte/FUPES, FUNAP, FUB, FUNAPE);
+FUNDO só com qualificador público (municipal/estadual/nacional/federal/penitenciário/
+previdenciário/social de solidariedade); "ESTADO DE SÃO PAULO" só com marcador estatal antes
+(governo, secretaria, polícia, bombeiros, companhia…). Saíram de `entes_publicos` (13 identidades em
+2026-10-17): AFIP, ANEPREM, FAP-UNIFESP, FUSP, SETTAPORT, FCTH, FEAS, FUNDIC, Federação de Tênis de
+Mesa, Associação de Lutas, associações de secretários/secretarias e APRECESP. **Pendentes de decisão
+do usuário** (`FUNDACOES_DUVIDOSAS`, seguem como ente até lá): Pinacoteca Benedito Calixto, CENEP,
+Parque Tecnológico (também é UG da base) e SP-PREVCOM. O JS não replica a heurística (usa a flag e
+`entes_publicos` do índice).
+
+**Publicidade (só agregados — decisão do usuário: nenhum sinal sobre empresas)**: bloco
+`publicidade` do índice (`publicidade()`), elementos 33903988 (propaganda) e 33903990 (publicidade
+legal), pela data do pagamento (inclui restos): `por_ano`, `comparacao` (jan–M do último mês completo
+× mesmo período do ano anterior), `serie` mensal (lacuna = 0) e top 10 `favorecidos` por identidade.
+Caixa `#box-publicidade` na Visão geral (padrão do `box-prazos`; gráfico de barras empilhadas com
+`Comum.chartAcessivel`, mês parcial mais claro).
+
+**Painel (Lote 2)**: filtro de severidade só com os valores presentes; cartão do alerta com
+"Abrir o recorte"/"Abrir o raio-X", **"Raio-X do favorecido"** (quando o recorte é o Detalhamento),
+links do **PNCP** quando há etiqueta e **"Copiar rascunho de requerimento"** (classes ≠ contexto):
+texto determinístico montado no navegador só com os campos do alerta (título, detalhe entre aspas,
+valor, documentos, link do recorte) + pedidos por regra (`PEDIDOS_POR_TIPO`), base legal "art. 58,
+XVIII da Lei Orgânica" e "art. 121 do Regimento Interno [Verificar]" (requerimento de informação não
+admite sugestão ou conselho); cópia com fallback (`execCommand`) e `Comum.toast`. O clique no
+cartão ignora `a`, `button` e os documentos. A linha do teto oferece **"Baixar os N casos (CSV)"**
+(lê `despesas/alertas-candidatos.json`).
+
 ## Benchmark cidades pares (`despesas/benchmark.py`)
 
 Compara a despesa **por função** de Santos com pares paulistas (Jundiaí, Piracicaba, Mogi das
@@ -298,7 +390,8 @@ passo final do `despesas.yml` às segundas (`date +%u = 1`) ou `workflow_dispatc
 Testes → cache do `.sqlite` → crawler (partições sem carga; depois `--ano corrente --forcar`, ou
 tudo com `reconciliar_tudo=true`) com tratamento dos códigos 1 (aborta) e 2 (publica e falha no
 fim, lista no `GITHUB_STEP_SUMMARY`) → `export.py` → **`verificar.py --tolerar-erros`** → commit de
-`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/servico-divida.json favorecidos`
+`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json favorecidos`
+(o export cria `despesas/historico/` mesmo vazia — `git add` de pasta inexistente derruba o passo)
 → briefing → passo "Falha parcial" (vermelho se alguma partição não atualizou).
 
 ## Recuperação e reconciliação da base (procedimento)
@@ -346,7 +439,8 @@ python despesas/benchmark.py --dry-run
 ```
 
 **Cuidado ao testar localmente:** `export.py` sem `--saida` sobrescreve artefatos VERSIONADOS
-(`despesas-index.json`, `dados/`, `favorecidos/`, `arvore.json`, `alertas-estado.json`) com o
+(`despesas-index.json`, `dados/`, `favorecidos/`, `arvore.json`, `alertas-estado.json`,
+`alertas-candidatos.json`, e ACRESCENTA a `historico/`) com o
 `.sqlite` local — que costuma estar desatualizado (o fresco vive no cache do Actions). Use
 `--db/--saida` para candidatos; depois de testar sem eles, `git restore` e apague os gerados
 não rastreados; o workflow diário regenera tudo com a base fresca.

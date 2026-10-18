@@ -101,7 +101,6 @@ async function init() {
   ["#fn-vista button", "#fav-modos button", "#det-metrica button"].forEach(s =>
     marcarAlternancia(s, x => x.classList.contains("primario")));
   ligarDetalhe();
-  ligarFicha();
   ligarFichaEmpenho();
   // consulta citável: ?dm=… restaura meses+filtros do Detalhamento e auto-carrega
   const pURL = Comum.lerParams();
@@ -208,7 +207,8 @@ function desviosSerie(serie) {
 
 function renderGraficos() {
   // rerender (troca de tema): solta os charts anteriores antes de recriar
-  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade", "ch-anulacoes", "ch-programa"].forEach(id => {
+  ["ch-mensal", "ch-execucao", "ch-funcao", "ch-fonte", "ch-unidade", "ch-anulacoes", "ch-programa",
+   "ch-publicidade"].forEach(id => {
     const c = Chart.getChart(id);
     if (c) c.destroy();
   });
@@ -498,6 +498,38 @@ function renderAnalises() {
       "Só anos com dezembro completo na base.";
     document.getElementById("box-fim").hidden = false;
   }
+
+  renderPublicidade();
+}
+
+// Publicidade: só agregados (quanto, quando e a quem) — nenhum sinal sobre empresas
+function renderPublicidade() {
+  const pub = DADOS.publicidade;
+  if (!pub?.serie?.length) return;
+  const c = pub.comparacao, partes = [];
+  if (c) {
+    const per = `jan–${MESES[c.mes].toLowerCase()}`;
+    partes.push(`${per}/${c.ano}: ${compacto(c.atual)} pagos em publicidade` + (c.pct != null
+      ? ` — ${Math.abs(c.pct)}% ${c.pct >= 0 ? "acima" : "abaixo"} do mesmo período de ${c.ano - 1} (${compacto(c.anterior)})`
+      : ""));
+  }
+  const anos = Object.keys(pub.por_ano || {}).sort();
+  const ultimoMes = pub.serie[pub.serie.length - 1];
+  partes.push("Por ano: " + anos.map(a => {
+    const v = pub.por_ano[a];
+    const ate = +a === ultimoMes.ano && ultimoMes.mes < 12 ? ` (até ${MESES[ultimoMes.mes].toLowerCase()})` : "";
+    return `${a}${ate} ${compacto(v.total)} — propaganda ${compacto(v.propaganda)}, publicidade legal ${compacto(v.legal)}`;
+  }).join(" · "));
+  document.getElementById("pub-resumo").textContent = partes.join(". ") + ".";
+  document.getElementById("pub-fav").innerHTML = (pub.favorecidos || []).map(f => `
+    <tr><td data-label="Favorecido"><a href="${linkRaiox(f)}">${esc(f.nome)}</a>${f.ente_publico ? ' <span class="p" style="color:var(--muted)">· ente público</span>' : ""}</td>
+      <td data-label="Propaganda" class="r">${compacto(f.propaganda)}</td>
+      <td data-label="Publicidade legal" class="r">${compacto(f.legal)}</td>
+      <td data-label="Total" class="r">${compacto(f.valor)}</td></tr>`).join("");
+  const parciais = pub.serie.filter(x => mesParcial(x.ano, x.mes)).length;
+  document.getElementById("pub-nota").textContent = (pub.criterio || "") + (parciais
+    ? " * Mês parcial (barra mais clara): o portal publica com semanas de atraso e o valor ainda vai subir." : "");
+  document.getElementById("box-publicidade").hidden = false;
 }
 
 // gráficos das análises (repintados na troca de tema junto com os demais)
@@ -523,6 +555,36 @@ function renderGraficosAnalises() {
     Comum.chartAcessivel("ch-programa", "Pago orçamentário por programa do PPA (doze maiores).", ["Programa", "Pago"],
       pr.map(p => [p.programa, compacto(p.valor)]));
     document.getElementById("box-programa").hidden = false;
+  }
+  const pub = DADOS.publicidade;
+  if (pub?.serie?.length) {
+    const s = pub.serie, parcial = s.map(x => mesParcial(x.ano, x.mes));
+    const labels = s.map((x, i) => `${MESES[x.mes]}/${String(x.ano).slice(2)}${parcial[i] ? "*" : ""}`);
+    const cor = (base) => s.map((x, i) => parcial[i] ? base + "66" : base);   // mês parcial mais claro
+    new Chart(document.getElementById("ch-publicidade"), {
+      type: "bar",
+      data: { labels, datasets: [
+        { label: "Propaganda", data: s.map(x => x.propaganda), backgroundColor: cor(NAVY), stack: "pub" },
+        { label: "Publicidade legal", data: s.map(x => x.legal), backgroundColor: cor(GOLD), stack: "pub" }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, labels: { boxWidth: 18, font: { size: 12 } } },
+          tooltip: { callbacks: {
+            label: (c) => `${c.dataset.label}: ${brlc(c.parsed.y)}`,
+            footer: (itens) => itens.length && parcial[itens[0].dataIndex] ? "mês parcial — a origem ainda está publicando" : "",
+          } },
+        },
+        scales: { x: { stacked: true }, y: { stacked: true, ...eixoReais() } },
+      },
+    });
+    const maior = s.reduce((m, x) => (x.propaganda + x.legal > m.propaganda + m.legal ? x : m), s[0]);
+    Comum.chartAcessivel("ch-publicidade",
+      `Pago por mês em publicidade: propaganda e publicidade legal. Maior mês: ${MESES[maior.mes]}/${maior.ano}, ` +
+      `${compacto(maior.propaganda + maior.legal)}.`,
+      ["Mês", "Propaganda", "Publicidade legal", "Total"],
+      s.map((x, i) => [`${MESES[x.mes]}/${x.ano}${parcial[i] ? " (parcial)" : ""}`, compacto(x.propaganda),
+        compacto(x.legal), compacto(x.propaganda + x.legal)]));
   }
 }
 
@@ -864,10 +926,14 @@ const ALERTA_LABELS = {
   dados_cobertura: "Dados: cobertura incompleta", dados_taxa: "Dados: taxa não validada",
   dados_nao_localizado: "Dados: empenho não localizado",
   prazo_rapido: "Pago bem mais rápido que a fila", prazo_lento: "Pago bem mais devagar que a fila",
+  pago_acima_liquidado: "Pago acima do liquidado",
 };
 const CLASSE_LABELS = { contexto: "Contexto", anomalia: "Anomalia a conferir", inconsistencia: "Inconsistência de dados" };
 const ESTADO_LABELS = { novo: "novo", persistente: "persistente", sem_historico: "sem histórico" };
 const SEV_LABELS = { alta: "Alta", media: "Média", baixa: "Baixa" };
+// etiqueta da triagem de fracionamento, tirada do espelho do PNCP (Preço comparado)
+const ETIQUETA_LABELS = { provavel_ata: "provável compra por ata (PNCP)", vencedor_pregao: "venceu pregão (PNCP)",
+                          dispensa_pncp: "dispensa no PNCP" };
 const GRUPO_MIN = 3;   // regra com ≥ N alertas visíveis vira um grupo recolhível (evita 15 cartões seguidos)
 // "A conferir" = anomalias + inconsistências (contexto é informação, não achado) —
 // a mesma contagem do hub, do "Em resumo" (resumo.alertas_ativos) e da aba.
@@ -879,6 +945,113 @@ function popularFiltrosAlertas() {
   const selT = document.getElementById("alerta-tipo");
   selT.innerHTML = '<option value="">Tipo (todos)</option>' +
     tipos.map(t => `<option value="${esc(t)}">${esc(ALERTA_LABELS[t] || t)}</option>`).join("");
+  // severidade: só os valores que existem na lista (um "Alta" fixo sem nenhum alerta alto
+  // levava a uma lista vazia)
+  const sevs = ["alta", "media", "baixa"].filter(s => lista.some(a => a.severidade === s));
+  document.getElementById("alerta-sev").innerHTML = '<option value="">Severidade (todas)</option>' +
+    sevs.map(s => `<option value="${s}">${SEV_LABELS[s]}</option>`).join("");
+}
+
+// ── Rascunho de requerimento (texto determinístico, só com os campos do alerta) ──
+// Requerimento de informação não pode trazer sugestão ou conselho à autoridade (Regimento
+// Interno, art. 121): o rascunho só pergunta e pede documentos. O assessor revisa e protocola.
+const PEDIDOS_POR_TIPO = {
+  fracionamento: ["cópia dos processos de contratação dos empenhos listados", "informação sobre se as compras foram feitas por ata de registro de preços, com o número da ata"],
+  pago_acima_liquidado: ["cópia das notas de liquidação e das ordens de pagamento listadas", "justificativa para o valor pago acima do liquidado", "comprovante de eventual estorno ou devolução do valor pago a mais"],
+  pf_sensivel: ["cópia do contrato e dos aditivos com a pessoa física", "processo de contratação e critério de escolha", "memória de cálculo dos reajustes aplicados"],
+  favorecido_novo: ["contratos e processos de contratação do favorecido no período", "objeto e modalidade de cada contratação"],
+  crescimento_yoy: ["contratos, aditivos e ordens de serviço que explicam o aumento", "objeto e modalidade de cada contratação"],
+  concentracao: ["contratos e processos de contratação do favorecido na função", "justificativa para a concentração do gasto"],
+  pico_mensal: ["relação dos pagamentos do mês com o objeto de cada um", "motivo da concentração de pagamentos no mês"],
+  pico_favorecido: ["relação dos pagamentos do mês ao favorecido com o objeto de cada um", "motivo da concentração de pagamentos no mês"],
+  pico_elemento: ["relação dos pagamentos do mês no elemento, com favorecido e objeto", "motivo da concentração de pagamentos no mês"],
+  prazo_rapido: ["lista da ordem cronológica de pagamentos da fonte de recurso no período (art. 141 da Lei 14.133)", "justificativa publicada para pagamento fora da ordem, se houve"],
+  prazo_lento: ["lista da ordem cronológica de pagamentos da fonte de recurso no período (art. 141 da Lei 14.133)", "motivo do atraso (glosa, pendência documental ou falta de caixa) e eventuais juros pagos"],
+};
+const PEDIDOS_DADOS = ["esclarecimento sobre a divergência nos dados publicados no Portal da Transparência",
+                       "os dados corrigidos, se houver erro na publicação"];
+
+function rascunhoRequerimento(a) {
+  const pedidos = [...(PEDIDOS_POR_TIPO[a.tipo] || (a.classe === "inconsistencia" ? PEDIDOS_DADOS : [])),
+                   ...(a.informacoes_faltantes || [])];
+  if (!pedidos.length) pedidos.push("documentos e informações que esclareçam o fato descrito");
+  const docs = (a.documentos || []).slice(0, 8).map(d => "   - " + [d.fase ? `${d.fase} ${d.doc}` : (d.doc ? "documento " + d.doc : ""),
+    d.empenho ? "empenho " + d.empenho : "", d.data ? "de " + d.data.split("-").reverse().join("/") : "",
+    d.valor != null ? brlc(d.valor) : ""].filter(Boolean).join(", "));
+  const base = DADOS.dados_ate ? new Date(DADOS.dados_ate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR") : "";
+  const fav = a.filtro?.favorecido ? `${a.filtro.favorecido}${a.filtro.documento ? " (" + a.filtro.documento + ")" : ""}` : "";
+  const linhas = [
+    "REQUERIMENTO Nº ____/____",
+    "",
+    "Senhor Presidente,",
+    "",
+    "Requeiro, com fundamento no art. 58, XVIII, da Lei Orgânica do Município de Santos e na forma do " +
+    "art. 121 do Regimento Interno [Verificar], seja oficiado ao Excelentíssimo Senhor Prefeito Municipal " +
+    `solicitando as seguintes informações sobre: ${a.titulo}.`,
+    "",
+    ...pedidos.map((p, i) => `${i + 1}. ${p.charAt(0).toUpperCase() + p.slice(1)}${i === pedidos.length - 1 ? "." : ";"}`),
+    "",
+    "JUSTIFICATIVA",
+    "",
+    `Triagem automática dos dados abertos do Portal da Transparência da Prefeitura de Santos` +
+    `${base ? ` (pagamentos até ${base})` : ""}, no painel de despesas do gabinete: “${a.detalhe}”`,
+    ...(fav ? [`Favorecido: ${fav}.`] : []),
+    ...(a.valor ? [`Valor envolvido: ${brlc(a.valor)}.`] : []),
+    ...(docs.length ? ["Documentos identificados:", ...docs] : []),
+    ...(a.link ? [`Recorte dos dados: ${new URL(a.link, location.href).href}`] : []),
+    "",
+    "O pedido tem caráter de fiscalização e não pressupõe irregularidade: o padrão acima é uma triagem " +
+    "automática feita sobre dados públicos, que as informações solicitadas permitirão esclarecer.",
+    "",
+    "Sala das Sessões, ____ de ______________ de ______.",
+    "",
+    "Vereador Rui de Rosis Jr.",
+  ];
+  return linhas.join("\n");
+}
+
+// cópia com fallback: a API de área de transferência exige contexto seguro e permissão
+async function copiarTexto(texto, aviso) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    Comum.toast(aviso);
+    return;
+  } catch (e) { /* cai no método antigo */ }
+  const ta = document.createElement("textarea");
+  ta.value = texto;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  ta.remove();
+  Comum.toast(ok ? aviso : "Não foi possível copiar automaticamente neste navegador.");
+}
+
+// todos os casos que acionaram uma regra (os tetos mostram só parte) → CSV
+let CANDIDATOS = null;
+async function baixarCandidatos(tipo) {
+  try {
+    if (!CANDIDATOS) {
+      const r = await fetch("./despesas/alertas-candidatos.json?v=" + encodeURIComponent(DADOS.atualizado_em || ""));
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      CANDIDATOS = await r.json();
+    }
+  } catch (e) {
+    Comum.toast("Não foi possível baixar a lista completa. Tente de novo.");
+    return;
+  }
+  const c = CANDIDATOS.campos, v = (l, k) => l[c.indexOf(k)];
+  const linhas = CANDIDATOS.linhas.filter(l => !tipo || v(l, "tipo") === tipo);
+  Comum.exportarCsv(`alertas-${tipo || "todos"}-casos.csv`,
+    ["Regra", "Classe", "Severidade", "Situação", "Desde", "Publicado no painel", "Valor", "Título", "Favorecido",
+     "CPF/CNPJ", "Unidade gestora", "Elemento", "Ano", "Etiqueta PNCP", "Link"],
+    linhas.map(l => [ALERTA_LABELS[v(l, "tipo")] || v(l, "tipo"), CLASSE_LABELS[v(l, "classe")] || v(l, "classe"),
+      SEV_LABELS[v(l, "severidade")] || v(l, "severidade"), ESTADO_LABELS[v(l, "estado")] || "", v(l, "primeiro_em") || "",
+      v(l, "publicado") ? "sim" : "não", centavos(v(l, "valor")), v(l, "titulo"), v(l, "favorecido") || "",
+      v(l, "documento") || "", v(l, "unidade") || "", v(l, "elemento") || "", v(l, "ano") || "",
+      ETIQUETA_LABELS[v(l, "etiqueta")] || "", v(l, "link") ? new URL(v(l, "link"), location.href).href : ""]));
 }
 
 // filtros dos alertas na URL (ac/at/as) — Voltar depois de abrir um recorte restaura a triagem.
@@ -945,7 +1118,8 @@ function renderAlertas() {
     const docs = a.documentos || [];
     if (!docs.length) return "";
     const li = docs.map(d => {
-      const partes = [d.data, d.empenho ? "emp. " + d.empenho : "", d.doc ? "doc. " + d.doc : "",
+      const partes = [d.data, d.empenho ? "emp. " + d.empenho : "",
+                      d.fase ? `${d.fase.toLowerCase()} ${d.doc}` : (d.doc ? "doc. " + d.doc : ""), d.especie || "",
                       d.ug ? d.ug.replace(/^PREFEITURA MUNICIPAL DE SANTOS$/, "PMS") : "",
                       d.reforcos ? `${d.reforcos} reforço(s)` : "", d.anulacoes ? `${d.anulacoes} anulação(ões)` : "",
                       d.elemento || ""].filter(Boolean).join(" · ");
@@ -957,31 +1131,50 @@ function renderAlertas() {
     ? `<div class="det">Não constam na fonte: ${esc(a.informacoes_faltantes.join(", "))}.</div>` : "";
   const limiteHtml = (a) => a.limite?.verificacao
     ? `<div class="det">Limite usado: ${esc(a.limite.norma || "não cadastrado")} — ${esc(a.limite.verificacao)}.</div>` : "";
+  // ações: recorte, raio-X do favorecido (quando o recorte não é o próprio raio-X), PNCP e rascunho
+  const acoesHtml = (a) => {
+    const ehRaiox = (a.link || "").startsWith("./favorecido.html");
+    const raiox = !ehRaiox && a.filtro?.chave
+      ? linkRaiox({ chave: a.filtro.chave, nome: a.filtro.favorecido, documento: a.filtro.documento }) : "";
+    const pncp = (a.pncp || []).map(p =>
+      `<a class="btn btn-mini" href="${esc(p.link)}" target="_blank" rel="noopener" title="${esc(p.objeto || "")}">PNCP ${esc(p.ncp.split("-").pop())} ↗</a>`);
+    return `<div class="alerta-acoes">
+      ${a.link ? `<a class="alerta-link" href="${esc(a.link)}">${ehRaiox ? "Abrir o raio-X ↗" : "Abrir o recorte ↗"}</a>` : ""}
+      ${raiox ? `<a class="btn btn-mini" href="${esc(raiox)}">Raio-X do favorecido ↗</a>` : ""}
+      ${pncp.join("")}
+      ${a.classe !== "contexto" ? `<button type="button" class="btn btn-mini" data-rascunho="${esc(a.id)}">Copiar rascunho de requerimento</button>` : ""}
+    </div>`;
+  };
   const cartao = (a) => `
     <div class="alerta ${a.severidade} classe-${esc(a.classe || "anomalia")}" data-link="${esc(a.link || "")}">
       <div class="top">
         <div class="titulo"><span class="sev ${a.severidade}">${esc(SEV_LABELS[a.severidade] || a.severidade)}</span>
           <span class="classe">${esc(CLASSE_LABELS[a.classe] || "")}</span>
           ${a.estado && a.estado !== "sem_historico" ? `<span class="estado ${esc(a.estado)}">${esc(ESTADO_LABELS[a.estado] || a.estado)}</span>` : ""}
+          ${a.etiqueta ? `<span class="classe etiqueta">${esc(ETIQUETA_LABELS[a.etiqueta] || a.etiqueta)}</span>` : ""}
           ${esc(a.titulo)}</div>
         <div class="vlr">${a.valor ? brlc(a.valor) : ""}</div>
       </div>
       <div class="det">${esc(a.detalhe)}</div>
       ${limiteHtml(a)}${faltamHtml(a)}${docsHtml(a)}
-      ${a.link ? `<a class="alerta-link" href="${esc(a.link)}">Abrir o recorte ↗</a>` : ""}
+      ${acoesHtml(a)}
     </div>`;
 
   // regra com muitos alertas vira um grupo recolhível, na posição do seu 1º alerta;
-  // o teto por regra (alertas_regras) é declarado: "os N maiores de M casos"
+  // o teto por regra (alertas_regras) é declarado: "os N prioritários de M casos" + CSV de todos
   const porTipo = new Map();
   vis.forEach(a => { if (!porTipo.has(a.tipo)) porTipo.set(a.tipo, []); porTipo.get(a.tipo).push(a); });
   const agrupar = (tipo) => !fTipo && porTipo.get(tipo).length >= GRUPO_MIN;
+  const PRIORIDADE = {
+    pf_sensivel: "novos primeiro; depois reajuste acima do IPCA, início recente e valor",
+    fracionamento: "novos primeiro, depois maior valor; provável compra por ata por último",
+  };
   const tetoHtml = (tipo, n) => {
     const r = DADOS.alertas_regras?.[tipo];
     return r && r.candidatos > r.publicados
-      ? `<div class="teto">Mostrando os ${n} ${tipo === "pf_sensivel"
-          ? "prioritários (reajuste acima do IPCA, depois início recente, depois valor)"
-          : "maiores"} de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra.</div>` : "";
+      ? `<div class="teto">Mostrando os ${n} prioritários (${PRIORIDADE[tipo] || "novos primeiro, depois maior valor"}) ` +
+        `de ${r.candidatos.toLocaleString("pt-BR")} casos que acionaram a regra. ` +
+        `<button type="button" class="btn btn-mini" data-csv="${esc(tipo)}">Baixar os ${r.candidatos.toLocaleString("pt-BR")} casos (CSV)</button></div>` : "";
   };
   const feitos = new Set();
   cont.innerHTML = vis.map(a => {
@@ -1003,15 +1196,20 @@ function renderAlertas() {
   // filtrado por tipo: a lista é a regra inteira — o teto vai no topo
   if (fTipo && vis.length) cont.insertAdjacentHTML("afterbegin", tetoHtml(fTipo, vis.length));
 
-  // clique no cartão abre o recorte (link citável); cliques nos documentos (<details>) e em <a>
-  // seguem o próprio elemento — o grupo recolhível também é <details>, por isso a classe
+  // clique no cartão abre o recorte (link citável); cliques nos documentos (<details>), em <a>
+  // e nos botões seguem o próprio elemento — o grupo recolhível também é <details>, por isso a classe
   cont.querySelectorAll(".alerta").forEach(el => {
     el.addEventListener("click", (e) => {
-      if (e.target.closest(".alerta-docs, a") || getSelection().toString()) return;
+      if (e.target.closest(".alerta-docs, a, button") || getSelection().toString()) return;
       const link = el.getAttribute("data-link");
       if (link) location.href = link;
     });
   });
+  cont.querySelectorAll("[data-rascunho]").forEach(b => b.addEventListener("click", () => {
+    const a = lista.find(x => x.id === b.dataset.rascunho);
+    if (a) copiarTexto(rascunhoRequerimento(a), "Rascunho de requerimento copiado — revise antes de protocolar.");
+  }));
+  cont.querySelectorAll("[data-csv]").forEach(b => b.addEventListener("click", () => baixarCandidatos(b.dataset.csv)));
 }
 
 // ── Favorecidos ──────────────────────────────────────────────────────────────
@@ -1131,20 +1329,19 @@ function renderFavoridosTabela() {
       : "Nenhum favorecido encontrado.";
   }
   const visiveis = linhas.slice(0, favVisiveis);
+  // o nome abre o raio-X (dossiê do top-300 ou rota por documento/nome); a linha inteira
+  // também, como atalho de mouse — o teclado usa o próprio link
   corpo.innerHTML = visiveis.map(f => `
-    <tr class="fav-row" style="cursor:pointer" tabindex="0" data-nome="${esc(f.nome)}" data-doc="${esc(f.documento)}" data-chave="${esc(f.chave)}">
-      <td data-label="Favorecido">${esc(f.nome)}${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}${f.grafias.length > 1 ? ` · ${f.grafias.length} grafias na origem` : ""}</div>` : ""}</td>
+    <tr class="fav-row" style="cursor:pointer" data-href="${esc(linkRaiox(f))}">
+      <td data-label="Favorecido"><a class="fav-nome" href="${esc(linkRaiox(f))}">${esc(f.nome)}</a>${f.documento ? `<div class="sub" style="color:var(--muted);font-size:12px">${esc(f.documento)}${f.grafias.length > 1 ? ` · ${f.grafias.length} grafias na origem` : ""}</div>` : ""}</td>
       <td data-label="Valor total" class="r num">${brlc(f.valor)}</td>
       <td data-label="Pagamentos" class="r num">${f.qtd}</td>
       <td data-label="Meses" class="r num">${f.meses}</td>
     </tr>`).join("");
-  corpo.querySelectorAll(".fav-row").forEach(tr => {
-    const abrir = () => abrirFichaFavorecido(tr.dataset.nome, tr.dataset.doc, tr.dataset.chave);
-    tr.addEventListener("click", abrir);
-    tr.addEventListener("keydown", (e) => {   // linha focável: Enter/Espaço abre a ficha
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); }
-    });
-  });
+  corpo.querySelectorAll(".fav-row").forEach(tr => tr.addEventListener("click", (e) => {
+    if (e.target.closest("a") || getSelection().toString()) return;
+    location.href = tr.dataset.href;
+  }));
   document.querySelectorAll("#painel-favorecidos th[data-sort]").forEach(th => {
     const ativa = th.dataset.sort === favSort.col;
     if (ativa) th.setAttribute("aria-sort", favSort.dir === "asc" ? "ascending" : "descending");
@@ -1992,11 +2189,6 @@ function renderRodapeTabela(totalPag, contagem) {
 // valor numérico arredondado ao centavo — número (não string de toFixed) p/ o CSV sair com vírgula
 const centavos = (v) => Math.round((v || 0) * 100) / 100;
 
-// Baixa um CSV do detalhe (rótulos amigáveis no cabeçalho; dialeto Excel pt-BR do Comum).
-function baixarCsv(campos, rows, nomeArquivo) {
-  Comum.exportarCsv(nomeArquivo, campos.map(c => DET_LABELS[c] || c), rows);
-}
-
 function exportarDetCsv() {
   if (!detFiltradas.length) { Comum.toast("Nada para exportar."); return; }
   // o nome do arquivo e uma coluna "Recorte" dizem qual visão foi exportada
@@ -2123,8 +2315,8 @@ let fichaEmpAtual = { chave: "", eventos: [] };
 
 // ── Modais acessíveis ────────────────────────────────────────────────────────
 // Foco entra no "Fechar" ao abrir e volta a quem abriu ao fechar; Tab circula
-// dentro do modal; Escape fecha só o de cima (a ficha do favorecido abre a do
-// empenho por cima — antes um Escape fechava as duas).
+// dentro do modal; Escape fecha só o de cima (pilha: um modal pode abrir outro
+// por cima — antes um Escape fechava os dois).
 const FOCAVEIS = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 const pilhaModais = [];   // {overlay, fechar, antes} — o último é o de cima
 function abrirModal(overlay, fechar) {
@@ -2178,17 +2370,11 @@ function ligarFichaEmpenho() {
   });
 }
 
-// ── Ficha do favorecido (modal) ──────────────────────────────────────────────
-// Colunas exibidas na ficha (subconjunto de CAMPOS_DETALHE; o CSV exporta o mesmo)
-const FAV_COLS = ["data", "unidade_gestora", "tipo", "funcao", "elemento_despesa",
-                  "empenho", "empenhado", "liquidado", "pago"];
-const FAV_PAGINA = 50;
+// ── Partes mensais do detalhe (cache) ────────────────────────────────────────
 let FAV_DETALHE = null;   // { campos, rows } — todos os meses concatenados (cacheado)
-let FAV_INDICE = null;    // dados/indice-favorecidos.json (favorecido → meses); "erro" = sem índice
-let favFicha = { nome: "", doc: "", campos: [], rows: [], sort: { idx: 0, dir: "desc" }, pag: 1 };
 
-// Cache por arquivo mensal: a ficha baixa só os meses do favorecido e o
-// Detalhamento/`carregarTodoDetalhe` reaproveitam o que já veio.
+// Cache por arquivo mensal: o Detalhamento e `carregarTodoDetalhe` (ranking por
+// elemento) reaproveitam o que já veio.
 const DET_PARTES = new Map();
 async function carregarPartes(arquivos, aoBaixar) {
   const faltam = arquivos.filter(a => !DET_PARTES.has(a));
@@ -2218,154 +2404,5 @@ async function carregarTodoDetalhe() {
 // mesma chave do export (formato.identidade_favorecido) — espelhada em Comum.identidadeFavorecido
 const chaveFavorecido = (nome, doc) => Comum.identidadeFavorecido
   ? Comum.identidadeFavorecido(nome, doc) : (soDigitos(doc || "") || semAcento(nome || ""));
-
-// Meses (arquivos) onde o favorecido aparece, via índice leve. null = não sei → todos.
-async function arquivosDoFavorecido(nome, documento) {
-  if (!FAV_INDICE) {
-    try {
-      const r = await fetch("./despesas/dados/indice-favorecidos.json?v=" + (DADOS.atualizado_em || ""));
-      if (!r.ok) throw new Error(r.status);
-      FAV_INDICE = await r.json();
-    } catch (e) { FAV_INDICE = "erro"; }
-  }
-  // índice v1 (chave = dígitos) não casa com a identidade v2 → fallback p/ todos os meses
-  if (FAV_INDICE === "erro" || !FAV_INDICE.fav || FAV_INDICE.versao !== 2) return null;
-  const meses = FAV_INDICE.fav[chaveFavorecido(nome, documento)];
-  if (!meses) return null;   // fora do índice (ex.: presente em quase todos os meses)
-  const quer = new Set(meses);
-  return (DADOS.meses || []).filter(m => quer.has(m.ano * 100 + m.mes)).map(m => m.arquivo);
-}
-
-async function abrirFichaFavorecido(nome, documento, chave) {
-  chave = chave || chaveFavorecido(nome, documento);
-  const modal = document.getElementById("fav-modal");
-  abrirModal(modal, fecharFichaFavorecido);
-  document.getElementById("fav-titulo").textContent = nome;
-  document.getElementById("fav-doc").textContent = documento || "";
-  // ponte p/ o raio-X: top-300 usa o dossiê pré-computado (?f=slug); os demais
-  // usam a rota por documento/nome (página reconstruída dos lançamentos)
-  const raiox = document.getElementById("fav-raiox");
-  const top = (DADOS.top_favorecidos || []).find(f => f.chave ? f.chave === chave
-    : (f.nome === nome && (f.documento || "") === (documento || "")));
-  raiox.hidden = false;
-  raiox.href = top?.slug
-    ? "./favorecido.html?f=" + encodeURIComponent(top.slug)
-    : "./favorecido.html?doc=" + encodeURIComponent(documento || "") +
-      "&nome=" + encodeURIComponent(nome || "");
-  const carregandoFav = document.getElementById("fav-carregando");
-  carregandoFav.hidden = false;
-  carregandoFav.textContent = "Carregando…";   // limpa um erro de tentativa anterior
-  document.getElementById("fav-conteudo").hidden = true;
-  try {
-    let campos, rows;
-    if (FAV_DETALHE) {
-      ({ campos, rows } = FAV_DETALHE);        // já está tudo em memória
-    } else {
-      const arquivos = await arquivosDoFavorecido(nome, documento);
-      if (arquivos) {
-        const partes = await carregarPartes(arquivos);   // só os meses do favorecido
-        campos = partes[0]?.campos || [];
-        rows = partes.flatMap(p => p.linhas);
-      } else {
-        ({ campos, rows } = await carregarTodoDetalhe()); // fallback: tudo
-      }
-    }
-    const iN = campos.indexOf("nome_favorecido"), iD = campos.indexOf("documento_favorecido");
-    const linhas = rows.filter(r => chaveFavorecido(r[iN], r[iD]) === chave);   // todas as grafias
-    favFicha = { nome, doc: documento, campos, rows: linhas,
-                 sort: { idx: campos.indexOf("pago"), dir: "desc" }, pag: 1 };
-    renderFichaCabecalho();
-    renderFicha();
-    document.getElementById("fav-carregando").hidden = true;
-    document.getElementById("fav-conteudo").hidden = false;
-  } catch (e) {
-    console.warn("ficha do favorecido:", e);
-    Comum.estadoErro("fav-carregando", "Falha ao carregar os lançamentos. Verifique a conexão.",
-      () => abrirFichaFavorecido(nome, documento, chave));
-  }
-}
-
-function fecharFichaFavorecido() {
-  fecharModal(document.getElementById("fav-modal"));
-}
-
-function renderFichaCabecalho() {
-  const tr = document.getElementById("fav-cabecalho");
-  tr.innerHTML = FAV_COLS.map(c => {
-    const i = favFicha.campos.indexOf(c);
-    const ordenada = favFicha.sort.idx === i;
-    const seta = ordenada ? (favFicha.sort.dir === "asc" ? " ▲" : " ▼") : "";
-    const aria = ordenada ? ` aria-sort="${favFicha.sort.dir === "asc" ? "ascending" : "descending"}"` : "";
-    const cls = DET_NUM.has(c) ? ' class="r"' : "";
-    return `<th data-idx="${i}"${cls}${aria} tabindex="0" role="columnheader" ` +
-      `aria-label="Ordenar por ${DET_LABELS[c] || c}">${DET_LABELS[c] || c}${seta}</th>`;
-  }).join("");
-  const ordenar = (th) => {
-    const i = +th.dataset.idx;
-    favFicha.sort.dir = favFicha.sort.idx === i && favFicha.sort.dir === "asc" ? "desc" : "asc";
-    favFicha.sort.idx = i; favFicha.pag = 1;
-    renderFichaCabecalho(); renderFicha();
-    tr.querySelector(`th[data-idx="${i}"]`)?.focus();
-  };
-  tr.querySelectorAll("th").forEach(th => {
-    th.addEventListener("click", () => ordenar(th));
-    th.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); }
-    });
-  });
-}
-
-function renderFicha() {
-  const { campos, rows, sort } = favFicha;
-  const numerico = DET_NUM.has(campos[sort.idx]);
-  const dir = sort.dir === "asc" ? 1 : -1;
-  rows.sort((a, b) => {
-    let va = a[sort.idx], vb = b[sort.idx];
-    if (numerico) return ((va ?? 0) - (vb ?? 0)) * dir;
-    return String(va ?? "").localeCompare(String(vb ?? "")) * dir;
-  });
-
-  const soma = (campo) => rows.reduce((s, r) => s + (r[campos.indexOf(campo)] ?? 0), 0);
-  document.getElementById("fav-resumo").innerHTML =
-    `<strong>${rows.length.toLocaleString("pt-BR")}</strong> lançamento(s) de execução · ` +
-    `Empenhado ${brlc(soma("empenhado"))} · Liquidado ${brlc(soma("liquidado"))} · ` +
-    `Pago ${brlc(soma("pago"))}` +
-    `<div class="sub" style="color:var(--muted);font-size:12px;margin-top:4px">` +
-    `Execução por empenho — o total pago aproxima o valor agregado da lista de favorecidos.</div>`;
-
-  const totalPag = Math.max(1, Math.ceil(rows.length / FAV_PAGINA));
-  favFicha.pag = Math.min(Math.max(1, favFicha.pag), totalPag);
-  const ini = (favFicha.pag - 1) * FAV_PAGINA;
-  const pagina = rows.slice(ini, ini + FAV_PAGINA);
-
-  const corpo = document.getElementById("fav-corpo");
-  document.getElementById("fav-ficha-vazio").hidden = rows.length > 0;  // id próprio: o "fav-vazio" é o da aba
-  corpo.innerHTML = pagina.map(r => "<tr>" + FAV_COLS.map(c => {
-    const i = campos.indexOf(c), v = r[i];
-    if (DET_NUM.has(c)) {
-      if (v == null) return `<td class="r" style="color:var(--muted)">—</td>`;
-      return `<td class="r num${v < 0 ? " neg" : ""}">${brlc(v)}</td>`;
-    }
-    return `<td title="${esc(v ?? "")}">${esc(v ?? "")}</td>`;
-  }).join("") + "</tr>").join("");
-
-  document.getElementById("fav-pagina").textContent = `Página ${favFicha.pag} de ${totalPag}`;
-  document.getElementById("fav-anterior").disabled = favFicha.pag <= 1;
-  document.getElementById("fav-proxima").disabled = favFicha.pag >= totalPag;
-}
-
-function ligarFicha() {
-  document.getElementById("fav-fechar").addEventListener("click", fecharFichaFavorecido);
-  document.getElementById("fav-modal").addEventListener("click", (e) => {
-    if (e.target.id === "fav-modal") fecharFichaFavorecido();
-  });
-  document.getElementById("fav-anterior").addEventListener("click", () => { favFicha.pag--; renderFicha(); });
-  document.getElementById("fav-proxima").addEventListener("click", () => { favFicha.pag++; renderFicha(); });
-  document.getElementById("fav-csv").addEventListener("click", () => {
-    if (!favFicha.rows.length) { Comum.toast("Nada para exportar."); return; }
-    const nomeArq = "favorecido-" + soDigitos(favFicha.doc || favFicha.nome).slice(0, 20) + ".csv";
-    baixarCsv(favFicha.campos, favFicha.rows, nomeArq);
-  });
-}
 
 init();

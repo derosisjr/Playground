@@ -15,6 +15,8 @@ Lê `despesas/despesas.sqlite` (esquema v2 do crawler, reconciliado por partiç�
   - favorecidos/<slug>.json          raio-X por favorecido (top-N, identidade canônica)
   - despesas/arvore.json             função→subfunção→elemento (treemap)
   - despesas/alertas-estado.json     histórico dos alertas (novo/persistente/resolvido)
+  - despesas/alertas-candidatos.json todos os casos que acionaram as regras (CSV no painel)
+  - despesas/historico/alteracoes-AAAA.jsonl.gz  linhas que a origem removeu/substituiu (só-acréscimo)
   - despesas/despesas.csv / .xlsx    execução por empenho completa (gitignored)
 
 Duas visões, nunca misturadas (2026-09):
@@ -32,14 +34,17 @@ Uso:
 
 import argparse
 import csv
+import glob
+import gzip
 import hashlib
+import io
 import json
 import os
 import re
 import sqlite3
 import sys
 from collections import Counter, defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from formato import (brl, compacto as _brl_compacto, eh_ente_publico, fator, identidade_favorecido,
                      nome_exibicao, sem_acento, slug_favorecido)  # camada comum do módulo
@@ -52,7 +57,7 @@ if RAIZ not in sys.path:
 from comum.saida import configurar_stdio  # noqa: E402
 
 configurar_stdio()
-from comum.escrita import gravar_json, gravar_json_se_mudou  # noqa: E402
+from comum.escrita import gravar_bytes, gravar_json, gravar_json_se_mudou  # noqa: E402
 
 ANO_INICIAL = 2025    # mesmo do crawler: 1º mês esperado na cobertura
 FONTES = ("empenhos", "liquidacoes", "pagamentos")
@@ -69,6 +74,8 @@ JSON_PATH = os.path.join(RAIZ, "despesas-index.json")
 FAV_DIR = os.path.join(RAIZ, "favorecidos")       # raio-X por favorecido (versionado; favorecido.html)
 ARVORE_PATH = os.path.join(AQUI, "arvore.json")   # hierarquia função→subfunção→elemento (treemap)
 ALERTAS_ESTADO_PATH = os.path.join(AQUI, "alertas-estado.json")  # histórico de alertas (versionado)
+ALERTAS_CANDIDATOS_PATH = os.path.join(AQUI, "alertas-candidatos.json")  # todos os casos (versionado)
+HISTORICO_DIR = os.path.join(AQUI, "historico")   # alterações da origem, só-acréscimo (versionado)
 # recorte do índice só com o serviço da dívida (~1 KB): o painel de Endividamento baixava
 # os ~400 KB do despesas-index.json inteiro só para ler esse bloco
 SERVICO_DIVIDA_PATH = os.path.join(AQUI, "servico-divida.json")
@@ -108,11 +115,32 @@ LIMITES_DISPENSA = {
            "verificacao": "fontes secundárias (effecti.com.br, elicitacao.com.br; reajuste 4,41% IPCA-E); "
                           "texto no Planalto não acessível em 2026-09-12 — conferir antes de citar"},
 }
-FRAC_MIN_EMPENHOS = 4           # nº mínimo de EMPENHOS DISTINTOS < limite no mesmo favorecido+elemento+ano
+FRAC_MIN_EMPENHOS = 4           # nº mínimo de EMPENHOS DISTINTOS < limite (mesma UG+favorecido+elemento+ano)
 FRAC_FATOR_TOTAL = 1.5          # ...somando ao menos FATOR×limite
 FRAC_INFO_FALTANTE = ["objeto da contratação", "modalidade/hipótese de contratação",
                       "processo administrativo", "contrato ou ata vinculada",
                       "valor total contratado (o empenho não é o contrato)"]
+# Lei 14.133, art. 75, I também cobre "serviços de manutenção de veículos automotores":
+# o limite é o MAIOR (o mesmo de obras/engenharia, coluna "engenharia" acima).
+# 33903919 = serviço de manutenção e conservação de veículos; 33903039 = material
+# (peças) p/ manutenção de veículos — incluído por decisão de 2026-10 (o § 7º do art. 75
+# fala em manutenção "incluído o fornecimento de peças"). [Verificar] o § 7º também tira
+# da soma do § 1º as contratações pequenas de manutenção de veículos próprios (R$ 8 mil
+# na redação original, valor atualizado por decreto) — a triagem não aplica essa exclusão.
+ELEM_MANUT_VEICULOS = ("33903919", "33903039")
+
+# Etiqueta da triagem de fracionamento pelo espelho do Preço comparado (PNCP de Santos):
+# fornecedor que venceu pregão com registro de preços nos 24 meses anteriores ao
+# empenho provavelmente está fornecendo por ATA (muitos empenhos pequenos são o normal).
+PRECOS_ESPELHO_DIR = os.path.join(RAIZ, "precos", "espelho")
+IBGE_SANTOS = "3548500"
+PNCP_JANELA_DIAS = 730          # 24 meses: a ata vale 1 ano, prorrogável por igual período (art. 84)
+PNCP_URL_PUBLICA = "https://pncp.gov.br/app/editais/{cnpj}/{ano}/{seq}"   # = precos/fontes.py URL_PUBLICA
+PNCP_SITUACOES_FORA = ("REVOGADA", "ANULADA", "SUSPENSA")
+ETIQUETAS_PNCP = ("provavel_ata", "vencedor_pregao", "dispensa_pncp")   # da mais forte para a mais fraca
+
+# Pago acima do liquidado (por UG + empenho + nº da liquidação)
+PAGO_ACIMA_MIN = 100.0          # excesso mínimo, na liquidação E no empenho inteiro
 ALERTA_NOVO_MESES = 6           # "novo" = 1ª aparição nos últimos N meses
 ALERTA_NOVO_VALOR = 1_000_000   # ...e já acumulou ao menos isso
 ALERTA_YOY_FATOR = 3.0          # mesmo período (jan–M) do ano corrente ≥ FATOR× ano anterior
@@ -130,7 +158,11 @@ ALERTA_NL_VALOR = 1_000_000     # pagamentos "empenho não localizado" no ano ac
 # sazonalidade óbvia, não achado — apontá-lo desmoralizaria a lista de alertas
 ELEM_SAZONAIS = ("13º", "13O", "DECIMO TERCEIRO", "DÉCIMO TERCEIRO", "FERIAS", "FÉRIAS", "ABONO PECU")
 CAP_POR_REGRA = 15             # teto de alertas por regra (não afogar o painel/e-mail)
-MAX_ALERTAS = 120
+CAP_ESPECIAL = {"extra_orcamentario": 20}   # regras com teto próprio
+# regras sem teto por regra (poucos casos por construção: meses, partições, anos)
+SEM_TETO = ("pico_mensal", "dados_duplicidade", "dados_particao", "dados_cobertura", "dados_taxa",
+            "dados_nao_localizado")
+MAX_ALERTAS = 120              # teto global — corta "contexto" primeiro
 MAX_DOCS_ALERTA = 12           # documentos listados por alerta
 
 # Classes de alerta (2026-09): o que o leitor deve fazer com cada um
@@ -799,9 +831,10 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
         frases.append(f"Há {ativos} alertas para conferir (anomalias ou inconsistências de dados).")
 
     if parciais:
-        frases.append(f"{'Os meses' if len(parciais) > 1 else 'O mês'} {', '.join(parciais)} ainda "
-                      f"{'estão' if len(parciais) > 1 else 'está'} incompleto(s) na origem e "
-                      f"{'ficam' if len(parciais) > 1 else 'fica'} fora das comparações.")
+        varios = len(parciais) > 1
+        frases.append(f"{'Os meses' if varios else 'O mês'} {', '.join(parciais)} ainda "
+                      f"{'estão incompletos' if varios else 'está incompleto'} na origem e "
+                      f"{'ficam' if varios else 'fica'} fora das comparações.")
     return {
         "texto": " ".join(frases),
         "mes_ref": {"ano": ref["ano"], "mes": ref["mes"], "valor": ref["valor"]},
@@ -948,10 +981,11 @@ def _link_fav(f: dict, tops_slugs: set) -> str:
 def _link_detalhe(**p) -> str:
     """Link para o Detalhamento já filtrado (mesmas chaves curtas do despesas-app.js).
     `favorecido` = chave de identidade (dfav): pega todas as grafias do mesmo CNPJ,
-    o que a busca textual pelo nome (dq) não faz."""
+    o que a busca textual pelo nome (dq) não faz. `empenho` = "UG|nº" abre a ficha do
+    empenho (emp=) quando a linha está nos meses carregados."""
     from urllib.parse import urlencode
     chaves = {"visao": "dv", "meses": "dm", "busca": "dq", "elemento": "del", "funcao": "df",
-              "tipo": "dt", "unidade": "du", "favorecido": "dfav"}
+              "tipo": "dt", "unidade": "du", "favorecido": "dfav", "empenho": "emp"}
     q = {chaves[k]: v for k, v in p.items() if v}
     return f"{PAINEL_URL}?{urlencode(q)}#detalhe"
 
@@ -959,14 +993,91 @@ def _link_detalhe(**p) -> str:
 def _limite_dispensa(ano: int, elemento: str) -> dict:
     lim = LIMITES_DISPENSA.get(ano)
     e = sem_acento(elemento or "")
+    veiculos = e.startswith(ELEM_MANUT_VEICULOS)
     engenharia = e.startswith("449051") or "ENGENHARIA" in e or "OBRAS" in e
     if not lim:
         return {"valor": None, "hipotese": None, "exercicio": ano, "norma": None,
                 "verificacao": f"limite de {ano} não cadastrado — enquadramento não afirmado"}
-    return {"valor": lim["engenharia"] if engenharia else lim["compras"],
-            "hipotese": ("art. 75, I (obras e serviços de engenharia)" if engenharia
-                         else "art. 75, II (compras e demais serviços)") + " — presumida pelo elemento de despesa",
+    hipotese = ("art. 75, I (serviços de manutenção de veículos automotores)" if veiculos
+                else "art. 75, I (obras e serviços de engenharia)" if engenharia
+                else "art. 75, II (compras e demais serviços)")
+    return {"valor": lim["engenharia"] if (veiculos or engenharia) else lim["compras"],
+            "hipotese": hipotese + " — presumida pelo elemento de despesa",
             "exercicio": ano, "norma": lim["norma"], "verificacao": lim["verificacao"]}
+
+
+# ── Espelho do PNCP (Preço comparado) → etiqueta da triagem de fracionamento ──
+_ESPELHO_CACHE: dict = {}
+
+
+def espelho_pncp(diretorio: str | None = None) -> dict:
+    """Lê `precos/espelho/3548500-*.jsonl.gz` (compras do município de Santos no PNCP —
+    pregão eletrônico e dispensa, versionadas pelo Preço comparado; formato em
+    precos/crawler.py `gravar_espelho`) e devolve {"inicio": data da publicação mais
+    antiga | None, "cnpj": {14 dígitos: [evidência…]}}. Evidência = contratação em que o
+    CNPJ tem resultado (vencedor/registrado), com modalidade, SRP, data (do resultado ou
+    da publicação), nº de controle, processo, objeto e link público. Lido uma vez por
+    processo (cache por diretório); só biblioteca padrão."""
+    diretorio = os.path.abspath(diretorio or PRECOS_ESPELHO_DIR)
+    if diretorio in _ESPELHO_CACHE:
+        return _ESPELHO_CACHE[diretorio]
+    por_cnpj: dict[str, dict] = defaultdict(dict)
+    inicio = None
+    for arq in sorted(glob.glob(os.path.join(diretorio, f"{IBGE_SANTOS}-*.jsonl.gz"))):
+        try:
+            with gzip.open(arq, "rt", encoding="utf-8") as f:
+                for linha in f:
+                    if not linha.strip():
+                        continue
+                    c = json.loads(linha)
+                    pub = (c.get("data_publicacao") or "")[:10]
+                    if pub and (inicio is None or pub < inicio):
+                        inicio = pub
+                    if sem_acento(c.get("situacao") or "").startswith(PNCP_SITUACOES_FORA):
+                        continue
+                    for r in c.get("resultados") or []:
+                        ni = re.sub(r"\D", "", r.get("ni_fornecedor") or "")
+                        if len(ni) != 14:
+                            continue
+                        data = (r.get("data_resultado") or pub or "")[:10]
+                        atual = por_cnpj[ni].get(c.get("ncp"))
+                        if atual and atual["data"] <= data:
+                            continue
+                        por_cnpj[ni][c.get("ncp")] = {
+                            "ncp": c.get("ncp"), "modalidade": c.get("modalidade"), "srp": bool(c.get("srp")),
+                            "data": data, "processo": c.get("processo"), "orgao": c.get("razao_social"),
+                            "objeto": " ".join((c.get("objeto") or "").split())[:160],
+                            "link": PNCP_URL_PUBLICA.format(cnpj=c.get("cnpj"), ano=c.get("ano"),
+                                                            seq=c.get("sequencial"))}
+        except (OSError, ValueError, EOFError) as e:
+            print(f"AVISO: espelho do PNCP ilegível ({os.path.basename(arq)}): {e}", file=sys.stderr)
+    out = {"inicio": inicio, "cnpj": {k: sorted(v.values(), key=lambda x: x["data"]) for k, v in por_cnpj.items()}}
+    _ESPELHO_CACHE[diretorio] = out
+    return out
+
+
+def etiqueta_pncp(evidencias: list, data_empenho: str) -> tuple:
+    """(etiqueta, evidências da janela) para um empenho: pregão com registro de preços
+    vencido nos PNCP_JANELA_DIAS anteriores → "provavel_ata"; pregão sem SRP →
+    "vencedor_pregao"; só dispensa → "dispensa_pncp"; nada → (None, [])."""
+    try:
+        d = date.fromisoformat((data_empenho or "")[:10])
+    except ValueError:
+        return None, []
+    ini = (d - timedelta(days=PNCP_JANELA_DIAS)).isoformat()
+    jan = [e for e in evidencias if ini <= e["data"] <= d.isoformat()]
+    for etiqueta, cond in (("provavel_ata", lambda e: e["modalidade"] == 6 and e["srp"]),
+                           ("vencedor_pregao", lambda e: e["modalidade"] == 6),
+                           ("dispensa_pncp", lambda e: e["modalidade"] == 8)):
+        achadas = [e for e in jan if cond(e)]
+        if achadas:
+            return etiqueta, achadas
+    return None, []
+
+
+def _mes_ano(iso: str | None) -> str:
+    """'2025-01-02' → 'jan/2025'."""
+    return f"{MESES_ABREV[int(iso[5:7]) - 1]}/{iso[:4]}" if iso else "—"
 
 
 # ── Prioridade dentro de pf_sensivel ─────────────────────────────────────────
@@ -1020,18 +1131,29 @@ def _prioridade_pf(m: dict, soma: float) -> tuple:
     return (not acima, -(m["excesso"] or 0) if acima else 0, not m["recente"], -soma)
 
 
-def alertas(conn, ident: dict | None = None, cob: dict | None = None,
-            execucao: dict | None = None, contagem: dict | None = None,
-            prazos: dict | None = None) -> list[dict]:
-    """Regras determinísticas. Cada alerta traz: id estável, classe (contexto /
-    anomalia / inconsistência), severidade, filtro (com a chave de identidade),
-    link para o recorte e documentos que o sustentam. Se `contagem` for um dict,
-    recebe por regra {"candidatos": N, "publicados": M} — os tetos (CAP_POR_REGRA,
-    MAX_ALERTAS) mostram só os maiores, e o painel precisa dizer quantos ficaram de fora."""
+def _filtro_fav(f: dict, chave: str, **extra) -> dict:
+    """Filtro de alerta de favorecido: nome, chave de identidade e documento (o painel
+    monta o raio-X por ?doc= quando o favorecido está fora do top-300)."""
+    return {"favorecido": f["nome"], "chave": chave, "documento": f.get("documento") or "", **extra}
+
+
+def _eh_ordinario(tipo_empenho) -> bool:
+    """Empenho ordinário — tipo vazio também (a origem às vezes não informa)."""
+    t = sem_acento(tipo_empenho or "")
+    return not t or t.startswith("ORDINARIO")
+
+
+def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
+                       execucao: dict | None = None, prazos: dict | None = None,
+                       espelho: dict | None = None) -> list[dict]:
+    """TODOS os casos que acionaram as regras (sem tetos). Cada alerta traz: id estável,
+    classe (contexto / anomalia / inconsistência), severidade, filtro (com a chave de
+    identidade), valor e, quando barato, o link; `_ordem` é a prioridade dentro da regra
+    e `_completar` monta documentos/link caros (consultas por alerta) — `publicar()`
+    só chama isso para os publicados. `espelho` = espelho_pncp() (padrão: o do repo)."""
     ident = ident if ident is not None else preparar_identidades(conn)
     cob = cob or cobertura(conn)
     out = []
-    cand: dict[str, int] = defaultdict(int)
     tops_slugs = {o["slug"] for o in ident.values()}   # todo favorecido tem slug; o link ?f= só
     # funciona p/ top-300 — o export troca para ?doc= quando o dossiê não existe (ver main)
     fav = lambda chave: _fav_campos(ident, chave)  # noqa: E731
@@ -1051,14 +1173,22 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                                   f"p.elemento_despesa FROM pagamentos p {FAV_JOIN.format(t='p')} "
                                   f"WHERE {where} ORDER BY p.valor DESC LIMIT {limite}", *params)]
 
+    def adiar(docs=None, link=None):
+        """Documentos/link calculados só se o alerta for publicado."""
+        def completar(a):
+            if docs:
+                a["documentos"] = docs()
+            if link:
+                a["link"] = link()
+        return completar
+
     # 1) Favorecido recorrente de alto valor — CONTEXTO (escala, não irregularidade)
     recorrentes = _q(conn,
         f"SELECT fi.chave k, SUM(p.valor) s, COUNT(DISTINCT p.ano*100+p.mes) meses "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} GROUP BY fi.chave "
         f"HAVING s >= ? AND meses >= ? ORDER BY s DESC",
         ALERTA_FAV_VALOR, ALERTA_FAV_MESES)
-    cand["favorecido_recorrente"] = len(recorrentes)
-    for r in recorrentes[:CAP_POR_REGRA]:
+    for r in recorrentes:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("favorecido_recorrente", r["k"]),
@@ -1067,15 +1197,15 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "detalhe": f"{brl(r['s'])} acumulados em {r['meses']} meses. Valor alto e recorrência, "
                        f"por si, indicam escala do contrato/repasse — não irregularidade.",
             "valor": round(r["s"], 2),
-            "filtro": {"favorecido": f["nome"], "chave": r["k"]},
+            "filtro": _filtro_fav(f, r["k"]),
             "link": _link_fav(f, tops_slugs),
+            "_ordem": (-r["s"],),
         })
 
     # 2) Concentração: favorecido que domina uma função
     tot_funcao = {r["k"]: r["s"] for r in _q(conn,
         "SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k, SUM(valor) s "
         "FROM pagamentos GROUP BY k")}
-    n_conc = 0
     for r in _q(conn,
         f"SELECT COALESCE(NULLIF(p.funcao,''),'(sem função)') f, fi.chave k, SUM(p.valor) s "
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} GROUP BY f, fi.chave HAVING s >= ? ORDER BY s DESC",
@@ -1083,10 +1213,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         base = tot_funcao.get(r["f"], 0) or 1
         pct = 100 * r["s"] / base
         if pct >= ALERTA_CONCENTRACAO_PCT and r["f"] != "(sem função)":
-            cand["concentracao"] += 1
-            if n_conc >= CAP_POR_REGRA:
-                continue
-            n_conc += 1
             f = fav(r["k"])
             publico = eh_ente_publico(f["nome"])
             out.append({
@@ -1098,9 +1224,12 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "detalhe": f"{brl(r['s'])} de {brl(base)} na função." +
                            (" Ente público/repasse institucional — concentração esperada." if publico else ""),
                 "valor": round(r["s"], 2),
-                "filtro": {"favorecido": f["nome"], "chave": r["k"], "funcao": r["f"]},
-                "link": _link_detalhe(visao="mov", favorecido=r["k"], funcao=r["f"],
-                    meses=meses_pag("fi.chave=? AND COALESCE(NULLIF(p.funcao,''),'(sem função)')=?", r["k"], r["f"])),
+                "filtro": _filtro_fav(f, r["k"], funcao=r["f"]),
+                "link": _link_fav(f, tops_slugs),
+                "_ordem": (-r["s"],),
+                "_completar": adiar(link=lambda k=r["k"], fn=r["f"]: _link_detalhe(
+                    visao="mov", favorecido=k, funcao=fn,
+                    meses=meses_pag("fi.chave=? AND COALESCE(NULLIF(p.funcao,''),'(sem função)')=?", k, fn))),
             })
 
     # 3) Pico mensal (sobre o total geral por mês) — só meses completos
@@ -1122,6 +1251,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                     "valor": round(r["s"], 2),
                     "filtro": {"ano": r["ano"], "mes": r["mes"]},
                     "link": _link_detalhe(visao="mov", meses=f"{r['ano']}-{r['mes']:02d}"),
+                    "_ordem": (-r["s"],),
                 })
 
     # 4) Extra-orçamentário relevante — CONTEXTO (retenções/consignações são esperadas)
@@ -1130,8 +1260,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE p.tipo_pagamento LIKE '%Extra%' "
         f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
         ALERTA_EXTRA_VALOR)
-    cand["extra_orcamentario"] = len(extras)
-    for r in extras[:20]:
+    for r in extras:
         f = fav(r["k"])
         out.append({
             "id": _id_alerta("extra_orcamentario", r["k"], r["e"]),
@@ -1139,60 +1268,111 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "titulo": f"Extra-orçamentário relevante: {f['nome']}",
             "detalhe": f"{brl(r['s'])} em {r['n']} pagamentos — {(r['e'] or '')[:60]}.",
             "valor": round(r["s"], 2),
-            "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"]},
-            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
-                meses=meses_pag("fi.chave=? AND p.elemento_despesa IS ? AND p.tipo_pagamento LIKE '%Extra%'",
-                                r["k"], r["e"])),
+            "filtro": _filtro_fav(f, r["k"], elemento=r["e"]),
+            "link": _link_fav(f, tops_slugs),
+            "_ordem": (-r["s"],),
+            "_completar": adiar(link=lambda k=r["k"], e=r["e"]: _link_detalhe(
+                visao="mov", favorecido=k, elemento=e,
+                meses=meses_pag("fi.chave=? AND p.elemento_despesa IS ? AND p.tipo_pagamento LIKE '%Extra%'", k, e))),
         })
 
-    # 5) Possível fracionamento — TRIAGEM: conta EMPENHOS DISTINTOS (UG + nº) pelo
-    # valor líquido (original + reforços − anulações); limite do exercício por hipótese
-    # presumida. O padrão financeiro sozinho NÃO demonstra fracionamento irregular.
-    n = 0
+    # 5) Possível fracionamento — TRIAGEM (v2, 2026-10): conta EMPENHOS ORDINÁRIOS
+    # DISTINTOS pelo valor líquido (original + reforços − anulações) por (unidade
+    # gestora, favorecido, elemento, exercício do empenho) — o art. 75, § 1º, I da Lei
+    # 14.133 soma o despendido no exercício pela MESMA unidade gestora (a v1 somava UGs).
+    # Global/estimativo (em geral ligados a contrato) ficam fora da conta e aparecem só
+    # no detalhe; empenho sem o original na base (exercício incerto) também fica fora.
+    # Limite do exercício por hipótese presumida pelo elemento (manutenção de veículos =
+    # art. 75, I). Etiqueta do PNCP (espelho do Preço comparado): fornecedor que venceu
+    # pregão com registro de preços nos 24 meses anteriores = provável compra por ata.
+    # O padrão financeiro sozinho NÃO demonstra fracionamento irregular.
     por_grupo: dict[tuple, list] = defaultdict(list)
     for r in _q(conn, f"""
-        SELECT fi.chave k, e.elemento_despesa el, e.ano, e.unidade_gestora ug, e.empenho emp,
-               ROUND(SUM(e.valor),2) liquido, MIN(e.data) data,
+        SELECT e.unidade_gestora ug, fi.chave k, e.elemento_despesa el, e.empenho emp,
+               ROUND(SUM(e.valor),2) liquido,
+               MIN(CASE WHEN e.especie='Original' OR e.especie IS NULL OR e.especie='' THEN e.ano END) ano,
+               MIN(CASE WHEN e.especie='Original' OR e.especie IS NULL OR e.especie='' THEN e.data END) data,
                SUM(CASE WHEN e.especie='Original' OR e.especie IS NULL OR e.especie='' THEN 1 ELSE 0 END) originais,
                SUM(CASE WHEN e.especie LIKE 'Refor%' THEN 1 ELSE 0 END) reforcos,
-               SUM(CASE WHEN e.especie LIKE 'Anula%' THEN 1 ELSE 0 END) anulacoes
+               SUM(CASE WHEN e.especie LIKE 'Anula%' THEN 1 ELSE 0 END) anulacoes,
+               MAX(CASE WHEN e.especie='Original' OR e.especie IS NULL OR e.especie='' THEN e.tipo_empenho END) tipo
         FROM empenhos e {FAV_JOIN.format(t='e')}
-        GROUP BY fi.chave, e.elemento_despesa, e.ano, e.unidade_gestora, e.empenho"""):
-        por_grupo[(r["k"], r["el"], r["ano"])].append(dict(r))
-    candidatos = []
-    for (k, el, ano), emps in por_grupo.items():
+        GROUP BY e.unidade_gestora, fi.chave, e.elemento_despesa, e.empenho"""):
+        if r["originais"]:
+            por_grupo[(r["ug"], r["k"], r["el"], r["ano"])].append(dict(r))
+    esp = espelho if espelho is not None else espelho_pncp()
+    cobertura_pncp = (f"o espelho do PNCP usado aqui cobre só pregão eletrônico e dispensa de Santos "
+                      f"publicados desde {_mes_ano(esp.get('inicio'))} — “sem registro” não quer dizer "
+                      f"“sem licitação”") if esp.get("inicio") else "espelho do PNCP indisponível nesta execução"
+    for (ug, k, el, ano), emps in por_grupo.items():
         lim = _limite_dispensa(ano, el)
         if not lim["valor"] or eh_ente_publico(fav(k)["nome"]):
             continue
-        abaixo = [e for e in emps if 0 < e["liquido"] < lim["valor"]]
+        ordinarios = [e for e in emps if _eh_ordinario(e["tipo"])]
+        outros = [e for e in emps if not _eh_ordinario(e["tipo"])]
+        abaixo = [e for e in ordinarios if 0 < e["liquido"] < lim["valor"]]
         soma = round(sum(e["liquido"] for e in abaixo), 2)
-        if len(abaixo) >= FRAC_MIN_EMPENHOS and soma >= FRAC_FATOR_TOTAL * lim["valor"]:
-            candidatos.append((k, el, ano, abaixo, soma, lim, len(emps)))
-    cand["fracionamento"] = len(candidatos)
-    for k, el, ano, abaixo, soma, lim, n_total in sorted(candidatos, key=lambda x: -x[4]):
-        if n >= CAP_POR_REGRA:
-            break
-        n += 1
+        if len(abaixo) < FRAC_MIN_EMPENHOS or soma < FRAC_FATOR_TOTAL * lim["valor"]:
+            continue
         f = fav(k)
+        # etiqueta PNCP: por empenho (janela de 24 meses antes da data dele); a do alerta é
+        # a mais forte encontrada, com quantos dos empenhos ela alcança
+        evid = esp.get("cnpj", {}).get(k[5:], []) if k.startswith("cnpj:") else []
+        por_emp = [etiqueta_pncp(evid, e["data"]) for e in abaixo]
+        etiqueta, achadas = None, {}
+        for et in ETIQUETAS_PNCP:
+            alcancados = [ev for (t, ev) in por_emp if t == et]
+            if alcancados:
+                etiqueta = et
+                for ev in alcancados:
+                    achadas.update({x["ncp"]: x for x in ev})
+                break
+        n_et = sum(1 for (t, _) in por_emp if t == etiqueta) if etiqueta else 0
+        pncp = sorted(achadas.values(), key=lambda x: x["data"], reverse=True)[:3]
+        if etiqueta:
+            x = pncp[0]
+            o_que = {"provavel_ata": "venceu pregão com registro de preços",
+                     "vencedor_pregao": "venceu pregão sem registro de preços",
+                     "dispensa_pncp": "foi contratado por dispensa publicada"}[etiqueta]
+            pncp_txt = (f" PNCP: este CNPJ {o_que} nos 24 meses anteriores a {n_et} de {len(abaixo)} empenhos "
+                        f"({x['ncp']}, processo {x['processo'] or '—'}: {x['objeto'][:90]})"
+                        + (" — provável compra por ata, não fracionamento; confira a ata."
+                           if etiqueta == "provavel_ata" else "; confira se os empenhos são dessa contratação.")
+                        + f" Ressalva: {cobertura_pncp}.")
+        else:
+            pncp_txt = f" Sem registro deste fornecedor no PNCP na janela de 24 meses ({cobertura_pncp})."
+        fora_txt = ""
+        if outros:
+            fora_txt = (f" Fora da conta: {len(outros)} empenho(s) global(is)/estimativo(s) do mesmo favorecido e "
+                        f"elemento nesta unidade ({brl(sum(e['liquido'] for e in outros))}), em geral ligados a contrato.")
+        ug_curta = "" if ug == "PREFEITURA MUNICIPAL DE SANTOS" else f", {ug}"
         docs = [{"ug": e["ug"], "empenho": e["emp"], "data": e["data"], "valor": e["liquido"],
                  "originais": e["originais"], "reforcos": e["reforcos"], "anulacoes": e["anulacoes"]}
                 for e in sorted(abaixo, key=lambda e: -e["liquido"])[:MAX_DOCS_ALERTA]]
         out.append({
-            "id": _id_alerta("fracionamento", k, el, ano),
+            "id": _id_alerta("fracionamento", ug, k, el, ano),
+            # continuidade: o id que a regra v1 (sem UG) daria — herda o "desde" do histórico
+            "ids_anteriores": [_id_alerta("fracionamento", k, el, ano)],
             "tipo": "fracionamento", "classe": CLASSE_ANOMALIA, "severidade": "media",
-            "titulo": f"Triagem de fracionamento: {len(abaixo)} empenhos distintos a {f['nome']} ({ano})",
-            "detalhe": (f"{brl(soma)} em {len(abaixo)} empenhos distintos, cada um abaixo de "
-                        f"{brl(lim['valor'])} ({lim['hipotese']}; {lim['norma']}) — {(el or '')[:50]}. "
+            "titulo": f"Triagem de fracionamento: {len(abaixo)} empenhos distintos a {f['nome']} ({ano}{ug_curta})",
+            "detalhe": (f"{brl(soma)} em {len(abaixo)} empenhos ordinários distintos da unidade {ug}, cada um "
+                        f"abaixo de {brl(lim['valor'])} ({lim['hipotese']}; {lim['norma']}) — {(el or '')[:50]}. "
+                        f"A Lei 14.133 (art. 75, § 1º, I) soma o que a mesma unidade gestora gastou no exercício. "
                         f"Padrão financeiro apenas: o valor empenhado não é o valor da contratação, e "
-                        f"o limite se aplica ao objeto. Faltam: {', '.join(FRAC_INFO_FALTANTE)}."),
+                        f"o limite se aplica ao objeto.{fora_txt}{pncp_txt} "
+                        f"Faltam: {', '.join(FRAC_INFO_FALTANTE)}."),
             "valor": soma,
-            "filtro": {"favorecido": f["nome"], "chave": k, "elemento": el, "tipo_doc": "pj", "ano": ano},
+            "filtro": _filtro_fav(f, k, elemento=el, tipo_doc="pj", ano=ano, unidade=ug),
             "limite": lim,
+            "etiqueta": etiqueta,
+            "etiqueta_alcance": [n_et, len(abaixo)] if etiqueta else None,
+            "pncp": pncp,
             "documentos": docs,
             "informacoes_faltantes": FRAC_INFO_FALTANTE,
             # execução: cada empenho está no arquivo do mês em que foi emitido (1º documento)
-            "link": _link_detalhe(visao="exe", favorecido=k, elemento=el,
+            "link": _link_detalhe(visao="exe", favorecido=k, elemento=el, unidade=ug,
                                   meses=",".join(sorted({(e["data"] or "")[:7] for e in abaixo} - {""})) or str(ano)),
+            "_ordem": (-soma,),
         })
 
     # 6) Favorecido novo (1ª aparição recente) de alto valor
@@ -1205,7 +1385,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             cm += 12
             cy -= 1
         corte = cy * 100 + cm
-        n = 0
         for r in _q(conn,
             f"SELECT fi.chave k, SUM(p.valor) s, MIN(p.ano*100+p.mes) ini FROM pagamentos p "
             f"{FAV_JOIN.format(t='p')} GROUP BY fi.chave HAVING ini >= ? AND s >= ? ORDER BY s DESC",
@@ -1213,10 +1392,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]):
                 continue
-            cand["favorecido_novo"] += 1
-            if n >= CAP_POR_REGRA:
-                continue
-            n += 1
             out.append({
                 "id": _id_alerta("favorecido_novo", r["k"]),
                 "tipo": "favorecido_novo", "classe": CLASSE_ANOMALIA, "severidade": "media",
@@ -1224,9 +1399,10 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "detalhe": (f"{brl(r['s'])} desde {r['ini'] // 100}-{r['ini'] % 100:02d} "
                             f"(1ª aparição na base, que começa em {ANO_INICIAL}-01)."),
                 "valor": round(r["s"], 2),
-                "filtro": {"favorecido": f["nome"], "chave": r["k"]},
-                "documentos": docs_pag("fi.chave=?", r["k"]),
+                "filtro": _filtro_fav(f, r["k"]),
                 "link": _link_fav(f, tops_slugs),
+                "_ordem": (-r["s"],),
+                "_completar": adiar(docs=lambda k=r["k"]: docs_pag("fi.chave=?", k)),
             })
 
     # 7) Crescimento ano-a-ano no MESMO período (jan–M do último mês completo em
@@ -1234,7 +1410,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
     if completo and completo[1] >= ALERTA_YOY_MIN_MESES:
         atual, mlim = completo
         ant = atual - 1
-        n = 0
         for r in _q(conn,
             f"SELECT fi.chave k, "
             f"SUM(CASE WHEN p.ano=? AND p.mes<=? THEN p.valor ELSE 0 END) v_ant, "
@@ -1245,10 +1420,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]) or r["v_atual"] < ALERTA_YOY_FATOR * r["v_ant"]:
                 continue
-            cand["crescimento_yoy"] += 1
-            if n >= CAP_POR_REGRA:
-                continue
-            n += 1
             per = f"jan–{MESES_ABREV[mlim - 1]}"
             out.append({
                 "id": _id_alerta("crescimento_yoy", r["k"], atual),
@@ -1257,9 +1428,10 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "detalhe": (f"{brl(r['v_atual'])} em {per}/{atual} vs {brl(r['v_ant'])} em {per}/{ant} "
                             f"— {fator(r['v_atual'] / r['v_ant'])} (meses completos; sem projeção)."),
                 "valor": round(r["v_atual"], 2),
-                "filtro": {"favorecido": f["nome"], "chave": r["k"]},
-                "documentos": docs_pag("fi.chave=? AND p.ano=? AND p.mes<=?", r["k"], atual, mlim),
+                "filtro": _filtro_fav(f, r["k"]),
                 "link": _link_fav(f, tops_slugs),
+                "_ordem": (-r["v_atual"],),
+                "_completar": adiar(docs=lambda k=r["k"]: docs_pag("fi.chave=? AND p.ano=? AND p.mes<=?", k, atual, mlim)),
             })
 
     # 8) Pessoa física (CPF) recebendo em elemento sensível. Severidade MÉDIA (era
@@ -1271,7 +1443,6 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
         f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave LIKE 'cpf:%' AND ({cond_elem}) "
         f"GROUP BY fi.chave, p.elemento_despesa HAVING s >= ? ORDER BY s DESC",
         ALERTA_PF_VALOR)
-    cand["pf_sensivel"] = len(pfs)
     # Prioridade: reajuste acima do IPCA, depois início dentro da base, depois valor.
     mensal_pf: dict = defaultdict(dict)
     if pfs:
@@ -1287,8 +1458,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
     ipca = _ipca_serie()
     medidas = {(r["k"], r["e"]): reajuste_pf(mensal_pf[(r["k"], r["e"])], inicio_base, ultimo_completo, ipca)
                for r in pfs}
-    pfs = sorted(pfs, key=lambda r: _prioridade_pf(medidas[(r["k"], r["e"])], r["s"]))
-    for r in pfs[:CAP_POR_REGRA]:
+    for r in pfs:
         f = fav(r["k"])
         elem_curto = (r["e"] or "").split(" - ", 1)[-1][:40]
         m = medidas[(r["k"], r["e"])]
@@ -1306,10 +1476,14 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "reajuste": None if m["reajuste"] is None else round(m["reajuste"], 4),
             "reajuste_ipca": None if m["ipca"] is None else round(m["ipca"], 4),
             "valor": round(r["s"], 2),
-            "filtro": {"favorecido": f["nome"], "chave": r["k"], "elemento": r["e"], "tipo_doc": "pf"},
-            "documentos": docs_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"]),
-            "link": _link_detalhe(visao="mov", favorecido=r["k"], elemento=r["e"],
-                                  meses=meses_pag("fi.chave=? AND p.elemento_despesa=?", r["k"], r["e"])),
+            "filtro": _filtro_fav(f, r["k"], elemento=r["e"], tipo_doc="pf"),
+            "link": _link_fav(f, tops_slugs),
+            "_ordem": _prioridade_pf(m, r["s"]),
+            "_completar": adiar(
+                docs=lambda k=r["k"], e=r["e"]: docs_pag("fi.chave=? AND p.elemento_despesa=?", k, e),
+                link=lambda k=r["k"], e=r["e"]: _link_detalhe(
+                    visao="mov", favorecido=k, elemento=e,
+                    meses=meses_pag("fi.chave=? AND p.elemento_despesa=?", k, e))),
         })
 
     # 8b) Prazo liquidação → pagamento fora do padrão — TRIAGEM da ordem cronológica
@@ -1325,8 +1499,7 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
              lambda x: -x["valor"]),
             ("prazo_lento", lambda x: x["mediana_dias"] >= PRAZO_LENTO_DIAS, lambda x: -x["mediana_dias"])):
         achados = sorted((x for x in linhas_prz if cond(x)), key=ordem)
-        cand[tipo] = len(achados)
-        for x in achados[:CAP_POR_REGRA]:
+        for x in achados:
             rapido = tipo == "prazo_rapido"
             out.append({
                 "id": _id_alerta(tipo, x["chave"]),
@@ -1341,8 +1514,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                                "Atraso de pagamento pode gerar juros, correção e pedido de reequilíbrio — confira "
                                "se houve glosa, pendência documental ou falta de caixa.")),
                 "valor": x["valor"],
-                "filtro": {"favorecido": x["nome"], "chave": x["chave"]},
+                "filtro": _filtro_fav(x, x["chave"]),
                 "link": _link_fav(x, tops_slugs),
+                "_ordem": (ordem(x), -x["valor"]),
             })
 
     # 9/10) Pico na série do próprio favorecido / elemento (z-score local) — meses completos
@@ -1373,17 +1547,17 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
             p, s = anominos[-1]   # o mais recente
             achados.append((k, p, s, media, nome))
         achados.sort(key=lambda x: -x[2])
-        cand[tipo] = len(achados)
-        for k, p, s, media, nome in achados[:CAP_POR_REGRA]:
+        for k, p, s, media, nome in achados:
             mes_txt = f"{p // 100}-{p % 100:02d}"
             if tipo == "pico_favorecido":
-                filtro = {"favorecido": nome, "chave": k, "ano": p // 100, "mes": p % 100}
-                docs = docs_pag("fi.chave=? AND p.ano=? AND p.mes=?", k, p // 100, p % 100)
+                filtro = _filtro_fav(fav(k), k, ano=p // 100, mes=p % 100)
+                docs = lambda k=k, p=p: docs_pag("fi.chave=? AND p.ano=? AND p.mes=?", k, p // 100, p % 100)  # noqa: E731
                 link = _link_detalhe(visao="mov", meses=mes_txt, favorecido=k)
                 curto = nome
             else:
                 filtro = {"elemento": k, "ano": p // 100, "mes": p % 100}
-                docs = docs_pag("p.elemento_despesa=? AND p.ano=? AND p.mes=?", k, p // 100, p % 100)
+                docs = lambda k=k, p=p: docs_pag("p.elemento_despesa=? AND p.ano=? AND p.mes=?",  # noqa: E731
+                                                 k, p // 100, p % 100)
                 link = _link_detalhe(visao="mov", meses=mes_txt, elemento=k)
                 curto = (k or "").split(" - ", 1)[-1][:60]
             out.append({
@@ -1393,7 +1567,9 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "detalhe": (f"{brl(s)} no mês — {fator(s / media)} a média mensal "
                             f"histórica ({brl(media)}). Mês completo; confira sazonalidade."),
                 "valor": round(s, 2),
-                "filtro": filtro, "documentos": docs, "link": link,
+                "filtro": filtro, "link": link,
+                "_ordem": (-s,),
+                "_completar": adiar(docs=docs),
             })
 
     _picos_locais("fi.chave", "pico_favorecido", ALERTA_ZFAV_VALOR, "pagamento a favorecido")
@@ -1472,26 +1648,209 @@ def alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 "link": _link_detalhe(visao="exe", meses=str(ano), tipo=T_NAO_LOCALIZADO),
             })
 
-    ordem = {"alta": 0, "media": 1, "baixa": 2}
-    ordem_classe = {CLASSE_INCONSISTENCIA: 0, CLASSE_ANOMALIA: 1, CLASSE_CONTEXTO: 2}
-    out.sort(key=lambda a: (ordem.get(a["severidade"], 9), ordem_classe.get(a["classe"], 9), -a["valor"]))
+    # 12) Pago acima do liquidado / liquidação paga duas vezes (2026-10) — ANOMALIA a
+    # conferir. Por (UG, empenho, nº da liquidação), detectado direto no SQLite; guardas
+    # contra artefato da base em pago_acima_liquidado().
+    ruins = {(p["fonte"], p["ano"], p["mes"]) for p in cob["particoes"]
+             if p.get("status") not in (None, "ok") or (p.get("duplicidade") or {}).get("sistematica")}
+    for x in pago_acima_liquidado(conn, ruins, ident):
+        f = fav(x["chave"])
+        ug_txt = "" if x["ug"] == "PREFEITURA MUNICIPAL DE SANTOS" else f" ({x['ug']})"
+        out.append({
+            "id": _id_alerta("pago_acima_liquidado", x["ug"], x["empenho"], x["liquidacao"]),
+            "tipo": "pago_acima_liquidado", "classe": CLASSE_ANOMALIA, "severidade": "media",
+            "titulo": (f"Liquidação paga duas vezes: {f['nome']}" if x["dobro"]
+                       else f"Pago acima do liquidado: {f['nome']}"),
+            "detalhe": (f"Liquidação {x['liquidacao']} do empenho {x['empenho']}{ug_txt}: liquidado "
+                        f"{brl(x['liquidado'])}, pago {brl(x['pago'])} em {x['pagamentos']} pagamento(s) — "
+                        f"{brl(x['excesso_liquidacao'])} a mais. O empenho inteiro também está pago acima do "
+                        f"liquidado ({brl(x['excesso_empenho'])}). Pode ser estorno ainda não publicado, nº de "
+                        f"liquidação trocado na origem ou pagamento em duplicidade — confira as notas de "
+                        f"liquidação e as ordens de pagamento."),
+            "valor": x["excesso"],
+            "filtro": _filtro_fav(f, x["chave"], unidade=x["ug"], empenho=x["empenho"],
+                                  liquidacao=x["liquidacao"]),
+            "link": _link_fav(f, tops_slugs),
+            "_ordem": (-x["excesso"],),
+            "_completar": adiar(docs=lambda x=x: _docs_liquidacao(conn, x),
+                                link=lambda x=x: _link_detalhe(
+                                    visao="exe", meses=_periodo_execucao(conn, x["ug"], x["empenho"]),
+                                    busca=x["empenho"], unidade=x["ug"], empenho=f"{x['ug']}|{x['empenho']}")),
+        })
+    return out
+
+
+def pago_acima_liquidado(conn, particoes_ruins=frozenset(), ident: dict | None = None) -> list[dict]:
+    """Liquidações pagas acima do valor liquidado, por (UG, empenho, nº da liquidação).
+
+    Universo: pagamentos com nº de empenho e de liquidação, exceto extra-orçamentário
+    (retenções repassadas a terceiros com o mesmo nº) e "Restos a Pagar Processados"
+    (o nº aponta liquidação de outro exercício, fora da base). Para virar caso:
+      - a liquidação está na base com o registro original e saldo > 0 (sem isso a base
+        está incompleta — não dá para comparar);
+      - pagamento orçamentário exige o empenho original na base (idem);
+      - o favorecido não é ente público (folha, previdência, repasses: fluxo interno);
+      - o excesso é ≥ PAGO_ACIMA_MIN na liquidação E no empenho inteiro (excesso só na
+        liquidação = nº de liquidação trocado entre parcelas do mesmo empenho);
+      - nenhuma partição envolvida (estágio × mês) com erro ou duplicidade sistemática.
+    `dobro` = pago exatamente 2× o liquidado com ≥ 2 pagamentos distintos. Linhas
+    idênticas NÃO são deduplicadas aqui: a base já trata a duplicidade sistemática, e
+    há estornos repetidos legítimos (a deduplicação inventava excesso)."""
+    ident = ident if ident is not None else preparar_identidades(conn)
+    _, originais = _empenhos_na_base(conn)
+    liq = {}
+    for r in _q(conn, """
+        SELECT unidade_gestora ug, empenho e, liquidacao lq, ROUND(SUM(valor),2) v,
+               SUM(CASE WHEN especie='Original' OR especie IS NULL OR especie='' THEN 1 ELSE 0 END) orig,
+               GROUP_CONCAT(DISTINCT ano*100+mes) per
+        FROM liquidacoes WHERE COALESCE(empenho,'') <> '' AND COALESCE(liquidacao,'') <> ''
+        GROUP BY 1, 2, 3"""):
+        liq[(r["ug"], r["e"], r["lq"])] = r
+    pag: dict[tuple, dict] = {}
+    for r in _q(conn, f"""
+        SELECT p.unidade_gestora ug, p.empenho e, p.liquidacao lq, p.tipo_pagamento tp,
+               ROUND(SUM(p.valor),2) v, GROUP_CONCAT(DISTINCT CASE WHEN p.valor > 0 THEN p.pagamento END) docs,
+               GROUP_CONCAT(DISTINCT p.ano*100+p.mes) per, MAX(fi.chave) k
+        FROM pagamentos p {FAV_JOIN.format(t='p')}
+        WHERE COALESCE(p.empenho,'') <> '' AND COALESCE(p.liquidacao,'') <> ''
+        GROUP BY 1, 2, 3, 4"""):
+        t = sem_acento(r["tp"] or "")
+        if "EXTRA" in t or ("RESTOS" in t and "NAO PROCESSADO" not in t):
+            continue
+        g = pag.setdefault((r["ug"], r["e"], r["lq"]), {"v": 0.0, "docs": set(), "per": set(),
+                                                       "orc": False, "k": r["k"]})
+        g["v"] += r["v"]
+        g["docs"] |= set(filter(None, (r["docs"] or "").split(",")))
+        g["per"] |= {int(p) for p in (r["per"] or "").split(",") if p}
+        g["orc"] = g["orc"] or not t.startswith("RESTOS")
+    emp_pago, emp_liq = defaultdict(float), defaultdict(float)
+    for (ug, e, _lq), g in pag.items():
+        emp_pago[(ug, e)] += g["v"]
+    for (ug, e, _lq), r in liq.items():
+        emp_liq[(ug, e)] += r["v"]
+    out = []
+    for (ug, e, lq), g in pag.items():
+        l = liq.get((ug, e, lq))
+        if not l or not l["orig"] or l["v"] <= 0.005:
+            continue
+        exc_liq = round(g["v"] - l["v"], 2)
+        if exc_liq < PAGO_ACIMA_MIN:
+            continue
+        if g["orc"] and f"{ug}|{e}" not in originais:
+            continue
+        exc_emp = round(emp_pago[(ug, e)] - emp_liq[(ug, e)], 2)
+        if exc_emp < PAGO_ACIMA_MIN:
+            continue
+        if eh_ente_publico(_fav_campos(ident, g["k"])["nome"]):
+            continue
+        parts = ({("pagamentos", p // 100, p % 100) for p in g["per"]} |
+                 {("liquidacoes", int(p) // 100, int(p) % 100) for p in (l["per"] or "").split(",") if p})
+        if parts & set(particoes_ruins):
+            continue
+        out.append({"ug": ug, "empenho": e, "liquidacao": lq, "chave": g["k"],
+                    "liquidado": round(l["v"], 2), "pago": round(g["v"], 2), "pagamentos": len(g["docs"]),
+                    "excesso_liquidacao": exc_liq, "excesso_empenho": exc_emp,
+                    "excesso": min(exc_liq, exc_emp),
+                    "dobro": len(g["docs"]) >= 2 and abs(g["v"] - 2 * l["v"]) < 0.01,
+                    "meses": sorted(f"{p // 100}-{p % 100:02d}" for p in g["per"])})
+    return sorted(out, key=lambda x: -x["excesso"])
+
+
+def _docs_liquidacao(conn, x: dict) -> list[dict]:
+    """A liquidação e os pagamentos dela (documentos do alerta pago_acima_liquidado)."""
+    docs = [{"data": r["data"], "fase": "Liquidação", "doc": r["liquidacao"], "empenho": x["empenho"],
+             "valor": round(r["valor"], 2), "especie": r["especie"] if r["especie"] not in (None, "", "Original") else None}
+            for r in _q(conn, "SELECT data, liquidacao, valor, especie FROM liquidacoes WHERE unidade_gestora=? "
+                              "AND empenho=? AND liquidacao=? ORDER BY data", x["ug"], x["empenho"], x["liquidacao"])]
+    docs += [{"data": r["data"], "fase": "Pagamento", "doc": r["pagamento"], "empenho": x["empenho"],
+              "valor": round(r["valor"], 2), "especie": r["especie"] if r["especie"] not in (None, "", "Original") else None}
+             for r in _q(conn, "SELECT data, pagamento, valor, especie, tipo_pagamento FROM pagamentos "
+                               "WHERE unidade_gestora=? AND empenho=? AND liquidacao=? "
+                               "AND COALESCE(tipo_pagamento,'') NOT LIKE '%Extra%' ORDER BY data",
+                         x["ug"], x["empenho"], x["liquidacao"])]
+    return [{k: v for k, v in d.items() if v is not None} for d in docs[:MAX_DOCS_ALERTA]]
+
+
+def _periodo_execucao(conn, ug: str, empenho: str) -> str:
+    """Mês (AAAA-MM) da linha do empenho na visão de execução: o do 1º documento do
+    empenho; sem empenho na base (restos a pagar), o do 1º documento de restos."""
+    p = _q(conn, "SELECT MIN(ano*100+mes) p FROM empenhos WHERE unidade_gestora=? AND empenho=?", ug, empenho)[0]["p"]
+    if not p:
+        p = _q(conn, "SELECT MIN(p) p FROM (SELECT MIN(ano*100+mes) p FROM liquidacoes WHERE unidade_gestora=? "
+                     "AND empenho=? AND tipo_liquidacao LIKE 'Restos%' UNION ALL SELECT MIN(ano*100+mes) FROM "
+                     "pagamentos WHERE unidade_gestora=? AND empenho=? AND tipo_pagamento LIKE 'Restos%')",
+               ug, empenho, ug, empenho)[0]["p"]
+    return f"{p // 100}-{p % 100:02d}" if p else ""
+
+
+# ── Publicação: prioridade e tetos ────────────────────────────────────────────
+ORDEM_SEVERIDADE = {"alta": 0, "media": 1, "baixa": 2}
+ORDEM_CLASSE = {CLASSE_INCONSISTENCIA: 0, CLASSE_ANOMALIA: 1, CLASSE_CONTEXTO: 2}
+# só "novo" sobe na fila: sem histórico (idade desconhecida) empata com persistente
+ORDEM_ESTADO = {"novo": 0, "sem_historico": 1, "persistente": 1}   # sem estado = 1 (neutro)
+
+
+def _prioridade_publicacao(a: dict) -> tuple:
+    """Dentro da regra: novo antes de persistente, depois a prioridade própria da regra
+    (valor, na maioria); provável compra por ata (etiqueta do PNCP) por último."""
+    return (a.get("etiqueta") == "provavel_ata", ORDEM_ESTADO.get(a.get("estado"), 1),
+            a.get("_ordem") or (-(a.get("valor") or 0),))
+
+
+def publicar(cands: list[dict], contagem: dict | None = None) -> list[dict]:
+    """Escolhe os alertas publicados entre os candidatos: por regra, os CAP_POR_REGRA
+    (ou CAP_ESPECIAL) primeiros em _prioridade_publicacao; depois o teto global
+    MAX_ALERTAS, que corta "contexto" primeiro. Só os publicados ganham documentos e
+    link do recorte (consultas caras). Se `contagem` for um dict, recebe por regra
+    {"candidatos": N, "publicados": M} — o painel diz quantos ficaram de fora."""
+    por_tipo: dict[str, list] = defaultdict(list)
+    for a in cands:
+        por_tipo[a["tipo"]].append(a)
+    escolhidos = []
+    for tipo, lista in por_tipo.items():
+        lista = sorted(lista, key=_prioridade_publicacao)
+        escolhidos += lista if tipo in SEM_TETO else lista[:CAP_ESPECIAL.get(tipo, CAP_POR_REGRA)]
+    escolhidos.sort(key=lambda a: (ORDEM_CLASSE.get(a["classe"], 9), ORDEM_SEVERIDADE.get(a["severidade"], 9),
+                                   a.get("etiqueta") == "provavel_ata", ORDEM_ESTADO.get(a.get("estado"), 1),
+                                   -(a.get("valor") or 0)))
+    pub = escolhidos[:MAX_ALERTAS]
+    for a in pub:
+        completar = a.pop("_completar", None)
+        if completar:
+            completar(a)
+        a.pop("_ordem", None)
+    pub.sort(key=lambda a: (ORDEM_SEVERIDADE.get(a["severidade"], 9), ORDEM_CLASSE.get(a["classe"], 9),
+                            a.get("etiqueta") == "provavel_ata", ORDEM_ESTADO.get(a.get("estado"), 1),
+                            -(a.get("valor") or 0)))
     if contagem is not None:
-        gerados = Counter(a["tipo"] for a in out)
-        publicados = Counter(a["tipo"] for a in out[:MAX_ALERTAS])
-        for tipo in gerados:   # regras sem teto: candidatos = gerados
-            contagem[tipo] = {"candidatos": max(cand.get(tipo, 0), gerados[tipo]),
-                              "publicados": publicados.get(tipo, 0)}
-    return out[:MAX_ALERTAS]
+        n_pub = Counter(a["tipo"] for a in pub)
+        for tipo, lista in por_tipo.items():
+            contagem[tipo] = {"candidatos": len(lista), "publicados": n_pub.get(tipo, 0)}
+    return pub
+
+
+def alertas(conn, ident: dict | None = None, cob: dict | None = None,
+            execucao: dict | None = None, contagem: dict | None = None,
+            prazos: dict | None = None) -> list[dict]:
+    """Alertas PUBLICADOS (candidatos_alertas + publicar), sem histórico — a mesma
+    assinatura e o mesmo retorno de sempre (briefing e testes dependem). O export
+    aplica o histórico sobre TODOS os candidatos antes de publicar (ver main)."""
+    return publicar(candidatos_alertas(conn, ident, cob, execucao, prazos), contagem)
 
 
 def aplicar_historico_alertas(lista: list[dict], caminho: str = None, hoje: str = None) -> dict:
     """Marca cada alerta como novo / persistente (ou sem_historico quando não há
     arquivo de estado) e atualiza despesas/alertas-estado.json. Devolve o bloco
-    `alertas_historico` do índice."""
+    `alertas_historico` do índice. O export passa TODOS os candidatos (não só os
+    publicados): um alerta que o teto deixou de fora continua ativo — não vira
+    "resolvido" nem volta como "novo". Continuidade entre versões de regra: alerta
+    com `ids_anteriores` herda o `primeiro_em` do id antigo, que sai do estado sem ir
+    para os resolvidos. Sem `ultimo_em`: a data mudava em todas as linhas todo dia."""
     caminho = caminho or ALERTAS_ESTADO_PATH
     hoje = hoje or date.today().isoformat()
     estado = {"alertas": {}, "resolvidos": {}}
     disponivel = False
+    versao = 2
     if os.path.exists(caminho):
         try:
             with open(caminho, encoding="utf-8") as f:
@@ -1499,26 +1858,39 @@ def aplicar_historico_alertas(lista: list[dict], caminho: str = None, hoje: str 
             estado["alertas"] = lido.get("alertas") or {}
             estado["resolvidos"] = lido.get("resolvidos") or {}
             disponivel = bool(estado["alertas"] or estado["resolvidos"])
+            versao = lido.get("versao") or 1
         except (OSError, ValueError):
             pass
+    # estado v1 (até 2026-10) guardava só os PUBLICADOS: na migração, um candidato fora
+    # dele não é necessariamente novo — fica "sem_historico" (sem selo) por um dia
+    so_publicados = disponivel and versao < 2
     atuais = {a["id"] for a in lista}
+    migrados = set()
     novos = persistentes = 0
     for a in lista:
         h = estado["alertas"].get(a["id"])
+        if not h:
+            for velho in a.get("ids_anteriores") or ():
+                hv = estado["alertas"].get(velho)
+                if hv:
+                    migrados.add(velho)
+                    if not h or hv.get("primeiro_em", hoje) < h.get("primeiro_em", hoje):
+                        h = hv
         if h:
             a["estado"], a["primeiro_em"] = "persistente", h.get("primeiro_em", hoje)
             persistentes += 1
-        elif disponivel:
+        elif disponivel and not so_publicados:
             a["estado"], a["primeiro_em"] = "novo", hoje
             novos += 1
         else:
             a["estado"], a["primeiro_em"] = "sem_historico", hoje
-        estado["alertas"][a["id"]] = {"primeiro_em": a["primeiro_em"], "ultimo_em": hoje,
-                                      "tipo": a["tipo"], "titulo": a["titulo"]}
+        estado["alertas"][a["id"]] = {"primeiro_em": a["primeiro_em"], "tipo": a["tipo"], "titulo": a["titulo"]}
     resolvidos_agora = []
     for aid in list(estado["alertas"]):
         if aid not in atuais:
             h = estado["alertas"].pop(aid)
+            if aid in migrados:          # o mesmo achado, agora com o id da regra nova
+                continue
             h["resolvido_em"] = hoje
             estado["resolvidos"][aid] = h
             resolvidos_agora.append(dict(h, id=aid))
@@ -1527,7 +1899,8 @@ def aplicar_historico_alertas(lista: list[dict], caminho: str = None, hoje: str 
         ordenados = sorted(estado["resolvidos"].items(), key=lambda kv: kv[1].get("resolvido_em", ""))
         estado["resolvidos"] = dict(ordenados[-200:])
     desde = min((h.get("primeiro_em", hoje) for h in estado["alertas"].values()), default=hoje)
-    gravar_json_se_mudou(caminho, {"atualizado_em": hoje, "alertas": estado["alertas"],
+    # versao 2 = guarda TODOS os candidatos (até 2026-10, só os publicados)
+    gravar_json_se_mudou(caminho, {"versao": 2, "atualizado_em": hoje, "alertas": estado["alertas"],
                                    "resolvidos": estado["resolvidos"]}, indent=1)
     recentes = sorted(estado["resolvidos"].items(), key=lambda kv: kv[1].get("resolvido_em", ""), reverse=True)[:20]
     return {"disponivel": disponivel, "desde": desde if disponivel else None,
@@ -1535,6 +1908,166 @@ def aplicar_historico_alertas(lista: list[dict], caminho: str = None, hoje: str 
             "resolvidos_recentes": [dict(v, id=k) for k, v in recentes],
             "nota": (None if disponivel else
                      "Sem histórico anterior de alertas: não é possível dizer quais são novos.")}
+
+
+# ── Todos os candidatos (despesas/alertas-candidatos.json → CSV no painel) ────
+CAMPOS_CANDIDATOS = ["id", "tipo", "classe", "severidade", "estado", "primeiro_em", "publicado", "valor",
+                     "titulo", "favorecido", "documento", "unidade", "elemento", "ano", "etiqueta", "link"]
+
+
+def exportar_candidatos(cands: list[dict], publicados: list[dict], caminho: str | None = None) -> int:
+    """Grava todos os casos que acionaram as regras — os tetos mostram só uma parte no
+    painel, e a linha do teto oferece o resto em CSV. Compacto (campos + linhas) e só
+    regrava se mudou (o carimbo não conta)."""
+    pub = {a["id"] for a in publicados}
+    linhas = []
+    for a in sorted(cands, key=lambda a: (a["tipo"], a["id"] not in pub, ORDEM_ESTADO.get(a.get("estado"), 1),
+                                          -(a.get("valor") or 0))):
+        f = a.get("filtro") or {}
+        linhas.append([a["id"], a["tipo"], a["classe"], a["severidade"], a.get("estado"), a.get("primeiro_em"),
+                       a["id"] in pub, a.get("valor"), a.get("titulo"), f.get("favorecido"), f.get("documento"),
+                       f.get("unidade"), f.get("elemento"), f.get("ano"), a.get("etiqueta"), a.get("link")])
+    gravar_json_se_mudou(caminho or ALERTAS_CANDIDATOS_PATH,
+                         {"atualizado_em": datetime.now().isoformat(timespec="seconds"),
+                          "campos": CAMPOS_CANDIDATOS, "linhas": linhas}, separators=(",", ":"))
+    return len(linhas)
+
+
+# ── Publicidade (só agregados — decisão do usuário, 2026-10) ──────────────────
+# Elementos 3.3.90.39.88 (serviços de propaganda) e 3.3.90.39.90 (publicidade legal:
+# editais, balanços, atos oficiais). Nenhum sinal sobre empresas: só quanto, quando
+# e a quem, pela data do pagamento (inclui restos a pagar).
+ELEM_PUBLICIDADE = {"33903988": "propaganda", "33903990": "legal"}
+PUB_TOP_FAVORECIDOS = 10
+
+
+def publicidade(conn, ident: dict) -> dict | None:
+    """Bloco `publicidade` do índice: por ano, mesmo período do ano anterior (jan–M do
+    último mês completo), série mensal e favorecidos (por identidade)."""
+    cond = " OR ".join(f"p.elemento_despesa LIKE '{c}%'" for c in ELEM_PUBLICIDADE)
+    tipo = lambda el: ELEM_PUBLICIDADE.get((el or "")[:8], "propaganda")  # noqa: E731
+    rows = _q(conn, f"SELECT p.ano, p.mes, p.elemento_despesa el, SUM(p.valor) s, COUNT(*) n "
+                    f"FROM pagamentos p WHERE {cond} GROUP BY 1, 2, 3")
+    if not rows:
+        return None
+    nomes_elem = {tipo(r["el"]): r["el"] for r in rows}
+    lim = _q(conn, "SELECT MIN(ano*100+mes) i, MAX(ano*100+mes) f FROM pagamentos")[0]
+    mensal: dict[int, dict] = {}
+    p = lim["i"]
+    while p and p <= lim["f"]:      # todos os meses da base (lacuna = 0)
+        mensal[p] = {"ano": p // 100, "mes": p % 100, "propaganda": 0.0, "legal": 0.0}
+        p = p + 1 if p % 100 < 12 else (p // 100 + 1) * 100 + 1
+    por_ano: dict[str, dict] = {}
+    for r in rows:
+        m = mensal.setdefault(r["ano"] * 100 + r["mes"], {"ano": r["ano"], "mes": r["mes"],
+                                                          "propaganda": 0.0, "legal": 0.0})
+        m[tipo(r["el"])] = round(m[tipo(r["el"])] + r["s"], 2)
+        a = por_ano.setdefault(str(r["ano"]), {"propaganda": 0.0, "legal": 0.0, "total": 0.0, "pagamentos": 0})
+        a[tipo(r["el"])] = round(a[tipo(r["el"])] + r["s"], 2)
+        a["total"] = round(a["total"] + r["s"], 2)
+        a["pagamentos"] += r["n"]
+    serie = [mensal[k] for k in sorted(mensal)]
+    comparacao = None
+    completo = _mes_completo_ate(conn)
+    if completo:
+        ano, mes = completo
+        soma = lambda a, c: round(sum(s[c] for s in serie if s["ano"] == a and s["mes"] <= mes), 2)  # noqa: E731
+        atual = {c: soma(ano, c) for c in ("propaganda", "legal")}
+        anterior = {c: soma(ano - 1, c) for c in ("propaganda", "legal")}
+        t_at, t_an = round(sum(atual.values()), 2), round(sum(anterior.values()), 2)
+        if any(s["ano"] == ano - 1 for s in serie):
+            comparacao = {"ano": ano, "mes": mes, "atual": t_at, "anterior": t_an,
+                          "pct": round(100 * (t_at - t_an) / t_an) if t_an > 0 else None,
+                          "por_tipo": {c: {"atual": atual[c], "anterior": anterior[c]} for c in atual}}
+    fav = []
+    for r in _q(conn, f"SELECT fi.chave k, SUM(p.valor) s, COUNT(*) n, "
+                      f"SUM(CASE WHEN p.elemento_despesa LIKE '33903990%' THEN p.valor ELSE 0 END) legal "
+                      f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE {cond} "
+                      f"GROUP BY fi.chave ORDER BY s DESC LIMIT ?", PUB_TOP_FAVORECIDOS):
+        fav.append(_marcar_ente_publico(dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"],
+                                             legal=round(r["legal"], 2), propaganda=round(r["s"] - r["legal"], 2))))
+    return {"elementos": nomes_elem, "por_ano": por_ano, "comparacao": comparacao, "serie": serie,
+            "favorecidos": fav,
+            "criterio": ("Pagamentos nos elementos 3.3.90.39.88 (serviços de propaganda) e 3.3.90.39.90 "
+                         "(publicidade legal), pela data do pagamento, incluindo restos a pagar. O portal não "
+                         "informa campanha, veículo nem peça — só quanto, quando e a quem.")}
+
+
+# ── Histórico versionado de alterações da origem (só-acréscimo) ───────────────
+# O SQLite (com `linhas_historico`) vive no cache do Actions, que o GitHub apaga após
+# 7 dias sem uso: o que a origem removeu ou corrigiu sumiria junto. Aqui o histórico
+# vai para despesas/historico/alteracoes-AAAA.jsonl.gz (AAAA = ano da partição) e só
+# CRESCE: lê o versionado e acrescenta o que ainda não está lá; nunca apaga.
+CAMPOS_HISTORICO = {"unidade_gestora": "ug", "empenho": "emp", "liquidacao": "liq", "pagamento": "pag",
+                    "data": "data", "especie": "esp", "valor": "valor", "nome_favorecido": "fav",
+                    "documento_favorecido": "doc", "elemento_despesa": "elem",
+                    "tipo_empenho": "tipo", "tipo_liquidacao": "tipo", "tipo_pagamento": "tipo"}
+
+
+def exportar_historico_alteracoes(conn, diretorio: str | None = None) -> dict:
+    """Acrescenta ao histórico versionado as linhas de `linhas_historico` com motivo
+    `removido`/`substituido` (a duplicidade sistemática fica de fora — já está na
+    cobertura). Descarta o artefato de largura do nº (7→8 dígitos em 2026-09-30, e a
+    volta à largura histórica depois da correção): a linha que, normalizada, ainda
+    existe na partição não mudou de verdade. Campos enxutos; chave de deduplicação =
+    (hash, repetição, motivo, registrado_em). Devolve {ano: linhas acrescentadas}."""
+    import crawler   # mesma normalização e mesmo hash do crawler (import tardio: só aqui)
+    diretorio = diretorio or HISTORICO_DIR
+    # a pasta existe sempre: o `git add despesas/historico` do workflow falha se ela faltar
+    os.makedirs(diretorio, exist_ok=True)
+    tabelas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "linhas_historico" not in tabelas:
+        return {}
+    existentes: dict[str, list] = {}
+    chaves: set = set()
+    for arq in sorted(glob.glob(os.path.join(diretorio, "alteracoes-*.jsonl.gz"))):
+        ano = os.path.basename(arq)[len("alteracoes-"):-len(".jsonl.gz")]
+        with gzip.open(arq, "rt", encoding="utf-8") as f:
+            existentes[ano] = [ln for ln in f.read().splitlines() if ln.strip()]
+        for ln in existentes[ano]:
+            d = json.loads(ln)
+            chaves.add((d.get("h"), d.get("r"), d.get("m"), d.get("em")))
+    hashes_atuais: dict[tuple, set] = {}
+
+    def atuais(fonte, ano, mes):
+        k = (fonte, ano, mes)
+        if k not in hashes_atuais:
+            hashes_atuais[k] = {r[0] for r in conn.execute(
+                f"SELECT hash FROM {crawler.STREAMS[fonte]['tabela']} WHERE ano=? AND mes=?", (ano, mes))}
+        return hashes_atuais[k]
+
+    novos: dict[str, list] = defaultdict(list)
+    for r in conn.execute("SELECT fonte, ano, mes, motivo, registrado_em, hash, repeticao, conteudo "
+                          "FROM linhas_historico WHERE motivo IN ('removido', 'substituido') ORDER BY id"):
+        fonte, ano, mes, motivo, em, h, rep, conteudo = r
+        if (h, rep, motivo, em) in chaves or fonte not in crawler.STREAMS:
+            continue
+        chaves.add((h, rep, motivo, em))
+        try:
+            linha = json.loads(conteudo or "{}")
+        except ValueError:
+            continue
+        norm = dict(linha)
+        for c in crawler.CAMPOS_NUMERO_DOC:
+            if c in norm:
+                norm[c] = crawler.numero_documento(norm[c])
+        norm["grupo_despesa"] = crawler.codigo_grupo(norm.get("grupo_despesa"))
+        if crawler._hash_linha(fonte, norm) in atuais(fonte, ano, mes):
+            continue        # a mesma linha (normalizada) segue na base: artefato de largura
+        d = {"em": em, "f": fonte, "p": f"{ano}-{mes:02d}", "m": motivo, "h": h, "r": rep}
+        for c, k in CAMPOS_HISTORICO.items():
+            if linha.get(c) not in (None, ""):
+                d[k] = linha[c]
+        novos[str(ano)].append(json.dumps(d, ensure_ascii=False, sort_keys=True))
+    for ano, linhas in novos.items():
+        todas = existentes.get(ano, []) + linhas
+        alvo = os.path.join(diretorio, f"alteracoes-{ano}.jsonl.gz")
+        buf = io.BytesIO()
+        # mtime=0: sem carimbo no cabeçalho gzip (bytes idênticos a cada regravação)
+        with gzip.GzipFile(filename=os.path.basename(alvo), mode="wb", fileobj=buf, mtime=0) as f:
+            f.write(("\n".join(todas) + "\n").encode("utf-8"))
+        gravar_bytes(alvo, buf.getvalue())
+    return {ano: len(v) for ano, v in novos.items()}
 
 
 # ── Árvore do gasto (função → subfunção → elemento) p/ o treemap ──────────────
@@ -1961,7 +2494,7 @@ def exportar_servico_divida(indice: dict) -> bool:
 
 def main():
     global DB_PATH, CSV_PATH, XLSX_PATH, DADOS_DIR, MOV_DIR, ESTAGIOS_DIR, JSON_PATH, FAV_DIR, ARVORE_PATH, \
-        ALERTAS_ESTADO_PATH, SERVICO_DIVIDA_PATH
+        ALERTAS_ESTADO_PATH, SERVICO_DIVIDA_PATH, ALERTAS_CANDIDATOS_PATH, HISTORICO_DIR
     p = argparse.ArgumentParser(description="Export da base de Despesas → JSON/CSV/XLSX")
     p.add_argument("--db", default=DB_PATH, help="SQLite de entrada (padrão: despesas/despesas.sqlite)")
     p.add_argument("--saida", help="Diretório de saída alternativo (candidato): reproduz a árvore do repo lá dentro")
@@ -1978,13 +2511,18 @@ def main():
         FAV_DIR = os.path.join(base, "favorecidos")
         ARVORE_PATH = os.path.join(base, "despesas", "arvore.json")
         SERVICO_DIVIDA_PATH = os.path.join(base, "despesas", "servico-divida.json")
-        # o estado dos alertas do repo é a referência de histórico; o candidato grava a sua cópia
-        estado_repo = ALERTAS_ESTADO_PATH
+        ALERTAS_CANDIDATOS_PATH = os.path.join(base, "despesas", "alertas-candidatos.json")
+        # o estado dos alertas e o histórico de alterações do repo são a referência; o
+        # candidato grava a sua cópia (o histórico só cresce a partir do versionado)
+        import shutil
+        estado_repo, historico_repo = ALERTAS_ESTADO_PATH, HISTORICO_DIR
         ALERTAS_ESTADO_PATH = os.path.join(base, "despesas", "alertas-estado.json")
+        HISTORICO_DIR = os.path.join(base, "despesas", "historico")
         os.makedirs(os.path.dirname(ALERTAS_ESTADO_PATH), exist_ok=True)
         if os.path.exists(estado_repo) and not os.path.exists(ALERTAS_ESTADO_PATH):
-            import shutil
             shutil.copy2(estado_repo, ALERTAS_ESTADO_PATH)
+        if os.path.isdir(historico_repo) and not os.path.exists(HISTORICO_DIR):
+            shutil.copytree(historico_repo, HISTORICO_DIR)
     if not os.path.exists(DB_PATH):
         print(f"Banco não encontrado: {DB_PATH}. Rode o crawler primeiro.", file=sys.stderr)
         sys.exit(1)
@@ -2001,16 +2539,27 @@ def main():
     indice["prazos_pagamento"] = prazos_pagamento(conn, ident)
     indice["anulacoes"] = anulacoes_empenho(conn, ident)
     indice["fim_de_exercicio"] = fim_de_exercicio(conn)
-    indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
-    indice["alertas"] = alertas(conn, ident, cob, indice["execucao"], contagem=indice["alertas_regras"],
-                                prazos=indice["prazos_pagamento"])
+    indice["publicidade"] = publicidade(conn, ident)   # só agregados (2026-10)
+    # alertas: TODOS os candidatos → histórico sobre todos (deslocado pelo teto não vira
+    # "resolvido") → publicação por prioridade e tetos → lista completa p/ o CSV do painel
+    cands = candidatos_alertas(conn, ident, cob, indice["execucao"], prazos=indice["prazos_pagamento"])
     indice["prazos_pagamento"].pop("_linhas", None)   # só alimenta as regras; fora do índice
+    historico = aplicar_historico_alertas(cands)
+    indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
+    indice["alertas"] = publicar(cands, contagem=indice["alertas_regras"])
     tops = {f["slug"] for f in indice["top_favorecidos"]}
-    for a in indice["alertas"]:   # link ?f= só existe para o top-300; os demais vão pela rota por documento
-        if a.get("link", "").startswith(RAIOX_URL + "?f=") and a["link"].split("?f=")[1] not in tops:
+    for a in cands:   # link ?f= só existe para o top-300; os demais vão pela rota por documento
+        if (a.get("link") or "").startswith(RAIOX_URL + "?f=") and a["link"].split("?f=")[1] not in tops:
             f = _fav_campos(ident, a["filtro"]["chave"])
             a["link"] = _link_fav(f, set())
-    indice["alertas_historico"] = aplicar_historico_alertas(indice["alertas"])
+    # as contagens do índice falam dos PUBLICADOS (o que o painel mostra)
+    historico["candidatos"] = {"total": len(cands), "novos": historico["novos"],
+                               "persistentes": historico["persistentes"]}
+    historico["novos"] = sum(1 for a in indice["alertas"] if a.get("estado") == "novo")
+    historico["persistentes"] = sum(1 for a in indice["alertas"] if a.get("estado") == "persistente")
+    indice["alertas_historico"] = historico
+    n_cands = exportar_candidatos(cands, indice["alertas"])
+    alteracoes = exportar_historico_alteracoes(conn)
     indice["resumo"] = resumo_narrativo(conn, indice)
     indice["anos_detalhe"] = anos_detalhe(conn, ident)
     n_fav_raiox = exportar_favorecidos(conn, indice, ident)
@@ -2049,7 +2598,8 @@ def main():
 
     print(f"Export concluído: {indice['totais']['pagamentos']} pagamentos (movimentação), "
           f"{len(execucao)} linhas de execução por empenho, {len(movimento)} documentos de movimentação, "
-          f"{brl(indice['totais']['geral'])}, {len(indice['alertas'])} alertas, "
+          f"{brl(indice['totais']['geral'])}, {len(indice['alertas'])} alertas ({n_cands} candidatos), "
+          f"histórico de alterações +{sum(alteracoes.values())} linhas, "
           f"{len(indice['meses'])} meses, {n_fav_raiox} raio-X de favorecidos "
           f"({indice['totais']['favorecidos']} identidades), árvore com {n_arvore} funções, "
           f"estágios de {n_estagios} empenhos; conservação {'ok' if indice['conservacao']['ok'] else 'FALHOU'}; "

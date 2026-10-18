@@ -128,13 +128,18 @@
       table.mini td.r, table.mini th.r { text-align: right; white-space: nowrap; font-family: "IBM Plex Mono", monospace; }
       table.mini a { color: inherit; }
       .stat-link { color: inherit; text-decoration: underline dotted var(--gold); text-underline-offset: 4px; }
-      .fav-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+      .fav-nome { color: var(--ink); font-weight: 600; text-decoration: underline dotted var(--gold);
+        text-underline-offset: 4px; }
       th[data-sort] button { all: unset; cursor: pointer; font: inherit; }
       th[data-sort] button::after { content: attr(data-seta); }
       th[data-sort] button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .teto { color: var(--muted); font-size: 12.5px; font-weight: 500; margin: 6px 0 8px; }
       .alerta-grupo[open] > summary { margin-bottom: 8px; }
-      .alerta-link { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+      .alerta-link { display: inline-block; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+      .alerta-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+      .btn.btn-mini { padding: 5px 10px; font-size: 12px; text-decoration: none; display: inline-block; }
+      .alerta .classe.etiqueta { border-color: var(--gold); color: var(--ink); }
+      .teto .btn-mini { margin-left: 6px; }
       .det-titulo { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600;
         margin: 0 0 4px; line-height: 1.3; }
       .det-explica { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; line-height: 1.5; }
@@ -230,7 +235,7 @@
       .barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
       .contagem { color: var(--muted); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
 
-      /* ── Modal (ficha do favorecido) ──────────────────────────────── */
+      /* ── Modal (ficha do empenho) ─────────────────────────────────── */
       .modal-overlay { position: fixed; inset: 0; background: rgba(7,17,31,.55);
         display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
       .modal-overlay[hidden] { display: none; }
@@ -243,10 +248,6 @@
       .modal-tit { font-family: "Fraunces", Georgia, serif; font-size: 18px; font-weight: 600; line-height: 1.2; }
       .modal-doc { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--gold-bright); margin-top: 4px; }
       .modal-body { padding: 16px 18px; overflow: auto; }
-      #fav-tabela { font-size: 13px; white-space: nowrap; }
-      #fav-tabela td { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
-      #fav-tabela td.neg { color: var(--red); }
-      #fav-resumo { white-space: normal; }
 
       /* ── "De cada R$ 100" (didático) ──────────────────────────────── */
       .r100-linha { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 74px;
@@ -312,7 +313,6 @@
       /* modo escuro: os vermelhos/âmbar do tema claro ficam ~1,6:1 sobre o card escuro */
       html[data-tema="escuro"] .delta.pos,
       html[data-tema="escuro"] #det-tabela td.neg,
-      html[data-tema="escuro"] #fav-tabela td.neg,
       html[data-tema="escuro"] #emp-tabela td.neg,
       html[data-tema="escuro"] .sev.alta { color: #f97066; }
       html[data-tema="escuro"] .sev.media { color: #fdb022; }
@@ -403,6 +403,16 @@
               <tbody id="fim-corpo"></tbody></table></div>
             <p class="contagem" id="fim-nota" style="margin:10px 0 0"></p>
           </div>
+        </div>
+        <div class="box" id="box-publicidade" hidden>
+          <h3>Publicidade — quanto a Prefeitura paga em propaganda e publicidade legal</h3>
+          <p class="contagem" id="pub-resumo" style="margin:0 0 10px"></p>
+          <canvas id="ch-publicidade"></canvas>
+          <h4 class="sub-h" style="margin-top:12px">Quem recebeu</h4>
+          <div class="tabela-wrap"><table class="tabela-resp mini">
+            <thead><tr><th>Favorecido</th><th class="r">Propaganda</th><th class="r">Publicidade legal</th><th class="r">Total</th></tr></thead>
+            <tbody id="pub-fav"></tbody></table></div>
+          <p class="contagem" id="pub-nota" style="margin:10px 0 0"></p>
         </div>
         <div class="box" id="box-programa" hidden>
           <h3>Por programa do PPA — o “para quê” do gasto (orçamentário)</h3>
@@ -566,12 +576,7 @@
             <option value="contexto">Contexto</option>
           </select>
           <select id="alerta-tipo" aria-label="Tipo de alerta"><option value="">Tipo (todos)</option></select>
-          <select id="alerta-sev" aria-label="Severidade">
-            <option value="">Severidade (todas)</option>
-            <option value="alta">Alta</option>
-            <option value="media">Média</option>
-            <option value="baixa">Baixa</option>
-          </select>
+          <select id="alerta-sev" aria-label="Severidade"><option value="">Severidade (todas)</option></select>
         </div>
         <div id="lista-alertas"></div>
         <div class="vazio" id="alertas-vazio" hidden></div>
@@ -593,7 +598,7 @@
         </div>
         <div class="barra">
           <span class="contagem" id="contagem" aria-live="polite">—</span>
-          <span class="contagem" style="color:var(--muted)">Clique num favorecido para ver os pagamentos.</span>
+          <span class="contagem" style="color:var(--muted)">Clique num favorecido para abrir o raio-X.</span>
         </div>
         <div class="tabela-wrap">
           <table class="tabela-resp">
@@ -735,44 +740,6 @@
       </p>
     </main>
 
-    <!-- ── Ficha do favorecido (modal) ── -->
-    <div class="modal-overlay" id="fav-modal" hidden>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="fav-titulo">
-        <div class="modal-head">
-          <div class="modal-tit">
-            <div id="fav-titulo">—</div>
-            <div class="modal-doc" id="fav-doc"></div>
-          </div>
-          <div class="acoes">
-            <a class="btn" id="fav-raiox" href="#" hidden>Raio-X completo ↗</a>
-            <button class="btn" id="fav-fechar" type="button" aria-label="Fechar">✕ Fechar</button>
-          </div>
-        </div>
-        <div class="modal-body">
-          <div class="vazio" id="fav-carregando">Carregando…</div>
-          <div id="fav-conteudo" hidden>
-            <div class="barra" style="margin-bottom:12px">
-              <span class="contagem" id="fav-resumo"></span>
-              <button class="btn" id="fav-csv" type="button">Exportar CSV</button>
-            </div>
-            <p class="dica-scroll" aria-hidden="true">→ deslize a tabela para ver todas as colunas</p>
-            <div class="tabela-wrap" style="overflow-x:auto">
-              <table id="fav-tabela">
-                <thead><tr id="fav-cabecalho"></tr></thead>
-                <tbody id="fav-corpo"></tbody>
-              </table>
-              <div class="vazio" id="fav-ficha-vazio" hidden>Sem lançamentos de execução para este favorecido no período detalhado.</div>
-            </div>
-            <div class="barra" style="justify-content:center;margin-top:12px">
-              <button class="btn" id="fav-anterior" type="button">‹ Anterior</button>
-              <span class="contagem" id="fav-pagina">—</span>
-              <button class="btn" id="fav-proxima" type="button">Próxima ›</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ── Ficha do empenho (modal, padrão CGU: documento + estágios) ── -->
     <div class="modal-overlay" id="emp-modal" hidden>
       <div class="modal-card" style="max-width:860px" role="dialog" aria-modal="true" aria-labelledby="emp-titulo">
@@ -809,6 +776,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=19"></script>
+    <script defer src="./despesas-app.js?v=20"></script>
   </body>
 </html>
