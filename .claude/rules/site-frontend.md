@@ -158,3 +158,42 @@ qualquer mexida ali:
 
 Previews locais do hub vão em `_preview-*.html` na raiz (gitignored, servidos por
 `python -m http.server`), nunca no scratchpad: por `file://` o `fetch` dos JSON é bloqueado por CORS.
+
+# Novidades (feed) — `novidades.json` (2026-10, Lote 5)
+
+O que mudou nas bases desde a véspera, para a página `novidades.html` (a fazer) e o hub. Gerado
+1×/dia por `.github/scripts/novidades.py` (só stdlib + `comum/`) no `bases-atualizacao.yml`
+(12:00 UTC, mesmo commit do `bases-atualizacao.json` — único workflow que escreve o arquivo;
+nunca editar à mão). Compara cada índice com um **retrato** compacto da passada anterior,
+guardado no próprio arquivo. Testes: `comum/tests/test_novidades.py`.
+
+`{"gerado_em": "2026-10-20T12:00:03Z", "eventos": [...], "retrato": {...}}` — a página lê só
+`gerado_em` e `eventos`; `retrato` é estado interno do gerador (~15–30 KB; o arquivo inteiro
+mede ~130–140 KB com o feed cheio). Cada evento: `visto_em`, `base`, `tipo`, `titulo`, `chave`,
+`link` e, só em proposituras do vereador, `"mandato": true`.
+- `eventos` do mais novo para o mais antigo; só os últimos **60 dias**, no máximo **400**.
+- `visto_em` (aaaa-mm-dd, UTC) = dia em que o pipeline VIU a mudança, não a data do fato na
+  origem (proposituras roda 2×/semana; legislação, 1×).
+- `base` → `tipo`: `requerimentos` → `resposta` (ganhou mérito: situação "respondido" ou
+  `data_resposta_merito`) | `prorrogacao` (virou "so_prorrogacao") | `vencido` (sem mérito e
+  `vence_em` passou; 1× por pedido); `proposituras` → `nova` | `andamento` (`ua` mais recente
+  num projeto que JÁ tramitava — entrar/sair de tramitação não conta); `legis` → `nova` |
+  `revogada` (situação passou a conter "revog", inclui "revogada parcialmente"); `despesas` →
+  `alerta` | `alerta_resolvido` (alerta a conferir — classe ≠ contexto — apareceu/sumiu) |
+  `mes_fechado` (`resumo.mes_ref` avançou).
+- `titulo`: frase pronta em pt-BR, ≤ 140 caracteres, feita de texto de crawler — montar com
+  `textContent`, nunca `innerHTML`.
+- `chave`: estável e única no feed (`<base>:<tipo>:<id>`; andamento acrescenta `:<ua>`) — serve
+  de key e de "já visto" (localStorage). Transição repetida dentro da janela não gera evento.
+- `link` relativo: `requerimentos.html?n=<número codificado>`, `proposituras.html?cod=<cod>`,
+  `legis.html?id=<id>`, `despesas.html#alertas` (alertas), `despesas.html` (mês). **`n`, `cod` e
+  `id` ainda não são lidos pelos painéis** (hoje leem `q`/`ano`/…) — entram com a página.
+- `mandato`: autor exatamente "Rui Sergio Gomes de Rosis Junior"; requerimentos são todos do
+  mandato por construção (vêm da planilha do gabinete).
+- Feed quieto não é defeito: na 1ª execução, no dia em que um campo novo chega a um índice
+  (`vence_em`, `ua`) e num surto (> 200 eventos de uma base numa passada = troca de formato ou
+  carga em massa) o gerador só refaz o retrato. Cod/id abaixo do **piso** (menor id do ano
+  corrente e do anterior) é carga retroativa e não vira "nova".
+- Buscar com `fetch("novidades.json", { cache: "no-cache" })`. O `sw.js` hoje o serve em
+  stale-while-revalidate (a 1ª visita depois do commit mostra o feed da véspera); se a página
+  precisar do dia, tratar como o `bases-atualizacao.json` (network-first).

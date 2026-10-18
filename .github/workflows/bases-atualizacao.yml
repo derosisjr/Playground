@@ -5,6 +5,11 @@ name: Índice de atualização das bases
 # Last-Modified é a hora do deploy, igual para todo arquivo, então bases paradas
 # há meses apareciam como "atualizado hoje".
 #
+# Também gera novidades.json — o feed do que mudou nas bases desde a véspera
+# (contrato em .claude/rules/site-frontend.md, "Novidades (feed)"). Este é o único
+# workflow que escreve esse arquivo: ele lê os índices depois que os crons de base
+# (04:00-08:30) já rodaram.
+#
 # Workflow próprio, e não um passo dentro dos 7 workflows de base, por dois motivos:
 # (a) todos usam fetch-depth: 1 e `git log` enxergaria um commit só;
 # (b) nenhum tem `concurrency:` nem faz pull antes do push — sete workflows
@@ -46,12 +51,23 @@ jobs:
       - name: Gerar índice de datas
         run: python .github/scripts/bases_atualizacao.py
 
+      # Feed "o que mudou" (novidades.json): compara os índices de hoje com o retrato
+      # guardado no próprio arquivo. Só stdlib, como o passo acima. Índice ausente ou
+      # ilegível só pula a base (aviso no log); um erro do script não pode impedir a
+      # publicação das datas — continue-on-error aqui e vermelho no último passo.
+      - name: Gerar feed de novidades
+        id: novidades
+        continue-on-error: true
+        run: python .github/scripts/novidades.py
+
+      # novidades.json só entra se o gerador terminou: antes da 1ª gravação o arquivo
+      # não existe, e um `git add` dele derrubaria também a publicação das datas.
       - name: Commitar (se mudou)
         uses: ./.github/actions/commitar
         with:
-          caminhos: bases-atualizacao.json
-          mensagem: "chore: atualiza índice de datas das bases"
-          sem-mudancas: "Sem mudancas nas datas das bases."
+          caminhos: bases-atualizacao.json ${{ steps.novidades.outcome == 'success' && 'novidades.json' || '' }}
+          mensagem: "chore: atualiza índice de datas e novidades das bases"
+          sem-mudancas: "Sem mudancas nas datas nem nas novidades."
 
       # Guarda de FRESCOR — lê a data do dado DENTRO de cada índice e falha se
       # alguma base congelou. As guardas dos workflows de base medem volume
@@ -62,3 +78,11 @@ jobs:
       # principal deste workflow e não pode ser bloqueada pelo alarme.
       - name: Guarda de frescor das bases
         run: python .github/scripts/frescor_bases.py
+
+      # O feed parado não pode ficar verde: o job termina vermelho DEPOIS de publicar
+      # as datas (e o alerta-falhas abre a issue).
+      - name: Falha no feed de novidades (visível)
+        if: steps.novidades.outcome == 'failure'
+        run: |
+          echo "O gerador de novidades falhou — ver o passo 'Gerar feed de novidades'."
+          exit 1
