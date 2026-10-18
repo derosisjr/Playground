@@ -70,6 +70,19 @@ pouparia revisitas) segue como decisão pendente.
 Para testar o export sem sobrescrever o índice versionado: `--db` (outro SQLite) e `--saida
 <pasta>` (índice, CSV e XLSX vão todos para lá).
 
+## Painel (2026-10, Lote 4)
+
+`proposituras-app.js` usa o contrato acima quando `"tram" in p` (`TEM_TRAM`); no índice antigo
+tudo volta ao comportamento anterior. **Atalhos** (chips, na URL como `tram=1`, `mandato=1`,
+`seg=1`): "Em tramitação" (`tram === 1 && local_atual`), "Do mandato" (autor exatamente
+"Rui Sergio Gomes de Rosis Junior" — o "Rui Sergio Gomes de Rosis" de 2017–24 é outro autor e
+NÃO entra) e "Acompanhando" (**neste aparelho**: `localStorage["proposituras:acompanhando"]` =
+`{cod: ua visto}`; "☆ Acompanhar" grava o `ua` atual e o selo "andamento novo ✓" aparece quando
+o `ua` do índice passa dele — clicar marca como visto). **Ordem** (`ordem=` na URL): mais
+recentes (padrão), último andamento, número. **KPIs**: proposituras, em tramitação, aguardando
+pautação (`local_atual` com "Aguardando Paut"), do mandato em tramitação. "Último andamento em
+DD/MM · local — despacho" sob a ementa. CSV ganha `ultimo_andamento` e `despacho`.
+
 ## A parada silenciosa de jun–ago/2026 (não repetir)
 
 **Sintoma:** o índice ficou congelado em 07/06 por dois meses. O workflow rodava toda segunda e

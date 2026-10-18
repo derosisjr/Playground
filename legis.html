@@ -71,8 +71,22 @@
         background: #eef1f6; color: var(--navy); font-size: 12px; font-weight: 600; white-space: nowrap; }
       .num { font-family: "IBM Plex Mono", monospace; font-weight: 600; white-space: nowrap; }
       .tags { color: var(--muted); font-size: 12px; }
-      a.pdf { color: #0a58ca; font-weight: 600; text-decoration: none; white-space: nowrap; }
-      a.pdf:hover { text-decoration: underline; }
+      .chave { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+      a.pdf, a.legis { color: #0a58ca; font-weight: 600; text-decoration: none; white-space: nowrap; }
+      a.legis { display: inline-block; min-height: 24px; padding: 3px 0; }
+      a.pdf:hover, a.legis:hover { text-decoration: underline; }
+      a.pdf.secundario { font-weight: 500; font-size: 12.5px; }
+      html[data-tema="escuro"] a.legis { color: #7ab3ff; }
+      /* temas mais frequentes (o select tinha 4.659 opções, metade de grafias repetidas) */
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+        padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--card); font: inherit; font-size: 13px; color: var(--navy); min-height: 24px; }
+      html[data-tema="escuro"] .chip { color: var(--ink); }
+      .chip:hover { border-color: var(--gold); }
+      .chip .n { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted); }
+      .chip[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .chip[aria-pressed="true"] .n { color: var(--gold-bright); }
       /* situação inferida (revogada/alterada) */
       .sit-linha { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px;
         font-size: 12px; }
@@ -123,7 +137,8 @@
         <input id="q" type="search" aria-label="Buscar normas por palavra-chave, ementa ou número" placeholder="Buscar por palavra-chave, ementa ou número..." />
         <select id="tipo" aria-label="Filtrar por tipo de norma"><option value="">Todos os tipos</option></select>
         <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
-        <select id="tema" aria-label="Filtrar por tema"><option value="">Todos os temas</option></select>
+        <input id="tema" type="search" list="temas-lista" aria-label="Filtrar por tema" placeholder="Tema (ex.: saúde)" autocomplete="off" />
+        <datalist id="temas-lista"></datalist>
         <select id="sit" aria-label="Filtrar por situação (inferida)">
           <option value="">Todas as situações</option>
           <option value="revogada">Revogadas</option>
@@ -132,6 +147,8 @@
           <option value="nenhuma">Sem revogação/alteração registrada</option>
         </select>
       </div>
+
+      <div class="chips" id="temas-chips" role="group" aria-label="Temas mais frequentes"></div>
 
       <p class="foco" id="foco" hidden>Mostrando uma norma pelo link direto.
         <button type="button" class="lnk" id="foco-todos">Ver a lista inteira</button></p>
@@ -151,7 +168,7 @@
           <thead>
             <tr>
               <th>Tipo</th><th>Número</th><th>Ano</th><th>Data</th>
-              <th>Ementa / Título</th><th>Temas</th><th>PDF</th>
+              <th>Ementa</th><th>Temas</th><th>Documento</th>
             </tr>
           </thead>
           <tbody id="corpo"></tbody>
@@ -175,6 +192,6 @@
       </p>
     </main>
 
-    <script src="./legis-app.js?v=6"></script>
+    <script src="./legis-app.js?v=7"></script>
   </body>
 </html>

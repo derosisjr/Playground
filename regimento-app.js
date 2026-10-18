@@ -114,11 +114,36 @@ function artigoHTML(a) {
       <div class="notas" hidden>${notas.map(notaHTML).join("")}</div>
     </div>`;
   }
+  // levar o artigo para a sessão: link direto (#art-N) e citação pronta
+  const acoes = `<div class="art-acoes">
+      <button type="button" class="lnk" data-copiar="link" data-art="${escapar(a.id)}">Copiar link</button>
+      <button type="button" class="lnk" data-copiar="citacao" data-art="${escapar(a.id)}">Copiar citação</button>
+    </div>`;
   return `${cabecalhosHTML(a)}
     <article class="artigo${notas.length ? " com-nota" : ""}" id="${escapar(a.id)}">
       ${corpo}
       ${caixaNotas}
+      ${acoes}
     </article>`;
+}
+
+// "Regimento Interno da Câmara Municipal de Santos (Resolução nº 16/2019), art. 79: «…»"
+function citacao(a) {
+  const [caput, ...resto] = a.blocos;
+  const rotulo = (caput && caput.rotulo) || `Art. ${a.numero}`;
+  const texto = [caput ? caput.texto : "", ...resto.map((b) => [b.rotulo, b.texto].filter(Boolean).join(" "))]
+    .filter(Boolean).join(" ");
+  return `Regimento Interno da Câmara Municipal de Santos (Resolução nº 16/2019), ${rotulo.replace(/\.$/, "")}: «${texto}»`;
+}
+
+function copiarDoArtigo(botao) {
+  const a = ARTIGOS.find((x) => x.id === botao.dataset.art);
+  if (!a) return;
+  if (botao.dataset.copiar === "link") {
+    Comum.copiar(location.origin + location.pathname + "#" + a.id, "Link do artigo copiado");
+  } else {
+    Comum.copiar(citacao(a), "Citação copiada — confira com o texto oficial antes de usar");
+  }
 }
 
 function renderizarMais() {
@@ -143,6 +168,8 @@ function ligarEventos() {
   el("mais").addEventListener("click", renderizarMais);
 
   el("lista").addEventListener("click", (e) => {
+    const copiar = e.target.closest("[data-copiar]");
+    if (copiar) { copiarDoArtigo(copiar); return; }
     const btn = e.target.closest(".notas-toggle");
     if (!btn) return;
     alternarNotas(btn);
@@ -187,6 +214,9 @@ async function init() {
   } catch (e) {
     NOTAS = {};
   }
+  // o texto do topo só fala de "interpretação conforme" quando há alguma nota publicada
+  const temNotas = Object.entries(NOTAS).some(([k, v]) => !k.startsWith("_") && Array.isArray(v) && v.length);
+  el("intro-notas").hidden = !temNotas;
   ligarEventos();
 
   // estado vindo da URL: #art-79 abre direto no artigo; ?q= restaura a busca

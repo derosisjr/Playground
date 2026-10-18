@@ -70,3 +70,13 @@ Análises derivadas (rodam local, sem CI): `legis/triagem_revogacao.py` gera
 `triagem-revogacao.xlsx` (gitignored) com candidatas a revogação; `legis/posturas/` guarda
 os scripts `gerar_*.py` + CSVs-fonte da análise do Código de Posturas (saídas `.docx`/`.xlsx`
 gitignored — derivadas).
+
+**Painel (2026-10, Lote 4).** O índice e `legis/ementas.json` são buscados **juntos** (a
+ementa é pequena — chegar depois mudaria a altura das linhas e a página "pularia"); sem o
+arquivo (404) a página segue com o título. A célula Ementa mostra a ementa oficial e, abaixo,
+as palavras-chave do Legis (`ementa` do índice); os temas ficam **só** na coluna Temas (saíam
+duas vezes). O select de temas (4.659 opções, 3,4 mil usadas uma vez) virou campo com sugestões
+(`datalist`, temas agrupados sem caixa/acento/espaço — ~4 mil) + **20 chips** dos mais
+frequentes; `?tema=` compara normalizado, então links antigos valem. Link principal **"Ver no
+Legis ↗"** (`url_legis`, abre no navegador); o PDF ("baixa") fica secundário. A ementa oficial
+entra na busca.
