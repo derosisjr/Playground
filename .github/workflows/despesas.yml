@@ -129,7 +129,8 @@ jobs:
       - name: Commitar e publicar
         uses: ./.github/actions/commitar
         with:
-          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/servico-divida.json favorecidos
+          # historico/ = alterações da origem, só-acréscimo (o SQLite do cache pode ser despejado)
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json favorecidos
           mensagem: "chore: atualiza base de Despesas"
           sem-mudancas: "Sem mudancas na base."
 
