@@ -115,3 +115,9 @@ jobs:
       - name: Cache-busting (?v=) coerente entre páginas
         if: ${{ !cancelled() }}
         run: python .github/scripts/checar_versoes.py
+
+      # Os JSON publicados só podem ter os campos da lista branca de cada export
+      # (o requerimentos-index.json chegou a ficar no ar com a coluna interna da planilha).
+      - name: Campos públicos (lista branca)
+        if: ${{ !cancelled() }}
+        run: python .github/scripts/checar_publicos.py
