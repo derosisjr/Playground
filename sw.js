@@ -7,7 +7,10 @@
 //     DADOS_COERENTES;
 //   • demais *.json de dados: stale-while-revalidate ignorando a query string (os
 //     painéis pedem com `cache: "no-cache"` desde 2026-09; a normalização fica
-//     como rede de segurança para qualquer ?v= que sobreviva);
+//     como rede de segurança para qualquer ?v= que sobreviva). Desde 2026-10, se a
+//     versão revalidada difere da servida do cache, a página recebe um postMessage
+//     {tipo: "dados-novos"} e o comum.js oferece "Atualizar" — antes quem voltava
+//     ao site via a base de ontem sem saber;
 //   • bases-atualizacao.json: network-first — é a fonte da verdade do "atualizado
 //     há N dias" do hub; servido do cache, o hub anunciava as datas da visita
 //     anterior e o `cache: "no-cache"` da página não valia de nada.
@@ -87,6 +90,23 @@ async function gravarDado(chave, resp) {
   if (excesso > 0) await Promise.all(chaves.slice(0, excesso).map((k) => c.delete(k)));
 }
 
+// A versão da rede difere da que a página recebeu do cache? (tamanho e, se igual,
+// SHA-256 do conteúdo — ETag/Last-Modified do Pages mudam a cada deploy, sem mudança real)
+async function mudou(doCache, daRede) {
+  const [a, b] = await Promise.all([doCache.arrayBuffer(), daRede.arrayBuffer()]);
+  if (a.byteLength !== b.byteLength) return true;
+  const [ha, hb] = await Promise.all([crypto.subtle.digest("SHA-256", a), crypto.subtle.digest("SHA-256", b)]);
+  const va = new Uint8Array(ha), vb = new Uint8Array(hb);
+  return va.some((v, i) => v !== vb[i]);
+}
+
+// Avisa a página que pediu o dado (comum.js mostra "Há dados mais novos · Atualizar").
+async function avisarDadosNovos(clientId, caminho) {
+  if (!clientId) return;
+  const cliente = await self.clients.get(clientId);
+  if (cliente) cliente.postMessage({ tipo: "dados-novos", caminho });
+}
+
 // Grava um estático e apaga as outras versões (outra query) do mesmo caminho.
 async function gravarEstatico(req, resp) {
   const c = await caches.open(CACHE_ESTATICOS);
@@ -119,8 +139,22 @@ self.addEventListener("fetch", (e) => {
       caches.open(CACHE_DADOS).then(async (c) => {
         const chave = chaveJson(req);
         const cacheado = await c.match(chave);
+        // cópia para comparar: o corpo da original vai para a página
+        const copia = cacheado ? cacheado.clone() : null;
         const daRede = fetch(req)
-          .then((r) => { if (r.ok) e.waitUntil(gravarDado(chave, r.clone()).catch(() => {})); return r; })
+          .then((r) => {
+            if (r.ok) {
+              e.waitUntil(gravarDado(chave, r.clone()).catch(() => {}));
+              // a página recebeu a versão do cache: se a da rede for outra, ela está
+              // mostrando a base anterior — antes ninguém sabia disso
+              if (copia) {
+                e.waitUntil(mudou(copia, r.clone())
+                  .then((m) => m && avisarDadosNovos(e.clientId, url.pathname))
+                  .catch(() => {}));
+              }
+            }
+            return r;
+          })
           .catch(() => null);
         // sem o waitUntil o navegador pode encerrar o worker assim que o cache
         // responde — antes de o put acontecer — e o JSON ficaria congelado

@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=8" />
+    <link rel="stylesheet" href="./comum.css?v=9" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -106,15 +106,8 @@
       .sec-tag { display: inline-block; margin-top: 4px; font-family: "IBM Plex Mono", monospace;
         font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
         padding: 0 5px; }
-      /* botão com cara de link (ações por linha e no resumo por secretaria) */
-      .lnk { background: none; border: 0; padding: 3px 0; min-height: 24px; font: inherit;
-        font-size: 12.5px; font-weight: 600; color: #0a58ca; cursor: pointer; text-align: left;
-        text-decoration: underline; text-underline-offset: 2px; }
-      html[data-tema="escuro"] .lnk { color: var(--gold-bright); }
+      /* .lnk (botão com cara de link) e .foco vêm do comum.css */
       .reiterar { display: block; margin-top: 4px; }
-      .foco { margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--gold);
-        border-radius: var(--r-sm); background: var(--card); font-size: 14px; }
-      .foco[hidden] { display: none; }
       .secretarias { margin: 0 0 14px; background: var(--card); border: 1px solid var(--line);
         border-radius: var(--r-md); padding: 10px 14px; }
       .secretarias[hidden] { display: none; }
@@ -132,7 +125,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=17"></script>
+    <script src="./comum.js?v=18"></script>
     <script>Comum.topbar("requerimentos.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -146,6 +139,7 @@
           <span id="intro-merito">Só conta como respondido o que traz resposta de mérito: pedido de prorrogação
           de prazo e ofício de encaminhamento sem anexo aparecem à parte.</span>
         </p>
+        <p class="base-de" data-base="requerimentos-index.json"></p>
       </div>
     </header>
 
@@ -184,8 +178,8 @@
         </select>
       </div>
 
-      <details class="secretarias" id="secretarias" hidden>
-        <summary>Atraso por secretaria <span class="sub" id="sec-sub"></span></summary>
+      <details class="secretarias" id="secretarias">
+        <summary>Atraso por secretaria <span class="sub" id="sec-sub">carregando…</span></summary>
         <div class="rolagem">
           <table>
             <thead>
@@ -205,9 +199,11 @@
         <span class="contagem" id="contagem" aria-live="polite">Carregando…</span>
         <div class="acoes">
           <button class="btn" id="limpar" type="button">Limpar filtros</button>
+          <button class="btn" type="button" data-acao="compartilhar">Compartilhar</button>
           <button class="btn" id="cobranca" type="button" disabled
             title="Copia a lista dos pedidos do filtro atual que estão fora do prazo">Copiar lista de cobrança</button>
           <button class="btn" id="csv" disabled>Exportar CSV</button>
+          <button class="btn" type="button" data-acao="imprimir">Imprimir</button>
         </div>
       </div>
 

@@ -4,6 +4,7 @@
 let PROPS = [];
 let filtradas = [];
 let pag = null;  // Comum.paginador — montado no init
+let FOCO = "";   // ?cod= — uma propositura pelo link direto (busca universal, Novidades)
 
 const el = (id) => document.getElementById(id);
 // utilitários da camada comum (eram cópias locais idênticas em cada painel)
@@ -45,6 +46,7 @@ function montarChips() {
     b.addEventListener("click", () => {
       // alterna: se já estava selecionado, limpa
       el("subtipo").value = el("subtipo").value === s ? "" : s;
+      FOCO = "";
       aplicarFiltros();
     });
     cont.appendChild(b);
@@ -83,8 +85,10 @@ function filtrarBase() {
 }
 
 function aplicarFiltros() {
-  const base = filtrarBase();
-  const subtipo = el("subtipo").value;
+  // link direto: só a propositura do `cod`, ignorando os filtros (antes a paleta
+  // mandava "?q=1/2026", que casava também 11/2026, 101/2026…)
+  const base = FOCO ? PROPS.filter((p) => String(p.cod) === FOCO) : filtrarBase();
+  const subtipo = FOCO ? "" : el("subtipo").value;
   filtradas = subtipo ? base.filter((p) => p.subtipo === subtipo) : base;
   atualizarResumo(filtradas);
   atualizarChips(base);
@@ -92,12 +96,14 @@ function aplicarFiltros() {
   pag.reiniciar(filtradas);
   el("vazio").hidden = filtradas.length > 0;
   el("csv").disabled = filtradas.length === 0;
+  el("foco").hidden = !FOCO;
   Comum.gravarParams({
     q: el("q").value.trim(),
     subtipo: el("subtipo").value,
     ano: el("ano").value,
     autor: el("autor").value,
     local: el("local").value,
+    cod: FOCO,
   });
 }
 
@@ -166,6 +172,7 @@ function exportarCSV() {
 function limparFiltros() {
   el("q").value = "";
   for (const id of ["subtipo", "ano", "autor", "local"]) el(id).value = "";
+  FOCO = "";
   aplicarFiltros();
 }
 
@@ -201,6 +208,12 @@ async function init() {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
+  FOCO = p.get("cod") || "";
+  // mexer em qualquer filtro sai do link direto
+  const sairDoFoco = () => { FOCO = ""; };
+  el("q").addEventListener("input", sairDoFoco);
+  ["subtipo", "ano", "autor", "local"].forEach((id) => el(id).addEventListener("input", sairDoFoco));
+  el("foco-todos").addEventListener("click", () => { FOCO = ""; aplicarFiltros(); });
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
   ["subtipo", "ano", "autor", "local"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   pag = Comum.paginador({
