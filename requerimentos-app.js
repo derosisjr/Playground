@@ -13,6 +13,15 @@ const ROTULOS = {
   so_prorrogacao: "Prazo prorrogado ↗",
   so_encaminhamento: "Só encaminhamento ↗",
 };
+// Coluna "Situação": rótulos públicos da classificação (espelho de ROTULOS em
+// respostas-executivo/classificar.py). Antes a coluna mostrava o "Status atual"
+// da planilha — anotações internas do gabinete, que não são para o público.
+const SITUACAO_ROTULO = {
+  respondido: "Respondido",
+  so_prorrogacao: "Prazo prorrogado",
+  so_encaminhamento: "Só encaminhamento",
+  pendente: "Sem resposta",
+};
 
 // A classificação de mérito (classificar.py → colunas "Situação da resposta" e
 // "Data da resposta de mérito" da planilha) só vale quando já chegou à base.
@@ -117,17 +126,22 @@ function atualizarResumo() {
 // Exporta o resultado filtrado (mesmas colunas da tabela)
 function exportarCSV() {
   if (!filtradas.length) return;
-  const campos = ["numero", "ano", "assunto", "data_sessao", "data_resposta", "data_resposta_merito", "situacao", "status", "respondido", "url_resposta"];
+  const campos = ["numero", "ano", "assunto", "data_sessao", "data_resposta", "data_resposta_merito", "situacao", "respondido", "url_resposta"];
   Comum.exportarCsv(
     `requerimentos-filtro-${new Date().toISOString().slice(0, 10)}.csv`,
     campos,
-    filtradas.map((i) => campos.map((c) => (c === "respondido" ? (i[c] ? "sim" : "não") : i[c])))
+    filtradas.map((i) => campos.map((c) => (
+      c === "respondido" ? (i[c] ? "sim" : "não")
+        : c === "situacao" ? (SITUACAO_ROTULO[i[c]] || i[c])
+          : i[c])))
   );
 }
 
 // Base sem classificação de mérito: textos e filtros deixam de prometer mérito.
 function semClassificacao() {
   ROTULOS.respondido = "Retorno ↗";
+  SITUACAO_ROTULO.respondido = "Com retorno";
+  SITUACAO_ROTULO.pendente = "Sem retorno";
   const intro = el("intro-merito");
   if (intro) {
     intro.textContent = "A classificação das respostas (mérito × pedido de prorrogação × " +
@@ -157,7 +171,7 @@ function linhaHTML(i) {
     <td data-label="Assunto">${escapar(i.assunto)}</td>
     <td data-label="Sessão" class="data">${escapar(i.data_sessao)}</td>
     <td data-label="Resposta em" class="data">${escapar(i.data_resposta)}</td>
-    <td data-label="Situação" class="status">${escapar(i.status)}</td>
+    <td data-label="Situação" class="status">${escapar(SITUACAO_ROTULO[i.situacao] || "")}</td>
     <td data-label="Resposta">${resposta}</td>
   </tr>`;
 }
@@ -173,7 +187,7 @@ async function init() {
       "Não foi possível carregar os requerimentos. Verifique a conexão.", init);
     return;
   }
-  for (const i of ITENS) i._busca = norm([i.numero, i.assunto, i.status, i.ano].join(" "));
+  for (const i of ITENS) i._busca = norm([i.numero, i.assunto, i.ano].join(" "));
   CLASSIFICADO = baseClassificada(ITENS);
   if (!CLASSIFICADO) semClassificacao();
   preencherSelects();

@@ -40,6 +40,19 @@ JSON_PADRAO = os.path.join(RAIZ, "requerimentos-index.json")
 # Captura a 1ª string entre aspas de =HYPERLINK("url"; "texto") (separador , ou ;)
 RE_HYPERLINK = re.compile(r'HYPERLINK\(\s*"([^"]+)"', re.IGNORECASE)
 
+# O índice é PÚBLICO (GitHub Pages). Só sai o que está nesta lista: a planilha é de
+# trabalho do gabinete e tem colunas internas — a "Status atual" chegou a publicar
+# anotações como "ok (Falar com o Rui)" e links de entrega de documentos (out/2026).
+# Coluna nova só entra no site se for acrescentada aqui de propósito.
+CAMPOS_PUBLICOS = (
+    "numero", "ano", "assunto", "data_sessao", "data_resposta",
+    "data_resposta_merito", "situacao", "respondido", "url_resposta",
+)
+
+# Número de requerimento válido ("1729/2026"). Linha com outra coisa na coluna
+# (ex.: uma data, como as linhas-fantasma de set/2026) não é requerimento.
+RE_NUMERO = re.compile(r"^\d{1,5}/\d{4}$")
+
 
 def _ano_do_numero(numero: str) -> int | str:
     """Extrai o ano de um número tipo '1729/2026'. Devolve int ou '' se não achar."""
@@ -111,6 +124,12 @@ def coletar() -> list[dict]:
     valores = ler("FORMATTED_VALUE")
     formulas = ler("FORMULA")
     brutos = ler("UNFORMATTED_VALUE")  # datas como nº de série (formato inequívoco)
+    return montar_itens(valores, formulas, brutos)
+
+
+def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
+    """Monta os itens públicos a partir das três leituras da aba (alinhadas por
+    linha). Separado de `coletar()` para ser testável sem o Google."""
     if not valores:
         return []
 
@@ -120,7 +139,6 @@ def coletar() -> list[dict]:
     c_sessao = _idx_header(cab, "Data da Sessão")
     c_resp = _idx_header(cab, "Resposta")
     c_dataresp = _idx_header(cab, "Data da resposta")
-    c_status = _idx_header(cab, "Status atual")
     c_situacao = _idx_header(cab, COL_SITUACAO)
     c_merito = _idx_header(cab, COL_DATA_MERITO)
 
@@ -140,6 +158,10 @@ def coletar() -> list[dict]:
         assunto = campo(linha, c_assunto)
         if not numero and not assunto:
             continue  # linha vazia
+        if not RE_NUMERO.match(numero):
+            print(f"Aviso: linha {n + 1} ignorada — número inválido {numero!r}",
+                  file=sys.stderr)
+            continue
         # A URL sai da fórmula HYPERLINK (leitura FORMULA), mesma posição de linha;
         # as datas saem do valor bruto (UNFORMATTED), também alinhado por linha.
         linha_formula = formulas[n] if n < len(formulas) else []
@@ -159,7 +181,6 @@ def coletar() -> list[dict]:
                 "data_sessao": _data(bruto(linha_bruta, c_sessao)),
                 "data_resposta": _data(bruto(linha_bruta, c_dataresp)),
                 "data_resposta_merito": _data(bruto(linha_bruta, c_merito)),
-                "status": campo(linha, c_status),
                 "situacao": situacao,
                 "respondido": situacao == cls.RESPONDIDO,
                 "url_resposta": url,
@@ -168,7 +189,12 @@ def coletar() -> list[dict]:
     return itens
 
 
-def main() -> None:
+def campos_fora_da_lista(itens: list[dict]) -> set[str]:
+    """Chaves que não estão em CAMPOS_PUBLICOS (deve ser vazio)."""
+    return {k for i in itens for k in i} - set(CAMPOS_PUBLICOS)
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Exporta requerimentos da planilha para requerimentos-index.json"
     )
@@ -177,6 +203,11 @@ def main() -> None:
     args = parser.parse_args()
 
     itens = coletar()
+    extras = campos_fora_da_lista(itens)
+    if extras:
+        # nunca publicar coluna que ninguém decidiu tornar pública
+        print(f"ABORTANDO: campos fora de CAMPOS_PUBLICOS: {sorted(extras)}", file=sys.stderr)
+        return 1
     respondidos = sum(1 for i in itens if i["respondido"])
     print(f"{len(itens)} requerimento(s) — {respondidos} com resposta de mérito.")
     for chave in (cls.RESPONDIDO, cls.SO_ENCAMINHAMENTO, cls.SO_PRORROGACAO,
@@ -188,11 +219,12 @@ def main() -> None:
     if args.dry_run:
         for i in itens[:5]:
             print(f"  {i['numero']:>12}  {i['situacao']:<16}  {i['assunto'][:50]}")
-        return
+        return 0
 
     gravar_json(args.salvar, itens, separators=(",", ":"))
     print(f"Gravado: {args.salvar}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -96,10 +96,29 @@ def contagens():
         print(f"  aviso: contagem do regimento falhou: {e}", file=sys.stderr)
     try:
         reqs = _ler_json("requerimentos-index.json")
+        por_situacao = {}
+        for r in reqs:
+            s = r.get("situacao") or ""
+            por_situacao[s] = por_situacao.get(s, 0) + 1
         out["requerimentos-index.json"] = {
-            "n": len(reqs), "respondidos": sum(1 for r in reqs if r.get("respondido"))}
+            "n": len(reqs), "respondidos": sum(1 for r in reqs if r.get("respondido")),
+            "por_situacao": por_situacao,
+            # mesma regra de baseClassificada() em requerimentos-app.js: sem isto o hub
+            # não sabe se "respondidos" é mérito ou só "tem algum retorno"
+            "classificada": any(
+                (r.get("situacao") not in ("respondido", "pendente", None, ""))
+                or r.get("data_resposta_merito") for r in reqs),
+        }
     except (OSError, ValueError) as e:
         print(f"  aviso: contagem de requerimentos falhou: {e}", file=sys.stderr)
+    try:
+        notas = _ler_json("regimento-notas.json")
+        # chaves "_..." são comentário (ex.: "_leia-me"); o resto é id de artigo
+        out["regimento-notas.json"] = {
+            "artigos_com_nota": sum(1 for k, v in notas.items()
+                                    if not k.startswith("_") and v)}
+    except (OSError, ValueError, AttributeError) as e:
+        print(f"  aviso: contagem das notas do regimento falhou: {e}", file=sys.stderr)
     return out
 
 

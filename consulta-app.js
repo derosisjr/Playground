@@ -38,8 +38,6 @@
   }
 
   function init() {
-    // sem worker no ar, deixar claro que o voto ainda não é enviado (honestidade > fachada)
-    if (!WORKER_URL) $("aviso-teste").hidden = false;
     carregarConsulta();
     $("sug-enviar").addEventListener("click", sugerir);
   }
@@ -57,9 +55,16 @@
         if (!d.ativa || hoje > d.periodo.fim) {
           $("inicio").hidden = true;
           $("encerrada").hidden = false;
-          carregarResultados();
+          // sem worker não houve apuração: não há resultado a buscar (era um 404 por
+          // visita) nem "relatório" a prometer — e o aviso de testes não se aplica mais
+          if (WORKER_URL) carregarResultados();
+          else $("encerrada").textContent = "Esta consulta-piloto foi encerrada. A apuração " +
+            "central não chegou a ser ativada, então não há resultados a publicar. Novas " +
+            "consultas serão anunciadas aqui.";
           return;
         }
+        // sem worker no ar, deixar claro que o voto ainda não é enviado (honestidade > fachada)
+        if (!WORKER_URL) $("aviso-teste").hidden = false;
         const sel = $("bairro");
         sel.innerHTML = "<option value=''>Prefiro não dizer</option>" +
           d.bairros.map((b) => `<option>${b}</option>`).join("");
