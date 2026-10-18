@@ -1,725 +1,3226 @@
 {
+ "versao": 2,
  "atualizado_em": "2026-10-18",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MICHEL BURIHAN"
   },
   "7c25f9ab0703": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUCIANO SOARES DE NOVAIS THOMÉ"
   },
   "83b10c48fcb4": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUIZ ALBERTO LAMANA DOS SANTOS"
   },
   "dd774423b659": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MANUEL ARMANDO NOBREGA TEIXEIRA PETITO"
   },
   "581deef97356": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LUCIANA ROSA DE SOUSA PETITO"
   },
   "1cccd391a4cf": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ROBERTO LUIS DE AMORIM GODINHO LEÃO BRUNO"
   },
   "ee5365f77d7a": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: RUBIA ANDREIA JUSTO BOUÇÓS"
   },
   "59875195e25b": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: RECAREDO JOSE BOUÇÓS JUNIOR"
   },
   "761122fcdd37": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: JOSÉ ANTÕNIO ALVAREZ FERNANDEZ"
   },
   "352145e309f1": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: DOCINDA DIAS ALVAREZ"
   },
   "7f66df02f874": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-01 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
   },
   "69912b24305d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-03 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
   },
   "c92f54d5fb56": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-04 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
   },
   "7bdc16ad5e5f": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-02 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
   },
   "eab28c31d39d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-05 em duplicidade sistemática (empenhos, liquidacoes, pagamentos)"
   },
   "a5a82e958c51": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "concentracao",
    "titulo": "Concentração: COHAB CIA HABITACAO DA BAIXADA SANTISTA concentra 100% da função 16 - HABITAÇÃO"
   },
   "b28a1ff6c9af": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2025-02"
   },
   "15e5ed865428": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: NET TELECOM INFORMÁTICA LTDA em 2025-09"
   },
   "231fc6ef5961": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
   },
   "3c38294561e4": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: SÃO PAULO TRIBUNAL DE JUSTIÇA em 2025-07"
   },
   "3339484d5ef1": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTROS MATERIAIS PERMANENTES em 2025-09"
   },
   "bd47689476b9": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: DIVERSAS INDENIZAÇÕES E RESTITUIÇÕES em 2025-02"
   },
   "6f34854da142": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTRAS AMORTIZAÇÕES DA DÍVIDA CONTRATADA em 2026-03"
   },
   "b2b59a0168a7": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: LEMAM CONSTRUCOES E COMERCIO S/A em 2025-12"
   },
   "fc2177d84c44": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTRAS DESPESAS DE EXERCÍCIOS ANTERIORES em 2026-01"
   },
   "98ca6884208c": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: LOCAÇÃO BENS MÓVEIS DE OUTRAS NATUREZAS E INTANGÍVEIS em 2026-01"
   },
   "42fa2231e22b": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: CAPE FEIRAS E EVENTOS EIRELI EPP em 2026-03"
   },
   "260e58be0ab3": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS - PESSOA JURÍDICA em 2026-01"
   },
   "788fccb379e0": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: EXPOSIÇÕES, CONGRESSOS E CONFERÊNCIAS em 2026-03"
   },
   "a2c6b289007d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: GÊNEROS DE ALIMENTAÇÃO em 2025-12"
   },
   "334b5f5bb198": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: STAGLIORIO ENGENHARIA LTDA em 2026-08"
   },
   "46077fffe863": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: CONSÓRCIO SQF - IP SANTOS, CONSTITUÍDO PELAS EMPRESAS QUANTUM ENGENHARIA LTDA, SEVEN ENGENHARIA E CONSULTORIA ELÉTRICA LTDA E FORTNORT DESENVOLVIMENTO"
   },
   "aff85c5ac2e6": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: TMK ENGENHARIA S.A. em 2025-08"
   },
   "c51805f39a18": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OBRAS EM ANDAMENTO em 2025-11"
   },
   "0784b16a923e": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: FESTIVIDADES E HOMENAGENS em 2026-03"
   },
   "64a0fc4ec3ea": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: MATERIAL P/ MANUTENÇÃO DE BENS IMÓVEIS em 2026-01"
   },
   "d9e14e45c9c6": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: IPREV-CONTR.-14%-L.C.1139/2021-13.SAL.-1§MASSA em 2026-01"
   },
   "7fd3befde823": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: INSTITUTO SOCIAL HOSPITAL ALEMAO OSWALDO CRUZ"
   },
   "981a3b816d45": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: STIER CONSTRUTORA LTDA"
   },
-  "5e86732dc95c": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 150 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
-  },
   "33b7e808a8d8": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: PIONEIRA SOLUÇÕES TECNOLÓGICAS em 2026-05"
   },
   "c047f20f9760": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: 2N ENGENHARIA LTDA em 2025-11"
   },
   "2d8661bb7858": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: PUXE COMUNICACAO EIRELI em 2025-04"
   },
   "597cbb63bb87": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: BANCO DO BRASIL S/A"
   },
   "a89a5cea99ef": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: BANCO DO BRASIL S/A em 2026-06"
   },
-  "5d738ec2a0dc": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 98 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
-  },
   "bcc156a6b23f": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: EICON CONTROLES INTELIGENTES DE NEGOCIOS LTDA"
   },
   "496902eff96e": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: EL ESTRUTURA E EVENTOS LTDA em 2026-03"
   },
   "197f5abbc431": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: BRASOFTWARE INFORMATICA LTDA"
   },
-  "791eaec2c59c": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 104 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
-  },
   "ab1a00193fe4": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: SEMPRE PROPAGANDA LTDA em 2025-12"
   },
   "ca77585c0d3b": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: ADVENTUM COMERCIAL LTDA em 2026-01"
   },
-  "f22940aa9642": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 75 empenhos distintos a BRAFEM COMERCIAL LTDA (2025)"
-  },
   "b585034a8522": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: STIER CONSTRUTORA LTDA em 2026-06"
   },
   "9e17f72ac277": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: FORTNORT DESENVOLVIMENTO AMBIENTAL E URBANO EIRELI em 2025-05"
   },
-  "d667df7c2be3": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 88 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
-  },
   "bb7c0ded1448": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: VB ESTRUTURAS TEMPORARIAS LTDA"
   },
-  "94d8b8dc19c1": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 102 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
-  },
   "39492b6dba89": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: DIAS CONSULTORIA LTDA"
   },
-  "d4f6f1af5b7a": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 86 empenhos distintos a COMERCIAL BRISMAR LTDA (2025)"
-  },
   "be3142b9309d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP"
   },
   "da0c8c96cfa9": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: PERICLES FERNANDO NUNES DE OLIVEIRA"
   },
   "ee6634177b30": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: NEW YORK COMERCIO E CONSTRUÇÃO LTDA"
   },
-  "a14edac427e3": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 119 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2026)"
-  },
   "fd52f86d7c62": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: RP MANUTENCAO INDUSTRIAL LTDA"
   },
   "1dc21ca9136d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS"
   },
-  "2b19480b2079": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 71 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
-  },
   "e44fefae36c3": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: USC SAÚDE"
   },
-  "84e00e621db2": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 71 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
-  },
-  "ccd14350e53b": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 85 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2025)"
-  },
-  "579f20f1e623": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 49 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
-  },
-  "258c9f025b2c": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 37 empenhos distintos a COMERCIAL PILAR AUDIO LTDA (2025)"
-  },
-  "216bf1f995cc": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 66 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
-  },
   "7b8e5a84e2e6": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: TARARA COMERCIAL EIRELI - ME"
   },
-  "9ab97b419549": {
-   "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 40 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2025)"
-  },
   "10cda15c70b0": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_nao_localizado",
    "titulo": "Pagamentos orçamentários de 2025 cujo empenho não está na base"
   },
   "0febbc6cf4bd": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: MUNICÍPIO DE SANTOS"
   },
   "8fd7061e0337": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "638b8005d039": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "concentracao",
    "titulo": "Concentração: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS concentra 87% da função 09 - PREVIDÊNCIA SOCIAL"
   },
   "87224e2c1c42": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "concentracao",
    "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 44% da função 12 - EDUCAÇÃO"
   },
   "2394a64ab596": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: TERRA SANTOS AMBIENTAL GESTAO DE RESIDUOS SOLIDOS SPE LTDA"
   },
   "28b24b423003": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: IRMANDADE SANTA CASA DE MISERICÓRDIA DE SANTOS"
   },
   "edf1e5c2435f": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
   },
   "56a91a39dcee": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
   },
   "aa65eb4edc4b": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: CET - COMPANHIA DE ENGENHARIA DE TRAFEGO DE S"
   },
   "897d2327409c": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: PRODESAN PROGRESSO E DESENVOLVIMENTO DE SANTOS SA"
   },
   "a68690620e0c": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
   },
   "2b3cb7ea556d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: CAIXA ECONÔMICA FEDERAL"
   },
   "9e98a7024864": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "concentracao",
    "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 45% da função 28 - ENCARGOS ESPECIAIS"
   },
   "0afbe01ebfb8": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: VEROCHEQUE REFEICOES LTDA"
   },
   "836a647df6ac": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: SÃO PAULO TRIBUNAL DE JUSTIÇA"
   },
   "27327a765c15": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
   },
   "78e855b893fb": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: INSTITUTO NACIONAL DE PESQUISA E GESTÃO EM SAÚDE - INSAÚDE"
   },
   "c5f2325eb0dc": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
   },
   "26c0ae8f57ed": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "concentracao",
    "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 47% da função 08 - ASSISTÊNCIA SOCIAL"
   },
   "3b4695b55896": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: INSTITUTO NACIONAL DO SEGURO SOCIAL"
   },
   "f544a37bb7ef": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: COHAB CIA HABITACAO DA BAIXADA SANTISTA"
   },
   "5a6f59074f92": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "favorecido_recorrente",
    "titulo": "Grande recebedor recorrente: MINISTERIO DA FAZENDA"
   },
   "04412e126c71": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: CAIXA ECONOMICA FEDERAL"
   },
   "f730f3fa15d4": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "45c14b3ca12d": {
    "primeiro_em": "2026-09-29",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "ba869549d1e1": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_rapido",
    "titulo": "Pago bem mais rápido que a fila: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
   },
   "ad02ab41663a": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_rapido",
    "titulo": "Pago bem mais rápido que a fila: INSTITUTO NACIONAL DE PESQUISA E GESTÃO EM SAÚDE - INSAÚDE"
   },
   "79419f3b5a65": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_rapido",
    "titulo": "Pago bem mais rápido que a fila: ASSOCIAÇÃO BENEFICENTE DE ASSISTÊNCIA SOCIAL E HOSPITALAR - PRÓ-SAÚDE"
   },
   "812698b64da7": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_rapido",
    "titulo": "Pago bem mais rápido que a fila: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
   },
   "8d2e34800e19": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_rapido",
    "titulo": "Pago bem mais rápido que a fila: BANCO BRADESCO S/A"
   },
   "c388add19167": {
    "primeiro_em": "2026-09-30",
-   "ultimo_em": "2026-10-18",
    "tipo": "prazo_lento",
    "titulo": "Pago bem mais devagar que a fila: COMPASSO CONSTRUÇÕES, TERRAPLANAGEM E PAVIMENTAÇÃO LTDA"
   },
   "a4af50043321": {
    "primeiro_em": "2026-10-08",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-09 em duplicidade sistemática (pagamentos)"
   },
   "63874b20fe54": {
    "primeiro_em": "2026-10-08",
-   "ultimo_em": "2026-10-18",
    "tipo": "dados_duplicidade",
    "titulo": "Origem devolveu 2026-10 em duplicidade sistemática (pagamentos)"
   },
   "c6582c0a912b": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: JÚLIA CARPENTIERI"
   },
   "80d7b7246622": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: PAULO DIAS IGNACIO"
   },
   "29b80673f9a6": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ROSANA MARTINS DO AIDO"
   },
   "0d07c478ba1f": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: NAYDA PIRES LIMA BOULHOSA"
   },
   "7deccaef268c": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MARILIA DE BARROS MELLO MEHANNA KHAMIS"
   },
   "4d7102ae1c13": {
    "primeiro_em": "2026-10-12",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "d08e8a57c258": {
    "primeiro_em": "2026-10-17",
-   "ultimo_em": "2026-10-18",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: S2 - OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2026-01"
   },
   "f0a308993f6d": {
    "primeiro_em": "2026-10-17",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: PANVILLE ATACADISTA LTDA"
   },
   "b8ad76de78f5": {
    "primeiro_em": "2026-10-17",
-   "ultimo_em": "2026-10-18",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA"
   },
   "aed7837c5b7c": {
    "primeiro_em": "2026-10-17",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
   },
   "25417db50855": {
    "primeiro_em": "2026-10-17",
-   "ultimo_em": "2026-10-18",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "bd10a7026405": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SOCIEDADE PORTUGUESA DE BENEFICÊNCIA"
+  },
+  "138fb8b568c3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BASE SISTEMA SERVICOS DE ADM. E COMERCIO EIRELI"
+  },
+  "b9742cb72e56": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CAIXA ECONOMICA FEDERAL"
+  },
+  "c871e7218e9b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: TERRACOM CONSTRUCOES LTDA"
+  },
+  "d956dc9f49e0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: STAGLIORIO ENGENHARIA LTDA"
+  },
+  "f83b2422b9ec": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ANDRADE BARROS LOGISTICA E SERVICOS LTDA"
+  },
+  "037038dfc5fc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: COMPANHIA PIRATININGA DE FORÇA E LUZ"
+  },
+  "83ef7e545b7f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO SOCIAL HOSPITAL ALEMÃO OSWALDO CRUZ"
+  },
+  "072d179d8e00": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIAÇÃO BENEFICENTE DE ASSISTÊNCIA SOCIAL E HOSPITALAR - PRÓ-SAÚDE"
+  },
+  "0e5dad79c367": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: LEMAM CONSTRUCOES E COMERCIO S/A"
+  },
+  "680d7b531439": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: TMK ENGENHARIA S.A."
+  },
+  "656b361acb22": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: NET TELECOM INFORMÁTICA LTDA"
+  },
+  "df37cde76357": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIAÇÃO DE AMOR A CRIANCA ARCANJO RAFAEL"
+  },
+  "3a8e71e0b651": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ITAU UNIBANCO S.A."
+  },
+  "24b952c55047": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIACAO DE ASSISTENCIA SOCIAL EVOLUCAO"
+  },
+  "8a74c020672e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: USC SAÚDE"
+  },
+  "8c3a0d8b9fa5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CAPE FEIRAS E EVENTOS EIRELI EPP"
+  },
+  "35a3f0040ee5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PUXE COMUNICACAO EIRELI"
+  },
+  "843ff3178969": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: UNIAO DE AMPARO A COMUNIDADE DE ESCOLAS PUBLICAS (MINHA COMUNIDADE) - UACEP"
+  },
+  "3a2bf76899d7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: VIAÇÃO PIRACICABANA S A"
+  },
+  "23fc2d04ad47": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: HOSPITAL ANA COSTA S/A"
+  },
+  "a1cb4881ae86": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CIA. DE SANEAMENTO BÁSICO DO ESTADO DE SÃO PAULO - SABESP"
+  },
+  "6fa1774180c9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SABINO COMERCIO & EMPREITEIRA LTDA"
+  },
+  "838e01b840c4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: FUPES - FUNDAÇÃO PRO ESPORTE SANTOS"
+  },
+  "41612117542e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SIMPRESS COMERCIO, LOCACAO E SERVICOS S/A"
+  },
+  "68e72ea029ee": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: MIDIA PULL EDITORA E COMUNICAÇÃO - EIRELI"
+  },
+  "3ce82cc9fe9c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PRODESAN PROGRESSO E DESENVOLVIMENTO DE SANTOS SA"
+  },
+  "404b2e6d0b65": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
+  },
+  "eac1558a99ed": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO ARTE NO DIQUE"
+  },
+  "5265115b63c8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PRO VIVER OBRAS SOCIAIS E EDUCACIONAIS"
+  },
+  "e55f200f44be": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ULTRA LITORAL SERVIÇOS E CONSERVAÇÃO LTDA."
+  },
+  "504d0974631b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INMOV - INTELIGENCIA EM MOVIMENTO LTDA"
+  },
+  "c7dc08b06a28": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIACAO HOSPITALAR CASA DE SAUDE DE SANTOS"
+  },
+  "bb7a5038a105": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SEMPRE PROPAGANDA LTDA"
+  },
+  "55fef89a846c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PIONEIRA SOLUÇÕES TECNOLÓGICAS"
+  },
+  "0fb86aa8f8ad": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: EL ESTRUTURA E EVENTOS LTDA"
+  },
+  "36e2e16179d1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: 2N ENGENHARIA LTDA"
+  },
+  "10e31311bf01": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: G.E.F. SERVIÇOS - EIRELI"
+  },
+  "abaf50e1d231": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI"
+  },
+  "3c4ed2820e97": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI"
+  },
+  "2ca91afa43d3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: TECVERDE ENGENHARIA S.A."
+  },
+  "09090ff5bee3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: EDUCANDARIO SANTISTA"
+  },
+  "202321478919": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: LAR DAS MOCAS CEGAS"
+  },
+  "15507f44f9d0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOC.DE PROM. ASSIST.SOC.ESTRELA DO MAR"
+  },
+  "acde4e3c25e2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO DE ANÁLISES CLÍNICAS DE SANTOS S.A."
+  },
+  "40f1ab5be5b0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP"
+  },
+  "fde75d2f7bea": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: E.C.P. TEC-ENGENHARIA, COMÉRCIO E PLANEJAMENTO LTDA"
+  },
+  "cb356d9cf044": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: LDI TERCEIRIZACAO E SERVICOS LTDA"
+  },
+  "0d2cff899e53": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: FORTNORT DESENVOLVIMENTO AMBIENTAL E URBANO EIRELI"
+  },
+  "7b68d9bea787": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP"
+  },
+  "89399e2562c9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ADVENTUM COMERCIAL LTDA"
+  },
+  "317c00048317": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CENTRO ESPIRITA BENEFICENTE 30 DE JULHO"
+  },
+  "803db4cb2c7d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASS POLICIAL DE ASSISTÊNCIA À SAÚDE DA BAIXADA SANTISTA"
+  },
+  "8b42abbe08da": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: FORTIS TEXTIL LTDA"
+  },
+  "a38045368a2c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CITAC CENTRO INTEGRADO DE TRATAMENTO AMBULATORIAL DO CÂNCER LTDA."
+  },
+  "50c6acc75f24": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: NET TELECOM INFORMATICA LTDA"
+  },
+  "06ef0698e073": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: MAR BRASIL SERVIÇOS E LOCAÇÕES LTDA"
+  },
+  "3ba996e7f460": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CENTRO DE APRENDIZAGEM E MOBILIZAÇÃO PROFISSIONAL E SOCIAL - CAMPS"
+  },
+  "5ef36f071803": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: VIAÇÃO PIRACICABANA LTDA"
+  },
+  "4c7495fa2faf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA"
+  },
+  "db2d392d0cf8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CONSTRUTORA FERREIRA MARQUES EIRELI EPP"
+  },
+  "92cc16b4dbb0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BR MOBILIDADE BAIXADA SANTISTA SPE S.A."
+  },
+  "250588bcb4cb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: AGNUS ENGENHARIA EIRELI - EPP"
+  },
+  "8aa3febbc101": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PREFEITURA MUNICIPAL DE SANTOS"
+  },
+  "d14d7ff11b72": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: MUTE PARTICIPACOES LTDA"
+  },
+  "fd1ac66f76c2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: INSTITUTO VISÃO DO BEM"
+  },
+  "4c344df763be": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOCIACAO SOCIAL SAGRADA FAMILIA"
+  },
+  "b2b5407c341b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: STIER CONSTRUTORA LTDA"
+  },
+  "f0533b8a029c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: CLÍNICA MULT IMAGEM LTDA"
+  },
+  "ba7a404f07e8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PARANA   BANCO   S/A."
+  },
+  "2920cb6aee8c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: VERDAM EIRELI"
+  },
+  "3e7577b9a628": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: COMERCIAL BRISMAR LTDA"
+  },
+  "b7db1d3066be": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BANCO MASTER SA"
+  },
+  "c9e6e4420e39": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOC.DE PAIS E AMIGOS DOS EXCEPC. STOS- APAE"
+  },
+  "08b4f828ffc2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SAO PAULO SECRETARIA DA SEGURANCA PUBLICA"
+  },
+  "551bba2505d5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: JEKK ALIMENTACAO & SERVICOS LTDA EPP"
+  },
+  "4e987f97c734": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: GIESPP GESTAO INTELIGENTE DE EDUCACAO E SAUDE PUBLICA E PRIVADA LTDA"
+  },
+  "4600c0f23b8a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: FUNDACAO ARQUIVO E MEMORIA DE SANTOS"
+  },
+  "d43564a70ea3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ASSOC.DOS PORTADORES DE DEFICIENCIA MENTAL"
+  },
+  "2f42d861f68e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: QUANTUM ENGENHARIA LTDA"
+  },
+  "b4a41f8e50f8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: EDUCANDARIO ANALIA FRANCO"
+  },
+  "84bf15b91ce5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: TRIVALE INSTITUICAO DE PAGAMENTO LTDA"
+  },
+  "bccad4a2e7cc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BRAFEM COMERCIAL LTDA"
+  },
+  "624e3d5bdfc2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: DEPOSITOS JUDICIAIS"
+  },
+  "2a33d99f1ef0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: LAR ESPIRITA MENSAGEIROS DA LUZ-PARALISIA CER"
+  },
+  "01013bbcab18": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: NUCLEO DE REABIL.DO EXCEP. S VIC. PAULO - NUREX"
+  },
+  "0c3bf330ad9f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: PANVILLE ATACADISTA LTDA"
+  },
+  "7f7926c75c4b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: SEVEN ENGENHARIA E CONSULTORIA ELETRICA EIRELI"
+  },
+  "3fc30e522ae3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BELAMESA COMERCIO DE PRODUTOS ALIMENTICIOS EM GERAL LTDA"
+  },
+  "bf06b849619e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: BANCO SANTANDER BRASIL S/A"
+  },
+  "aa393ed42272": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: ANGIOCORPORE INSTITUTO DE MEDICINA CARDIOVASCULAR"
+  },
+  "44a3c2a3cf2d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "favorecido_recorrente",
+   "titulo": "Grande recebedor recorrente: FRONT ESTRUTURAS LTDA"
+  },
+  "dd28fe443c3f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "03ce356608a4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "e09387d71be0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "bc73a7f04f00": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "504770cb5cd0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "0be11054e42c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "2e039aa9d812": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: ITAU UNIBANCO S.A."
+  },
+  "2340b5208dfe": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "180d423aba53": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "4cbdb5c4da4c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "e2a6db919994": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "1c119c42643b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "1b85529a4f1c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "c1b58366091e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "638849648e6e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "9566c56113b1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "ddddaab09d4b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: FUPES - FUNDAÇÃO PRO ESPORTE SANTOS"
+  },
+  "f606c07c1422": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "7ad26a3bb372": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: PARANA   BANCO   S/A."
+  },
+  "5bbe1deb0ccd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO MASTER SA"
+  },
+  "7628a969bb51": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "59da80354a97": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: DEPOSITOS JUDICIAIS"
+  },
+  "3c95ce52826e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "c4f551f6d65e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "02da8508e3ad": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: FUNDACAO ARQUIVO E MEMORIA DE SANTOS"
+  },
+  "3e9a215a804a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO SANTANDER BRASIL S/A"
+  },
+  "e1f51bffd5dc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "0459da73990f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "aa40b7aadbac": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "7909481ba55f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CAIXA DE ASSISTENCIA AO SERVIDOR PUBLICO MUNICIPAL DE SANTOS - CAPEP-SAUDE"
+  },
+  "cbe3e3afde5a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: SIND. DOS SERV.PUBL.MUN. SANTOS"
+  },
+  "312f977de05e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "17460f7c96fd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO DO BRASIL S/A"
+  },
+  "3ac42de909a3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "f8ffc2010bb8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "59075998b5aa": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO DAYCOVAL S.A."
+  },
+  "8a6eb8eed255": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: PREFEITURA MUNICIPAL DE SANTOS"
+  },
+  "ed7928e24d3b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "49e9b4842f75": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "2527e06bd1ac": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO DO BRASIL S/A"
+  },
+  "df289355837a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "df4a264e2051": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: PREFEITURA MUNICIPAL DE SANTOS"
+  },
+  "d0cc78d9d891": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: BANCO INTER S/A"
+  },
+  "20fab015f917": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "e1f3317c0af5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: CONFEDERAÇÃO DAS COOPERATIVAS DO SICREDI - CONFEDERAÇÃO SICREDI"
+  },
+  "07aa0ac61a9e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "9b7af6c6eb5c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "0e7457a5cc32": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "001f48c73d16": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: SIND.SERV.ESTAT.M. SANTOS"
+  },
+  "16bdcb028634": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: PREFEITURA MUNICIPAL DE SANTOS"
+  },
+  "e3b9b5cd30cd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ASS POLICIAL DE ASSISTÊNCIA À SAÚDE DA BAIXADA SANTISTA (2026, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "38441564d06b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ASS POLICIAL DE ASSISTÊNCIA À SAÚDE DA BAIXADA SANTISTA (2025, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "7115fab8c087": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ASSOCIACAO HOSPITALAR CASA DE SAUDE DE SANTOS (2026, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "4066e7390e51": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a ASSOCIACAO HOSPITALAR CASA DE SAUDE DE SANTOS (2025, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "3791bfb5a2d1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a SOCIEDADE PORTUGUESA DE BENEFICÊNCIA (2026, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "c597bb9cd114": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a HOSPITAL ANA COSTA S/A (2026, CAIXA DE ASSIST. AO SERV.PÚBL. MUNIC. DE SANTOS)"
+  },
+  "41626c25c30b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "e2aa15678d0c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2025, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "e36560e67a83": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a RODRIGO ESCALEIRA MELQUES 37120647806 (2025, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "9cd50a128e70": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a MARIANE CAMILO FUJIY (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "b1b710aa3520": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a VIAÇÃO PIRACICABANA S A (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "456b4b025b40": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FEDERACAO PAULISTA DE BASKETEBALL (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "fba0d50dda4e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 27 empenhos distintos a JESSICA FERREIRA GUIMARÃES (2025, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "5260e68d3d18": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 100 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "04c7404b6a59": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 48 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2025, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "942b0bececff": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a KAROLINE DE OLIVEIRA CARNEIRO CORTEZ (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "681984cae4d8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 13 empenhos distintos a CLAUDIA CAMPEDELLI RUIVO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "b8e5c665f0cf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "0a662559872a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "791374f428ae": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2026)"
+  },
+  "a2bb44fd2095": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2025)"
+  },
+  "bbb568e3ec87": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 26 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2025)"
+  },
+  "9d9659fb718c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 36 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2026)"
+  },
+  "829ac91b775e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 41 empenhos distintos a ATOMED PROD.MEDICOS E DE AUXILIO HUMANO LTDA. (2026)"
+  },
+  "b0f20c4f0db8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 50 empenhos distintos a ATOMED PROD.MEDICOS E DE AUXILIO HUMANO LTDA. (2025)"
+  },
+  "bcbb1e53d4ea": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a SUPPORT PRODUTOS NUTRICIONAIS LTDA (2026)"
+  },
+  "bc5783e3aee7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a SUPPORT PRODUTOS NUTRICIONAIS LTDA (2025)"
+  },
+  "108d29c7168b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BOCCATO & VERCESI LTDA (2026)"
+  },
+  "212c0d9208f8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a GASBALL ARMAZENADORA E DISTRIBUIDORA LTDA (2025)"
+  },
+  "04b894851647": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a DIMASTER - COMERCIO DE PRODUTOS HOSPITALARES LTDA. (2025)"
+  },
+  "85d309ababdc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a FBF CONSTRUÇÕES E SERVIÇOS LTDA (2025)"
+  },
+  "dc6d8ee8fe08": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a ASSOCIACAO FABRICA DE SOLIDARIEDADE (2026)"
+  },
+  "ed5eb4393c1f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a COLOPLAST DO BRASIL LTDA (2025)"
+  },
+  "a381aa74c080": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP (2025)"
+  },
+  "a8347840ee1b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a GEOLAB INDUSTRIA FARMACEUTICA S/A (2026)"
+  },
+  "fafc8bc9f37c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a GEOLAB INDUSTRIA FARMACEUTICA S/A (2025)"
+  },
+  "669837c9f3ed": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ROTARY DE SANTOS MONTE SERRAT (2026)"
+  },
+  "5c3b4bd0c5e4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a BRS SUPRIMENTOS CORPORATIVOS S/A (2026)"
+  },
+  "fcf8260f5a0f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a DUPATRI HOSPITALAR COM. IMP. EXP. LTDA. (2025)"
+  },
+  "084d8974d671": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a COMPANHIA PIRATININGA DE FORÇA E LUZ (2025)"
+  },
+  "8c6433237f59": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a STARKEY DO BRASIL LTDA (2026)"
+  },
+  "f9e597adb972": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 25 empenhos distintos a STARKEY DO BRASIL LTDA (2025)"
+  },
+  "5f06c6f284b9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a ATIVA COMERCIAL HOSPITALAR LTDA (2026)"
+  },
+  "d739a30c919d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a ATIVA COMERCIAL HOSPITALAR LTDA (2025)"
+  },
+  "217055a0ddff": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ASSOCIACAO EQUOTERAPIA (2026)"
+  },
+  "71c6f9e70711": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a MEDIGRAM COMERCIO DE MEDICAMENTOS LTDA (2026)"
+  },
+  "dd69bfa36533": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+  },
+  "1a50cfffbf10": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2025)"
+  },
+  "cfa8f182c2b5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+  },
+  "d12c647671f3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2025)"
+  },
+  "32117a1bdb22": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+  },
+  "f0e8c455177a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a CLINICA MED RAD LTDA - EPP (2026)"
+  },
+  "ec08abcd6bdb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a PORTAL LTDA (2026)"
+  },
+  "0d38179a5ffa": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 32 empenhos distintos a PORTAL LTDA (2025)"
+  },
+  "fccbc542123e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ANTIBIOTICOS DO BRASIL LTDA (2025)"
+  },
+  "84f6bbb50b0a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 101 empenhos distintos a R.J VELLOSO ADVOGADOS ASSOCIADOS (2026)"
+  },
+  "2cb246b8eea2": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 119 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2026)"
+  },
+  "6cd16bb0b635": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 70 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
+  },
+  "811690f2a7d2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 47 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2026)"
+  },
+  "22070844004b": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 102 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
+  },
+  "c059190b2e2c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a EL ESTRUTURA E EVENTOS LTDA (2025)"
+  },
+  "cb7f77267e84": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a CIAMED - DISTRIBUIDORA DE MEDICAMENTOS LTDA. (2026)"
+  },
+  "e53e87cef16e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a CLUBE DO CHORO DE SANTOS (2026)"
+  },
+  "523243bc5d5e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a SOMA/SP PRODUTOS HOSPITALARES LTDA (2026)"
+  },
+  "d475f0b3bd26": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a SOMA/SP PRODUTOS HOSPITALARES LTDA (2025)"
+  },
+  "6c0e8d24d565": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a MERCO SOLUÇÕES EM SAÚDE S/A (2026)"
+  },
+  "577a035e6f77": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a CAMBOATAS TURISMO LTDA (2025)"
+  },
+  "89c09e09888d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a CAMBOATAS TURISMO LTDA (2025)"
+  },
+  "734a3c6d2525": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a CAMBOATAS TURISMO LTDA (2025)"
+  },
+  "f4c84b6e1a70": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a COMERCIAL VILA SONIA EIRELI (2025)"
+  },
+  "f00ea3c8b212": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a MEDILAR IMPORTACAO E DISTRIBUICAO DE PRODUTOS MEDICO HOSPITALARES S/A (2026)"
+  },
+  "df3fbdb1a067": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP (2026)"
+  },
+  "cbcb13dc8b07": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 34 empenhos distintos a COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP (2025)"
+  },
+  "50d1426e92bb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a MARCIO DEMONTE (2026)"
+  },
+  "cfb277b4234e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a PRODIET NUTRICAO CLINICA LTDA (2026)"
+  },
+  "c1bcf91ec004": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a PRODIET NUTRICAO CLINICA LTDA (2025)"
+  },
+  "bea0f0891ae9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FUTURA COMERCIO DE PRODUTOS MEDICOS HOSPITALARES EIRELI (2026)"
+  },
+  "502ade5dc5c1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a FUTURA COMERCIO DE PRODUTOS MEDICOS HOSPITALARES EIRELI (2025)"
+  },
+  "e6d7824241ea": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a NUTRICIONALE COMERCIO DE ALIMENTOS LTDA (2026)"
+  },
+  "e53cec354248": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a NUTRICIONALE COMERCIO DE ALIMENTOS LTDA (2025)"
+  },
+  "99e7dabb44b1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a UNIAO DE AMPARO A COMUNIDADE DE ESCOLAS PUBLICAS (MINHA COMUNIDADE) - UACEP (2025)"
+  },
+  "ea83509fb7c2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CIRURGICA OESTE PAULISTA LTDA (2025)"
+  },
+  "89ec3aa86127": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a EMPORIO KAZA COMERCIAL LTDA ME (2025)"
+  },
+  "404f6f008942": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 30 empenhos distintos a NUTRICIONAIS COMERCIAL LTDA (2026)"
+  },
+  "0e4b223e5f28": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a NUTRICIONAIS COMERCIAL LTDA (2025)"
+  },
+  "da57221ae721": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a NUTRICIONAIS COMERCIAL LTDA (2025)"
+  },
+  "35cd1aafa875": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a SULMEDIC COMÉRCIO DE MEDICAMENTOS LTDA (2026)"
+  },
+  "96fc86fc6bee": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a JULEAN DECORACOES LTDA (2026)"
+  },
+  "21eab6d79e53": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a EUROFINS CLINICAL IMAGEM SANTOS LTDA (2026)"
+  },
+  "4e60166f151b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a DENTECK AR CONDICIONADO LTDA (2025)"
+  },
+  "c1fd70fa03f0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a DENTECK AR CONDICIONADO LTDA (2025)"
+  },
+  "b11668b7dc90": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2025)"
+  },
+  "4159d18c804a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2026)"
+  },
+  "e37b2daad4b5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 92 empenhos distintos a FRONT ESTRUTURAS LTDA (2026)"
+  },
+  "9c0369e614a8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 59 empenhos distintos a FRONT ESTRUTURAS LTDA (2025)"
+  },
+  "49e160c4b142": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 41 empenhos distintos a FRONT ESTRUTURAS LTDA (2025)"
+  },
+  "ae561dc7f20b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 61 empenhos distintos a FRONT ESTRUTURAS LTDA (2026)"
+  },
+  "6562542cee30": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 26 empenhos distintos a FRONT ESTRUTURAS LTDA (2026)"
+  },
+  "11a8d39afed9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 59 empenhos distintos a FRONT ESTRUTURAS LTDA (2025)"
+  },
+  "044b4ca25696": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a CM HOSPITALAR S.A. (2026)"
+  },
+  "b82c13ad1920": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a CM HOSPITALAR S.A. (2025)"
+  },
+  "3f767c5c3bbd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a TECNOLAR LTDA - ME (2026)"
+  },
+  "54787ff122fc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a TATIANA REGINA FERREIRA LOPES-ME (2026)"
+  },
+  "6cf818e4b70e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 26 empenhos distintos a INOVAMED HOSPITALAR LTDA (2026)"
+  },
+  "0a52881682bf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 48 empenhos distintos a INOVAMED HOSPITALAR LTDA (2025)"
+  },
+  "635dba479d0b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a SOCIEDADE DE MELHORAMENTOS DA VILA PANTANAL (2025)"
+  },
+  "9a1c7f836e1d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a WS AUDIOLOGY SOLUÇÕES AUDITIVAS LTDA (2026)"
+  },
+  "22f643ab124d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a WS AUDIOLOGY SOLUÇÕES AUDITIVAS LTDA (2025)"
+  },
+  "3c064df4edc8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a ACAPU COMERCIO DE MADEIRAS EIRELI (2025)"
+  },
+  "0a6658dffadb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ACAPU COMERCIO DE MADEIRAS EIRELI (2026)"
+  },
+  "115b035e173c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a VANESSA LOPES PEREIRA (2025)"
+  },
+  "172122219722": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+  },
+  "97b8a7eb077d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+  },
+  "2f9d1419cda3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA (2025)"
+  },
+  "2da4eac3a635": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA (2025)"
+  },
+  "4d775ef517c2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2025)"
+  },
+  "d1c15386b6a4": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 49 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
+  },
+  "6fde14213ce7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 30 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2025)"
+  },
+  "9f440cdd3b63": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 30 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
+  },
+  "aa9d2ecabe56": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 42 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2025)"
+  },
+  "f1772f94e21a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2025)"
+  },
+  "9a9e1affac0f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a TARARA COMERCIAL EIRELI - ME (2026)"
+  },
+  "114600a9521c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a TARARA COMERCIAL EIRELI - ME (2025)"
+  },
+  "e366156b9eef": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a MARCIO SOARES LOUZADA DUARTE (2026)"
+  },
+  "246fd61f2a90": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PRÓTESE PIRES LTDA (2025)"
+  },
+  "29eb9e16c0e0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a PRÓTESE PIRES LTDA (2025)"
+  },
+  "dfb255c19311": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 65 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+  },
+  "6eccdeeb0bc2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 45 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2025)"
+  },
+  "7f09718b4bde": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+  },
+  "f4604efdaf22": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2025)"
+  },
+  "68c6b68eec79": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+  },
+  "f467fdc48396": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2025)"
+  },
+  "99871c8e441a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a POUSO FARMA HOSPITALAR LTDA (2025)"
+  },
+  "e355f43cbfb8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a INOVE PRODUCAO DE EVENTOS & TURISMO LTDA (2026)"
+  },
+  "b0fdcd3c0d58": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a INOVE PRODUCAO DE EVENTOS & TURISMO LTDA (2025)"
+  },
+  "c769608160b6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a INOVE PRODUCAO DE EVENTOS & TURISMO LTDA (2026)"
+  },
+  "acd199a3a6df": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a INOVE PRODUCAO DE EVENTOS & TURISMO LTDA (2025)"
+  },
+  "34fbd00499a6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a INOVE PRODUCAO DE EVENTOS & TURISMO LTDA (2025)"
+  },
+  "708fb9d15128": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a PROVIP DISTRIBUIDORA HOSPITALAR LTDA (2025)"
+  },
+  "4cf67ffa6a90": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ASSOCIAÇÃO BRASILEIRA DE APOIO E COMBATE AO CÂNCER INFANTO-JUVENIL - ABRACCII (2026)"
+  },
+  "793737b6858d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a ASSOCIAÇÃO BRASILEIRA DE APOIO E COMBATE AO CÂNCER INFANTO-JUVENIL - ABRACCII (2026)"
+  },
+  "c2a9eb2d843c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a LVR EVENTOS LTDA (2026)"
+  },
+  "706b1972c234": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a LVR EVENTOS LTDA (2025)"
+  },
+  "bdd6e5048542": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a LVR EVENTOS LTDA (2026)"
+  },
+  "170aad625b34": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 36 empenhos distintos a LVR EVENTOS LTDA (2025)"
+  },
+  "00d6226d19f0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a LVR EVENTOS LTDA (2025)"
+  },
+  "0cfac83375ee": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a VENDRAMINI COMERCIO SERVIÇOS DE EQUIPAMENTOS EIRELI ME (2026)"
+  },
+  "6796fabb90d4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a TETRA FARM INDUSTRIA E COMERCIO DE MATERIAL HOSPITALAR LTDA (2025)"
+  },
+  "1b46225d3cfe": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 58 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+  },
+  "da704b6c18a3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2025)"
+  },
+  "5b3663936202": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2025)"
+  },
+  "f655bb481013": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a CENTRO INTEGRADO DE ASSISTÊNCIA A PESSOAS COM CÂNCER - CENIN (2026)"
+  },
+  "c9133420840d": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 57 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
+  },
+  "959c8c44b9b9": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 76 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2025)"
+  },
+  "58c216d4bfcd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a LIGA DESPORTIVA DO LITORAL PAULISTA (2026)"
+  },
+  "daa0b2494b9a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 32 empenhos distintos a FLEXXLIMP (BIOLIMP) COMERCIAL LTDA (2026)"
+  },
+  "703b7e8c49e3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 60 empenhos distintos a TALKER REPRESENTACAO COMERCIAL LTDA (2026)"
+  },
+  "c78b573787cf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a PRIMEMED COMÉRCIO E DISTRIBUIDORA LTDA (2025)"
+  },
+  "9c8709dac766": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a PRIMEMED COMÉRCIO E DISTRIBUIDORA LTDA (2026)"
+  },
+  "5281292bcbbb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a INDMED HOSPITALAR EIRELI (2025)"
+  },
+  "7385adb9133d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a DIAS CONSULTORIA LTDA (2025)"
+  },
+  "70b845fd4e13": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a DIAS CONSULTORIA LTDA (2025)"
+  },
+  "d21b89484db6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a DIAS CONSULTORIA LTDA (2026)"
+  },
+  "5047417ecf89": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a DIAS CONSULTORIA LTDA (2026)"
+  },
+  "b735c8fa6e26": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a DIAS CONSULTORIA LTDA (2025)"
+  },
+  "5c35adbc4cc8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 34 empenhos distintos a GABEE FOODS COMERCIO ALIM. EIRELI - EPP (2025)"
+  },
+  "120c146a707b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a CENTRO INTERD.DE EDUC. ESP. SIMONE C HORCEL (2026)"
+  },
+  "51447fddf87f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a SUPERFOOD ALIMENTOS LTDA (2026)"
+  },
+  "da057a8b132d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 26 empenhos distintos a SUPERFOOD ALIMENTOS LTDA (2025)"
+  },
+  "ee92ae025682": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 13 empenhos distintos a TELHA MIX MATERIAIS PARA CONSTRUÇÃO EIRELI (2026)"
+  },
+  "dff234571901": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a TELHA MIX MATERIAIS PARA CONSTRUÇÃO EIRELI (2025)"
+  },
+  "70cb65f6649e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a S P HOSPITALAR LTDA - EPP (2026)"
+  },
+  "8b2592d06bdd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a NILSON DOS SANTOS UTILIDADES DO LAR LTDA (2025)"
+  },
+  "4a512278a03b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
+  },
+  "c4374c034751": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a FERRARI MED DISTRIBUIDORA DE MEDICAMENTOS LTDA (2025)"
+  },
+  "ba4c29184d11": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a PARTNER FARMA DISTRIBUIDORA DE MEDICAMENTOS EIRELI - ME (2026)"
+  },
+  "e81e64f7e3c5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 31 empenhos distintos a PARTNER FARMA DISTRIBUIDORA DE MEDICAMENTOS EIRELI - ME (2025)"
+  },
+  "21984623de3b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a ALERTY SERVICOS DE PORTARIA LTDA (2025)"
+  },
+  "f0a93b7095a5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a OCTO FARMACO LTDA (2026)"
+  },
+  "84377b00eac2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a OCTO FARMACO LTDA (2025)"
+  },
+  "2100b30223e6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a INSTITUTO PRO-ACAO ESPORTE E MEIO AMBIENTE (2026)"
+  },
+  "a35b0d6a05c8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a ASSOCIAÇAO DE DESENVOLVIMENTO HUMANO VIVA VIDA (2026)"
+  },
+  "2932ae19d176": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2026)"
+  },
+  "6af1f3e119b9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2025)"
+  },
+  "75680b220860": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a MKM DISTRIBUIDORA DE MEDICAMENTOS LTDA (2025)"
+  },
+  "7b2a9095e42f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a M.M. FIORATTI EMPREITEIRA DE REVESTIMENTOS LTDA (2026)"
+  },
+  "717c0d7e1f8b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ONG PATINHAS QUE BRILHAM (2026)"
+  },
+  "ddbd7a04819d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a DROGARIA POPULAR MELHOR PREÇO RGS EIRELI - ME (2026)"
+  },
+  "483ccce2c554": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a CUIDA PRODUTOS PARA A SAÚDE LTDA (2025)"
+  },
+  "49e04eae1470": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a CUIDA PRODUTOS PARA A SAÚDE LTDA (2026)"
+  },
+  "30d5d3b7907f": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 66 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+  },
+  "91db64a1c854": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 80 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2025)"
+  },
+  "8a41fef2ba1e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 58 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2025)"
+  },
+  "6c01e21e90cf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 60 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+  },
+  "e7d445fd6e3b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 27 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+  },
+  "e7b6d7f5b789": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 45 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2025)"
+  },
+  "9fd5dbe0810d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a GABRIEL DA GAMA GALACHE (2025)"
+  },
+  "768c61e2033a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a TOCA DE ASSIS IRMAS (2026)"
+  },
+  "c671da6d1ddb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2026)"
+  },
+  "69aadeffbd5a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2025)"
+  },
+  "ba26c0869ae7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a NOVA OESTE DISTRIBUIDORA DE MEDICAMENTOS LTDA (2025)"
+  },
+  "55d6149ad2cb": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a COMERCIAL ELETRICA IGARATA LTDA (2025)"
+  },
+  "42546824718c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 13 empenhos distintos a COMERCIAL ELETRICA IGARATA LTDA (2026)"
+  },
+  "8680840ae737": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a PRINCE MED DISTRIBUIDORA DE PRODUTOS HOSPITALARES LTDA (2026)"
+  },
+  "7b6641b0f33d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a GLOBAL HOSPITALAR DISTRIBUICAO E COMERCIO LTDA (2025)"
+  },
+  "c429c2b32faa": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a JM COMERCIO DE CLIMATIZADORES LTDA (2026)"
+  },
+  "ed2c5f67ac9e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a MA COMERCIO DE REFRIGERACAO LTDA (2025)"
+  },
+  "567fc2c1f82e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a COMERCIAL RIFARMA DE MEDICAMENTOS EIRELI (2025)"
+  },
+  "d5231802ebc1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a J. A. HADI KHATIB COMERCIO DE ARTEFATOS DE CONCRETO LTDA (2025)"
+  },
+  "bf9b24176612": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a J. A. HADI KHATIB COMERCIO DE ARTEFATOS DE CONCRETO LTDA (2026)"
+  },
+  "ba8b0e772be9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a TENTECH PRÓTESES E ACESSÓRIOS LTDA (2026)"
+  },
+  "dadea2275b40": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 28 empenhos distintos a BENE DISTRIBUIDORA COMERCIAL LTDA (2025)"
+  },
+  "5db95b5fde1c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a ASSOCIAÇAO DA PARADA DO ORGULHO DE LESBICAS, GAYS, BISSEXUAIS, TRAVESTIS E TRANSGENEROS DE SANTOS (2026)"
+  },
+  "2b8ae4ae630b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 25 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
+  },
+  "553cb27201fd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2025)"
+  },
+  "d24e54a15829": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a INTERLAB FARMACEUTICA LTDA (2026)"
+  },
+  "c10806132e99": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a INTERLAB FARMACEUTICA LTDA (2025)"
+  },
+  "5a162f89b6cf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ANEC ASSOCIAÇÃO NACIONAL DE ESPORTES E CULTURA (2026)"
+  },
+  "f5f2e4efbaf5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a INSTITUTO NACIONAL DE PESQUISA E GESTÃO EM SAÚDE - INSAÚDE (2026)"
+  },
+  "d414e6a64550": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a EUGIA PHARMA INDUSTRIA FARMACEUTICA LIMITADA (2025)"
+  },
+  "f09a0f6c4e89": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a DF MEDICAL LTDA (2026)"
+  },
+  "bfc14118a7db": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 37 empenhos distintos a CRISTÁLIA PRODUTOS QUÍMICOS FARMACÊUTICOS LTDA (2026)"
+  },
+  "e863d39a12d6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 44 empenhos distintos a CRISTÁLIA PRODUTOS QUÍMICOS FARMACÊUTICOS LTDA (2025)"
+  },
+  "6a4547d8c4e0": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 98 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+  },
+  "58460c308ee9": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 75 empenhos distintos a BRAFEM COMERCIAL LTDA (2025)"
+  },
+  "4abe377afad7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a ASSOC DE PAIS PRO-CENTRO DE REC EXCEPCIONAIS CEREX (2026)"
+  },
+  "73647a6d27b5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a COMERCIAL PILAR AUDIO LTDA (2026)"
+  },
+  "d345cbdbcbec": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 37 empenhos distintos a COMERCIAL PILAR AUDIO LTDA (2025)"
+  },
+  "1f69566b5973": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a LAR ESPIRITA MENSAGEIROS DA LUZ-PARALISIA CER (2026)"
+  },
+  "0f82f50bf44c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA (2026)"
+  },
+  "f5ae4055c4cf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA (2026)"
+  },
+  "1acacdcfe507": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA (2025)"
+  },
+  "32f2eda5179a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 44 empenhos distintos a FRANCIELE ELETRO LTDA (2025)"
+  },
+  "71a459ee2036": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 42 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2026)"
+  },
+  "923df45b9c79": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 39 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2025)"
+  },
+  "74cae859ab70": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a PRIMER SOLUÇÕES LTDA (2025)"
+  },
+  "5ddfc728d188": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 42 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
+  },
+  "d6a6b87ccec9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2025)"
+  },
+  "43d3f26b4bd7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a MEDI HOUSE IND.E COM.DE PROD.CIR.E HOSP.LTDA. (2026)"
+  },
+  "b76e2f81abf5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a FRESENIUS KABI BRASIL LTDA (2026)"
+  },
+  "d0cfbe9dae24": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FRESENIUS KABI BRASIL LTDA (2025)"
+  },
+  "51a52258198a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FRESENIUS KABI BRASIL LTDA. (2026)"
+  },
+  "dc9121091007": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 28 empenhos distintos a COMERCIAL SAO PAULO SIRA LTDA (2025)"
+  },
+  "2671ea77c1fd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a COMERCIAL SAO PAULO SIRA LTDA (2026)"
+  },
+  "c4a3e47bc582": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a MARTINUCI ALIMENTOS LTDA (2025)"
+  },
+  "ee2115928a4b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a EPAMAQ LTDA (2025)"
+  },
+  "1e8a34d85d82": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a ASSOCIAÇÃO CANAL CULTURAL (2026)"
+  },
+  "e300df70ca3d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a CONSTRUTORA E INCORPORADORA 3 Z LTDA ME (2026)"
+  },
+  "742018294d22": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a CONSTRUTORA E INCORPORADORA 3 Z LTDA ME (2025)"
+  },
+  "ad0b70626af5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a NUTRIÇÃO B&N COMERCIAL LTDA (2026)"
+  },
+  "5684b58e7f19": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a NUTRIÇÃO B&N COMERCIAL LTDA (2025)"
+  },
+  "f1ff4194ca17": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 37 empenhos distintos a ZANELLA TRAVELS AGENCIAS DE VIAGENS LTDA (2025)"
+  },
+  "7a5a18861911": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 41 empenhos distintos a ZANELLA TRAVELS AGENCIAS DE VIAGENS LTDA (2025)"
+  },
+  "03d35deb3f42": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 38 empenhos distintos a ZANELLA TRAVELS AGENCIAS DE VIAGENS LTDA (2025)"
+  },
+  "7ec34bc16c30": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a GN RESOUND PRODUTOS MEDICOS LTDA (2026)"
+  },
+  "de30b82b7cd5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a GN RESOUND PRODUTOS MEDICOS LTDA (2025)"
+  },
+  "2698b375ca5c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a LAR EVANGELICO DE AMPARO A VELHICE (2025)"
+  },
+  "b452909e388c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a LAR EVANGELICO DE AMPARO A VELHICE (2026)"
+  },
+  "3eb4e7ad2bbf": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 86 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+  },
+  "3eb5cb193ad7": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 86 empenhos distintos a COMERCIAL BRISMAR LTDA (2025)"
+  },
+  "82978004ad9b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 35 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+  },
+  "d932097cf5f2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 30 empenhos distintos a COMERCIAL BRISMAR LTDA (2025)"
+  },
+  "fb4affb64d4c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+  },
+  "4c082a30484c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a COMERCIAL BRISMAR LTDA (2025)"
+  },
+  "0d5a64b8f97f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a P & P DISTRIBUIDORA DE MEDICAMENTOS LTDA (2026)"
+  },
+  "0d600c9b50d1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 51 empenhos distintos a P & P DISTRIBUIDORA DE MEDICAMENTOS LTDA (2025)"
+  },
+  "feb46fd31c00": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 102 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+  },
+  "19c69c9d752c": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 150 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
+  },
+  "13480e50a4a9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
+  },
+  "b52fb4f9b370": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
+  },
+  "13edd4a9b671": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+  },
+  "3245456136f2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a ADVENTUM COMERCIAL LTDA (2025)"
+  },
+  "16545de7a45f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a INSTITUTO BORDALLO CULTURAL (2026)"
+  },
+  "9b163a2b1fe0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI (2025)"
+  },
+  "93a40e246b63": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI (2025)"
+  },
+  "7b087cf5dd48": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI (2025)"
+  },
+  "ab938901df9f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI (2026)"
+  },
+  "fe10d6e24dc4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI (2025)"
+  },
+  "f1cab3e08548": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a ASSOC.DE PAIS, AMIGOS E EDUCADORES DE AUTISTA (2026)"
+  },
+  "65cfe3b62a9e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a L M FARMA INDUSTRIA E COMERCIO LTDA (2025)"
+  },
+  "36e0efdf9c8b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 13 empenhos distintos a GRUPO DE APOIO A PREVENCAO A AIDS DA BAIXADA (2026)"
+  },
+  "a393f121a1d2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a ASSOCIAÇÃO CASA DA ESPERANÇA (2026)"
+  },
+  "f518d123f791": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a EDUCANDARIO ANALIA FRANCO (2026)"
+  },
+  "ac807b2324ec": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a CONSELHO CENTRAL DE SANTOS DA SOCIEDADE DE SAO VICENTE DE PAULO (2025)"
+  },
+  "f41f84626990": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a SOCIEDADE ARS VIVA (2026)"
+  },
+  "45b90984a1f2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a INSTITUTO HISTORICO E GEOGRAFICO DE SANTOS (2026)"
+  },
+  "7a2a78705f15": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a SAMTRONIC INDUSTRIA E COMERCIO LTDA. (2026)"
+  },
+  "e5e2663a6f40": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a PERSIANAS NOVA AMERICA LTDA - ME (2026)"
+  },
+  "2b4c94d7c33a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a PERSIANAS NOVA AMERICA LTDA - ME (2025)"
+  },
+  "dad6d6a87699": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a BLUE PRINT IMPRESSOES LTDA (2026)"
+  },
+  "e28e1f299f0a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a ATACADO VIRTUAL MAX LTDA (2026)"
+  },
+  "283ae168e282": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a CINEMATOGRAFICA POLIFILMES LTDA (2026)"
+  },
+  "1d529e63a2dd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a CINEMATOGRAFICA POLIFILMES LTDA (2025)"
+  },
+  "829f3dcb0a92": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a OESTE SUL CIRURGICA LTDA (2026)"
+  },
+  "675239ddf1bc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a INSTITUTO LUIZ ALCA - ASSOCIAÇÃO COMUNITÁRIA DE AUXÍLIO SANTISTA AO PORTADOR DO HIV/AIDS - ACAUSA (2026)"
+  },
+  "bb3d6d290ca7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a CLÍNICA MULT IMAGEM LTDA (2025)"
+  },
+  "7ca15449ba5c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a AGLON COMERCIO E REPRESENTACOES LTDA (2025)"
+  },
+  "b176bc9f5b1a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a COMERCIAL CIRÚRGICA RIOCLARENSE LTDA (2026)"
+  },
+  "e2b1c2d434a9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a COMERCIAL CIRÚRGICA RIOCLARENSE LTDA (2025)"
+  },
+  "a07f1bc8ed76": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 38 empenhos distintos a PRATI, DONADUZZI & CIA LTDA (2026)"
+  },
+  "2cd841f8ba6b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 45 empenhos distintos a PRATI, DONADUZZI & CIA LTDA (2025)"
+  },
+  "1769ac6eb388": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a PROMEFARMA REPRESENTACOES COMERCIAIS LTDA (2025)"
+  },
+  "66901e6a5daf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a ISADORA MENDONÇA DE ALCANTARA COELHO (2025)"
+  },
+  "74f16644b004": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a IGOR EDUARDO GOMES PIRES (2025)"
+  },
+  "af11b6f8eae7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BRUNA MUSETTI DOS SANTOS (2026)"
+  },
+  "96fd57d20028": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BRUNA MUSETTI DOS SANTOS (2025)"
+  },
+  "322f989b53b6": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a MARINA SCARASSATI GALVANI (2025)"
+  },
+  "7ab04a8c08c7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a GABRIEL MOTA ZAMARIOLLI TAVARES (2026)"
+  },
+  "27178a1655d0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a GABRIEL MOTA ZAMARIOLLI TAVARES (2025)"
+  },
+  "ca7df37d26c5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a GABRIEL COURA DIAS (2026)"
+  },
+  "79dc87b6cb79": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a GABRIEL COURA DIAS (2025)"
+  },
+  "f1d1b63e466d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 106 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026)"
+  },
+  "f30f9bc4ae28": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 123 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2025)"
+  },
+  "a4e3a5cd908e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a MELISSA YOSHIURA MACENA (2025)"
+  },
+  "68e166562c60": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a Victor Monteiro Guidini Caldas (2026)"
+  },
+  "73bd18279a1d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a JENIFER MAFRA SOUSA LUZ (2026)"
+  },
+  "4ebc13175341": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a MARIANA SIQUEIRA GARCIA ALVES (2025)"
+  },
+  "4c2cd63abd64": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BIANCA MULLER GOMES (2026)"
+  },
+  "8876263c8b90": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PATRICIA DA SILVA SOARES (2026)"
+  },
+  "6e4a522d97d1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PATRICIA DA SILVA SOARES (2025)"
+  },
+  "6350f9404d3f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a MARIANA GOMEZ BLANCO NASCIMENTO  (2026)"
+  },
+  "cff92ac98839": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a JACI MESSI DOS SANTOS (2026)"
+  },
+  "153b3907c01f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a JACI MESSI DOS SANTOS (2025)"
+  },
+  "509f9af49a9d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a HELLEN PRISCILA DINIZ (2026)"
+  },
+  "89fcf803d322": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a VITORIA SANTOS DE SOUZA (2026)"
+  },
+  "8d61d7c525d9": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a VITORIA SANTOS DE SOUZA (2025)"
+  },
+  "b71a6ee06907": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a NAYARA ARAUJO MICHELETTO (2026)"
+  },
+  "ec3043ed7209": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a FABIANA DANIELLI DINIZ (2026)"
+  },
+  "6381a1708b99": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FABIANA DANIELLI DINIZ (2025)"
+  },
+  "8a7e9e10bbbc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a RODRIGO MARTIN PEREIRA (2026)"
+  },
+  "a35c1488e38a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CARLOS JOSE GALEAZZI (2025)"
+  },
+  "341b5c2b945d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a Ingrid Naomi Pires Nozimoto (2026)"
+  },
+  "6d3a0a50f03c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a LUIZ CLAUDIO RODRIGUES DO PRADO (2026)"
+  },
+  "08322eaf33c1": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a LUIZ CLAUDIO RODRIGUES DO PRADO (2025)"
+  },
+  "9775a98a8f37": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 30 empenhos distintos a CLAUDIA CAMPEDELLI RUIVO (2026)"
+  },
+  "0e54f93b696d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a CLAUDIA CAMPEDELLI RUIVO (2025)"
+  },
+  "8f748911d70c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a KETTY HELLEN SOUZA DO NASCIMENTO CARRIL (2026)"
+  },
+  "59ab06c3cb23": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a KETTY HELLEN SOUZA DO NASCIMENTO CARRIL (2025)"
+  },
+  "6e5a6ca61248": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PATRICIA FERNANDES DUARTE DOI (2026)"
+  },
+  "da1de4431ec2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a PATRICIA FERNANDES DUARTE DOI (2025)"
+  },
+  "53a7a7a09c7d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a THIAGO SOUZA COELHO (2026)"
+  },
+  "8ca86507ff31": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a THIAGO SOUZA COELHO (2025)"
+  },
+  "926daf17a280": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a GABRIELA DE ABREU SÁ CARDEIRA (2025)"
+  },
+  "3c8e31b499fe": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ESTHER PAZ PEREIRA"
+  },
+  "a4a01bd9eb5c": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: REEM NASSIR HANNA DE TULIO"
+  },
+  "36fb55412fb7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: THEREZINHA CELIA MESQUITA DESBANCA"
+  },
+  "694e9186fc2f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: EDUVALDO SERGIO DOS SANTOS DIEGUES JUNIOR"
+  },
+  "e42e05c5b4a3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: FERNANDO BARBOSA"
+  },
+  "f945e2e608f2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: WASHINGTON NEY BARBOSA"
+  },
+  "7e572dc053c0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: IRINEUSA ALMEIDA BARBOSA"
+  },
+  "1c193a7a09c8": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ILDO DUTRA DE ALMEIDA"
+  },
+  "0fafd2f6ba13": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ROSA MARIA DUTRA DE ALMIEDA"
+  },
+  "7d213ccf9ac4": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: JOAO ROBERTO DE MARIGNY PEREIRA"
+  },
+  "9b723e65d426": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ROSA MEIRA DE MARIGNY PEREIRA"
+  },
+  "62881096239e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: JOSE IVANILDO ARAUJO SANTOS"
+  },
+  "63e882ea2206": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: RODRIGO FERREIRA DE SOUZA DE FIGUEIREDO LYRA"
+  },
+  "2c5d5b79abd7": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: DANIELLE IZAR PAULO DOMINGUEZ"
+  },
+  "f48a00139978": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: PAULO CESAR COELHO"
+  },
+  "eb8323c57481": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: LAURA AGRAZ NADAL"
+  },
+  "5449b694af7a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ESPOLIO DE ANICETO ALBERTO DESBANCA"
+  },
+  "9ccb48848d88": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: GUSTAVO OFENHEJM GOTFRYD"
+  },
+  "3833caf9d5ef": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: NILZA CUSTODIO COSTA"
+  },
+  "92a5714da49b": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: ALBERTO DE PINHO"
+  },
+  "b8a31642c863": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: HERMINIA LUCIA DA SILVA FERREIRA"
+  },
+  "4abc142d2509": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em OUTRAS DESPESAS DE PESSOAL DECORRENTES D: ALEXANDRE SALAZAR JUNIOR"
+  },
+  "e5c39e98e6fe": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em OUTRAS DESPESAS DE PESSOAL DECORRENTES D: FRANCISCO ALFREDO ALEGRE ARANA"
+  },
+  "a6b538ddabaf": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: CARLOS ALBERTO AMADO COSTA"
+  },
+  "5b0aaf508a6f": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: THIAGO MAGÁRIO"
+  },
+  "925292d5c65a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: FELIPE MAGÁRIO"
+  },
+  "c4f7ac6b9572": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pf_sensivel",
+   "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MARCOS MAGÁRIO  FILHO"
+  },
+  "0a4368c2e149": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: BANCO MASTER SA em 2026-08"
+  },
+  "37087671ccc5": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP em 2025-12"
+  },
+  "e520ac3ca0b2": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: FRONT ESTRUTURAS LTDA em 2025-04"
+  },
+  "acd4c5e71225": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: LAR ESPIRITA MENSAGEIROS DA LUZ-PARALISIA CER em 2026-09"
+  },
+  "5ba337c9b523": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: LAR DAS MOCAS CEGAS em 2025-11"
+  },
+  "9aaecccb83bc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: CM HOSPITALAR S.A. em 2025-11"
+  },
+  "fb5d8756a482": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: EICON CONTROLES INTELIGENTES DE NEGOCIOS LTDA em 2026-04"
+  },
+  "b45099f9a896": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI em 2026-06"
+  },
+  "21e6ba74f87d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA em 2026-01"
+  },
+  "8e21ce1cc646": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS em 2026-01"
+  },
+  "2d0f46476633": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP em 2025-12"
+  },
+  "716fa49b936a": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: PGC ENGENHARIA DE OBRAS LTDA em 2026-01"
+  },
+  "e9d36e909863": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: SEVEN ENGENHARIA E CONSULTORIA ELETRICA EIRELI em 2026-02"
+  },
+  "3497a9a0764e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: PANVILLE ATACADISTA LTDA em 2026-07"
+  },
+  "7f7eeb6c7588": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA em 2026-06"
+  },
+  "b2b9235bcd30": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ANDRÉ L. R. ALVES LTDA em 2025-03"
+  },
+  "1a5f815f9b5e": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: TRIVALE INSTITUICAO DE PAGAMENTO LTDA em 2026-07"
+  },
+  "f0e4703ed1bc": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ASSOCIAÇÃO CASA DA ESPERANÇA em 2025-05"
+  },
+  "20dcc037dbad": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: BRAFEM COMERCIAL LTDA"
+  },
+  "874bab9e3ce0": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: UNIAO DE AMPARO A COMUNIDADE DE ESCOLAS PUBLICAS (MINHA COMUNIDADE) - UACEP"
+  },
+  "8bc4ed3d1b12": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: CORPORAÇÃO ANDINA DE FOMENTO"
+  },
+  "e33572a4a47d": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: ANALISA LICITACOES LTDA"
+  },
+  "9639eeb7cfdd": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: LIVRESCOOP - COOPERATIVA AGROECOLOGICA DE TRABALHADORES DA AGRICULTURA FAMILIAR"
+  },
+  "ed7d9b9857f3": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA"
+  },
+  "306c8920cf35": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: Ariane Matias Corrêa Carneiro"
+  },
+  "a1470fda2f40": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: SORELLE COMERCIO ELETRO E EQUIPAMENTOS LTDA"
+  },
+  "73746c457e04": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: ASSOCIAÇAO DE MORADORES DO JARDIM PIRATININGA"
   }
  },
  "resolvidos": {
