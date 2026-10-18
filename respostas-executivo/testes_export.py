@@ -10,7 +10,9 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from export import CAMPOS_PUBLICOS, campos_fora_da_lista, montar_itens  # noqa: E402
+from datetime import date  # noqa: E402
+
+from export import CAMPOS_PUBLICOS, campos_fora_da_lista, montar_itens, resumo_prazos  # noqa: E402
 
 # Cabeçalho como o da planilha real (inclusive o "Nùmero" com acento grave e a
 # coluna interna "Status atual", que NÃO pode sair no índice público).
@@ -28,8 +30,9 @@ def _aba(linhas):
     return valores, formulas, brutos
 
 
-def _linha(numero, status="", situacao="", resposta="", sessao=46000, merito=""):
-    valores = ["1", "Assunto qualquer", "SEMES", "", numero, "Resposta" if resposta else "",
+def _linha(numero, status="", situacao="", resposta="", sessao=46000, merito="",
+           assunto="Assunto qualquer", secretaria="SEMES"):
+    valores = ["1", assunto, secretaria, "", numero, "Resposta" if resposta else "",
                "", status, situacao, ""]
     formulas = list(valores)
     formulas[5] = resposta
@@ -80,6 +83,37 @@ class TestExportPublico(unittest.TestCase):
 
     def test_aba_vazia(self):
         self.assertEqual(montar_itens([], [], []), [])
+
+    # 46000 = 09/12/2025 no calendário do Sheets
+    def test_campos_de_cobranca(self):
+        itens = montar_itens(*_aba([
+            _linha("210/2025", situacao="so_prorrogacao", resposta=LINK, secretaria="Saúde"),
+            _linha("1578/2025", situacao="pendente", secretaria="NÃO SEI",
+                   assunto="Resposta ao requerimento 210/2025 - Licença; ver também requerimento 9/2020"),
+            _linha("20/2026", situacao="respondido", resposta=LINK, merito=46010,
+                   assunto="Requerimento 20/2026 cita a si mesmo"),
+        ]))
+        por_num = {i["numero"]: i for i in itens}
+        self.assertEqual(por_num["210/2025"]["secretaria"], "SMS")
+        self.assertEqual(por_num["1578/2025"]["secretaria"], "")  # "NÃO SEI" não vira sigla
+        self.assertEqual(por_num["210/2025"]["vence_em"], "08/01/2026")   # 15 + 15
+        self.assertEqual(por_num["1578/2025"]["vence_em"], "24/12/2025")  # 15
+        self.assertEqual(por_num["20/2026"]["vence_em"], "")              # respondido
+        # só cita o que existe na base e não a si mesmo
+        self.assertEqual(por_num["1578/2025"]["cita"], ["210/2025"])
+        self.assertNotIn("cita", por_num["20/2026"])
+        self.assertEqual(campos_fora_da_lista(itens), set())
+
+    def test_resumo_dos_prazos(self):
+        itens = montar_itens(*_aba([
+            _linha("1/2026", situacao="respondido", resposta=LINK, merito=46010),  # 10 dias
+            _linha("2/2026", situacao="respondido", resposta=LINK, merito=46040),  # 40 dias
+            _linha("3/2026", situacao="pendente"),
+        ]))
+        r = resumo_prazos(itens, hoje=date(2026, 3, 1))
+        self.assertEqual((r["com_merito"], r["ate_15"], r["ate_30"]), (2, 1, 1))
+        self.assertEqual(r["mediana"], 25)
+        self.assertEqual((r["sem_merito"], r["fora_do_prazo"]), (1, 1))
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ from datetime import datetime, timedelta
 # Permite `import index` quando rodado como `python respostas-executivo/export.py`
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402
+import prazos  # noqa: E402
 from index import (  # noqa: E402
     COL_DATA_MERITO, COL_SITUACAO, _google_services, _idx_header, _sem_acento,
 )
@@ -35,6 +36,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAIZ not in sys.path:
     sys.path.append(RAIZ)  # camada comum do repo (comum/)
 from comum.escrita import gravar_json  # noqa: E402
+from secretarias import canonica as secretaria_canonica  # noqa: E402  (usa comum/)
 JSON_PADRAO = os.path.join(RAIZ, "requerimentos-index.json")
 
 # Captura a 1ª string entre aspas de =HYPERLINK("url"; "texto") (separador , ou ;)
@@ -47,6 +49,9 @@ RE_HYPERLINK = re.compile(r'HYPERLINK\(\s*"([^"]+)"', re.IGNORECASE)
 CAMPOS_PUBLICOS = (
     "numero", "ano", "assunto", "data_sessao", "data_resposta",
     "data_resposta_merito", "situacao", "respondido", "url_resposta",
+    # cobrança do Executivo (out/2026): sigla da secretaria indicada pelo gabinete
+    # (secretarias.py), prazo da LOM (prazos.py) e pedidos anteriores citados no assunto
+    "secretaria", "vence_em", "cita",
 )
 
 # Número de requerimento válido ("1729/2026"). Linha com outra coisa na coluna
@@ -141,6 +146,7 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
     c_dataresp = _idx_header(cab, "Data da resposta")
     c_situacao = _idx_header(cab, COL_SITUACAO)
     c_merito = _idx_header(cab, COL_DATA_MERITO)
+    c_secretaria = _idx_header(cab, "Secretaria")
 
     def campo(linha: list, idx: int) -> str:
         if idx < 0 or idx >= len(linha):
@@ -173,20 +179,52 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
         situacao = campo(linha, c_situacao) or (
             cls.RESPONDIDO if url else cls.PENDENTE
         )
+        data_sessao = _data(bruto(linha_bruta, c_sessao))
         itens.append(
             {
                 "numero": numero,
                 "ano": _ano_do_numero(numero),
                 "assunto": assunto,
-                "data_sessao": _data(bruto(linha_bruta, c_sessao)),
+                "data_sessao": data_sessao,
                 "data_resposta": _data(bruto(linha_bruta, c_dataresp)),
                 "data_resposta_merito": _data(bruto(linha_bruta, c_merito)),
                 "situacao": situacao,
                 "respondido": situacao == cls.RESPONDIDO,
                 "url_resposta": url,
+                "secretaria": secretaria_canonica(campo(linha, c_secretaria)),
+                "vence_em": prazos.vence_em(data_sessao, situacao),
             }
         )
+    # Desdobramentos: "Resposta ao requerimento 210/2025 - …" cita um pedido anterior.
+    # Só vale número que está na base (e não o próprio); a volta ("citado por") o
+    # painel monta sozinho.
+    existentes = {i["numero"] for i in itens}
+    for i in itens:
+        cita = [n for n in prazos.citados(i["assunto"]) if n in existentes and n != i["numero"]]
+        if cita:
+            i["cita"] = cita
     return itens
+
+
+def resumo_prazos(itens: list[dict], hoje=None) -> dict:
+    """Números da cobrança (dry-run e conferência): mediana até o mérito, quantos
+    chegaram em até 15 e 30 dias, quantos estão sem mérito e fora do prazo."""
+    from datetime import date
+    from statistics import median
+    hoje = hoje or date.today()
+    dias = []
+    for i in itens:
+        a, b = prazos.data_br(i["data_sessao"]), prazos.data_br(i["data_resposta_merito"])
+        if i["respondido"] and a and b and b >= a:
+            dias.append((b - a).days)
+    return {
+        "com_merito": len(dias),
+        "mediana": median(dias) if dias else None,
+        "ate_15": sum(d <= prazos.PRAZO_DIAS for d in dias),
+        "ate_30": sum(d <= prazos.PRAZO_DIAS + prazos.PRORROGACAO_DIAS for d in dias),
+        "sem_merito": sum(1 for i in itens if not i["respondido"]),
+        "fora_do_prazo": sum(1 for i in itens if prazos.fora_do_prazo(i, hoje)),
+    }
 
 
 def campos_fora_da_lista(itens: list[dict]) -> set[str]:
@@ -215,6 +253,14 @@ def main() -> int:
         n = sum(1 for i in itens if i["situacao"] == chave)
         if n:
             print(f"  {cls.ROTULOS[chave]:<18} {n:>4}  ({n / len(itens):.1%})")
+
+    r = resumo_prazos(itens)
+    print(f"  Prazo da LOM (15 dias, +15 se prorrogado): {r['ate_15']} de {r['com_merito']} "
+          f"respondidos em até 15 dias, {r['ate_30']} em até 30; mediana {r['mediana']} dias; "
+          f"{r['fora_do_prazo']} de {r['sem_merito']} sem mérito estão fora do prazo.")
+    com_sec = sum(1 for i in itens if i["secretaria"])
+    print(f"  Secretaria indicada em {com_sec} de {len(itens)}; "
+          f"{sum(1 for i in itens if i.get('cita'))} citam requerimento anterior.")
 
     if args.dry_run:
         for i in itens[:5]:

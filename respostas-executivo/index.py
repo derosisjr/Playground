@@ -490,16 +490,19 @@ def _idx_header(cabecalhos: list[str], alvo: str) -> int:
 
 
 def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
-    """Garante que o cabeçalho da aba contenha as colunas declaradas em ABAS,
-    acrescentando ao fim as que faltarem. Devolve o cabeçalho resultante.
+    """Garante que o cabeçalho da aba tenha as colunas que ESTA automação grava
+    (as de classificação), acrescentando ao fim as que faltarem. Devolve o
+    cabeçalho resultante.
 
-    Necessário porque `anexar_linha` monta a linha pela ordem de ABAS: se a
-    planilha real não tiver as colunas novas, os valores entrariam deslocados."""
+    Só as automáticas: colunas manuais de ABAS que a planilha não tem (ou tem com
+    outra grafia) não são criadas — em 12/10/2026 isto criou "Ordem", "Prazo" e
+    "Data do Protocolo na PMS" vazias no fim da aba. `montar_linha` já descarta
+    valor sem coluna correspondente, então nada se perde."""
     res = sheets.spreadsheets().values().get(
         spreadsheetId=sheet_id, range=f"'{aba}'!1:1",
     ).execute()
     cab = (res.get("values") or [[]])[0]
-    faltantes = [c for c in ABAS[aba]["colunas"] if _idx_header(cab, c) < 0]
+    faltantes = [c for c in COLUNAS_CLASSIFICACAO if _idx_header(cab, c) < 0]
     if not faltantes:
         return cab
     novo = cab + faltantes

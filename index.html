@@ -441,7 +441,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=16"></script>
+    <script src="./comum.js?v=17"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -686,8 +686,16 @@
         // "pendente" é só uma das situações sem mérito (há também prazo prorrogado e
         // só encaminhamento): o número é de quem ainda não recebeu resposta de mérito
         const pend = Array.isArray(r) ? r.filter((x) => !x.respondido).length : r.n - r.respondidos;
-        if (pend) set("stat-requerimentos-lbl", `requerimentos monitorados · ${num(pend)} ` +
-          (classificada(r) ? "sem resposta de mérito" : "sem retorno"));
+        // prazo da Lei Orgânica vencido (art. 58, XVIII): do CI na contagem leve, ou do
+        // `vence_em` de cada pedido quando o hub caiu no índice inteiro
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        const venceu = (x) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(x.vence_em || "");
+          return !x.respondido && m && hoje > new Date(+m[3], +m[2] - 1, +m[1]); };
+        const fora = Array.isArray(r) ? r.filter(venceu).length : r.fora_do_prazo;
+        const prazo = typeof fora !== "number" || !fora ? ""
+          : fora === pend ? ", todos fora do prazo" : ` (${num(fora)} fora do prazo)`;
+        if (pend) set("stat-requerimentos-lbl", `monitorados · ${num(pend)} ` +
+          (classificada(r) ? "sem resposta de mérito" : "sem retorno") + prazo);
       }).catch(() => {});
 
       // Notas do Regimento: só falar delas quando existirem
