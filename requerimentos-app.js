@@ -149,6 +149,31 @@ function mediana(xs) {
   return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
 }
 
+// Número-manchete do topo: a base inteira (os cartões abaixo seguem o filtro).
+// Montado com nós; o prazo só aparece com índice que traz `vence_em`. Escrito com
+// as fontes já carregadas (Comum.quandoFonte): antes a frase trocava de linha — CLS.
+function renderHero() {
+  el("hero-num").hidden = false;
+  const sem = ITENS.filter((i) => !i.respondido).length;
+  const fora = ITENS.filter((i) => i._fora).length;
+  const comPrazo = ITENS.some((i) => i._temPrazo);
+  const pedidos = sem === 1 ? "requerimento do mandato" : "requerimentos do mandato";
+  Comum.quandoFonte(Comum.FACES_MANCHETE, () => {
+    el("hero-grande").textContent = fmt(sem);
+    const ctx = el("hero-contexto");
+    if (!CLASSIFICADO) {
+      ctx.textContent = `${pedidos} ainda sem nenhum retorno da Prefeitura.`;
+      return;
+    }
+    ctx.textContent = `${pedidos} sem resposta de mérito da Prefeitura`;
+    if (comPrazo && sem && fora) {
+      const b = document.createElement("b");
+      b.textContent = fora === sem ? "todos fora do prazo" : `${fmt(fora)} fora do prazo`;
+      ctx.append(" — ", b, ` de ${PRAZO_LOM} dias da Lei Orgânica.`);
+    } else ctx.append(".");
+  });
+}
+
 // Cards de resumo (respeitam o filtro atual)
 function atualizarResumo() {
   const total = filtradas.length;
@@ -170,8 +195,8 @@ function atualizarResumo() {
   const noPrazo = prazos.filter((d) => d <= PRAZO_LOM).length;
 
   const de = `${fmt(respondidos)} de ${fmt(total)}`;
-  // o .sub é de uma linha só (comum.css corta com reticências): o essencial vem
-  // primeiro e o texto completo fica no `title`
+  // o .sub tem até 2 linhas (comum.css corta o resto): o essencial vem primeiro e
+  // o texto completo fica no `title`
   let subSem = tramite ? `${fmt(tramite)} só receberam trâmite` : "aguardando o Executivo";
   let tituloSem = subSem;
   if (comPrazo && semMerito) {
@@ -356,6 +381,7 @@ async function init() {
     ITENS = await resp.json();
   } catch (e) {
     el("contagem").textContent = "";
+    el("hero-num").hidden = true;  // sem dado, sem esqueleto eterno
     Comum.estadoErro("stats",
       "Não foi possível carregar os requerimentos. Verifique a conexão.", init);
     return;
@@ -364,6 +390,7 @@ async function init() {
   for (const i of ITENS) for (const n of i.cita || []) (CITADO_POR[n] = CITADO_POR[n] || []).push(i.numero);
   CLASSIFICADO = baseClassificada(ITENS);
   if (!CLASSIFICADO) semClassificacao();
+  renderHero();
   preencherSelects();
   // estado vindo da URL (link compartilhável) — antes do primeiro render
   const p = Comum.lerParams();

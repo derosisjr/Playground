@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
@@ -43,8 +43,9 @@
         font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
         letter-spacing: .22em; text-transform: uppercase; margin: 0 0 10px; }
       .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); }
+      /* o nome vem do portal e pode ter 80+ caracteres: menor que o título dos painéis */
       h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600; margin: 0;
-        font-size: clamp(22px, 3.4vw, 34px); line-height: 1.1; letter-spacing: -0.01em; }
+        font-size: clamp(21px, 2.4vw, 28px); line-height: 1.15; letter-spacing: -0.01em; }
       .hero-sub { color: #c3cdda; margin: 10px 0 0; font-size: 14px;
         font-family: "IBM Plex Mono", monospace; display: flex; flex-wrap: wrap; gap: 8px 18px; }
       .hero-sub .rank { color: var(--gold-bright); }
@@ -119,11 +120,11 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
-        <p class="eyebrow">Raio-X do favorecido · Despesas de Santos</p>
+        <p class="eyebrow">Prefeitura · Raio-X do favorecido</p>
         <h1 id="fav-nome">Carregando…</h1>
         <p class="hero-sub">
           <span id="fav-doc"></span>
@@ -234,6 +235,6 @@
       </div>
     </main>
 
-    <script defer src="./favorecido-app.js?v=9"></script>
+    <script defer src="./favorecido-app.js?v=10"></script>
   </body>
 </html>

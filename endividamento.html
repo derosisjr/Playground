@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -58,13 +58,7 @@
       h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
         letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
-      /* número-âncora no hero: a dívida em uma linha */
-      .hero-num { margin: 22px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 22px; }
-      .hero-num .grande { font-family: "IBM Plex Mono", monospace; font-weight: 600;
-        font-size: clamp(34px, 6vw, 52px); line-height: 1; color: var(--gold-bright);
-        font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-      .hero-num .contexto { color: #c3cdda; font-size: 13.5px; line-height: 1.55; max-width: 430px; }
-      .hero-num .contexto b { color: #fff; }
+      /* número-âncora no hero (.hero-num): no comum.css */
 
       h2.sec { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 22px;
         letter-spacing: -0.01em; margin: 34px 0 4px; }
@@ -118,7 +112,6 @@
       .m-rodape { color: var(--muted); font-size: 11.5px; margin-top: 9px; line-height: 1.5; }
       .m-rodape b { color: inherit; }
 
-      /* "Em resumo" */
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
       .box canvas { height: 300px !important; width: 100% !important; }
@@ -126,11 +119,7 @@
       .nota-quebra { color: var(--muted); font-size: 12.5px; line-height: 1.6; margin: 10px 0 0; max-width: 90ch; }
       tr.linha-quebra td { border-bottom: 2px dashed var(--line); }  /* tabela: mais recente no topo */
       .marca-quebra { font-size: 11px; font-weight: 700; white-space: nowrap; }
-      .resumo-box { border-left: 3px solid var(--gold); margin-top: 16px; }
-      .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-        letter-spacing: .18em; text-transform: uppercase; color: var(--gold-texto); /* --gold dava 2,3:1 no claro */
-        font-weight: 600; margin: 0 0 8px; }
-      .resumo-texto { font-size: 15px; line-height: 1.65; margin: 0; max-width: 78ch; }
+      .resumo-box { margin-top: 16px; }  /* "Em resumo": o resto no comum.css */
 
       .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
@@ -179,20 +168,21 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>Comum.topbar("endividamento.html");</script>
-    <header class="hero">
+    <header class="hero com-manchete">
       <div class="hero-in">
-        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Fiscalização do Executivo</p>
-        <h1>Semáforo Fiscal — Endividamento de Santos</h1>
+        <p class="eyebrow">Prefeitura · Dívida</p>
+        <h1>Semáforo Fiscal</h1>
         <p class="hero-sub">
           Quanto a Prefeitura deve, para onde a dívida caminha e se ela cabe nos limites da
           Lei de Responsabilidade Fiscal — direto do Relatório de Gestão Fiscal que o próprio
           município declara ao Tesouro Nacional, a cada quadrimestre.
         </p>
-        <div class="hero-num" id="hero-num" hidden>
-          <span class="grande" id="hero-divida">—</span>
-          <span class="contexto" id="hero-contexto"></span>
+        <!-- nasce com esqueleto (antes nascia oculto e empurrava a página ao chegar) -->
+        <div class="hero-num" id="hero-num">
+          <span class="grande" id="hero-divida"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
+          <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
         <p class="base-de" data-base="endividamento-index.json"></p>
       </div>
@@ -313,6 +303,6 @@
       </p>
     </main>
 
-    <script src="./endividamento-app.js?v=7"></script>
+    <script src="./endividamento-app.js?v=8"></script>
   </body>
 </html>

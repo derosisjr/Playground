@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -125,11 +125,11 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>Comum.topbar("requerimentos.html");</script>
-    <header class="hero">
+    <header class="hero com-manchete">
       <div class="hero-in">
-        <p class="eyebrow">Gabinete do Vereador — Câmara de Santos</p>
+        <p class="eyebrow">Câmara · Requerimentos</p>
         <h1>Requerimentos &amp; Respostas</h1>
         <p class="hero-sub">
           Pesquisa rápida dos requerimentos do mandato e das respostas do Executivo.
@@ -139,6 +139,11 @@
           <span id="intro-merito">Só conta como respondido o que traz resposta de mérito: pedido de prorrogação
           de prazo e ofício de encaminhamento sem anexo aparecem à parte.</span>
         </p>
+        <!-- número-manchete: os sem resposta de mérito, base inteira (requerimentos-app.js, renderHero) -->
+        <div class="hero-num" id="hero-num">
+          <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:2.5ch;height:.8em"></span></span>
+          <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
+        </div>
         <p class="base-de" data-base="requerimentos-index.json"></p>
       </div>
     </header>
@@ -236,6 +241,6 @@
       </p>
     </main>
 
-    <script src="./requerimentos-app.js?v=8"></script>
+    <script src="./requerimentos-app.js?v=9"></script>
   </body>
 </html>

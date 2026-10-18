@@ -63,10 +63,13 @@ async function init() {
     const r = await fetch("./despesas-index.json", { cache: "no-cache" });
     DADOS = await r.json();
   } catch (e) {
+    // sem dado, sem esqueleto eterno
+    document.getElementById("hero-num").hidden = document.getElementById("em-resumo").hidden = true;
     Comum.estadoErro("stats",
       "Não foi possível carregar os dados de despesas. Verifique a conexão.", init);
     return;
   }
+  renderHero();
   renderStats();
   renderResumo();
   renderGraficosSeguro();
@@ -179,20 +182,53 @@ function renderStats() {
   ];
   document.getElementById("stats").innerHTML = cards.map(c =>
     `<div class="stat"><div class="rotulo">${c.rotulo}</div>
-     <div class="valor">${c.valor}</div><div class="sub">${c.sub}</div></div>`).join("");
+     <div class="valor">${c.valor}</div><div class="sub" title="${esc(c.sub)}">${c.sub}</div></div>`).join("");
 }
 
 // "Em resumo" — narrativa determinística gerada pelo export (DADOS.resumo)
+// A caixa nasce visível com a altura reservada (despesas.html); o texto, em Fraunces,
+// só é escrito com a fonte carregada (senão troca de linha ao vê-la chegar — CLS).
 function renderResumo() {
   const box = document.getElementById("em-resumo");
-  if (!box || !DADOS.resumo?.texto) return;
-  box.querySelector(".resumo-texto").textContent = DADOS.resumo.texto;
-  box.hidden = false;
+  if (!box) return;
+  box.hidden = !DADOS.resumo?.texto;
+  if (box.hidden) return;
+  const t = box.querySelector(".resumo-texto");
+  Comum.quandoFonte(['400 20px "Fraunces"', '600 20px "Fraunces"'], () => {
+    t.innerHTML = Comum.destacarNumeros(DADOS.resumo.texto);
+    t.classList.remove("resumo-reserva");
+    t.removeAttribute("aria-hidden");
+  });
+}
+
+// ── Hero: número-manchete — o acumulado do ano (o mesmo do "Em resumo") ──────
+// Montado com nós (texto do export não vira HTML). Sem acumulado comparável,
+// fica o último mês fechado; sem resumo, o bloco some. Escrito com as fontes já
+// carregadas (Comum.quandoFonte): antes disso a frase trocava de linha — CLS.
+function renderHero() {
+  const r = DADOS.resumo, mr = r?.mes_ref;
+  const caixa = document.getElementById("hero-num");
+  const grande = document.getElementById("hero-grande"), ctx = document.getElementById("hero-contexto");
+  caixa.hidden = !mr;
+  if (!mr) return;
+  const mes = new Date(mr.ano, mr.mes - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+  Comum.quandoFonte(Comum.FACES_MANCHETE, () => {
+    if (r.yoy) {
+      grande.textContent = compacto(r.yoy.atual);
+      const b = document.createElement("b");
+      b.textContent = `${Math.abs(r.yoy.pct)}% ${r.yoy.pct >= 0 ? "acima" : "abaixo"}`;
+      ctx.replaceChildren(`pagos pela Prefeitura em ${mr.ano}, de janeiro a ${mes} — `, b,
+        ` do mesmo período de ${mr.ano - 1}.`);
+    } else {
+      grande.textContent = compacto(mr.valor);
+      ctx.textContent = `pagos pela Prefeitura em ${mes} de ${mr.ano}, o último mês completo.`;
+    }
+  });
 }
 
 // ── Gráficos ─────────────────────────────────────────────────────────────────
 function eixoReais() {
-  return { ticks: { callback: (v) => compacto(v) } };
+  return { ticks: { callback: (v) => Comum.compactoEixo(v) } };
 }
 
 // Desvio de cada mês vs a média dos até 12 meses anteriores (null = sem base p/ comparar)
@@ -393,7 +429,7 @@ function renderFuncao() {
   const fmt = fnVista === "pct" ? (v) => v.toFixed(1).replace(".", ",") + "% do total"
     : (v) => brlc(v);
   const tick = fnVista === "pct" ? (v) => v + "%"
-    : fnVista === "capita" ? (v) => brl(v) : (v) => compacto(v);
+    : fnVista === "capita" ? (v) => brl(v) : (v) => Comum.compactoEixo(v);
 
   new Chart(document.getElementById("ch-funcao"), {
     type: "bar",

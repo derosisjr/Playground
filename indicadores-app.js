@@ -11,7 +11,9 @@
     const escuro = document.documentElement.dataset.tema === "escuro";
     COR = {
       gasto: "#c9a84c",
-      indicador: escuro ? "#7fb3e3" : "#1d6fb8",
+      // navy do site (o azul #1d6fb8 fugia da paleta navy/dourado); no escuro, o
+      // mesmo azul-acinzentado claro do Raio-X do favorecido
+      indicador: escuro ? "#9fb6d9" : "#07111f",
       ambar: "rgba(201,168,76,0.25)",
       grade: escuro ? "rgba(255,255,255,0.08)" : "rgba(7,17,31,0.07)",
       texto: escuro ? "#c3cdda" : "#5d6675",
@@ -88,8 +90,9 @@
     pct: (v) => v == null ? "—" : v.toLocaleString("pt-BR") + "%",
   };
   const fmt = (formato, v) => (FMT[formato] || FMT.num)(v);
-  // cores estáveis para as linhas por município no modo série
-  const CORES_MUN = ["#c9a84c", "#1d6fb8", "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
+  // cores estáveis para as linhas por município no modo série (Santos = dourado; a 2ª
+  // é o navy do tema, no lugar do azul fora da paleta)
+  const coresMun = () => [COR.gasto, COR.indicador, "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
 
   // Ano-base dos valores em R$ (o export corrige pelo IPCA médio anual); null
   // em índice antigo, ainda em valores correntes — aí o painel diz isso.
@@ -109,9 +112,13 @@
   function renderTema() {
     const t = temaAtual();
     const base = anoBaseReal();
-    $("pergunta").hidden = !t.resumo;
-    $("pergunta-txt").innerHTML = Comum.escapar(t.resumo)
-      .replace(/(R\$ [\d.,]+|[+−-]\d+%|\d+[\d.,]*\s*\(\d{4}\))/g, "<b>$1</b>");
+    // a manchete é em Fraunces: escrita antes de a fonte chegar, ela trocava de linha
+    // na troca de fonte e empurrava o gráfico (CLS) — espera a fonte, no máximo 2,5 s
+    Comum.quandoFonte(['500 21px "Fraunces"', '700 21px "Fraunces"'], () => {
+      $("pergunta").hidden = !t.resumo;
+      $("pergunta-txt").innerHTML = Comum.escapar(t.resumo)
+        .replace(/(R\$ [\d.,]+|[+−-]\d+%|\d+[\d.,]*\s*\(\d{4}\))/g, "<b>$1</b>");
+    });
     $("pergunta-fonte").textContent = (t.modo === "serie"
       ? "Comparação entre municípios de porte similar — fontes no rodapé."
       : "Comparação entre as pontas disponíveis de cada série — fontes no rodapé.") +
@@ -217,19 +224,20 @@
       .filter((m) => m !== "3548500")];
     const anos = ind.serie.map((p) => p.ano);
     const valorMun = (p, m) => m === "3548500" ? p.santos : (p.comparaveis[m] ?? null);
+    const CORES = coresMun();
 
     const datasets = municipios.map((m, i) => ({
       label: DADOS.comparaveis[m],
       data: ind.serie.map((p) => valorMun(p, m)),
-      borderColor: CORES_MUN[i % CORES_MUN.length],
-      backgroundColor: CORES_MUN[i % CORES_MUN.length],
+      borderColor: CORES[i % CORES.length],
+      backgroundColor: CORES[i % CORES.length],
       borderWidth: m === "3548500" ? 3.5 : 1.5,
       pointRadius: m === "3548500" ? 3 : 0,
       tension: 0.25, spanGaps: true,
     }));
 
     $("legenda").innerHTML = municipios.map((m, i) =>
-      `<span><span class="sw" style="background:${CORES_MUN[i % CORES_MUN.length]}"></span>${Comum.escapar(DADOS.comparaveis[m])}</span>`
+      `<span><span class="sw" style="background:${CORES[i % CORES.length]}"></span>${Comum.escapar(DADOS.comparaveis[m])}</span>`
     ).join("");
 
     desenhar(anos, datasets, ind.nome, (c) =>

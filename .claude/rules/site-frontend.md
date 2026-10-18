@@ -68,6 +68,43 @@ mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). A
   0,001–0,021. Elemento que aparece depois do dado (ex.: resumo por secretaria) nasce visível com
   "carregando…", senão empurra a página.
 
+**Acabamento visual (Lote 6, out/2026).**
+- **Topo dos painéis = cartão do hub**: o `.eyebrow` repete a `.tag` do cartão ("Prefeitura ·
+  Execução orçamentária", "Câmara · Proposituras"…) e o `<h1>` é o nome do cartão ("Radar de
+  Despesas", não "… — Prefeitura de Santos"). Páginas sem cartão seguem o padrão "Origem ·
+  assunto" (Raio-X: "Prefeitura · Raio-X do favorecido"; Novidades: "Gabinete ·
+  Acompanhamento"). O `<title>` não mudou. Painel novo: copiar a tag do cartão.
+- **Número-manchete (`.hero-num`)** no comum.css (era cópia no Semáforo e no Preço comparado):
+  `.grande` (Plex Mono dourado) + `.contexto`. Abre Despesas (acumulado do ano, de
+  `resumo.yoy`), Requerimentos (sem resposta de mérito na base inteira, com "todos fora do
+  prazo" quando o índice traz `vence_em`) e o Semáforo. Nasce com **esqueleto em linhas
+  inline** (`inline-block` + `<br>`: mesma altura e linha de base do texto; em bloco o contexto
+  pulava) e some se o fetch falhar. `header.hero.com-manchete`: **até 600 px o número substitui
+  o parágrafo** (`.hero-sub` oculto, "Sobre este painel ▾" vai para depois do número). O Preço
+  comparado ficou de fora de propósito (decisão do usuário: o item dele ficou para depois).
+- **`Comum.quandoFonte(faces, fn, ms=2500)`**: escreve texto grande em fonte web só com a face
+  carregada (`document.fonts.load`, teto de 2,5 s). Pintado com a reserva (Georgia), o parágrafo
+  troca de linha quando a Fraunces chega — trechos pulam de linha e o CLS chegava a 0,3–0,4 (a
+  métrica pesa o deslocamento horizontal). `Comum.FACES_MANCHETE` = faces do `.hero-num`.
+  Medição: sem as fontes web (rota abortada no Playwright) antes e depois davam o mesmo CLS.
+- **"Em resumo" (`.resumo-box`) no comum.css**, estilo da manchete do Custo por Resultado:
+  Fraunces 20 px (18 até 900, 16 até 600), números em negrito por **`Comum.destacarNumeros`**
+  (escapa e marca R$/%; devolve HTML), largura inteira. A borda dourada é `.box.resumo-box` —
+  o `.box` local vem depois e redefinia a borda. Em Despesas a caixa fica acima das abas e nasce
+  visível com `.resumo-reserva` (altura de um mês típico por faixa de largura).
+- **Subtítulo dos KPIs (`.stats .stat .sub`) em até 2 linhas** (era 1, com reticências); onde o
+  painel põe `title`, o texto inteiro fica nele.
+- **Eixos em R$: `Comum.compactoEixo`** ("R$ 600 mi", "R$ 1,5 bi"); tooltip segue com `compacto`.
+- **Hub no celular** (até 640 px, 1 coluna): `.desc` em 2 linhas e respiros menores; grade,
+  número de 34 px e desktop intocados (posição dos 10 cartões a 1366 conferida igual) —
+  4.577 → 3.619 px a 390.
+- Custo por Resultado: coluna de 1180 px como os demais (o Regimento segue estreito, é leitura)
+  e linha do indicador em navy (`#07111f`; `#9fb6d9` no escuro), no lugar do azul `#1d6fb8`.
+- **Raio-X do favorecido**: o nome do portal (caixa alta) é exibido por `nomeLegivel()`
+  (`favorecido-app.js`, só exibição): iniciais maiúsculas, conectivos em minúscula, siglas e
+  formas societárias intactas (lista `SIGLAS`, palavra sem vogal, romano); nome que já tem
+  minúscula fica como está; o original vai no `title` do `<h1>` e nas grafias. Título 21–28 px.
+
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
 sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página
