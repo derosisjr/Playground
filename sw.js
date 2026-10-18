@@ -53,6 +53,7 @@ const NUCLEO = [
   "./consulta.html",
   "./favorecido.html",
   "./retrospectiva.html",
+  "./novidades.html",
   "./comum.css",
   "./comum.js",
   "./favicon.svg",
@@ -133,7 +134,9 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  if (url.pathname.endsWith(".json") && !url.pathname.endsWith("/bases-atualizacao.json")) {
+  // bases-atualizacao.json e novidades.json mudam 1×/dia e respondem "o que há de novo":
+  // servidos do cache, mostrariam o dia anterior — caem na rede-primeiro abaixo
+  if (url.pathname.endsWith(".json") && !/\/(bases-atualizacao|novidades)\.json$/.test(url.pathname)) {
     // dados: responde do cache na hora (se houver) e revalida por trás
     e.respondWith(
       caches.open(CACHE_DADOS).then(async (c) => {

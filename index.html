@@ -151,6 +151,16 @@
         .hub-tema { min-width: 44px; justify-content: center; }
       }
 
+      /* Linha de novidades sob a régua (fora da grade). Nasce com o texto padrão e numa
+         linha só: o número chega depois sem mudar a altura do hero (sem "pulo") */
+      .novidades-linha { display: inline-block; max-width: 100%; margin-top: 14px; min-height: 24px;
+        padding: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .14em;
+        text-transform: uppercase; color: #cdd6e3; text-decoration: none;
+        opacity: 0; animation: rise .8s .45s cubic-bezier(.2,.7,.2,1) forwards; }
+      .novidades-linha b { color: var(--gold-bright); font-weight: 600; }
+      .novidades-linha:hover, .novidades-linha:focus-visible { color: var(--gold-bright); }
+
       /* Skeleton de carregamento (números ao vivo) */
       /* gradiente e animação vêm do .skel do comum.css; aqui só a geometria inline
          (o --r-sm do comum é largo demais para um número de 34px) e a variante
@@ -268,7 +278,7 @@
       @keyframes rise { to { opacity: 1; transform: none; } }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
-        .brand, .eyebrow, h1, .lede, .regua, .cartao { opacity: 1; transform: none; }
+        .brand, .eyebrow, h1, .lede, .regua, .novidades-linha, .cartao { opacity: 1; transform: none; }
         html { scroll-behavior: auto; }  /* o salto do "pular" também é movimento */
       }
     </style>
@@ -307,6 +317,7 @@
             <span class="ind-val" id="ind-atual-val"><span class="skel"></span></span>
           </span>
         </div>
+        <a class="novidades-linha" id="novidades-linha" href="./novidades.html">Novidades das bases →</a>
       </div>
     </header>
 
@@ -441,7 +452,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=18"></script>
+    <script src="./comum.js?v=19"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -750,6 +761,22 @@
         if (!classificada(r)) document.querySelector("#ind-req .ind-lbl").textContent = "Requerimentos com retorno";
         indicador("ind-req", Math.round((resp / n) * 100) + "% · " + resp + " de " + n);
       }).catch(() => esconder("ind-req"));
+
+      // Novidades desde a última visita à página de novidades (mesma chave que o
+      // novidades-app.js grava). Nunca visitou: as dos últimos 7 dias.
+      carregar("./novidades.json").then(({ dados: n }) => {
+        const evs = Array.isArray(n.eventos) ? n.eventos : [];
+        if (!evs.length) return;
+        let visto = "";
+        try { visto = localStorage.getItem("novidades:visto_ate") || ""; } catch (e) { /* modo privado */ }
+        const corte = visto || new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+        const k = evs.filter((e) => (visto ? e.visto_em > corte : e.visto_em >= corte)).length;
+        const linha = el("novidades-linha");
+        const b = document.createElement("b");
+        b.textContent = k ? num(k) : "Nenhuma";
+        linha.replaceChildren(b, ` ${k > 1 ? "novidades" : "novidade"} ` +
+          (visto ? "desde a última visita" : "nos últimos 7 dias") + " →");
+      }).catch(() => { /* fica o texto padrão, que já leva à página */ });
 
       // Por último e com guarda: se o comum.js não carregar, os números acima
       // já foram pedidos e pintados — o hub degrada só no ícone do tema.
