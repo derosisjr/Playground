@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -41,9 +41,10 @@
       body { margin: 0; background: var(--bg); color: var(--tinta);
         font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif; }
       a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-      .shell { max-width: 1040px; margin: 0 auto; padding: 0 20px 60px; }
+      /* 1180px como os demais painéis (com 1040 o conteúdo "pulava" de lugar ao navegar) */
+      .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
 
-      .hero-in { position: relative; max-width: 1040px; margin: 0 auto; padding: 30px 20px; }
+      .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
       h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
         letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
@@ -106,11 +107,11 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>Comum.topbar("indicadores.html");</script>
     <header class="hero">
       <div class="hero-in">
-        <p class="eyebrow">Gabinete do Vereador — Câmara de Santos</p>
+        <p class="eyebrow">Prefeitura · Custo por Resultado</p>
         <h1>Custo por Resultado</h1>
         <p class="hero-sub">
           Quanto a Prefeitura gasta por habitante — e o que o cidadão recebe de volta.
@@ -167,6 +168,6 @@
       </p>
     </main>
 
-    <script src="./indicadores-app.js?v=6"></script>
+    <script src="./indicadores-app.js?v=7"></script>
   </body>
 </html>

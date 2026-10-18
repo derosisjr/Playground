@@ -30,6 +30,11 @@ window.Comum = (() => {
     (s == null ? "" : String(s)).replace(/[&<>"']/g,
       (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  // Narrativa com os números em negrito (valores em R$ e percentuais) — o "Em resumo"
+  // dos painéis. Devolve HTML: escapa ANTES de marcar (o texto vem do export).
+  const RE_NUMEROS = /([+−-]?R\$\s?[\d.,]*\d(?:\s(?:milhões|milhão|bilhões|bilhão|mil|mi|bi)\b)?|[+−-]?\d+(?:,\d+)?%)/g;
+  const destacarNumeros = (texto) => escapar(texto).replace(RE_NUMEROS, "<b>$1</b>");
+
   const norm = (s) =>
     (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
@@ -66,6 +71,9 @@ window.Comum = (() => {
     if (a >= 1e3) return "R$ " + Math.round(v / 1e3) + " mil";
     return brl(v);
   };
+  // Eixo dos gráficos: os ticks são números redondos e as casas zeradas sobravam
+  // ("R$ 600,0 mi" → "R$ 600 mi"; "R$ 1,50 bi" → "R$ 1,5 bi"). Tooltip segue com compacto.
+  const compactoEixo = (v) => compacto(v).replace(/,(\d*?)0+ (mi|bi)$/, (_, d, u) => (d ? "," + d : "") + " " + u);
   const digitos = (s) => (s || "").toString().replace(/\D/g, "");
   // adia `fn` até parar de chamar por `ms` — busca a cada tecla em milhares de linhas
   const debounce = (fn, ms = 150) => {
@@ -243,6 +251,18 @@ window.Comum = (() => {
       '<button type="button" class="btn">Tentar de novo</button></div>';
     el.querySelector("button").addEventListener("click", aoTentar);
   }
+
+  // ── Texto grande em fonte web: escrever só com a fonte carregada ─────────────
+  // Pintado com a fonte de reserva (Georgia), um parágrafo em Fraunces troca de
+  // linha quando a fonte chega — trechos pulam de uma linha para outra e o que vem
+  // embaixo desce (CLS de 0,3–0,4 medido no "Em resumo" e no Custo por Resultado).
+  // Espera as faces pedidas (ex.: '400 20px "Fraunces"'), no máximo `ms`, e chama fn.
+  function quandoFonte(faces, fn, ms = 2500) {
+    const carga = document.fonts ? Promise.all(faces.map((f) => document.fonts.load(f))) : Promise.resolve();
+    Promise.race([carga, new Promise((ok) => setTimeout(ok, ms))]).catch(() => {}).then(fn);
+  }
+  // faces do número-manchete do hero (.hero-num): o número e a frase, com negrito
+  const FACES_MANCHETE = ['600 52px "IBM Plex Mono"', '400 13.5px Manrope', '700 13.5px Manrope'];
 
   // ── Visualizador de PDF embutido (Comum.visorPdf) ───────────────────────────
   // PDF.js 6 (ESM no cdnjs), carregado sob demanda no 1º uso. Os PDFs da Câmara
@@ -473,8 +493,13 @@ window.Comum = (() => {
   // ── Celular: texto do hero recolhido em 3 linhas (o 1º resultado ficava abaixo da dobra)
   function recolherHero() {
     if (!matchMedia("(max-width: 600px)").matches) return;
-    const sub = document.querySelector("header.hero .hero-sub");
-    if (!sub || sub.scrollHeight <= sub.clientHeight + 2) return;  // cabe nas 3 linhas
+    const hero = document.querySelector("header.hero");
+    const sub = hero && hero.querySelector(".hero-sub");
+    if (!sub) return;
+    // painel com número-manchete: o parágrafo nasce escondido (comum.css) e o botão
+    // vem depois do número — título, número, "Sobre este painel", data da base
+    const manchete = hero.classList.contains("com-manchete") && hero.querySelector(".hero-num");
+    if (!manchete && sub.scrollHeight <= sub.clientHeight + 2) return;  // cabe nas 3 linhas
     const b = document.createElement("button");
     b.type = "button";
     b.className = "hero-mais";
@@ -485,7 +510,7 @@ window.Comum = (() => {
       b.setAttribute("aria-expanded", String(aberto));
       b.textContent = aberto ? "Menos ▴" : "Sobre este painel ▾";
     });
-    sub.after(b);
+    (manchete || sub).after(b);
   }
 
   // ── Aviso de dados novos (mensagem do sw.js) ────────────────────────────────
@@ -877,7 +902,7 @@ window.Comum = (() => {
     });
   }
 
-  return { topbar, lerParams, gravarParams, exportarCsv, escapar, norm, compacto, brl, debounce, paginador, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, toast, copiar, compartilhar, estadoErro, identidadeFavorecido,
+  return { topbar, lerParams, gravarParams, exportarCsv, escapar, destacarNumeros, norm, compacto, compactoEixo, brl, debounce, paginador, abrirPaleta,
+           alternarTema, temaAtual, chartAcessivel, toast, copiar, compartilhar, estadoErro, quandoFonte, FACES_MANCHETE, identidadeFavorecido,
            nomeNormalizado, visorPdf, POP_SANTOS };
 })();

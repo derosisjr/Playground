@@ -6,7 +6,7 @@
     <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#07111f" />
@@ -270,6 +270,22 @@
       .abrir .arw { transition: transform .3s cubic-bezier(.2,.7,.2,1); color: var(--gold-texto); font-size: 16px; }
       .cartao:hover .abrir .arw { transform: translateX(6px); }
 
+      /* Celular (2026-10): a grade não muda — só o cartão encolhe. Com as descrições
+         inteiras (4–5 linhas cada) o hub passava de 4.500px, ≈5,5 telas. A descrição
+         fica em 2 linhas (o texto todo segue no DOM e no próprio painel) e os respiros
+         internos diminuem; número, rótulo e "Abrir" não mudam. Até 640px a grade já é
+         de 1 coluna, então a reserva de 2 linhas do .lbl (alinhar a fileira) sai. */
+      @media (max-width: 640px) {
+        .grade { gap: 14px; }
+        .cartao { padding: 18px 20px 16px; }
+        .cartao h3 { margin-top: 8px; }
+        .cartao .desc { margin-top: 8px; line-height: 1.5; display: -webkit-box;
+          -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .stat { margin-top: 12px; padding-top: 10px; }
+        .stat .lbl { min-height: 0; }
+        .abrir { margin-top: 10px; }
+      }
+
       /* ── Rodapé ───────────────────────────────────────────────────── */
       footer.rod { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px;
         text-align: center; padding: 24px; line-height: 1.7; background: var(--paper-2); }
@@ -452,7 +468,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;

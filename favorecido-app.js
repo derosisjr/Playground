@@ -26,7 +26,7 @@ const esc = Comum.escapar;
 const brl = Comum.brl;
 const brlc = (v) => Comum.brl(v, 2);
 const compacto = Comum.compacto;
-const eixoReais = { ticks: { callback: (v) => compacto(v) } };
+const eixoReais = { ticks: { callback: (v) => Comum.compactoEixo(v) } };
 const dataBR = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "—";
 const soDigitos = (s) => String(s || "").replace(/\D/g, "");
 
@@ -220,10 +220,34 @@ async function consultarCnpj(dig, d) {
   }
 }
 
+// O portal grava o nome em caixa alta ("INSTITUTO DE PREVIDÊNCIA SOCIAL DOS…"), que em
+// serifa grande no título gritava. Só para exibir: maiúscula nas iniciais, conectivos em
+// minúscula e siglas/formas societárias intactas. Nome que já vem com minúsculas fica
+// como está; o original segue no `title` do título e nas grafias da origem.
+const CONECTIVOS = new Set(["A", "O", "AS", "OS", "AO", "AOS", "À", "ÀS", "DE", "DA", "DO", "DAS", "DOS",
+  "E", "EM", "NA", "NO", "NAS", "NOS", "PARA", "POR", "COM"]);
+const SIGLAS = new Set(["LTDA", "EIRELI", "ME", "EPP", "SA", "S/A", "S.A", "SPE", "CIA", "IPREV", "CET",
+  "COHAB", "PRODESAN", "CAPEP", "IPS", "SABESP", "CPFL", "INSS", "FGTS", "SUS", "ONG", "OSC", "OSCIP",
+  "APAE", "SESC", "SENAC", "SESI", "SENAI", "UPA", "UBS", "SP", "RJ", "MG", "BR"]);
+function nomeLegivel(nome) {
+  if (!nome || /[a-zß-ÿ]/.test(nome)) return nome;
+  const inicial = (p) => p.charAt(0) + p.slice(1).toLowerCase();
+  return nome.trim().split(/\s+/).map((w, i) => {
+    const nu = w.replace(/[.,;:]+$/, "");
+    // sigla conhecida (LTDA., S/A…), número, palavra sem vogal (CPFL, JBS) ou romano
+    if (SIGLAS.has(nu) || /\d/.test(w) || !/[AEIOUYÁÉÍÓÚÂÊÔÃÕÀÜ]/.test(w) ||
+        /^(I{1,3}|IV|VI{0,3}|IX|X{1,3})$/.test(nu)) return w;
+    if (i > 0 && CONECTIVOS.has(w)) return w.toLowerCase();
+    return w.split("-").map((p) => p.split("'").map(inicial).join("'")).join("-");
+  }).join(" ");
+}
+
 function render(d) {
   DOSSIE = d;
-  document.title = `${d.nome} — Raio-X do favorecido`;
-  el("fav-nome").textContent = d.nome;
+  const nome = nomeLegivel(d.nome);
+  document.title = `${nome} — Raio-X do favorecido`;
+  el("fav-nome").textContent = nome;
+  el("fav-nome").title = nome !== d.nome ? d.nome : "";
   el("fav-doc").textContent = d.documento || "documento não informado";
   el("fav-rank").textContent = d.rank ? `#${d.rank} entre os favorecidos do mandato` : "";
   // grafias originais consolidadas na mesma identidade (CNPJ) — o total soma todas;

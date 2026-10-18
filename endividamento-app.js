@@ -46,6 +46,7 @@ async function init() {
     Comum.estadoErro("semaforo-cards",
       "Não foi possível carregar os dados do painel. Se persistir, a fonte pode estar fora do ar.", init);
     document.getElementById("dados-vivos").hidden = true;
+    document.getElementById("hero-num").hidden = true;  // sem dado, sem esqueleto eterno
     return;
   }
   renderHero();
@@ -69,15 +70,19 @@ function rotuloLongo(u) {
   return `${u.q}º quadrimestre de ${u.ano}`;
 }
 
+// Nasce com esqueleto (endividamento.html) e é escrito com as fontes já carregadas
+// (Comum.quandoFonte): antes a frase trocava de linha quando a fonte chegava — CLS.
 function renderHero() {
   const t = DADOS.totais, u = DADOS.ultimo;
+  document.getElementById("hero-num").hidden = !t.divida;
   if (!t.divida) return;
-  document.getElementById("hero-divida").textContent = compacto(t.divida);
-  document.getElementById("hero-contexto").innerHTML =
-    `é a <b>dívida consolidada</b> da Prefeitura no ${esc(rotuloLongo(u))} — ` +
-    `${esc(pct(t.dc_pct))} da receita corrente líquida, ` +
-    `ou <b>${esc(brl(t.divida / POP_SANTOS))} por santista</b>.`;
-  document.getElementById("hero-num").hidden = false;
+  Comum.quandoFonte(Comum.FACES_MANCHETE, () => {
+    document.getElementById("hero-divida").textContent = compacto(t.divida);
+    document.getElementById("hero-contexto").innerHTML =
+      `é a <b>dívida consolidada</b> da Prefeitura no ${esc(rotuloLongo(u))} — ` +
+      `${esc(pct(t.dc_pct))} da receita corrente líquida, ` +
+      `ou <b>${esc(brl(t.divida / POP_SANTOS))} por santista</b>.`;
+  });
 }
 
 // ── Semáforo ─────────────────────────────────────────────────────────────────
@@ -120,7 +125,7 @@ function renderSemaforo() {
 function renderResumo() {
   const box = document.getElementById("em-resumo");
   if (!DADOS.resumo) return;
-  box.querySelector(".resumo-texto").textContent = DADOS.resumo;
+  box.querySelector(".resumo-texto").innerHTML = Comum.destacarNumeros(DADOS.resumo);
   box.hidden = false;
 }
 
@@ -145,7 +150,8 @@ function opts(fmtY, comLegenda) {
           ? "Quebra contábil: não compare com os pontos anteriores" : ""),
       } },
     },
-    scales: { y: { ticks: { callback: (v) => fmtY(v) } } },
+    // eixo sem as casas zeradas ("R$ 600 mi"); o tooltip segue com fmtY
+    scales: { y: { ticks: { callback: (v) => (fmtY === compacto ? Comum.compactoEixo(v) : fmtY(v)) } } },
   };
 }
 
@@ -386,7 +392,7 @@ function desenharServicoDivida() {
       responsive: true, maintainAspectRatio: false, indexAxis: "y",
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: (c) => compacto(c.parsed.x) } } },
-      scales: { x: { ticks: { callback: (v) => compacto(v) } } },
+      scales: { x: { ticks: { callback: (v) => Comum.compactoEixo(v) } } },
     },
   });
 
@@ -406,7 +412,7 @@ function desenharServicoDivida() {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { labels: { boxWidth: 14, boxHeight: 3, font: { size: 11 } } },
         tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${compacto(c.parsed.y)}` } } },
-      scales: { y: { ticks: { callback: (v) => compacto(v) } } },
+      scales: { y: { ticks: { callback: (v) => Comum.compactoEixo(v) } } },
     },
   });
 

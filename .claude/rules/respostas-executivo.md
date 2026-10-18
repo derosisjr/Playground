@@ -36,7 +36,9 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
   de fornecedor). Atenção ao NFKD: o acento agudo solto vira espaço ("SED S").
 - **Desdobramentos**: `cita` = pedidos anteriores citados no assunto ("Resposta ao requerimento
   210/2025 - …"), só os que existem na base; o painel monta a volta ("desdobrado em").
-- **Painel**: KPIs com mediana (não média) e "N de M em até 15 dias"; coluna Prazo em texto
+- **Painel**: número-manchete no topo (sem resposta de mérito na base inteira — os KPIs abaixo
+  seguem o filtro; "todos fora do prazo de 15 dias da Lei Orgânica" só com `vence_em` no
+  índice); KPIs com mediana (não média) e "N de M em até 15 dias"; coluna Prazo em texto
   ("há 555 dias · venceu em…"); filtros `prazo` (fora / respondidos depois de 15 / em até 15),
   `sec` e `ordem` (mais recentes = padrão, mais atrasados, número) na URL; `?n=` mostra um pedido
   e os que o desdobram; "Copiar reiteração" (texto-base, revisar antes de protocolar) e "Copiar

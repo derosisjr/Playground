@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=9" />
+    <link rel="stylesheet" href="./comum.css?v=10" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -300,12 +300,7 @@
       .emp-especie.anulacao { background: #fee4e2; color: var(--red); }
       #emp-tabela td.neg { color: var(--red); }
 
-      /* "Em resumo" — narrativa do export + deltas nos cards */
-      .resumo-box { border-left: 3px solid var(--gold); }
-      .resumo-rotulo { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-        letter-spacing: .18em; text-transform: uppercase; color: var(--gold-texto); /* --gold dava 2,3:1 no claro */
-        font-weight: 600; margin: 0 0 8px; }
-      .resumo-texto { font-size: 15px; line-height: 1.65; margin: 0; max-width: 78ch; }
+      /* deltas nos cards ("Em resumo" está no comum.css) */
       .delta { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600;
         vertical-align: 3px; margin-left: 2px; white-space: nowrap; }
       .delta.pos { color: #b42318; }   /* gasto subindo = atenção */
@@ -321,18 +316,23 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=19"></script>
+    <script src="./comum.js?v=20"></script>
     <script>Comum.topbar("despesas.html");</script>
-    <header class="hero">
+    <header class="hero com-manchete">
       <div class="hero-in">
-        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Fiscalização do Executivo</p>
-        <h1>Radar de Despesas — Prefeitura de Santos</h1>
+        <p class="eyebrow">Prefeitura · Execução orçamentária</p>
+        <h1>Radar de Despesas</h1>
         <p class="hero-sub">
           Pagamentos da Prefeitura de Santos consolidados a partir do Portal da Transparência.
           Acompanhe para onde vai o dinheiro do contribuinte: por função, fonte, favorecido e mês —
           com alertas fiscais automáticos para o que merece investigação. Caráter informativo;
           confira sempre o portal oficial.
         </p>
+        <!-- número-manchete: acumulado do ano (despesas-app.js, renderHero) -->
+        <div class="hero-num" id="hero-num">
+          <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
+          <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
+        </div>
         <p class="base-de" data-base="despesas-index.json"></p>
       </div>
     </header>
@@ -345,10 +345,11 @@
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
       </div>
 
-      <!-- "Em resumo" acima das abas: vale para o painel todo, não só para a Visão geral -->
-      <div class="box resumo-box" id="em-resumo" hidden>
+      <!-- "Em resumo" acima das abas: vale para o painel todo, não só para a Visão geral.
+           Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
+      <div class="box resumo-box" id="em-resumo">
         <p class="resumo-rotulo">Em resumo</p>
-        <p class="resumo-texto"></p>
+        <p class="resumo-texto resumo-reserva" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
       </div>
 
       <div class="tabs" role="tablist">
@@ -776,6 +777,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=20"></script>
+    <script defer src="./despesas-app.js?v=21"></script>
   </body>
 </html>
