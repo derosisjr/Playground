@@ -22,6 +22,7 @@ window.Comum = (() => {
     ["indicadores.html", "Indicadores", "Custo por Resultado", "Leituras e participação"],
     ["retrospectiva.html", null, "O ano em gastos", "Leituras e participação"],
     ["consulta.html", "Escuta Pública", "Escuta pública", "Leituras e participação"],
+    ["novidades.html", null, "Novidades das bases", "Acompanhamento"],
   ];
   let paginaAtual = null;
 

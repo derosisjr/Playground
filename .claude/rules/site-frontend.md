@@ -161,7 +161,7 @@ Previews locais do hub vão em `_preview-*.html` na raiz (gitignored, servidos p
 
 # Novidades (feed) — `novidades.json` (2026-10, Lote 5)
 
-O que mudou nas bases desde a véspera, para a página `novidades.html` (a fazer) e o hub. Gerado
+O que mudou nas bases desde a véspera, para a página `novidades.html` e o hub. Gerado
 1×/dia por `.github/scripts/novidades.py` (só stdlib + `comum/`) no `bases-atualizacao.yml`
 (12:00 UTC, mesmo commit do `bases-atualizacao.json` — único workflow que escreve o arquivo;
 nunca editar à mão). Compara cada índice com um **retrato** compacto da passada anterior,
@@ -186,14 +186,23 @@ mede ~130–140 KB com o feed cheio). Cada evento: `visto_em`, `base`, `tipo`, `
 - `chave`: estável e única no feed (`<base>:<tipo>:<id>`; andamento acrescenta `:<ua>`) — serve
   de key e de "já visto" (localStorage). Transição repetida dentro da janela não gera evento.
 - `link` relativo: `requerimentos.html?n=<número codificado>`, `proposituras.html?cod=<cod>`,
-  `legis.html?id=<id>`, `despesas.html#alertas` (alertas), `despesas.html` (mês). **`n`, `cod` e
-  `id` ainda não são lidos pelos painéis** (hoje leem `q`/`ano`/…) — entram com a página.
+  `legis.html?id=<id>`, `despesas.html#alertas` (alertas), `despesas.html` (mês) — `n`, `cod` e
+  `id` são lidos pelos painéis desde os Lotes 1 e 3 (mostram só o item, com "Ver a lista inteira").
 - `mandato`: autor exatamente "Rui Sergio Gomes de Rosis Junior"; requerimentos são todos do
   mandato por construção (vêm da planilha do gabinete).
 - Feed quieto não é defeito: na 1ª execução, no dia em que um campo novo chega a um índice
   (`vence_em`, `ua`) e num surto (> 200 eventos de uma base numa passada = troca de formato ou
   carga em massa) o gerador só refaz o retrato. Cod/id abaixo do **piso** (menor id do ano
   corrente e do anterior) é carga retroativa e não vira "nova".
-- Buscar com `fetch("novidades.json", { cache: "no-cache" })`. O `sw.js` hoje o serve em
-  stale-while-revalidate (a 1ª visita depois do commit mostra o feed da véspera); se a página
-  precisar do dia, tratar como o `bases-atualizacao.json` (network-first).
+- Buscar com `fetch("novidades.json", { cache: "no-cache" })`. O `sw.js` o trata como o
+  `bases-atualizacao.json` (**rede primeiro**, cache só offline) — em stale-while-revalidate a
+  1ª visita do dia mostraria o feed da véspera.
+
+**Página `novidades.html` + `novidades-app.js`** (no menu "Painéis" do celular, seção
+"Acompanhamento"; fora da faixa do desktop, que não tem folga): eventos agrupados pelo dia em que
+apareceram, chips por base e "Só do mandato" (requerimentos + proposituras com `mandato`), na URL
+(`base=`, `mandato=1`). **Última visita** neste aparelho: `localStorage["novidades:visto_ate"]` =
+`visto_em` do evento mais recente visto; o que vier depois ganha o selo "novo". **Hub**: linha
+`.novidades-linha` sob a régua (fora da grade) que nasce com "Novidades das bases →" numa linha
+só (o número chega depois sem mudar a altura do hero) e vira "N novidades desde a última visita →"
+(mesma chave) ou, para quem nunca abriu a página, "N novidades nos últimos 7 dias →".

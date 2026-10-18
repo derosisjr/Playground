@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Novidades das bases — Gabinete Rui de Rosis Jr.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="description" content="O que mudou nas bases do gabinete: respostas do Executivo e prazos vencidos, projetos e andamentos, leis e revogações, alertas de despesas." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Novidades das bases — Gabinete Rui de Rosis Jr." />
+    <meta property="og:description" content="O que mudou nas bases do gabinete: respostas do Executivo, prazos vencidos, projetos, leis e alertas de despesas." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/novidades.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css?v=9" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        /* status (AA sobre --card claro) — copiado verbatim de endividamento.html:33-41 */
+        --verde: #067647; --amarelo: #b54708; --vermelho: #b42318;
+        --verde-bg: #ecfdf3; --amarelo-bg: #fef0c7; --vermelho-bg: #fee4e2;
+      }
+      html[data-tema="escuro"] body {
+        --verde: #4ade80; --amarelo: #fbbf24; --vermelho: #f87171;
+        --verde-bg: rgba(74,222,128,.13); --amarelo-bg: rgba(251,191,36,.13);
+        --vermelho-bg: rgba(248,113,113,.13);
+      }
+      body {
+        margin: 0; background: var(--bg); color: var(--navy);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      html[data-tema="escuro"] body { color: var(--ink); }
+      a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 960px; margin: 0 auto; padding: 0 20px 60px; }
+      .hero-in { position: relative; max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
+        letter-spacing: -0.015em; line-height: 1.05; }
+      .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
+      .resumo { margin: 22px 0 12px; font-size: 15px; min-height: 1.5em; }
+      .resumo b { font-family: "IBM Plex Mono", monospace; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; min-height: 24px;
+        padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--card); font: inherit; font-size: 13px; color: var(--navy); }
+      html[data-tema="escuro"] .chip { color: var(--ink); }
+      .chip:hover { border-color: var(--gold); }
+      .chip .n { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted); }
+      .chip[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .chip[aria-pressed="true"] .n { color: var(--gold-bright); }
+      .dia { margin: 26px 0 8px; font-family: "IBM Plex Mono", monospace; font-size: 12px;
+        letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+      .eventos { list-style: none; margin: 0; padding: 0; background: var(--card);
+        border: 1px solid var(--line); border-radius: var(--r-md); }
+      .ev { display: flex; gap: 12px; align-items: baseline; padding: 11px 14px;
+        border-top: 1px solid var(--line); }
+      .ev:first-child { border-top: 0; }
+      .ev-tipo { flex: 0 0 150px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .04em; color: var(--muted); }
+      .ev-tipo.alerta, .ev-tipo.vencido { color: var(--vermelho); }
+      .ev-tipo.resposta, .ev-tipo.alerta_resolvido { color: var(--verde); }
+      .ev a { color: inherit; text-decoration: none; line-height: 1.45; }
+      .ev a:hover { text-decoration: underline; text-decoration-color: var(--gold); }
+      .ev .novo { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px;
+        font-weight: 700; background: var(--amarelo-bg); color: var(--amarelo); white-space: nowrap; }
+      .ev .mandato { margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--muted);
+        white-space: nowrap; }
+      .vazio { padding: 40px 10px; text-align: center; color: var(--muted); }
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.5; }
+      @media (max-width: 600px) {
+        .ev { flex-direction: column; gap: 2px; }
+        .ev-tipo { flex: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js?v=19"></script>
+    <script>Comum.topbar("novidades.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Gabinete Rui de Rosis Jr. — Acompanhamento</p>
+        <h1>Novidades das bases</h1>
+        <p class="hero-sub">
+          O que mudou nos últimos 60 dias: respostas do Executivo e prazos vencidos, projetos
+          novos e andamentos, leis e revogações, alertas de despesas. A lista é montada uma vez
+          por dia, a partir das bases do site.
+        </p>
+        <p class="base-de" id="gerado"></p>
+      </div>
+    </header>
+
+    <main class="shell" id="conteudo" tabindex="-1">
+      <p class="resumo" id="resumo" aria-live="polite">Carregando…</p>
+      <div class="chips" id="filtros" role="group" aria-label="Filtrar as novidades"></div>
+      <div id="lista"></div>
+      <p class="vazio" id="vazio" hidden></p>
+      <p class="rodape">
+        A data de cada grupo é o dia em que a mudança apareceu nas bases (não a data do fato na
+        origem). "Novo" marca o que surgiu desde a sua última visita a esta página, guardada
+        neste aparelho. Requerimentos: todos são do mandato.
+      </p>
+    </main>
+
+    <script src="./novidades-app.js?v=1"></script>
+  </body>
+</html>
