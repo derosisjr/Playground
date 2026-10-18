@@ -10,10 +10,9 @@ Formatação e classificação compartilhadas da Base de Despesas
     mercado", antes duas heurísticas paralelas (regex no export, lista no briefing).
 
 Notas da unificação (2026-07):
-  - FUNDAÇÃO entra genérica: as recorrentes em Santos são municipais (FAMS,
-    FUPES, Parque Tecnológico). Se uma fundação PRIVADA virar fornecedora
-    relevante, restrinja aqui (um só lugar).
   - CÂMARA exige "MUNICIPAL" (evita pegar Câmara de Comércio etc.).
+Revisão de 2026-10 (fundações privadas e entidades "do Estado de São Paulo"
+contadas como ente): ver `eh_ente_publico` — FUNDAÇÃO deixou de ser genérica.
 """
 
 import hashlib
@@ -41,33 +40,74 @@ def pct(novo, velho) -> str:
 
 
 # Entes públicos e repasses institucionais (municipais, estaduais e federais).
-# Aplicado sobre o nome SEM acento e em MAIÚSCULAS (via sem_acento).
+# Aplicado sobre o nome SEM acento e em MAIÚSCULAS (via sem_acento). Ordem da
+# decisão em eh_ente_publico (revisão de 2026-10 — conferida nos nomes da base):
+#   1. exceções públicas explícitas: estatais do município (PRODESAN, COHAB,
+#      CET-Santos) — a concentração delas numa função é esperada (COHAB = 100% de
+#      Habitação virava "anomalia"), e nenhuma guarda privada pode tirá-las;
+#   2. guarda de forma PRIVADA, antes de qualquer marcador público: começa com
+#      Associação/Federação/Sindicato, contém "Fundação de Apoio", ou tem
+#      LTDA/EIRELI/ME/EPP — e as exceções nominais (AFIP, FIPE, FGV, SABESP).
+#      Casos que a regra antiga contava como ente: AFIP ("…FUNDO DE INCENTIVO…"),
+#      ANEPREM ("…MUNICIPIOS"), Federação de Tênis de Mesa e Associação de Lutas
+#      ("…DO ESTADO DE SAO PAULO"), FUSP e FAP-UNIFESP (fundações de apoio);
+#   3. FUNDAÇÃO não é mais marcador genérico: só a lista curada de fundações
+#      públicas (SETTAPORT e FCTH, privadas, entravam pelo nome);
+#   4. marcadores públicos (_ENTE_RE): FUNDO só seguido de qualificador público e
+#      "ESTADO DE SÃO PAULO" só com marcador estatal antes (governo, secretaria,
+#      polícia, companhia estadual…).
+_ENTE_EXPLICITO_RE = re.compile(r"COMPANHIA DE ENGENHARIA DE TRAFEGO|\bPRODESAN\b|\bCOHAB\b")
+
 _ENTE_RE = re.compile(
     r"MUNICIPIO|PREFEITURA|CAMARA MUNICIPAL|"
     r"INSTITUTO DE PREVID|PREVIDENCIA SOCIAL DOS SERVIDORES|IPREMM|"
     r"CAIXA DE ASSIST|CAPEP|\bIPS\b|"
-    r"FUNDO |FUNDACAO|"
+    r"\bFUNDO (?:MUNICIPAL|ESTADUAL|NACIONAL|FEDERAL|PENITENCIARIO|PREVIDENCIARIO|SOCIAL DE SOLIDARIEDADE)\b|"
     r"INSS|INSTITUTO NACIONAL DO SEGURO|"
     r"CAIXA ECONOMICA FEDERAL|MINISTERIO|FAZENDA NACIONAL|"
     r"RECEITA|SECRETARIA DA RECEITA|TESOURO|"
-    r"GOVERNO DO ESTADO|ESTADO DE SAO PAULO|FAZENDA DO ESTADO|"
+    r"GOVERNO DO ESTADO|FAZENDA DO ESTADO|"
+    r"\b(?:GOVERNO|FAZENDA|TRIBUNAL|POLICIA|BOMBEIROS|DEPARTAMENTO|PROCURADORIA|DEFENSORIA|ASSEMBLEIA|"
+    r"COMPANHIA|CIA)\b.*\bESTADO DE SAO PAULO|"
     r"FUNDO DE GARANTIA|FGTS|PASEP|"
-    # empresas públicas/estatais dependentes do município (2026-09): a concentração
-    # delas numa função é esperada (COHAB = 100% de Habitação virava "anomalia")
-    r"COMPANHIA DE ENGENHARIA DE TRAFEGO|\bPRODESAN\b|\bCOHAB\b|"
     r"\bSECRETARIA\b")   # órgãos (ex.: SECRETARIA DE TURISMO E VIAGENS, do Estado)
 
+# Fundações PÚBLICAS conhecidas na base (o nome casa por trecho).
+FUNDACOES_PUBLICAS = (
+    "FUNDACAO ARQUIVO E MEMORIA DE SANTOS",          # FAMS — fundação municipal (UG da base)
+    "FUNDACAO PRO-ESPORTE", "FUNDACAO PRO ESPORTE", "FUPES",  # Pró-Esporte — fundação municipal (UG da base)
+    "MANOEL PEDRO PIMENTEL",                         # FUNAP — fundação do Governo do Estado de SP
+    "FUNDACAO UNIVERSIDADE DE BRASILIA",             # FUB — fundação pública federal
+    "FUNDACAO DE APOSENTADORIAS E PENSOES DOS SERVIDORES",  # FUNAPE/PE — previdência de servidores
+)
+# PENDENTES DE DECISÃO DO USUÁRIO (2026-10): natureza jurídica não confirmada.
+# Seguem como ente público — o comportamento anterior — até a decisão.
+FUNDACOES_DUVIDOSAS = (
+    "FUNDACAO PARQUE TECNOLOGICO DE SANTOS",         # [Verificar] também é UG da base
+    "FUNDACAO PINACOTECA BENEDITO CALIXTO",          # [Verificar]
+    "CENEP",                                         # Fundação Centro de Excelência Portuária [Verificar]
+    "FUNDACAO DE PREVIDENCIA COMPLEMENTAR DO ESTADO DE SAO PAULO",  # SP-PREVCOM [Verificar]
+)
 
-# Exceções: nomes que casam com FUNDO/FUNDAÇÃO mas são entidades PRIVADAS
-# contratadas como fornecedoras (conferido na base em 2026-07).
-# SABESP: privatizada em jul/2024 — o nome ("…DO ESTADO DE SAO PAULO") casava como ente.
+# Exceções nominais: entidades PRIVADAS contratadas como fornecedoras (conferido na
+# base em 2026-07). SABESP: privatizada em jul/2024 — o nome ("…DO ESTADO DE SAO
+# PAULO") casava como ente.
 _NAO_ENTE_RE = re.compile(r"\bAFIP\b|\bFIPE\b|FUNDACAO GETULIO VARGAS|\bFGV\b|SABESP|SANEAMENTO BASICO DO ESTADO")
+# Forma jurídica privada (ver item 2 acima); a sigla antes do nome ("XYZ - ASSOCIAÇÃO…") é tolerada.
+_PRIVADO_RE = re.compile(
+    r"^(?:[A-Z0-9.&/]+\s*-\s*)?(?:ASSOCIACAO|FEDERACAO|SINDICATO)\b|"
+    r"FUNDACAO DE APOIO|"
+    r"\b(?:LTDA|EIRELI|EPP)\b|[\s-]ME\.?$")
 
 
 def eh_ente_publico(nome) -> bool:
     n = sem_acento(nome)
-    if _NAO_ENTE_RE.search(n):
+    if _ENTE_EXPLICITO_RE.search(n):
+        return True
+    if _NAO_ENTE_RE.search(n) or _PRIVADO_RE.search(n):
         return False
+    if re.search(r"\bFUNDACAO\b", n) and any(f in n for f in FUNDACOES_PUBLICAS + FUNDACOES_DUVIDOSAS):
+        return True
     return bool(_ENTE_RE.search(n))
 
 
