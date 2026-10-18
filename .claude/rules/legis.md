@@ -42,9 +42,41 @@ das ~3,9 mil normas anteriores a 2026-10 — a base inteira gira em ~4 semanas �
 corrigidas no Legis. Migração do sqlite é só `ALTER TABLE ADD COLUMN` (`abrir_db`), e o
 `upsert` virou `ON CONFLICT DO UPDATE` (o `INSERT OR REPLACE` apagava `situacao`). O
 `descricao` engorda o sqlite versionado (~+0,9 MB na base toda); NÃO vai para o
-`legis-index.json` (só `situacao` e, onde houver, `revogada_por`).
+`legis-index.json` (só `situacao` e, onde houver, `revogada_por`) — vai para `legis/ementas.json`
+(abaixo).
+
+**Índice e ementas (2026-10, Lote 4).** O `legis-index.json` sai em ordem de **data da norma**
+(mais recente primeiro; depois número numérico e `id` — ordem total, sem diff à toa). Sem
+`data_norma`, a norma vai para o fim do próprio ano; sem ano (Lei Orgânica, Códigos,
+Consolidações), para o fim. São 59 sem data em 2026-10: 8 sem ano, 21 com dia ordinal ("de 1º
+de setembro") e o resto sem vírgula antes do "de" ("Lei nº 2.088 de 12 de março") ou com erro
+de digitação ("jeneiro", "27de") — o regex de data do crawler (`,\s*de\s+(\d{1,2})\s+de`) não
+lê nenhum desses. **Número ausente é tirado do título** (`numero_do_titulo`): o regex do crawler (`n\.?º`)
+não reconhece "n.°", "n,º", "nº.", "n. º", "n°" e "n." — 62 das 66 normas sem número
+resolvidas (as 4 restantes não têm número no título); vale no índice, CSV e XLSX, mas NÃO no
+banco — logo `revogacoes.py` ainda não casa revogação com essas 62 (corrigir na origem é o
+regex do crawler). As chaves do índice não mudaram (o hub calcula `ultima_lei` dele:
+continua 4.804/2026). **`legis/ementas.json`** = `{"<id>": descricao}` só das normas com ementa
+oficial, em ordem crescente de id, compacto: 2.003 de 3.915 em 2026-10-12 (356 KB bruto,
+64 KB gzip; deve ~dobrar quando a revisita cobrir a base). É o que preenche as 3.294 normas com
+`ementa` (badges) vazia no índice — 1.633 já têm ementa oficial. O painel busca sob demanda
+(`./legis/ementas.json`; 404 até o primeiro workflow depois do merge — tratar a ausência).
+O `legis.yml` comita o arquivo junto do índice e a guarda de integridade aborta (`exit 1`)
+se ele cair abaixo de **1.500** ementas (descricao perdida ou HTML do Legis mudado — a
+revisita regravaria vazio). Para testar sem sobrescrever os versionados: `python
+legis/export.py --db <sqlite> --saida <pasta>` (os quatro arquivos vão para a pasta).
 
 Análises derivadas (rodam local, sem CI): `legis/triagem_revogacao.py` gera
 `triagem-revogacao.xlsx` (gitignored) com candidatas a revogação; `legis/posturas/` guarda
 os scripts `gerar_*.py` + CSVs-fonte da análise do Código de Posturas (saídas `.docx`/`.xlsx`
 gitignored — derivadas).
+
+**Painel (2026-10, Lote 4).** O índice e `legis/ementas.json` são buscados **juntos** (a
+ementa é pequena — chegar depois mudaria a altura das linhas e a página "pularia"); sem o
+arquivo (404) a página segue com o título. A célula Ementa mostra a ementa oficial e, abaixo,
+as palavras-chave do Legis (`ementa` do índice); os temas ficam **só** na coluna Temas (saíam
+duas vezes). O select de temas (4.659 opções, 3,4 mil usadas uma vez) virou campo com sugestões
+(`datalist`, temas agrupados sem caixa/acento/espaço — ~4 mil) + **20 chips** dos mais
+frequentes; `?tema=` compara normalizado, então links antigos valem. Link principal **"Ver no
+Legis ↗"** (`url_legis`, abre no navegador); o PDF ("baixa") fica secundário. A ementa oficial
+entra na busca.

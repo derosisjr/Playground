@@ -88,6 +88,13 @@
       .artigo { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
         padding: 14px 18px; margin: 10px 0; scroll-margin-top: 80px; }
       .artigo.com-nota { border-left: 3px solid var(--gold); }
+      /* copiar link/citação: discreto para não atrapalhar a leitura em plenário */
+      .art-acoes { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+      /* cor apagada mas legível (opacidade derrubava o contraste abaixo de 4,5:1) */
+      .art-acoes .lnk { font-size: 12px; font-weight: 600; color: var(--muted); }
+      .art-acoes .lnk:hover, .art-acoes .lnk:focus-visible { color: #0a58ca; }
+      html[data-tema="escuro"] .art-acoes .lnk:hover,
+      html[data-tema="escuro"] .art-acoes .lnk:focus-visible { color: var(--gold-bright); }
       .art-num { font-family: "IBM Plex Mono", monospace; font-weight: 700; color: var(--navy);
         white-space: nowrap; margin-right: 2px; }
       .badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
@@ -140,9 +147,11 @@
         <h1>Regimento Interno</h1>
         <p class="hero-sub">
           Consulta relâmpago ao Regimento Interno da Câmara de Santos (Resolução nº 16/2019).
-          Busque por número de artigo ou palavra-chave. Onde houver jurisprudência ou doutrina,
-          clique no artigo para abrir a <b>interpretação conforme</b>. Para uso em plenário —
-          confira sempre o texto oficial.
+          Busque por número de artigo ou palavra-chave e copie o link ou a citação do artigo
+          para usar em plenário. O texto vem do PDF oficial escaneado (OCR) — confira sempre
+          o texto oficial.
+          <span id="intro-notas" hidden>Onde houver jurisprudência ou doutrina, clique no artigo
+          para abrir a <b>interpretação conforme</b>.</span>
         </p>
         <p class="base-de" data-base="regimento-index.json"></p>
       </div>
@@ -177,6 +186,6 @@
       </p>
     </main>
 
-    <script src="./regimento-app.js?v=3"></script>
+    <script src="./regimento-app.js?v=4"></script>
   </body>
 </html>

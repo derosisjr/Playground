@@ -8,13 +8,20 @@ Lê `proposituras/proposituras.sqlite` e gera:
   - proposituras/proposituras.csv    (análise)
   - proposituras-index.json (raiz)   (índice consumido pelo painel proposituras.html)
 
+Ordem: data da propositura (mais recente primeiro), depois ano e número numérico.
+O índice traz, além dos metadados, `tram` em todos os itens e `ua`/`uad` (mais `ual`,
+quando difere do local atual) só nos em tramitação — contrato em .claude/rules/proposituras.md.
+
 Uso:
     python proposituras/export.py
+    python proposituras/export.py --db outro.sqlite --saida /tmp/teste   # não toca o índice versionado
 """
 
+import argparse
 import csv
 import json
 import os
+import re
 import sqlite3
 import sys
 
@@ -27,6 +34,7 @@ from comum.saida import configurar_stdio  # noqa: E402
 
 configurar_stdio()
 from comum.escrita import gravar_json  # noqa: E402
+from crawler import situacao_final  # noqa: E402  (mesma regra da revisita: arquivado/transformado)
 DB_PATH = os.path.join(AQUI, "proposituras.sqlite")
 XLSX_PATH = os.path.join(AQUI, "proposituras.xlsx")
 CSV_PATH = os.path.join(AQUI, "proposituras.csv")
@@ -37,18 +45,48 @@ COLUNAS = ["cod", "tipo", "subtipo", "numero", "ano", "processo", "data_proposit
            "url_detalhes", "url_pdf", "fonte", "data_coleta"]
 
 
-def ler_proposituras() -> list[dict]:
-    conn = sqlite3.connect(DB_PATH)
+def _data_iso(data: str | None) -> str:
+    """'dd/mm/aaaa[ hh:mm:ss]' → 'aaaa-mm-dd' ('' se vazia ou fora do formato)."""
+    m = re.match(r"\s*(\d{2})/(\d{2})/(\d{4})", data or "")
+    return f"{m[3]}-{m[2]}-{m[1]}" if m else ""
+
+
+def _numero(numero: str | None) -> int:
+    """'204/2026' → 204. Ordem numérica: o ORDER BY de texto abria a lista em "1, 10, 11…"."""
+    m = re.match(r"\s*(\d[\d.]*)", numero or "")
+    return int(m.group(1).replace(".", "")) if m else 0
+
+
+def chave_ordem(p: dict) -> tuple:
+    """Para `reverse=True` (mais recente primeiro): data da propositura, ano, número e,
+    no empate, o cod — ordem total, para o índice versionado não mudar à toa. Sem data,
+    o item vai para o fim do próprio ano."""
+    return (_data_iso(p["data_propositura"]) or f"{p['ano'] or 0:04d}", p["ano"] or 0,
+            _numero(p["numero"]), p["cod"])
+
+
+def resumir(texto: str | None, limite: int = 80) -> str:
+    """Espaços e quebras de linha colapsados; acima de `limite`, corta na última palavra
+    inteira e fecha com "…" (o total, com o "…", não passa de `limite`)."""
+    t = " ".join((texto or "").split())
+    if len(t) <= limite:
+        return t
+    corte = t[:limite - 1]  # reserva 1 caractere para o "…"
+    if t[limite - 1] != " " and " " in corte:  # parou no meio de uma palavra: descarta-a
+        corte = corte.rsplit(" ", 1)[0]
+    return corte.rstrip(" ,;:.-–—") + "…"
+
+
+def ler_proposituras(db: str = DB_PATH) -> list[dict]:
+    conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        f"SELECT {','.join(COLUNAS)} FROM proposituras ORDER BY ano DESC, subtipo, numero"
-    ).fetchall()
+    rows = conn.execute(f"SELECT {','.join(COLUNAS)} FROM proposituras").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    return sorted((dict(r) for r in rows), key=chave_ordem, reverse=True)
 
 
-def ler_tramitacao() -> list[dict]:
-    conn = sqlite3.connect(DB_PATH)
+def ler_tramitacao(db: str = DB_PATH) -> list[dict]:
+    conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         "SELECT prop_cod, ordem, data, local, despacho, url_arquivo "
@@ -58,14 +96,14 @@ def ler_tramitacao() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def exportar_csv(props: list[dict]) -> None:
-    with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
+def exportar_csv(props: list[dict], caminho: str = CSV_PATH) -> None:
+    with open(caminho, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=COLUNAS)
         w.writeheader()
         w.writerows(props)
 
 
-def exportar_xlsx(props: list[dict], tramites: list[dict]) -> None:
+def exportar_xlsx(props: list[dict], tramites: list[dict], caminho: str = XLSX_PATH) -> None:
     from openpyxl import Workbook
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
     from openpyxl.utils import get_column_letter
@@ -96,29 +134,56 @@ def exportar_xlsx(props: list[dict], tramites: list[dict]) -> None:
     for i, c in enumerate(cols2, 1):
         ws2.column_dimensions[get_column_letter(i)].width = {"despacho": 80, "url_arquivo": 45}.get(c, 16)
 
-    wb.save(XLSX_PATH)
+    wb.save(caminho)
 
 
-def exportar_json(props: list[dict]) -> None:
+def exportar_json(props: list[dict], ultimos: dict[int, dict], caminho: str = JSON_PATH) -> int:
+    """Grava o índice; devolve quantos itens estão em tramitação.
+    `ultimos`: cod -> linha de `tramitacao` do andamento mais recente (ordem 0)."""
     # campos enxutos para o painel (sem fonte/data_coleta/processo)
     campos = ["cod", "tipo", "subtipo", "numero", "ano", "data_propositura",
               "autor", "ementa", "local_atual", "situacao", "url_detalhes", "url_pdf"]
     dados = [{c: p.get(c, "") for c in campos} for p in props]
-    gravar_json(JSON_PATH, dados, separators=(",", ":"))
+    # `tram` em todos (sempre presente: é o que separa índice novo de antigo no painel);
+    # data e despacho do último andamento só nos em tramitação (~1,7 mil de ~7 mil), e o
+    # local só quando acrescenta algo ao `local_atual` (o JS faz `p.ual || p.local_atual`)
+    # — enxugado em 2026-10 para caber no orçamento de gzip do índice
+    for d, p in zip(dados, props):
+        d["tram"] = 0 if situacao_final(p["local_atual"], p["situacao"]) else 1
+        if not d["tram"]:
+            continue
+        u = ultimos.get(p["cod"]) or {}
+        d["ua"] = _data_iso(u.get("data") or p.get("data_situacao"))
+        ual = " ".join((u.get("local") or "").split())
+        if ual and ual.upper() != " ".join((p["local_atual"] or "").split()).upper():
+            d["ual"] = ual
+        d["uad"] = resumir(u.get("despacho"))
+    gravar_json(caminho, dados, separators=(",", ":"))
+    return sum(d["tram"] for d in dados)
 
 
-def main():
-    if not os.path.exists(DB_PATH):
-        print(f"Banco não encontrado: {DB_PATH}. Rode o crawler primeiro.", file=sys.stderr)
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description="Export da base de Proposituras → XLSX, CSV e JSON")
+    ap.add_argument("--db", default=DB_PATH, help="SQLite de entrada (padrão: proposituras/proposituras.sqlite)")
+    ap.add_argument("--saida", help="Pasta para os três arquivos (padrão: índice na raiz do repo, XLSX/CSV "
+                                    "em proposituras/) — para testar sem sobrescrever o índice versionado")
+    args = ap.parse_args(argv)
+    if not os.path.exists(args.db):
+        print(f"Banco não encontrado: {args.db}. Rode o crawler primeiro.", file=sys.stderr)
         sys.exit(1)
-    props = ler_proposituras()
-    tramites = ler_tramitacao()
-    exportar_csv(props)
-    exportar_xlsx(props, tramites)
-    exportar_json(props)
-    print(f"Export concluído: {len(props)} proposituras ({len(tramites)} despachos) → "
-          f"{os.path.basename(XLSX_PATH)}, {os.path.basename(CSV_PATH)}, "
-          f"{os.path.basename(JSON_PATH)}.", file=sys.stderr)
+    caminho_xlsx, caminho_csv, caminho_json = XLSX_PATH, CSV_PATH, JSON_PATH
+    if args.saida:
+        os.makedirs(args.saida, exist_ok=True)
+        caminho_xlsx, caminho_csv, caminho_json = (
+            os.path.join(args.saida, os.path.basename(p)) for p in (XLSX_PATH, CSV_PATH, JSON_PATH))
+    props = ler_proposituras(args.db)
+    tramites = ler_tramitacao(args.db)
+    ultimos = {t["prop_cod"]: t for t in tramites if t["ordem"] == 0}
+    exportar_csv(props, caminho_csv)
+    exportar_xlsx(props, tramites, caminho_xlsx)
+    em_tramitacao = exportar_json(props, ultimos, caminho_json)
+    print(f"Export concluído: {len(props)} proposituras ({em_tramitacao} em tramitação; "
+          f"{len(tramites)} despachos) → {caminho_xlsx}, {caminho_csv}, {caminho_json}.", file=sys.stderr)
 
 
 if __name__ == "__main__":

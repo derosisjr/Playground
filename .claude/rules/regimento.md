@@ -35,6 +35,11 @@ muda raramente; OCR+parser rodam local sob demanda. O **PDF-fonte fica fora do r
 (Mesa/questões de ordem) e nota tática (o `tipo` já é extensível); navegação por árvore; edição de
 notas no navegador.
 
+**Para a sessão (2026-10).** Cada artigo tem **"Copiar link"** (`#art-N`) e **"Copiar citação"**
+("Regimento Interno da Câmara Municipal de Santos (Resolução nº 16/2019), Art. N: «caput +
+parágrafos»") via `Comum.copiar`, em cor apagada (opacidade derrubava o contraste). O texto do
+topo só fala em "interpretação conforme" quando `regimento-notas.json` tem alguma nota (hoje, 0).
+
 ## Comandos úteis
 
 ```bash
