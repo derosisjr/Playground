@@ -5,6 +5,7 @@ let NORMAS = [];
 let filtradas = [];
 let pag = null;  // Comum.paginador — montado no init
 let POR_ID = new Map();  // id → norma (para achar a revogadora)
+let FOCO = "";           // ?id= — uma norma pelo link direto (busca universal, Novidades)
 
 const el = (id) => document.getElementById(id);
 // utilitários da camada comum (eram cópias locais idênticas em cada painel)
@@ -34,6 +35,9 @@ function aplicarFiltros() {
   const sit = el("sit").value;
 
   filtradas = NORMAS.filter((n) => {
+    // link direto: só a norma do `id` (antes a paleta abria "?q=&ano=2026" — o ano
+    // inteiro — para normas sem número)
+    if (FOCO) return String(n.id) === FOCO;
     if (tipo && n.tipo !== tipo) return false;
     if (sit && (n.situacao || "nenhuma") !== sit) return false;
     if (ano && String(n.ano) !== ano) return false;
@@ -46,8 +50,9 @@ function aplicarFiltros() {
   el("vazio").hidden = filtradas.length > 0;
   atualizarResumo();
   el("csv").disabled = filtradas.length === 0;
+  el("foco").hidden = !FOCO;
   Comum.gravarParams({
-    q: el("q").value.trim(), tipo, ano, tema: el("tema").value, sit,
+    q: el("q").value.trim(), tipo, ano, tema: el("tema").value, sit, id: FOCO,
   });
 }
 
@@ -147,6 +152,10 @@ async function init() {
     const v = p.get(id);
     if (v) el(id).value = v;
   }
+  FOCO = p.get("id") || "";
+  // mexer em qualquer filtro sai do link direto
+  for (const id of ["q", "tipo", "ano", "tema", "sit"]) el(id).addEventListener("input", () => { FOCO = ""; });
+  el("foco-todos").addEventListener("click", () => { FOCO = ""; aplicarFiltros(); });
   el("q").addEventListener("input", Comum.debounce(aplicarFiltros));
   ["tipo", "ano", "tema", "sit"].forEach((id) => el(id).addEventListener("input", aplicarFiltros));
   pag = Comum.paginador({
@@ -157,6 +166,7 @@ async function init() {
   el("csv").addEventListener("click", exportarCSV);
   el("limpar").addEventListener("click", () => {
     for (const id of ["q", "tipo", "ano", "tema", "sit"]) el(id).value = "";
+    FOCO = "";
     aplicarFiltros();
   });
   aplicarFiltros();

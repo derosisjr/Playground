@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=8" />
+    <link rel="stylesheet" href="./comum.css?v=9" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -113,7 +113,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=17"></script>
+    <script src="./comum.js?v=18"></script>
     <script>Comum.topbar("proposituras.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -125,6 +125,7 @@
           Filtre por subtipo, ano, autor, local ou palavra-chave e abra o detalhe oficial.
           Caráter informativo — confira sempre o sistema oficial da Câmara.
         </p>
+        <p class="base-de" data-base="proposituras-index.json"></p>
       </div>
     </header>
 
@@ -146,11 +147,16 @@
       </div>
       <div class="chips" id="chips"></div>
 
+      <p class="foco" id="foco" hidden>Mostrando uma propositura pelo link direto.
+        <button type="button" class="lnk" id="foco-todos">Ver a lista inteira</button></p>
+
       <div class="barra">
         <span class="contagem" id="contagem" aria-live="polite">Carregando…</span>
         <div class="acoes">
           <button class="btn" id="limpar" type="button">Limpar filtros</button>
+          <button class="btn" type="button" data-acao="compartilhar">Compartilhar</button>
           <button class="btn" id="csv" type="button">Exportar CSV</button>
+          <button class="btn" type="button" data-acao="imprimir">Imprimir</button>
         </div>
       </div>
 
@@ -177,6 +183,6 @@
       </p>
     </main>
 
-    <script src="./proposituras-app.js?v=7"></script>
+    <script src="./proposituras-app.js?v=8"></script>
   </body>
 </html>

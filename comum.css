@@ -253,7 +253,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 }
 
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
-.acoes { display: flex; gap: 8px; }
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; }  /* 5 botões no celular: quebra em vez de estourar */
 .btn {
   padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: var(--card); font: inherit; font-size: 13px; cursor: pointer; color: var(--ink);
@@ -351,7 +351,9 @@ header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
 
 /* ── Tabela responsiva (aplicar a classe .tabela-resp na <table>) ───────────── */
-@media (max-width: 760px) {
+/* `screen`: a folha A4 tem ~700px de largura útil e cairia no layout de cartões —
+   no papel a lista sai sempre como tabela */
+@media screen and (max-width: 760px) {
   .tabela-resp thead { display: none; }
   .tabela-resp, .tabela-resp tbody, .tabela-resp tr, .tabela-resp td {
     display: block; width: 100%;
@@ -371,3 +373,88 @@ header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0;
     padding-top: 2px;
   }
 }
+
+/* ── Menu "Painéis" (celular) ─────────────────────────────────────────────── */
+/* No celular a faixa mostrava 2 de 10 painéis; fica só "Início" + este menu, que
+   lista os painéis com o nome e as seções dos cartões do hub. */
+.topnav-menu { display: none; align-items: center; gap: 6px; background: none; border: 0;
+  color: #cdd6e3; font: inherit; font-size: 10.5px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; padding: 0 12px; min-height: 44px; cursor: pointer; }
+.topnav-menu:hover, .topnav-menu[aria-expanded="true"] { color: var(--gold-bright); }
+.topnav-menu:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.topnav-lista { display: none; }
+@media (max-width: 640px) {
+  .topnav-links a:not(.inicio) { display: none; }
+  .topnav-links { mask-image: none; -webkit-mask-image: none; }
+  .topnav-links::after { display: none; }
+  .topnav-menu { display: inline-flex; }
+  .topnav-lista:not([hidden]) { display: block; position: absolute; left: 0; right: 0; top: 100%;
+    background: #04090f; border-bottom: 1px solid rgba(201, 168, 76, 0.35);
+    padding: 6px 20px 14px; max-height: calc(100vh - 60px); overflow-y: auto; }
+  .topnav-lista ul { list-style: none; margin: 0; padding: 0; }
+  .topnav-lista a { display: block; padding: 11px 4px; border-bottom: 1px solid rgba(255,255,255,.06);
+    font-size: 12px; letter-spacing: .06em; }
+  .topnav-secao { margin: 12px 0 2px; color: var(--gold); font-size: 10px; letter-spacing: .2em;
+    text-transform: uppercase; }
+}
+
+/* ── "Base atualizada em…" no hero dos painéis ([data-base], ver comum.js) ──── */
+.base-de { margin: 10px 0 0; min-height: 1.5em; color: #9fb0c4; font-size: 12px;
+  font-family: "IBM Plex Mono", monospace; letter-spacing: .02em; }
+
+/* ── Celular: texto do hero em 3 linhas, com "Sobre este painel" ────────────── */
+@media (max-width: 600px) {
+  header.hero .hero-sub:not(.aberto) { display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden; }
+}
+.hero-mais { background: none; border: 0; padding: 4px 0; min-height: 24px; margin-top: 4px;
+  color: var(--gold-bright); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.hero-mais:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ── Aviso de dados novos (sw.js → comum.js) ───────────────────────────────── */
+.faixa-dados-novos { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 90; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px);
+  background: #04090f; color: #fff; border: 1px solid var(--gold); border-radius: var(--r-sm);
+  padding: 10px 12px 10px 16px; font-size: 13.5px; box-shadow: 0 12px 30px -12px rgba(0,0,0,.55); }
+.faixa-dados-novos button { background: none; border: 0; color: var(--gold-bright); font: inherit;
+  font-weight: 700; cursor: pointer; min-height: 24px; padding: 2px 4px; }
+.faixa-dados-novos .dn-fechar { color: #9fb0c4; font-size: 18px; line-height: 1; }
+.faixa-dados-novos button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ── Reserva da tabela até o 1º render (a página "pulava": CLS 0,34–0,39) ───── */
+.tabela-wrap:has(tbody:empty) { min-height: 60vh; }
+
+/* ── Impressão (material de sessão e de comissão) ──────────────────────────── */
+.so-impressao { display: none; }
+@media print {
+  .topnav, .topnav-lista, .filtros, .acoes, .barra .btn, .mais, .chips, #chips,
+  .paleta-fundo, .toast-comum, .faixa-dados-novos, .hero-mais, .lnk.reiterar,
+  .skel { display: none !important; }
+  html, body { background: #fff !important; color: #000 !important; }
+  /* o tema escuro não vai para o papel */
+  html[data-tema="escuro"] body { --ink: #111; --card: #fff; --line: #ccc; --muted: #444;
+    --paper: #fff; --paper-2: #fff; --bg: #fff; }
+  header.hero { background: none !important; color: #000 !important; border: 0 !important; }
+  header.hero::before, header.hero::after { display: none !important; }
+  header.hero *, header.hero .eyebrow { color: #000 !important; }
+  .hero-in { padding: 0 0 6px !important; }
+  header.hero .hero-sub { display: block !important; -webkit-line-clamp: unset !important; }
+  .shell { max-width: none !important; padding: 0 !important; }
+  .tabela-wrap { border: 0 !important; clip-path: none !important; min-height: 0 !important; }
+  thead { display: table-header-group; }
+  thead th { position: static !important; background: #eee !important; color: #000 !important; }
+  tr, .stat, .alerta, article { break-inside: avoid; }
+  a { color: #000 !important; }
+  .so-impressao { display: block; font: 10px/1.4 "IBM Plex Mono", monospace; color: #333;
+    margin: 0 0 10px; overflow-wrap: anywhere; }
+  @page { margin: 14mm 12mm; }
+}
+
+/* ── Foco num item por link direto (?n= / ?cod= / ?id=) e botão com cara de link ── */
+.foco { margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--gold);
+  border-radius: var(--r-sm); background: var(--card); font-size: 14px; }
+.foco[hidden] { display: none; }
+.lnk { background: none; border: 0; padding: 3px 0; min-height: 24px; font: inherit;
+  font-size: 12.5px; font-weight: 600; color: #0a58ca; cursor: pointer; text-align: left;
+  text-decoration: underline; text-underline-offset: 2px; }
+html[data-tema="escuro"] .lnk { color: var(--gold-bright); }

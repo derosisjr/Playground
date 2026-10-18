@@ -37,6 +37,37 @@ outras `?v=`/query do mesmo caminho, e dados `*.json`, com teto de 60 entradas d
 mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). Assets versionados com `?v=N` nos
 `<link>`/`<script>` — incrementar ao alterar comum.css/js ou um app.js.
 
+**UX transversal (Lote 3, out/2026).**
+- **Topbar**: `PAGINAS` = [arquivo, rótulo da faixa, nome do cartão no hub, seção]. A faixa do
+  desktop **não tem folga** (986 px medidos para 10 itens; os nomes completos dos cartões pediriam
+  ~1.260 px) — rótulos curtos, nome do cartão no `title`; "Endividamento" virou "Semáforo
+  Fiscal" (+15 px, cabe a 1280). **Até 640 px** a faixa mostra só "Início" + botão **"Painéis"**,
+  que abre a lista com o nome e as seções dos cartões (inclui "O ano em gastos", fora da faixa);
+  foco vai para a página atual, Esc fecha e devolve o foco, clique fora fecha.
+- **Ctrl+K**: links pela **chave estável** — proposituras `?cod=`, legislação `?id=`,
+  requerimentos `?n=` (cada painel mostra só o item, com aviso `.foco` e "Ver a lista inteira";
+  mexer em filtro sai do foco). O documento entra na busca do ranking; a fonte `documentos`
+  (`despesas/dados/nomes-favorecidos.json`, todos os favorecidos, ~0,7 MB) só entra com ≥ 8
+  dígitos, e busca que é só CPF/CNPJ não baixa proposituras/legislação. CNPJ completo → item
+  "Abrir o raio-X do CNPJ" (`favorecido.html?doc=`) no topo.
+- **Barra de ações**: botões `data-acao="compartilhar|imprimir"` tratados por delegação no
+  comum.js; **`Comum.compartilhar()`** = folha do sistema em tela de toque, senão copia o link
+  (os filtros já estão na URL). `.acoes` quebra linha (5 botões no celular).
+- **Impressão**: `@media print` no comum.css (some topbar/filtros/botões, cores claras mesmo no
+  escuro, cabeçalho de tabela repetido, sem quebra dentro de linha); no `beforeprint` todo
+  `Comum.paginador` mostra até 2.000 linhas e uma linha `.so-impressao` põe data, URL e o aviso de
+  corte. A tabela responsiva (`.tabela-resp`) virou `@media screen and (max-width: 760px)` — a
+  folha A4 (~700 px úteis) caía no layout de cartões.
+- **"Base atualizada em…"**: `<p class="base-de" data-base="<índice>">` no hero dos painéis,
+  preenchido pelo comum.js a partir do `bases-atualizacao.json` (altura reservada).
+- **Dados novos**: o `sw.js` compara a resposta revalidada (tamanho, depois SHA-256) com a que
+  serviu do cache e manda `postMessage({tipo:"dados-novos"})`; o comum.js mostra a faixa
+  `.faixa-dados-novos` (role=status) com "Atualizar".
+- **Celular/CLS**: até 600 px o `.hero-sub` fica em 3 linhas com "Sobre este painel ▾"; tabela vazia
+  reserva `60vh` (`.tabela-wrap:has(tbody:empty)`) — CLS das listas caiu de 0,34–0,39 para
+  0,001–0,021. Elemento que aparece depois do dado (ex.: resumo por secretaria) nasce visível com
+  "carregando…", senão empurra a página.
+
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
 sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página
