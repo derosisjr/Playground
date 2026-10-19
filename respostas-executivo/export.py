@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Exporta a aba `requerimentos` da planilha de controle para um JSON enxuto
 (`requerimentos-index.json` na raiz do repo), consumido pelo painel estático
-do hub (requerimentos.html).
+do hub (requerimentos.html). Com `--indicacoes`, exporta a aba `indicações` para
+`indicacoes-index.json` (painel indicacoes.html) — ver a seção "Indicações" abaixo.
 
 Fonte de verdade é o Google Sheets (não há SQLite aqui). Reutiliza a
-autenticação e os helpers de cabeçalho de `index.py`.
+autenticação e os helpers de cabeçalho de `index.py`. Só LÊ a planilha.
 
 ATENÇÃO: a coluna `Resposta` guarda uma fórmula `=HYPERLINK("<url>";"Resposta")`.
 Uma leitura comum devolveria só o texto "Resposta"; por isso lemos com
@@ -14,6 +15,7 @@ Uso:
     python respostas-executivo/export.py            # grava requerimentos-index.json
     python respostas-executivo/export.py --dry-run  # só imprime contagens
     python respostas-executivo/export.py --salvar caminho.json
+    python respostas-executivo/export.py --indicacoes [--dry-run]  # indicacoes-index.json
 """
 
 import argparse
@@ -21,6 +23,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from datetime import datetime, timedelta
 
 # Permite `import index` quando rodado como `python respostas-executivo/export.py`
@@ -28,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402
 import prazos  # noqa: E402
 from index import (  # noqa: E402
-    COL_DATA_MERITO, COL_SITUACAO, _google_services, _idx_header, _sem_acento,
+    ABA_INDICACOES, COL_DATA_MERITO, COL_SITUACAO, _google_services, _idx_header, _sem_acento,
 )
 
 ABA = "requerimentos"
@@ -37,7 +40,9 @@ if RAIZ not in sys.path:
     sys.path.append(RAIZ)  # camada comum do repo (comum/)
 from comum.escrita import gravar_json  # noqa: E402
 from secretarias import canonica as secretaria_canonica  # noqa: E402  (usa comum/)
+from bairros import canonico as bairro_canonico  # noqa: E402  (usa comum/ e geo/)
 JSON_PADRAO = os.path.join(RAIZ, "requerimentos-index.json")
+JSON_INDICACOES = os.path.join(RAIZ, "indicacoes-index.json")
 
 # Captura a 1ª string entre aspas de =HYPERLINK("url"; "texto") (separador , ou ;)
 RE_HYPERLINK = re.compile(r'HYPERLINK\(\s*"([^"]+)"', re.IGNORECASE)
@@ -107,29 +112,32 @@ def _url_resposta(celula: str) -> str:
     return ""
 
 
-def coletar() -> list[dict]:
+def ler_aba(aba: str) -> tuple[list, list, list]:
+    """As três leituras da aba (só leitura), alinhadas por linha."""
     _, sheets = _google_services()
     sheet_id = os.environ.get("SHEET_ID")
     if not sheet_id:
         raise EnvironmentError("Defina SHEET_ID (env) ou o secret correspondente.")
 
-    # Duas leituras alinhadas por linha:
+    # Três leituras alinhadas por linha:
     #  - FORMATTED_VALUE: textos e datas como exibidos (datas viriam como nº de série
     #    se lidas como FORMULA);
-    #  - FORMULA: preserva a fórmula =HYPERLINK(...) da coluna Resposta p/ extrair a URL.
+    #  - FORMULA: preserva a fórmula =HYPERLINK(...) da coluna Resposta p/ extrair a URL;
+    #  - UNFORMATTED_VALUE: datas como nº de série (formato inequívoco).
     def ler(render: str) -> list:
         return (
             sheets.spreadsheets()
             .values()
-            .get(spreadsheetId=sheet_id, range=f"'{ABA}'!A1:Z", valueRenderOption=render)
+            .get(spreadsheetId=sheet_id, range=f"'{aba}'!A1:Z", valueRenderOption=render)
             .execute()
             .get("values", [])
         )
 
-    valores = ler("FORMATTED_VALUE")
-    formulas = ler("FORMULA")
-    brutos = ler("UNFORMATTED_VALUE")  # datas como nº de série (formato inequívoco)
-    return montar_itens(valores, formulas, brutos)
+    return ler("FORMATTED_VALUE"), ler("FORMULA"), ler("UNFORMATTED_VALUE")
+
+
+def coletar() -> list[dict]:
+    return montar_itens(*ler_aba(ABA))
 
 
 def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
@@ -232,13 +240,330 @@ def campos_fora_da_lista(itens: list[dict]) -> set[str]:
     return {k for i in itens for k in i} - set(CAMPOS_PUBLICOS)
 
 
+# ── Indicações (aba "indicações") ─────────────────────────────────────────────
+# Mesma planilha, outra aba, outras armadilhas (out/2026):
+#  1. LINHAS REPETIDAS: 887 linhas para 562 indicações. A linha que a assessoria
+#     digitou (resumo curto + bairro) e a que o robô das Respostas do Executivo anexou
+#     depois (ementa da Câmara, data de mérito) são a MESMA indicação — juntadas pelo
+#     número (`juntar_indicacao`): texto e datas da linha do robô, bairro da linha da
+#     assessoria (só ela tem bairro).
+#  2. COLUNAS INTERNAS: "sta", "A contento" (anotações como "pediu número"), "Prazo" e
+#     "Data do Protocolo na PMS" nunca são lidas (só as de COLUNAS_INDICACOES); a
+#     "Bairro" é texto livre — às vezes anotação interna ("RESPOSTA EM 07 MESES") — e
+#     só sai normalizada para o nome oficial ou a região (bairros.py).
+#  3. DATAS: a assessoria exibe M/D e o robô dd/mm, mas o valor bruto (nº de série) é o
+#     mesmo — vale o bruto; texto só se for dd/mm/aaaa válido (ano com um dígito a mais,
+#     "18/03/82025", é consertado quando bate com o ano do número).
+# Indicação NÃO tem prazo legal (o do requerimento é da LOM, art. 58, XVIII): nada de
+# vencimento aqui.
+CAMPOS_PUBLICOS_INDICACOES = (
+    "numero", "ano", "assunto", "data_sessao", "data_resposta",
+    "data_resposta_merito", "situacao", "respondido", "url_resposta",
+    # só o nome OFICIAL do bairro (geo/santos-bairros.geojson) ou a região maior que
+    # um bairro — nunca o texto da coluna "Bairro" da planilha (bairros.py)
+    "bairro", "regiao",
+)
+# as únicas colunas da aba que o export lê
+COLUNAS_INDICACOES = ("Número", "Assunto", "Data da Sessão", "Resposta", "Data da resposta",
+                      "Bairro", COL_SITUACAO, COL_DATA_MERITO)
+# documento da Prefeitura registrado (pasta no Drive, "SIM" na coluna Resposta ou data
+# de resposta), mas sem a classificação de mérito × trâmite: não é "respondido" nem
+# "pendente" — o painel mostra "Resposta a classificar"
+A_CLASSIFICAR = "a_classificar"
+# situações da planilha (classificar.py), da mais forte para a mais fraca; outro texto
+# na coluna é ignorado — a situação publicada sai sempre deste vocabulário
+PRIORIDADE_SITUACAO = {cls.RESPONDIDO: 4, cls.SO_ENCAMINHAMENTO: 3, cls.SO_PRORROGACAO: 2,
+                       cls.PENDENTE: 1}
+RE_DATA_BR = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
+RE_ANO_A_MAIS = re.compile(r"^(\d{2})/(\d{2})/\d(\d{4})$")  # "18/03/82025"
+# dado pessoal no assunto: CPF ou e-mail abortam a publicação; telefone só avisa
+RE_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+RE_CPF = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)|\bCPF\b\W{0,3}(?:n[º°o]?\.?\s*)?\d",
+                    re.IGNORECASE)
+RE_ONZE_DIGITOS = re.compile(r"(?<![\d.,/-])\d{11}(?![\d.,/-])")
+RE_TELEFONE = re.compile(r"(?<![\d/])(?:\(?\d{2}\)?[\s.]?)?9?\d{4}[-.\s]\d{4}(?![\d/])")
+
+
+def _cpf_valido(d: str) -> bool:
+    """11 dígitos com os dígitos verificadores do CPF (sequência repetida não vale)."""
+    if len(d) != 11 or len(set(d)) == 1:
+        return False
+    for n in (9, 10):
+        soma = sum(int(d[i]) * (n + 1 - i) for i in range(n))
+        if (soma * 10 % 11) % 10 != int(d[n]):
+            return False
+    return True
+
+
+def dados_pessoais(texto: str) -> tuple[list[str], bool]:
+    """(motivos que BLOQUEIAM a publicação — CPF, e-mail —, tem cara de telefone)."""
+    texto = texto or ""
+    motivos = []
+    if RE_EMAIL.search(texto):
+        motivos.append("e-mail")
+    if RE_CPF.search(texto) or any(_cpf_valido(m) for m in RE_ONZE_DIGITOS.findall(texto)):
+        motivos.append("CPF")
+    return motivos, bool(RE_TELEFONE.search(texto))
+
+
+def _vazio(v) -> bool:
+    return v is None or (isinstance(v, str) and not v.strip())
+
+
+def _data_indicacao(valor, ano) -> tuple[str, str]:
+    """(dd/mm/aaaa ou '', ocorrência): '' = ok, 'consertada', 'invalida'."""
+    if _vazio(valor):
+        return "", ""
+    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        d = _data(valor)  # nº de série do Sheets (ou ddmmaaaa digitado sem barras)
+        return d, "" if d else "invalida"
+    s = str(valor).strip()
+
+    def valida(txt):
+        try:
+            datetime.strptime(txt, "%d/%m/%Y")
+            return True
+        except ValueError:
+            return False
+    if RE_DATA_BR.match(s) and valida(s):
+        return s, ""
+    m = RE_ANO_A_MAIS.match(s)
+    if m and ano and int(m[3]) == ano and valida(f"{m[1]}/{m[2]}/{m[3]}"):
+        return f"{m[1]}/{m[2]}/{m[3]}", "consertada"
+    return "", "invalida"
+
+
+def _formato_robo(bruto, exibido: str) -> bool:
+    """A data da sessão está no formato que o robô grava? Ele escreve "dd/mm/aaaa" e a
+    planilha (pt_BR) a exibe assim; a assessoria usa um formato M/D ("2/4/2025")."""
+    if not isinstance(bruto, (int, float)) or isinstance(bruto, bool) or not 0 < bruto < _SERIAL_MAX:
+        return False
+    d = _EPOCH_SHEETS + timedelta(days=int(bruto))
+    return exibido == d.strftime("%d/%m/%Y") and exibido != f"{d.month}/{d.day}/{d.year}"
+
+
+def _numero_canonico(numero: str) -> str:
+    n, ano = numero.split("/")
+    return f"{int(n)}/{ano}"
+
+
+def linhas_indicacoes(valores: list, formulas: list, brutos: list) -> tuple[list[dict], list[int]]:
+    """Cada linha da aba reduzida às colunas de COLUNAS_INDICACOES (o resto da linha
+    nunca sai daqui) + os nºs das linhas descartadas por número inválido."""
+    if not valores:
+        return [], []
+    cab = valores[0]
+    col = {c: _idx_header(cab, c) for c in COLUNAS_INDICACOES}
+
+    def pega(linha: list, c: str):
+        i = col[c]
+        return linha[i] if 0 <= i < len(linha) else ""
+
+    linhas, descartadas = [], []
+    for n, linha in enumerate(valores[1:], start=1):
+        f = formulas[n] if n < len(formulas) else []
+        b = brutos[n] if n < len(brutos) else []
+        numero = str(pega(linha, "Número")).strip()
+        assunto = str(pega(linha, "Assunto")).strip()
+        if not numero and not assunto:
+            continue  # linha vazia
+        if not RE_NUMERO.match(numero):
+            descartadas.append(n + 1)
+            continue
+        linhas.append({
+            "linha": n + 1,
+            "numero": _numero_canonico(numero),
+            "assunto": assunto,
+            "sessao": pega(b, "Data da Sessão"),
+            "sessao_exibida": str(pega(linha, "Data da Sessão")).strip(),
+            "url": _url_resposta(str(pega(f, "Resposta")).strip()),
+            "tem_resposta": not _vazio(pega(linha, "Resposta")),
+            "data_resposta": pega(b, "Data da resposta"),
+            "merito": pega(b, COL_DATA_MERITO),
+            "situacao": str(pega(linha, COL_SITUACAO)).strip(),
+            "bairro": str(pega(linha, "Bairro")).strip(),
+        })
+    return linhas, descartadas
+
+
+def linha_oficial(linhas: list[dict]) -> dict:
+    """A linha que o robô anexou (ementa e datas da Câmara): a última com data de
+    mérito (só o robô grava essa coluna); senão a última com a data da sessão no
+    formato do robô; senão a última da planilha (o robô anexa no fim)."""
+    for x in reversed(linhas):
+        if not _vazio(x["merito"]):
+            return x
+    for x in reversed(linhas):
+        if _formato_robo(x["sessao"], x["sessao_exibida"]):
+            return x
+    return linhas[-1]
+
+
+def juntar_indicacao(linhas: list[dict], rel: dict) -> dict:
+    """Um item público a partir das linhas (na ordem da planilha) do mesmo número."""
+    of = linha_oficial(linhas)
+    ordem = [of] + [x for x in linhas if x is not of]
+    numero = of["numero"]
+    ano = _ano_do_numero(numero)
+
+    def data(campo: str) -> str:
+        achadas = []
+        for x in ordem:
+            d, ocorrencia = _data_indicacao(x[campo], ano)
+            if ocorrencia:
+                rel["datas"][f"{campo}:{ocorrencia}"] += 1
+            if d:
+                achadas.append(d)
+        if len(set(achadas)) > 1:
+            rel["datas"][f"{campo}:divergente"] += 1
+            rel["divergencias"].append(f"{numero} {campo}: {achadas} — vale {achadas[0]}")
+        return achadas[0] if achadas else ""
+
+    assunto = next((x["assunto"] for x in ordem if x["assunto"]), "")
+    for x in ordem[1:]:
+        if x["assunto"] and _sem_acento(x["assunto"]) != _sem_acento(assunto) and not (
+                _parecidos(x["assunto"], assunto)):
+            rel["assuntos_diferentes"].append(f"{numero}: vale «{assunto[:70]}»; "
+                                              f"descartado «{x['assunto'][:70]}»")
+    url = next((x["url"] for x in ordem if x["url"]), "")
+    situacoes = [x["situacao"] for x in linhas if x["situacao"] in PRIORIDADE_SITUACAO]
+    situacao = max(situacoes, key=PRIORIDADE_SITUACAO.get) if situacoes else ""
+    if not situacao:
+        documento = url or any(x["tem_resposta"] or not _vazio(x["data_resposta"])
+                               or not _vazio(x["merito"]) for x in linhas)
+        situacao = A_CLASSIFICAR if documento else cls.PENDENTE
+    # bairro: o 1º texto (na ordem da planilha) que vira bairro oficial ou região
+    bairro = regiao = None
+    textos = [x["bairro"] for x in linhas if x["bairro"]]
+    for t in textos:
+        bairro, regiao = bairro_canonico(t)
+        if bairro or regiao:
+            break
+        rel["nao_reconhecidos"][t] += 1
+    if len(set(textos)) > 1:
+        rel["bairros_diferentes"].append(numero)
+    return {
+        "numero": numero,
+        "ano": ano,
+        "assunto": assunto,
+        "data_sessao": data("sessao"),
+        "data_resposta": data("data_resposta"),
+        "data_resposta_merito": data("merito"),
+        "situacao": situacao,
+        "respondido": situacao == cls.RESPONDIDO,
+        "url_resposta": url,
+        "bairro": bairro or "",
+        "regiao": regiao or "",
+    }
+
+
+def _parecidos(a: str, b: str) -> bool:
+    """Assuntos que falam da mesma coisa (palavras em comum, sem as de ligação)."""
+    vazias = {"INDICA", "AO", "EXECUTIVO", "A", "O", "DE", "DA", "DO", "NA", "NO", "E", "EM"}
+    ta = set(re.sub(r"[^A-Z0-9]+", " ", _sem_acento(a).upper()).split()) - vazias
+    tb = set(re.sub(r"[^A-Z0-9]+", " ", _sem_acento(b).upper()).split()) - vazias
+    return len(ta & tb) / max(1, min(len(ta), len(tb))) >= 0.2
+
+
+def montar_indicacoes(valores: list, formulas: list, brutos: list) -> tuple[list[dict], dict]:
+    """(itens públicos, relatório) a partir das três leituras da aba de indicações.
+    Separado de `coletar_indicacoes()` para ser testável sem o Google."""
+    linhas, descartadas = linhas_indicacoes(valores, formulas, brutos)
+    grupos: dict[str, list[dict]] = {}
+    for x in linhas:
+        grupos.setdefault(x["numero"], []).append(x)
+    rel = {"linhas": len(linhas), "descartadas": descartadas, "datas": Counter(),
+           "divergencias": [], "assuntos_diferentes": [], "nao_reconhecidos": Counter(),
+           "bairros_diferentes": [],
+           "grupos": Counter(len(g) for g in grupos.values())}
+    itens = [juntar_indicacao(g, rel) for g in grupos.values()]
+    itens.sort(key=lambda i: (i["ano"], int(i["numero"].split("/")[0])), reverse=True)
+    return itens, rel
+
+
+def coletar_indicacoes() -> tuple[list[dict], dict]:
+    return montar_indicacoes(*ler_aba(ABA_INDICACOES))
+
+
+def campos_fora_da_lista_indicacoes(itens: list[dict]) -> set[str]:
+    """Chaves que não estão em CAMPOS_PUBLICOS_INDICACOES (deve ser vazio)."""
+    return {k for i in itens for k in i} - set(CAMPOS_PUBLICOS_INDICACOES)
+
+
+def main_indicacoes(args) -> int:
+    itens, rel = coletar_indicacoes()
+    extras = campos_fora_da_lista_indicacoes(itens)
+    if extras:
+        print(f"ABORTANDO: campos fora de CAMPOS_PUBLICOS_INDICACOES: {sorted(extras)}",
+              file=sys.stderr)
+        return 1
+    bloqueios, telefones = [], []
+    for i in itens:
+        motivos, telefone = dados_pessoais(i["assunto"])
+        if motivos:
+            bloqueios.append(f"{i['numero']} ({', '.join(motivos)})")
+        if telefone:
+            telefones.append(i["numero"])
+    if bloqueios:
+        # só o número: o log do Actions é público, o texto suspeito não pode ir para ele
+        print("ABORTANDO: possível dado pessoal no assunto de indicação(ões): "
+              + "; ".join(bloqueios), file=sys.stderr)
+        return 1
+    if telefones:
+        print(f"Aviso: possível telefone no assunto de {len(telefones)} indicação(ões): "
+              + ", ".join(telefones), file=sys.stderr)
+
+    grupos = rel["grupos"]
+    juntadas = sum(n for tam, n in grupos.items() if tam > 1)
+    com_bairro = sum(1 for i in itens if i["bairro"])
+    regioes = Counter(i["regiao"] for i in itens if i["regiao"])
+    nao_rec = sum(rel["nao_reconhecidos"].values())
+    print(f"{rel['linhas']} linha(s) com número válido → {len(itens)} indicação(ões) "
+          f"({juntadas} juntadas de linhas repetidas; grupos por tamanho "
+          f"{dict(sorted(grupos.items()))}); {len(rel['descartadas'])} linha(s) descartada(s) "
+          f"por número inválido {rel['descartadas']}.")
+    print(f"  Bairro oficial em {com_bairro} ({com_bairro / max(1, len(itens)):.0%}); região em "
+          f"{sum(regioes.values())} {dict(regioes)}; {nao_rec} com texto de bairro não reconhecido "
+          f"({len(rel['nao_reconhecidos'])} grafia(s)).")
+    print(f"  Situação: {dict(Counter(i['situacao'] for i in itens))}.")
+    if rel["datas"]:
+        print(f"  Datas: {dict(rel['datas'])}.")
+
+    if args.dry_run:
+        # o detalhe traz texto da planilha (grafias, resumos da assessoria): só no
+        # --dry-run local — o log do workflow é público
+        for t, n in rel["nao_reconhecidos"].most_common():
+            print(f"    não reconhecido: {t!r} × {n}")
+        for linha in rel["divergencias"] + rel["assuntos_diferentes"]:
+            print(f"    {linha}")
+        if rel["bairros_diferentes"]:
+            print(f"    bairros diferentes entre linhas: {rel['bairros_diferentes']}")
+        for i in itens[:5]:
+            print(f"  {i['numero']:>10}  {i['situacao']:<16}  {i['bairro'] or i['regiao']:<16}  "
+                  f"{i['assunto'][:50]}")
+        return 0
+
+    destino = args.salvar or JSON_INDICACOES
+    gravar_json(destino, itens, separators=(",", ":"))
+    print(f"Gravado: {destino}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Exporta requerimentos da planilha para requerimentos-index.json"
+        description="Exporta requerimentos (ou, com --indicacoes, as indicações) da planilha "
+                    "para o JSON do painel"
     )
     parser.add_argument("--dry-run", action="store_true", help="Só imprime contagens")
-    parser.add_argument("--salvar", default=JSON_PADRAO, help="Caminho do JSON de saída")
+    parser.add_argument("--salvar", default=None,
+                        help="Caminho do JSON de saída (padrão: requerimentos-index.json ou "
+                             "indicacoes-index.json na raiz)")
+    parser.add_argument("--indicacoes", action="store_true",
+                        help="Exporta a aba de indicações (indicacoes-index.json)")
     args = parser.parse_args()
+    if args.indicacoes:
+        return main_indicacoes(args)
+    args.salvar = args.salvar or JSON_PADRAO
 
     itens = coletar()
     extras = campos_fora_da_lista(itens)

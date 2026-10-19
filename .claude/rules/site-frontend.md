@@ -10,8 +10,8 @@ paths:
 
 Compartilhada por todas as páginas (sem build): tokens navy/gold, **topbar fixa** de navegação
 entre painéis (`Comum.topbar("<pagina>.html")`; o hub não a usa; inclui Indicadores e Escuta Pública),
-**busca universal Ctrl+K/"/"** (paleta sobre 9 fontes — regimento, lei orgânica, proposituras, legislação,
-requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`, Lei Orgânica ~0,5 MB) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" lista o artigo do Regimento e o da Lei Orgânica, o Regimento primeiro; "lom 58"/"lei orgânica 58" só a Lei Orgânica (Disposições Transitórias entram pelo texto, não pelo número); no Regimento e na Lei Orgânica o
+**busca universal Ctrl+K/"/"** (paleta sobre 10 fontes — regimento, lei orgânica, proposituras, legislação,
+requerimentos, indicações, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`, Lei Orgânica ~0,5 MB) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" lista o artigo do Regimento e o da Lei Orgânica, o Regimento primeiro; "lom 58"/"lei orgânica 58" só a Lei Orgânica (Disposições Transitórias entram pelo texto, não pelo número); no Regimento e na Lei Orgânica o
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
 busca viram links compartilháveis em todos os painéis; `#art-N` no Regimento e na Lei Orgânica —
@@ -44,9 +44,12 @@ mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). A
   Fiscal" (+15 px, cabe a 1280). **Até 640 px** a faixa mostra só "Início" + botão **"Painéis"**,
   que abre a lista com o nome e as seções dos cartões (inclui "O ano em gastos" e "Lei Orgânica",
   fora da faixa — rótulo `null` em `PAGINAS`);
-  foco vai para a página atual, Esc fecha e devolve o foco, clique fora fecha.
+  foco vai para a página atual, Esc fecha e devolve o foco, clique fora fecha. **Indicações**
+  (out/2026) também ficou fora da faixa (rótulo `null`): medido, a faixa ocupa os 986 px inteiros
+  e "Indicações" pediria +94 px em qualquer largura; chega-se a ela pelo menu, pelo cartão do hub
+  e pela alternância "Requerimentos | Indicações" no topo das duas páginas.
 - **Ctrl+K**: links pela **chave estável** — proposituras `?cod=`, legislação `?id=`,
-  requerimentos `?n=` (cada painel mostra só o item, com aviso `.foco` e "Ver a lista inteira";
+  requerimentos e indicações `?n=` (cada painel mostra só o item, com aviso `.foco` e "Ver a lista inteira";
   mexer em filtro sai do foco). O documento entra na busca do ranking; a fonte `documentos`
   (`despesas/dados/nomes-favorecidos.json`, todos os favorecidos, ~0,7 MB) só entra com ≥ 8
   dígitos, e busca que é só CPF/CNPJ não baixa proposituras/legislação. CNPJ completo → item
@@ -153,6 +156,40 @@ até o M7 e no Preço comparado, cujo item ficou para depois).
   zero quando há negativo (DCL); teto do eixo arredondado. Tesoura (Custo por Resultado): faixa =
   série base invisível + diferença empilhada, com os cruzamentos inseridos.
 
+**Indicações & Respostas (`indicacoes.html` + `indicacoes-app.js`, M5, out/2026 — protótipo
+aprovado pelo usuário, público).** Irmã de Requerimentos: topo Noturno com manchete (sem
+resposta de mérito na base inteira), KPIs, filtros `q`/`ano`/`sit` + `bairro`/`regiao`/`n` na
+URL, `Comum.paginador`, CSV só com campos públicos (+ dias até a resposta), compartilhar e
+imprimir. Dados: `indicacoes-index.json` e `geo/santos-bairros.geojson` (contrato e privacidade
+em `respostas-executivo.md`). **Nunca falar em prazo**: indicação não tem prazo legal.
+- **Mapa por `Comum.grafico`** (série `map`): `echarts.registerMap` dentro do `opcao`, uma vez
+  (a biblioteca só existe quando o mapa vai ser desenhado); duas séries — a ilha (caixa do
+  `enquadrar`, alinhada ao topo) e a área continental (`area_continental` do GeoJSON) num recorte
+  no canto sudoeste, que vira faixa sob a ilha abaixo de 560 px. Rampa de 5 classes de
+  `Comum.paleta().rampa` por quebras naturais sobre a raiz da contagem; zero = `p.neutro`. Divisa
+  entre bairros `p.card` no claro e `p.linha` no escuro (o neutro some no fundo navy).
+- **Rótulos** seletivos (os 5 maiores — 3 no celular — ou só o escolhido): dentro da forma no
+  ponto mais perto do polo de inacessibilidade, senão fora com linha-guia (`graphic`). A posição é
+  calculada pela projeção própria (`projecao`), que reproduz a do ECharts — conferida contra
+  `convertToPixel` (< 0,25 px) sem zoom, com zoom e depois de arrastar. Zoom pelos botões (×1,6,
+  até 8×; arrastar só aproximado); o centro arrastado é guardado no evento `georoam`, porque o
+  `notMerge` da camada comum apagaria o estado do ECharts no redesenho seguinte.
+- **Altura fixa por faixa** (540/460/380 px via `--altura-grafico`): a camada só redesenha quando a
+  LARGURA muda.
+- Clique no bairro → `?bairro=` (2º clique limpa); chips das regiões e de "Sem bairro
+  reconhecível" → `?regiao=<slug>`; a tabela "Bairro | Indicações | Respondidas | Mediana" (ordenável
+  e clicável) é o equivalente acessível do mapa, e a descrição + tabela oculta vão no `acessivel`.
+  Nota de cobertura em palavras ("362 de 562 num bairro do mapa…; a contagem mostra onde o
+  mandato pediu, não a necessidade de cada bairro").
+- **CLS** (medido: 0,017 a 1366, 0,023 a 980, 0,001 a 390): KPIs com `min-height` do subtítulo de 2
+  linhas, frase da manchete que cabe nas 2 linhas reservadas no desktop, reservas da nota, legenda e
+  chips, e **`.mais[hidden] { display: none }`** — o `display: block` do botão vencia o `[hidden]`:
+  ele aparecia na lista vazia e saltava para o fim dela, e o salto inflava o CLS a 0,4 em parte
+  das cargas. (Requerimentos, Proposituras e Legislação têm o mesmo `.mais` sem a regra: o botão
+  fica visível mesmo sem mais nada a mostrar — não corrigido aqui.)
+- **Alternância "Requerimentos | Indicações"** (`.hero-topo` + `nav.alterna` no comum.css): a
+  etiqueta à esquerda e a alternância à direita no topo das duas páginas; no celular desce.
+
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
 sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página
@@ -176,14 +213,14 @@ para páginas dedicadas. Hero com **régua de indicadores** (pago no mês, alert
 removidos em 2026-07: o Briefing Ordem do Dia e a Base de Despesas cobrem os mesmos casos de uso
 com dados automáticos.)
 
-**Geometria em duas seções (2026-08):** "Bases de dados" com **8 cartões** (Despesas,
+**Geometria em duas seções (2026-08):** "Bases de dados" com **9 cartões** (Despesas,
 Endividamento, Preço comparado — 7º, entrou em 2026-08-09 —, Proposituras, Legislação,
-Requerimentos, Regimento, **Lei Orgânica** — 8º, 2026-10, M3, logo depois do Regimento) +
-"Leituras e participação" com 3 (Custo por Resultado, O ano em gastos, Escuta pública). A **linha
-incompleta da 1ª seção foi aceita por decisão do usuário em 2026-08** (registrada também em
-`precos.md`) — não "corrigir" movendo cartões: a 3 colunas a 3ª fileira tem 2 cartões (Regimento
-e Lei Orgânica); a 2 colunas são 4 fileiras cheias. **Quando Indicações entrar (decisão D5, cartão
-próprio) a seção vai a 9 = 3×3** e some a linha incompleta.
+Requerimentos, Indicações — logo depois de Requerimentos, 2026-10, M5 —, Regimento, **Lei Orgânica** —
+2026-10, M3, logo depois do Regimento) + "Leituras e participação" com 3 (Custo por Resultado, O ano
+em gastos, Escuta pública). Com 9 cartões a seção fica **3×3** a 3 colunas (cartões próprios para
+Indicações e Lei Orgânica, decisões D4/D5 do usuário em 2026-10): sumiu a fileira incompleta, que
+tinha sido aceita em 2026-08 (registro em `precos.md`). A 2 colunas são 4 fileiras cheias e 1
+cartão na última — custo aceito; não "corrigir" movendo cartões.
 Retrospectiva e escuta pública, antes um `<p>` com emoji abaixo da grade, viraram cartões.
 Em 2 colunas (~668–988px) a seção 2 fica 2+1; é o custo aceito.
 
@@ -244,6 +281,9 @@ qualquer mexida ali:
   Orgânica mostra os artigos do **corpo** (256; as Disposições Transitórias recomeçam no art. 1) e
   "artigos · 68 alterados por emenda" (artigos com nota de emenda) — 1 linha a 1366/980/390 px. Sem
   a chave (antes do 1º `bases-atualizacao.yml` depois do merge) o hub baixa o índice inteiro.
+  Indicações (`n`, `respondidos`, `por_situacao`; a contagem leve só vale com `respondidos`):
+  "monitoradas · N sem resposta de mérito" — **sem prazo**: indicação não tem o prazo legal do
+  requerimento; medido em ≤ 2 linhas a 1366/980/390 px.
 - **Texto do cartão não promete o que a página não entrega**: as `.desc` são estáticas (trocar por
   JS mudaria a altura da fileira); o que depende de estado vai em rótulo/CTA — a Escuta pública
   diz "Ver consulta" e só vira "Participar" com a consulta aberta.

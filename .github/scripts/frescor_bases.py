@@ -155,6 +155,9 @@ BASES = {
 ISENTAS = {
     "regimento-index.json": "estático (OCR manual do Regimento; só muda se o texto mudar)",
     "lei-organica-index.json": "estático (texto do PDF oficial da Lei Orgânica; só muda com emenda nova)",
+    "indicacoes-index.json": "mesmo export e mesma planilha de requerimentos-index.json (vigiado); "
+                             "respostas a indicações chegam em lotes espaçados — 51 dias sem nenhuma "
+                             "em 18/10/2026 —, então a data do dado não separa base parada de silêncio do Executivo",
     "consulta/consultas/*.json": "escuta pública parada — worker pendente de deploy",
     "diario-oficial/": "sem índice no repo para medir — o DOM sai da rotina agendada direto para a planilha (skill dom-santos); vigiar lá",
 }

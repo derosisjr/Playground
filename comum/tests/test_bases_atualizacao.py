@@ -84,3 +84,20 @@ def test_falha_num_indice_so_tira_a_chave_dele(tmp_path, monkeypatch):
     out = ba.contagens()  # nenhum arquivo: nenhuma chave, nenhuma exceção
     assert "requerimentos-index.json" not in out and "regimento-notas.json" not in out
     assert "lei-organica-index.json" not in out
+
+
+def test_indicacoes_contagem_e_frescor(tmp_path, monkeypatch):
+    # cartão do hub: total, respondidas (mérito) e situações; a data vem do glob *-index.json
+    monkeypatch.setattr(ba, "RAIZ", Path(tmp_path))
+    _gravar(tmp_path, "indicacoes-index.json", [
+        {"numero": "1/2026", "situacao": "respondido", "respondido": True},
+        {"numero": "2/2026", "situacao": "pendente", "respondido": False},
+        {"numero": "3/2026", "situacao": "a_classificar", "respondido": False},
+        {"numero": "4/2026", "situacao": "pendente", "respondido": False},
+    ])
+    c = ba.contagens()["indicacoes-index.json"]
+    assert c == {"n": 4, "respondidos": 1,
+                 "por_situacao": {"respondido": 1, "pendente": 2, "a_classificar": 1}}
+    assert "indicacoes-index.json" in ba.alvos()
+    # sem `vence_em`: indicação não tem prazo legal e o hub não fala de prazo
+    assert "fora_do_prazo" not in c
