@@ -2287,6 +2287,97 @@ def exportar_movimento_mensal(rows: list[dict]) -> list[dict]:
     return manifesto
 
 
+# ── Cubo do Explorador de pagamentos (despesas/dados/cubo/AAAA.json) ──────────
+# Os PAGAMENTOS de um ano (fase P da movimentação: as mesmas linhas de dados/mov/, no
+# mês da partição = pela data do pagamento) agregados por mês × unidade gestora × tipo ×
+# favorecido × função × subfunção × programa × elemento × fonte × grupo, com `pago`
+# (soma em centavos inteiros → 2 casas exatas) e `n` (nº de documentos). É a tabela que
+# o explorador.html monta no SQLite do navegador (~30 mil linhas/ano em vez de ~75 mil
+# documentos). Colunas textuais por dicionário, como em dados/mov/; o favorecido é a
+# IDENTIDADE (formato.identidade_favorecido), publicada como [chave, nome, documento] — a
+# chave do ranking/dossiês (agrupar só por nome ou só por CPF mascarado funde pessoas), o
+# nome de exibição do ranking e o documento como a origem o publica (CPF mascarado): nada
+# que dados/mov/ e nomes-favorecidos.json já não publiquem. Vazio vira null (a função "(sem função)" do extra-orçamentário). Serialização
+# determinística (ordem das linhas e dos dicionários só depende do dado): mesmo dado →
+# mesmos bytes, então o ano fechado não vira diff diário no git.
+CAMPOS_CUBO = ["mes", "unidade_gestora", "tipo", "favorecido", "funcao", "subfuncao", "programa",
+               "elemento_despesa", "fonte_recurso", "grupo_despesa", "pago", "n"]
+CUBO_DICIONARIO = CAMPOS_CUBO[1:10]     # colunas por dicionário (mes, pago e n vão como número)
+CUBO_VERSAO = 1
+
+
+def montar_cubos(rows: list[dict], ident: dict) -> dict:
+    """{ano: objeto do cubo} a partir das linhas de montar_movimento (só a fase P)."""
+    agg: dict = defaultdict(lambda: defaultdict(lambda: [0, 0]))   # ano → chave → [centavos, n]
+    for r in rows:
+        if r["fase"] != "P":
+            continue
+        nome, doc = r.get("nome_favorecido") or "", r.get("documento_favorecido") or ""
+        chave = identidade_favorecido(nome, doc)[0]
+        o = ident.get(chave)
+        fav = (chave, o["nome"], o["documento"] or "") if o else (chave, nome, doc)
+        k = (r["_periodo"] % 100, r["unidade_gestora"] or None, r["tipo"] or None, fav,
+             r["funcao"] or None, r["subfuncao"] or None, r["programa"] or None,
+             r["elemento_despesa"] or None, r["fonte_recurso"] or None, r["grupo_despesa"] or None)
+        a = agg[r["_periodo"] // 100][k]
+        a[0] += round((r["pago"] or 0) * 100)
+        a[1] += 1
+
+    def ordem(item):   # mês, maior valor primeiro, depois o texto (desempate total e estável)
+        k, (centavos, _) = item
+        return (k[0], -centavos, tuple("\x1f".join(v) if isinstance(v, tuple) else (v or "") for v in k[1:]))
+
+    cubos = {}
+    for ano in sorted(agg):
+        dic = {c: {} for c in CUBO_DICIONARIO}
+        linhas = []
+        for k, (centavos, n) in sorted(agg[ano].items(), key=ordem):
+            lin = [k[0]]
+            for campo, v in zip(CUBO_DICIONARIO, k[1:]):
+                d = dic[campo]
+                if v not in d:
+                    d[v] = len(d)   # 1ª aparição: os maiores valores ganham os índices curtos
+                lin.append(d[v])
+            lin += [centavos // 100 if centavos % 100 == 0 else centavos / 100, n]
+            linhas.append(lin)
+        cubos[ano] = {"versao": CUBO_VERSAO, "ano": ano, "campos": CAMPOS_CUBO,
+                      "campos_favorecido": ["chave", "nome", "documento"],
+                      "dicionario": {c: [list(v) if isinstance(v, tuple) else v for v in d]
+                                     for c, d in dic.items()},
+                      "linhas": linhas}
+    return cubos
+
+
+def exportar_cubos(rows: list[dict], ident: dict) -> list[dict]:
+    """Grava dados/cubo/AAAA.json (só se os bytes mudaram) e devolve o manifesto do
+    índice (`cubos`): ano, arquivo, linhas, bytes, gzip (estimativa do download), pago, n."""
+    pasta = os.path.join(DADOS_DIR, "cubo")   # segue o --saida (DADOS_DIR já é o do candidato)
+    os.makedirs(pasta, exist_ok=True)
+    cubos = montar_cubos(rows, ident)
+    validos = {f"{a}.json" for a in cubos}
+    for nome in os.listdir(pasta):
+        if nome.endswith(".json") and nome not in validos:
+            os.remove(os.path.join(pasta, nome))
+    manifesto = []
+    for ano, obj in cubos.items():
+        dados = json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        caminho = os.path.join(pasta, f"{ano}.json")
+        try:
+            with open(caminho, "rb") as f:
+                igual = f.read() == dados
+        except OSError:
+            igual = False
+        if not igual:
+            gravar_bytes(caminho, dados)
+        iP, iN = CAMPOS_CUBO.index("pago"), CAMPOS_CUBO.index("n")
+        manifesto.append({"ano": ano, "arquivo": f"despesas/dados/cubo/{ano}.json",
+                          "linhas": len(obj["linhas"]), "bytes": len(dados),
+                          "gzip": len(gzip.compress(dados, 6, mtime=0)),
+                          "pago": round(sum(l[iP] for l in obj["linhas"]), 2),
+                          "n": sum(l[iN] for l in obj["linhas"])})
+    return manifesto
+
+
 # ── Exports tabulares (completos, gitignored) ─────────────────────────────────
 def exportar_csv(rows: list[dict]) -> None:
     with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
@@ -2568,6 +2659,7 @@ def main():
     movimento = montar_movimento(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["meses_movimento"] = exportar_movimento_mensal(movimento)
+    indice["cubos"] = exportar_cubos(movimento, ident)   # Explorador de pagamentos (SQL no navegador)
     exportar_indices_leves(execucao, movimento)
     # nome de exibição + documento de TODAS as identidades (~7,8 mil): o raio-X por nome
     # (?nome=) acha quem está fora do top-300 sem varrer os 45 MB da movimentação

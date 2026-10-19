@@ -4,6 +4,7 @@ paths:
   - "*-app.js"
   - "comum.css"
   - "comum.js"
+  - "explorador-worker.js"
 ---
 
 # Camada comum do site (`comum.css` + `comum.js`)
@@ -301,3 +302,65 @@ apareceram, chips por base e "Só do mandato" (requerimentos + proposituras com 
 `.novidades-linha` sob a régua (fora da grade) que nasce com "Novidades das bases →" numa linha
 só (o número chega depois sem mudar a altura do hero) e vira "N novidades desde a última visita →"
 (mesma chave) ou, para quem nunca abriu a página, "N novidades nos últimos 7 dias →".
+
+# Explorador de pagamentos — `explorador.html` (M9, out/2026)
+
+Tabela dinâmica e SQL de leitura sobre os pagamentos da Prefeitura, no navegador: a página
+(`explorador-app.js`) monta o SQL e desenha; um **Web Worker de módulo** (`explorador-worker.js`,
+mesma origem) baixa o cubo do ano (`despesas/dados/cubo/AAAA.json`, contrato em `despesas.md`),
+monta e consulta num SQLite em memória. Sem cartão no hub: entra pelo menu "Painéis" (`PAGINAS`
+com rótulo `null` na faixa, seção "Bases de dados", logo depois do Radar — `comum.js?v=24`), por um
+link discreto no Detalhamento do Radar de Despesas e pela busca Ctrl+K (fonte de despesas).
+- **Topo Noturno** (eyebrow "Prefeitura · Explorador de pagamentos", `.base-de` do
+  `despesas-index.json`); "Sobre este painel" já no HTML (o texto passa de 3 linhas até 600 px).
+  Do índice a página usa só `cubos`, `top_favorecidos` (slug do dossiê), `resumo.meses_parciais`
+  (`*` no mês), `meses_movimento` (tamanho do download do Detalhamento) e `dados_ate`; índice sem
+  `cubos` → aviso "ainda não tem dados publicados".
+- **Biblioteca e integridade**: `@sqlite.org/sqlite-wasm@3.53.4-build1` (versão exata, publicada no
+  npm em 2026-09-08) do jsDelivr. `import()` não aceita SRI, então o worker baixa `dist/index.mjs` e
+  `dist/sqlite3.wasm` com **`fetch(url, { integrity: "sha384-…" })`** — o navegador recusa arquivo
+  diferente (hashes do .tgz do npm, que confere com o `integrity` do registro; o jsDelivr serve os
+  mesmos bytes) —, importa o módulo de um Blob URL e passa o .wasm como `wasmBinary` (`locateFile`
+  só evita resolver caminho relativo a `blob:`). O `/+esm` do jsDelivr (gerado, ~70 KB) não tem hash
+  conferível; o arquivo do pacote custa ~50 KB a mais no download. Trocar de versão = versão e os
+  dois hashes juntos.
+- **Montagem**: o JSON vai inteiro para o SQLite (`jsonb` uma vez + `json_each`; cada linha vira
+  jsonb numa CTE materializada antes das extrações; dicionários juntados por chave) — ~210–270 ms
+  para 29,7 mil linhas, contra 0,9 s com bind por linha no M0. Confere linhas e pago com o
+  manifesto. Tabela `pagamentos` (ano, mes, periodo, unidade_gestora, tipo, chave_favorecido,
+  favorecido, documento, funcao, subfuncao, programa, elemento, fonte, grupo, pago, n); cada linha
+  soma documentos — `SUM(n)` conta pagamentos. O download do cubo corre junto com o da biblioteca.
+- **Tabela dinâmica**: linhas (11 dimensões), colunas opcionais (mês e ano em ordem; as demais com as
+  8 maiores + "Demais"), medida pago | nº | % do total, 10/20/50 maiores + "Demais" (mês e ano mostram
+  todos os períodos), filtros em chips (dimensão + busca sem acento com sugestões — combobox ARIA;
+  valores da mesma dimensão = OU; sugestões sob os outros filtros), anos por botões ("+ 2025 · ≈
+  0,5 MB" pelo `gzip` do manifesto; vários anos na mesma tabela). **A consulta que monta a tabela é a
+  mesma de "Ver SQL"**; o total = soma das linhas (inclusive "Demais"); o resumo do topo vem de uma
+  consulta independente. Cabeçalhos `<button>` com `aria-sort` ("Demais" fica no fim); `.tabela-resp`
+  no celular (1ª célula = título do cartão); matriz com valores compactos sem "R$" (exato no `title`
+  e no CSV); área rolável só ganha `tabindex`/`role=region` quando rola. Gráfico por `Comum.grafico`
+  (barras deitadas até 20; mês/ano em pé; com colunas, empilhadas com o tempo no eixo x e 6 séries +
+  "Outros"; celular sem eixo, valor na ponta). CSV por `Comum.exportarCsv` (números como número,
+  coluna "Recorte"). Status `role=status` de altura fixa ("Baixando…", "Montando…", "Pronto em 0,6 s").
+- **URL**: `anos`, `l`, `c`, `m`, `top`, `f1…fN` (`dim:valor`; valor vazio = sem valor na origem), `o`
+  (coluna:direção), `sql=1` (painel aberto), `q` (consulta executada; roda ao abrir o link).
+- **Clique**: favorecido → `favorecido.html?f=<slug>` (top-300) ou `?doc=&nome=`; demais → Detalhamento
+  `despesas.html?dv=mov&dm=<meses|ano>&dfa=P&<DET_URL>=…#detalhe` (mesmas chaves de `irParaDetalhe` /
+  `_link_detalhe`; filtro com mais de um valor fica de fora e o `title` do link diz, com o tamanho do
+  download). "(sem função)" e "Demais" sem link (o Detalhamento não filtra o vazio).
+- **Guarda do SQL** (no worker): só `SELECT`/`WITH` (comentários iniciais ignorados), **um comando**
+  (contado com `sqlite3_prepare_v3` + tail — o `prepare` do oo1 ignoraria o resto em silêncio),
+  `sqlite3_stmt_readonly`, `PRAGMA query_only=1` (só a carga o desliga), `hard_heap_limit` 256 MB e
+  `SQLITE_LIMIT_LENGTH` 16 MB; até 5.000 linhas (200 por vez), texto > 2.000 caracteres cortado,
+  resultado só por `textContent`. **10 s** na página: termina o worker, cria outro e recarrega os anos
+  (~0,5 s no teste); consultas da própria página têm rede de 30 s; init > 45 s = falha.
+- **Falha** (CDN fora, hash diferente, sem worker de módulo — detectado pelo getter de `type` no
+  próprio worker — ou sem WebAssembly): aviso `role=alert` + "Baixar o cubo de AAAA (CSV)" montado em
+  JS puro do JSON + link para o Detalhamento + "Tentar de novo".
+- **Medido** (Chromium, servidor local, CDN real, base de 2026-10-16): pronto em 0,5–0,8 s frio e
+  0,4–0,7 s quente; a thread do worker faz ~420 ms de trabalho sem nenhuma tarefa longa na página por
+  causa dele (a 4×, as longas são layout/fontes — iguais às de outras páginas —, o JSON do índice, o
+  desenho da tabela e a avaliação do ECharts). O CPU 4× do CDP não desacelera o worker. CLS 0,0002
+  (390) e ≤ 0,011 (1366). axe 4.10.2 sem violações (tabela, matriz, filtro, SQL, falha × 1366/390 ×
+  claro/escuro). WebKit 26.4 ok. `sw.js`: `explorador.html` no NUCLEO; os cubos caem em
+  `DADOS_COERENTES` (rede primeiro); o CDN não passa pelo SW (cache HTTP, `immutable`).

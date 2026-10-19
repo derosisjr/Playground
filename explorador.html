@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Explorador de pagamentos — Prefeitura de Santos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="description" content="Monte sua tabela com os pagamentos da Prefeitura de Santos — por função, favorecido, mês, unidade gestora — e, se quiser, consulte em SQL. Tudo no navegador." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Explorador de pagamentos — Prefeitura de Santos" />
+    <meta property="og:description" content="Tabela dinâmica dos pagamentos da Prefeitura de Santos (função, favorecido, mês, unidade) e consultas SQL de leitura, no navegador." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/explorador.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css?v=12" />
+    <style>
+      :root {
+        --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
+        --gold-bright: #e3c977;
+        --bg: #f4f1e9; --card: #ffffff; --line: #e2dccd; --muted: #5d6675;
+        --red: #b42318;
+      }
+      html[data-tema="escuro"] body { --red: #f97066; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font-family: "Manrope", -apple-system, Segoe UI, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      a:focus-visible, button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible {
+        outline: 2px solid var(--gold); outline-offset: 2px; }
+      .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
+      .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
+      .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
+      /* o texto do topo passa de 3 linhas em qualquer largura até 600 px: o botão vem no HTML
+         (o comum.css só o mostra nos painéis com número-manchete) */
+      @media (max-width: 600px) { header.hero .sobre-painel { display: inline-block; } }
+
+      .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; margin-bottom: 16px; }
+      /* line-height explícito nos textos dos controles: com "normal" a altura muda quando a fonte
+         web chega (≈3 px a CPU 4×, deslocando o resto da página) */
+      .box h2 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; line-height: 1.4; }
+      .btn.primario { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .btn.primario:hover { background: var(--navy2); }
+      .btn { min-height: 34px; line-height: 1.3; }
+      .rotulo-campo { display: block; line-height: 1.3; color: var(--muted); font-size: 11px; letter-spacing: .08em;
+        text-transform: uppercase; font-weight: 700; margin: 0 0 6px; }
+      select.campo { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r-sm);
+        background: var(--card); font: inherit; font-size: 14px; line-height: 1.3; color: var(--ink); min-height: 40px; }
+      html[data-tema="escuro"] select.campo { background: var(--card); color: var(--ink); border-color: var(--line); }
+
+      /* ── Controles da tabela dinâmica ─────────────────────────────── */
+      .ex-controles { margin-top: 22px; }
+      .ex-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+      .ex-linha + .ex-linha, .ex-grade + .ex-linha, .ex-linha + .ex-grade { margin-top: 14px; }
+      .ex-grade { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; align-items: end; }
+      @media (max-width: 900px) { .ex-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      /* celular: a medida (3 botões) e o "Mostrar" ganham a linha inteira — em meia largura os
+         botões quebravam em duas linhas e desalinhavam o select ao lado */
+      @media (max-width: 640px) { .ex-grade .campo-largo { grid-column: 1 / -1; } }
+      .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+      .seg .btn { padding: 8px 12px; min-height: 40px; }
+      .ex-anos { min-height: 40px; }   /* os botões chegam com o índice: altura reservada (CLS) */
+      .ex-anos .btn .tam { color: var(--muted); font-size: 12px; font-family: "IBM Plex Mono", monospace; }
+      .btn.primario .tam { color: #c3cdda; }
+      html[data-tema="escuro"] .btn.primario .tam { color: #3a3010; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 32px;
+        border: 1px solid var(--gold); border-radius: 999px; background: var(--card);
+        color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; max-width: 100%; text-align: left; }
+      .chip:hover { background: rgba(201,168,76,.12); }
+      .chip .x { font-weight: 800; color: var(--muted); }
+      .chip.chip-limpar { border-color: var(--line); color: var(--muted); }
+      .chip span.v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
+      .ex-editor { margin-top: 12px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--r-sm);
+        display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr) auto; gap: 10px 12px; align-items: end; }
+      .ex-editor[hidden] { display: none; }
+      @media (max-width: 640px) { .ex-editor { grid-template-columns: 1fr; } }
+      .combo { position: relative; }
+      .combo input { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r-sm);
+        background: var(--card); font: inherit; font-size: 14px; color: var(--ink); min-height: 40px; }
+      .sugestoes { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px 0;
+        list-style: none; background: var(--card); border: 1px solid var(--gold); border-radius: var(--r-sm);
+        max-height: 300px; overflow-y: auto; box-shadow: 0 14px 30px -12px rgba(7,17,31,.35); }
+      .sugestoes[hidden] { display: none; }
+      .sugestoes li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; cursor: pointer;
+        font-size: 13px; line-height: 1.35; border-left: 3px solid transparent; }
+      .sugestoes li .doc { display: block; color: var(--muted); font-size: 11.5px; font-family: "IBM Plex Mono", monospace; }
+      .sugestoes li .vl { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 12px; white-space: nowrap; }
+      .sugestoes li.ativa, .sugestoes li:hover { background: rgba(201,168,76,.14); border-left-color: var(--gold); }
+      .sugestoes li.vazia { color: var(--muted); cursor: default; }
+
+      /* ── Status (role=status) — altura fixa: o texto troca sem mexer na página ── */
+      .ex-status { margin: 22px 0 14px; min-height: 1.6em; color: var(--muted); font-size: 13px;
+        font-family: "IBM Plex Mono", monospace; line-height: 1.6; }
+      .ex-status b { color: var(--ink); font-weight: 600; }
+      @media (max-width: 600px) { .ex-status { min-height: 3.2em; } }
+
+      /* ── Resultado ─────────────────────────────────────────────────── */
+      .ex-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 16px; margin: 0 0 12px; }
+      .ex-cab h2 { font-family: "Fraunces", Georgia, serif; font-size: 20px; font-weight: 600; letter-spacing: 0;
+        margin: 0; line-height: 1.3; min-height: 1.3em; }
+      .ex-resumo { margin: 4px 0 0; color: var(--muted); font-size: 13px; min-height: 1.5em; }
+      .ex-resumo b { color: var(--ink); font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+      .ex-grafico { --altura-grafico: 400px; margin: 4px 0 14px; }
+      @media (max-width: 640px) { .ex-grafico { --altura-grafico: 380px; } }
+      .tabela-wrap { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); overflow: auto; }
+      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      thead th { background: var(--navy2); color: #fff; text-align: left; padding: 0; font-weight: 700; white-space: nowrap; }
+      thead th button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 10px 12px; cursor: pointer; }
+      thead th button:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }
+      thead th.r button { text-align: right; }
+      thead th .seta { color: var(--gold-bright); }
+      thead th.ativa { background: var(--navy3); }
+      tbody td, tfoot td { padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+      td.r, th.r { text-align: right; }
+      .num { font-family: "IBM Plex Mono", monospace; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      td.ativa { background: rgba(201,168,76,.08); }
+      td.neg { color: var(--red); }
+      tbody tr.ex-linha-link { cursor: pointer; }
+      tbody tr:hover { background: #f9f7f1; }
+      tbody tr.demais td { color: var(--muted); font-style: italic; }
+      tfoot td { font-weight: 700; border-top: 2px solid var(--gold); background: color-mix(in srgb, var(--card) 94%, var(--gold)); }
+      /* alvo de toque ≥ 24 px (WCAG 2.2, 2.5.8): o link do nome media 18 px de altura */
+      .ex-nome { display: inline-block; min-height: 24px; padding: 3px 0; color: var(--ink); font-weight: 600;
+        text-decoration: underline dotted var(--gold); text-underline-offset: 4px; }
+      .ex-doc { color: var(--muted); font-size: 12px; font-family: "IBM Plex Mono", monospace; margin-top: 2px; }
+      .ex-tabela td:first-child { min-width: 180px; max-width: 420px; }
+      /* matriz (com colunas): células compactas, sem o "R$" repetido (o título diz a medida) */
+      .ex-tabela.matriz td, .ex-tabela.matriz th button { padding-left: 9px; padding-right: 9px; }
+      .ex-tabela.matriz td:first-child { min-width: 150px; max-width: 260px; }
+      .dica-scroll { color: var(--muted); font-size: 12px; font-family: "IBM Plex Mono", monospace; margin: 0 0 6px; }
+      .dica-scroll[hidden] { display: none; }
+      .ex-esqueleto td { height: 41px; }
+      .ex-esqueleto .skel { display: block; height: 12px; }
+      .nota { color: var(--muted); font-size: 12.5px; line-height: 1.55; margin: 10px 2px 0; }
+      .nota-parcial { color: var(--muted); font-size: 12px; margin: 8px 2px 0; }
+      .vazio { padding: 32px 16px; text-align: center; color: var(--muted); }
+      .acoes .btn { text-decoration: none; display: inline-flex; align-items: center; }
+      .btn[hidden], .acoes .btn[hidden] { display: none; }   /* a classe acima vencia o atributo */
+
+      /* mobile: tabela vira cartões (.tabela-resp do comum.css) + total como cartão */
+      @media screen and (max-width: 760px) {
+        .ex-tabela td:first-child, .ex-tabela.matriz td:first-child { min-width: 0; max-width: none; }
+        /* 1ª célula = título do cartão (o rótulo "Função:" repetido em cada cartão era ruído) */
+        .ex-tabela tbody td:first-child, .ex-tabela tfoot td:first-child { font-size: 14.5px; font-weight: 700; padding-bottom: 8px; }
+        .ex-tabela tbody td:first-child::before, .ex-tabela tfoot td:first-child::before { display: none; }
+        .ex-tabela tfoot, .ex-tabela tfoot tr, .ex-tabela tfoot td { display: block; width: 100%; }
+        .ex-tabela tfoot tr { border: 2px solid var(--gold); border-radius: var(--r-md); padding: 6px 4px; background: var(--card); }
+        .ex-tabela tfoot td { display: flex; gap: 12px; border: 0; padding: 6px 14px; background: none; }
+        .ex-tabela tfoot td::before { content: attr(data-label); flex: 0 0 80px; color: var(--muted); font-size: 11px;
+          font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+        .ex-tabela td.r { text-align: left; }
+        .ex-tabela tbody td::before, .ex-tabela tfoot td::before { flex-basis: 96px; }
+        .ex-esqueleto td { height: auto; }
+        .tabela-wrap.resp { border: 0; background: none; overflow: visible; }
+      }
+
+      /* ── SQL ───────────────────────────────────────────────────────── */
+      .ex-sql textarea { width: 100%; min-height: 260px; resize: vertical; padding: 12px 14px; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--paper-2); color: var(--ink);
+        font: 500 12.5px/1.55 "IBM Plex Mono", ui-monospace, Consolas, monospace; tab-size: 2; }
+      html[data-tema="escuro"] .ex-sql textarea { background: #0a1628; }
+      .ex-sql .acoes { margin: 10px 0 0; }
+      .ex-exemplos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; }
+      .ex-exemplos .lnk { font-size: 13px; }
+      .ex-sql-status { margin: 12px 0 8px; min-height: 1.6em; font-size: 13px; font-family: "IBM Plex Mono", monospace; color: var(--muted); }
+      .ex-sql-status.erro { color: var(--red); font-family: "Manrope", sans-serif; font-weight: 600; }
+      .ex-sql-res { max-height: 70vh; }
+      .ex-sql-res table { font-size: 12.5px; }
+      .ex-sql-res thead th { padding: 8px 10px; position: sticky; top: 0; }
+      .ex-sql-res td { padding: 6px 10px; border-top: 1px solid var(--line); white-space: nowrap; max-width: 420px;
+        overflow: hidden; text-overflow: ellipsis; }
+      .ex-sql-res td.nulo { color: var(--muted); font-style: italic; }
+      .ex-esquema { margin: 14px 0 0; }
+      .ex-esquema summary { cursor: pointer; font-weight: 700; font-size: 13.5px; padding: 4px 0; min-height: 24px; }
+      .ex-esquema table { margin-top: 8px; font-size: 12.5px; }
+      .ex-esquema th { background: none; color: var(--muted); padding: 6px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+      .ex-esquema td { padding: 6px 10px; }
+      .ex-esquema code, .nota code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+      @media screen and (max-width: 760px) { .ex-esquema table.tabela-resp tbody td::before { flex-basis: 70px; } }
+
+      /* ── Falha (sem SQLite) ────────────────────────────────────────── */
+      .ex-falha { border-left: 4px solid var(--gold); }
+      .ex-falha p { margin: 0 0 10px; font-size: 14px; line-height: 1.55; }
+      .rodape { color: var(--muted); font-size: 12px; margin-top: 22px; line-height: 1.6; }
+      /* papel: a tabela, o gráfico e o rodapé (a linha .so-impressao do comum.js leva a URL com o recorte) */
+      @media print {
+        #ex-controles, #ex-editor, .ex-status, .dica-scroll { display: none !important; }
+        /* regra à parte: navegador sem :has() descarta a lista inteira de seletores */
+        #ex-sql:not(:has(#ex-sql-res:not([hidden]))) { display: none !important; }
+      }
+      .rodape a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <script src="./comum.js?v=24"></script>
+    <script>Comum.topbar("explorador.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Prefeitura · Explorador de pagamentos</p>
+        <h1>Explorador de pagamentos</h1>
+        <p class="hero-sub">
+          Monte a sua tabela com os pagamentos da Prefeitura de Santos — por função, favorecido, mês,
+          unidade gestora, elemento ou fonte — e cruze as dimensões. Pagamentos pela data do pagamento,
+          do Portal da Transparência, um ano por vez; tudo é calculado no seu navegador, sem servidor.
+          Quem conhece SQL pode consultar a mesma tabela.
+        </p>
+        <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
+        <p class="base-de" data-base="despesas-index.json"></p>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="box ex-controles" id="ex-controles" aria-labelledby="ex-controles-titulo">
+        <h2 id="ex-controles-titulo">Monte a tabela</h2>
+        <div class="ex-linha">
+          <span class="rotulo-campo" id="ex-anos-rotulo" style="margin:0">Anos</span>
+          <div class="seg ex-anos" id="ex-anos" role="group" aria-labelledby="ex-anos-rotulo"></div>
+        </div>
+        <div class="ex-grade">
+          <div>
+            <label class="rotulo-campo" for="ex-linhas">Linhas</label>
+            <select class="campo" id="ex-linhas"></select>
+          </div>
+          <div>
+            <label class="rotulo-campo" for="ex-colunas">Colunas</label>
+            <select class="campo" id="ex-colunas"></select>
+          </div>
+          <div class="campo-largo">
+            <span class="rotulo-campo" id="ex-medida-rotulo">Medida</span>
+            <div class="seg" id="ex-medida" role="group" aria-labelledby="ex-medida-rotulo">
+              <button type="button" class="btn" data-medida="pago">Pago (R$)</button>
+              <button type="button" class="btn" data-medida="n" title="Número de documentos de pagamento">Nº</button>
+              <button type="button" class="btn" data-medida="pct">% do total</button>
+            </div>
+          </div>
+          <div class="campo-largo">
+            <label class="rotulo-campo" for="ex-top">Mostrar</label>
+            <select class="campo" id="ex-top">
+              <option value="10">10 maiores + demais</option>
+              <option value="20">20 maiores + demais</option>
+              <option value="50">50 maiores + demais</option>
+            </select>
+          </div>
+        </div>
+        <div class="ex-linha">
+          <span class="rotulo-campo" style="margin:0">Filtros</span>
+          <div class="chips" id="ex-chips"><span class="nota" style="margin:0">nenhum — todos os pagamentos dos anos escolhidos</span></div>
+          <button type="button" class="btn" id="ex-add-filtro" aria-expanded="false" aria-controls="ex-editor">+ Filtrar</button>
+        </div>
+        <div class="ex-editor" id="ex-editor" hidden>
+          <div>
+            <label class="rotulo-campo" for="ex-filtro-dim">Filtrar por</label>
+            <select class="campo" id="ex-filtro-dim"></select>
+          </div>
+          <div class="combo">
+            <label class="rotulo-campo" for="ex-filtro-q">Valor</label>
+            <input id="ex-filtro-q" type="text" autocomplete="off" spellcheck="false" role="combobox"
+              aria-autocomplete="list" aria-expanded="false" aria-controls="ex-sugestoes"
+              placeholder="Digite para buscar…" />
+            <ul class="sugestoes" id="ex-sugestoes" role="listbox" aria-label="Valores" hidden></ul>
+          </div>
+          <button type="button" class="btn" id="ex-filtro-fechar">Fechar</button>
+        </div>
+      </section>
+
+      <p class="ex-status" id="ex-status" role="status" aria-live="polite">Preparando o explorador…</p>
+
+      <section class="box ex-falha" id="ex-falha" hidden aria-labelledby="ex-falha-titulo">
+        <h2 id="ex-falha-titulo">O explorador não pôde abrir agora</h2>
+        <p id="ex-falha-motivo"></p>
+        <p>Você ainda pode baixar os pagamentos do ano (o mesmo cubo, em CSV, que abre no Excel) ou
+          consultar documento por documento no <a href="./despesas.html#detalhe">Detalhamento do Radar de Despesas</a>.</p>
+        <div class="acoes" id="ex-falha-acoes"></div>
+      </section>
+
+      <section class="box" id="ex-resultado" aria-labelledby="ex-titulo">
+        <div class="ex-cab">
+          <div>
+            <h2 id="ex-titulo"><span class="skel" style="display:inline-block;width:16ch;height:.9em" aria-hidden="true"></span></h2>
+            <p class="ex-resumo" id="ex-resumo"></p>
+          </div>
+          <div class="acoes">
+            <button type="button" class="btn" id="ex-csv" disabled>Baixar CSV</button>
+            <button type="button" class="btn" data-acao="compartilhar" title="Copia o link desta tabela (anos, linhas, colunas, filtros)">Copiar link</button>
+            <button type="button" class="btn" id="ex-ver-sql" aria-expanded="false" aria-controls="ex-sql">Ver SQL</button>
+          </div>
+        </div>
+        <div class="grafico ex-grafico" id="ex-grafico"></div>
+        <p class="dica-scroll" id="ex-dica-scroll" hidden aria-hidden="true">→ deslize a tabela para ver todas as colunas</p>
+        <div class="tabela-wrap resp" id="ex-tabela-wrap">
+          <table class="tabela-resp ex-tabela" id="ex-tabela">
+            <caption class="sr-only" id="ex-legenda">Tabela dinâmica dos pagamentos</caption>
+            <thead id="ex-cabecalho"></thead>
+            <tbody id="ex-corpo">
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:60%"></span></td><td><span class="skel" style="width:70%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:52%"></span></td><td><span class="skel" style="width:66%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:58%"></span></td><td><span class="skel" style="width:62%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:46%"></span></td><td><span class="skel" style="width:60%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:55%"></span></td><td><span class="skel" style="width:58%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+              <tr class="ex-esqueleto" aria-hidden="true"><td><span class="skel" style="width:49%"></span></td><td><span class="skel" style="width:54%"></span></td><td><span class="skel" style="width:40%"></span></td><td><span class="skel" style="width:50%"></span></td></tr>
+            </tbody>
+            <tfoot id="ex-rodape-tabela"></tfoot>
+          </table>
+        </div>
+        <p class="nota-parcial" id="ex-nota-parcial" hidden></p>
+        <p class="nota" id="ex-nota">Clique numa linha para abrir o raio-X do favorecido ou o Detalhamento do Radar de
+          Despesas (movimentação, só pagamentos) com o mesmo recorte. O CSV traz os valores exatos.</p>
+      </section>
+
+      <section class="box ex-sql" id="ex-sql" hidden aria-labelledby="ex-sql-titulo">
+        <h2 id="ex-sql-titulo">Consulta SQL</h2>
+        <p class="nota" id="ex-sql-explica" style="margin:0 0 10px">Esta é a consulta que monta a tabela acima. Edite e execute (Ctrl+Enter):
+          só leitura (<code>SELECT</code> ou <code>WITH</code>, um comando), até 5.000 linhas e 10 segundos — roda no seu
+          navegador, num SQLite em memória com a tabela <code>pagamentos</code>.</p>
+        <label class="sr-only" for="ex-sql-texto">Consulta SQL</label>
+        <textarea id="ex-sql-texto" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="ex-sql-explica"></textarea>
+        <div class="acoes">
+          <button type="button" class="btn primario" id="ex-sql-rodar">Executar</button>
+          <button type="button" class="btn" id="ex-sql-voltar" hidden>Voltar à consulta da tabela</button>
+          <button type="button" class="btn" id="ex-sql-csv" disabled>Baixar resultado (CSV)</button>
+        </div>
+        <div class="ex-exemplos" id="ex-exemplos"><span class="rotulo-campo" style="margin:0">Exemplos</span></div>
+        <details class="ex-esquema">
+          <summary>Colunas da tabela <code>pagamentos</code></summary>
+          <table class="tabela-resp">
+            <thead><tr><th scope="col">Coluna</th><th scope="col">Tipo</th><th scope="col">O que é</th></tr></thead>
+            <tbody id="ex-esquema-corpo"></tbody>
+          </table>
+          <p class="nota">Cada linha soma os pagamentos iguais em todas as colunas dentro do mês — use
+            <code>SUM(n)</code> para contar documentos e <code>SUM(pago)</code> para valores (não <code>COUNT(*)</code>).
+            Para agrupar por favorecido use <code>chave_favorecido</code>: o nome sozinho junta homônimos e o CPF
+            mascarado sozinho junta pessoas diferentes.</p>
+        </details>
+        <p class="ex-sql-status" id="ex-sql-status" role="status" aria-live="polite"></p>
+        <div class="tabela-wrap ex-sql-res" id="ex-sql-res" hidden tabindex="0" role="region" aria-label="Resultado da consulta SQL">
+          <table id="ex-sql-tabela"><thead></thead><tbody></tbody></table>
+        </div>
+        <div class="acoes" style="justify-content:center;margin-top:10px"><button type="button" class="btn" id="ex-sql-mais" hidden>Mostrar mais</button></div>
+      </section>
+
+      <p class="rodape">
+        Fonte: Portal da Transparência da Prefeitura de Santos (API pública de pagamentos), consolidado
+        pela Base de Despesas do gabinete. Cada ano é um cubo<span id="ex-json-links"></span> com todos os
+        pagamentos (fase P), no mês da data do pagamento, somados por mês, unidade gestora, tipo,
+        favorecido, função, subfunção, programa, elemento, fonte e grupo — inclusive os
+        extra-orçamentários (retenções e consignações, sem função) e as anulações, que entram negativas; o
+        total do ano é o mesmo do Radar de Despesas. O favorecido é consolidado pela identidade (todas as
+        grafias do mesmo CNPJ juntas; CPF mascarado só com o mesmo nome). Os meses mais recentes ainda estão
+        sendo publicados pela origem. Base de descoberta e triagem: dados informativos e não oficiais.
+        <span id="ex-dados-ate"></span>
+      </p>
+    </main>
+
+    <script defer src="./explorador-app.js?v=1"></script>
+  </body>
+</html>

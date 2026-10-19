@@ -43,6 +43,52 @@ def _ler(caminho):
         return json.load(f)
 
 
+def verificar_cubos(raiz: str, idx: dict) -> list[str]:
+    """Cubos do Explorador de pagamentos (`cubos` do índice × dados/cubo/AAAA.json): todo
+    ano do índice tem cubo; cada arquivo existe, tem as linhas e os bytes anunciados, os
+    índices do dicionário são válidos e o pago conserva — por ano (= totais.por_ano) e por
+    mês (= series_mensais). Índice sem `cubos` (export anterior ao explorador) não é falha."""
+    falhas = []
+    manifesto = idx.get("cubos")
+    if manifesto is None:
+        return falhas
+    anos_idx = set((idx.get("totais") or {}).get("por_ano") or {})
+    faltam = sorted(anos_idx - {str(m["ano"]) for m in manifesto})
+    if faltam:
+        falhas.append(f"ano(s) sem cubo do explorador: {', '.join(faltam)}")
+    serie = {(s["ano"], s["mes"]): s["valor"] for s in idx.get("series_mensais") or []}
+    for m in manifesto:
+        arq = os.path.join(raiz, m["arquivo"])
+        if not os.path.exists(arq):
+            falhas.append(f"cubo do manifesto ausente: {m['arquivo']}")
+            continue
+        if os.path.getsize(arq) != m.get("bytes"):
+            falhas.append(f"{m['arquivo']}: {os.path.getsize(arq)} bytes × manifesto {m.get('bytes')}")
+        d = _ler(arq)
+        linhas, campos, dic = d.get("linhas") or [], d.get("campos") or [], d.get("dicionario") or {}
+        if len(linhas) != m["linhas"]:
+            falhas.append(f"{m['arquivo']}: {len(linhas)} linhas × manifesto {m['linhas']}")
+        if "pago" not in campos or "mes" not in campos:
+            falhas.append(f"{m['arquivo']}: sem as colunas mes/pago")
+            continue
+        iP, iM = campos.index("pago"), campos.index("mes")
+        fora = [c for c, valores in dic.items() if c in campos and
+                any(not 0 <= l[campos.index(c)] < len(valores) for l in linhas)]
+        if fora:
+            falhas.append(f"{m['arquivo']}: índice fora do dicionário em {', '.join(fora)}")
+        pago = round(sum(l[iP] for l in linhas), 2)
+        alvo = (idx.get("totais") or {}).get("por_ano", {}).get(str(m["ano"]))
+        if alvo is None or abs(pago - alvo) > TOL or abs(pago - m["pago"]) > TOL:
+            falhas.append(f"cubo {m['ano']}: pago {pago} × índice {alvo} × manifesto {m['pago']}")
+        por_mes = {}
+        for l in linhas:
+            por_mes[l[iM]] = por_mes.get(l[iM], 0) + l[iP]
+        for (a, mes), v in serie.items():
+            if a == m["ano"] and abs(round(por_mes.get(mes, 0), 2) - v) > TOL:
+                falhas.append(f"cubo {a}-{mes:02d}: pago {round(por_mes.get(mes, 0), 2)} × série mensal {v}")
+    return falhas
+
+
 def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
     falhas = []
     idx_path = os.path.join(raiz, "despesas-index.json")
@@ -107,6 +153,9 @@ def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
             v = pago_mov_meses.get((s["ano"], s["mes"]))
             if v is None or abs(v - s["valor"]) > TOL:
                 falhas.append(f"série {s['ano']}-{s['mes']:02d}: pago {s['valor']} × movimentação {v}")
+
+    # 4b) cubos do Explorador de pagamentos × índice (ano a ano e mês a mês)
+    falhas += verificar_cubos(raiz, idx)
 
     # 5) favorecidos: ranking × dossiês
     tops = idx.get("top_favorecidos") or []

@@ -43,6 +43,7 @@ const NUCLEO = [
   "./",
   "./index.html",
   "./despesas.html",
+  "./explorador.html",
   "./endividamento.html",
   "./proposituras.html",
   "./legis.html",
