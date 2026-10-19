@@ -1,30 +1,8 @@
-// Semáforo Fiscal — painel de endividamento (vanilla + Chart.js)
+// Semáforo Fiscal — painel de endividamento (vanilla + ECharts via Comum.grafico)
 // Consome endividamento-index.json (gerado por endividamento/export.py).
 
-// cores conscientes do tema; recalculadas no "temamudou" (repinta sem reload)
-let ESCURO, NAVY, GOLD, FILL_SERIE, COR_LIMITE, COR_ALERTA, COR_VERDE;
-function definirCores() {
-  ESCURO = document.documentElement.dataset.tema === "escuro";
-  // dourado mais escuro no tema claro: a linha fina precisa de contraste ≥3:1
-  NAVY = ESCURO ? "#9fb6d9" : "#07111f";
-  GOLD = ESCURO ? "#c9a84c" : "#967c2f";
-  FILL_SERIE = ESCURO ? "rgba(159,182,217,.10)" : "rgba(10,22,40,.08)";
-  // status nos gráficos (linhas de limite/alerta) — mesmos tokens do CSS
-  COR_LIMITE = ESCURO ? "#f87171" : "#b42318";
-  COR_ALERTA = ESCURO ? "#fbbf24" : "#b54708";
-  COR_VERDE = ESCURO ? "#4ade80" : "#067647";
-  if (window.Chart) {
-    Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
-    Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
-  }
-}
-definirCores();
-window.addEventListener("temamudou", () => {
-  definirCores();
-  if (DADOS) renderGraficos();
-  if (SD) desenharServicoDivida();
-});
-
+// gráficos pela camada comum (Comum.grafico, ECharts): tema, troca de tema, celular e
+// falha do CDN são tratados lá; aqui só as séries e as regras de leitura do painel
 let DADOS = null;
 let SD = null;   // serviço da dívida (despesas/servico-divida.json; cacheado p/ repintar)
 
@@ -130,61 +108,173 @@ function renderResumo() {
 }
 
 // ── Gráficos ─────────────────────────────────────────────────────────────────
+// Eixo x NUMÉRICO (0…n-1, rótulo = ano no 1º quadrimestre): é o que permite a quebra
+// contábil ficar ENTRE dois quadrimestres (markLine em i − 0,5), como antes.
 const rotuloQ = (p) => `${p.q}º/${String(p.ano).slice(2)}`;
 
-function linhaLimite(rotulo, valor, cor, n) {
-  return { label: rotulo, data: Array(n).fill(valor), borderColor: cor,
-           borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, fill: false };
-}
-
-function opts(fmtY, comLegenda) {
-  const S = (DADOS && DADOS.serie) || [];
-  return {
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-    plugins: {
-      legend: { display: !!comLegenda, labels: { boxWidth: 14, boxHeight: 3, font: { size: 11 } } },
-      tooltip: { callbacks: {
-        label: (c) => `${c.dataset.label || ""}: ${fmtY(c.parsed.y)}`,
-        footer: (itens) => (itens.length && S[itens[0].dataIndex] && S[itens[0].dataIndex].quebra
-          ? "Quebra contábil: não compare com os pontos anteriores" : ""),
-      } },
-    },
-    // eixo sem as casas zeradas ("R$ 600 mi"); o tooltip segue com fmtY
-    scales: { y: { ticks: { callback: (v) => (fmtY === compacto ? Comum.compactoEixo(v) : fmtY(v)) } } },
-  };
-}
-
-// Quebras de série (DADOS.quebras, curadas em endividamento/export.py): linha
-// vertical tracejada entre o ponto anterior e o da quebra, com rótulo. Comparar
+// Quebras de série (DADOS.quebras, curadas em endividamento/export.py). Comparar
 // valores através dela mede a mudança de critério contábil, não a dívida.
 function indicesQuebra() {
   const S = DADOS.serie || [];
   return S.map((p, i) => (p.quebra ? i : -1)).filter(i => i > 0);
 }
 
-function pluginQuebras(indices) {
-  return {
-    id: "quebras",
-    afterDatasetsDraw(chart) {
-      if (!indices.length) return;
-      const { ctx, chartArea: a, scales: { x } } = chart;
-      ctx.save();
-      ctx.strokeStyle = COR_ALERTA;
-      ctx.fillStyle = COR_ALERTA;
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.5;
-      ctx.font = "700 11px Manrope, sans-serif";
-      indices.forEach(i => {
-        const px = (x.getPixelForValue(i - 1) + x.getPixelForValue(i)) / 2;
-        ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
-        const aDireita = px > a.left + (a.right - a.left) * 0.6;
-        ctx.textAlign = aDireita ? "right" : "left";
-        ctx.fillText("quebra contábil", px + (aDireita ? -5 : 5), a.top + 12);
-      });
-      ctx.restore();
-    },
+// teto do eixo num valor redondo (senão o ECharts rotula o máximo cru: "R$ 658,3 mi")
+function arredondarCima(x) {
+  if (!(x > 0)) return x;
+  const passo = Math.pow(10, Math.floor(Math.log10(x))) / 2;
+  return Math.ceil(x / passo) * passo;
+}
+
+function limitesDe(slug) {
+  return (DADOS.semaforo || []).find((m) => m.slug === slug) || null;
+}
+
+// Uma série quadrimestral: linhas (área na 1ª, opcional) ou barras, com limites
+// (markLine com rótulo na própria linha) e a quebra contábil (linha tracejada +
+// pílula horizontal). `fmt` formata o valor na dica; o eixo usa `fmtEixo`.
+function opcaoQuadrimestral(p, larg, { series, fmt, fmtEixo, limites = [], quebra = false, barras = false, legenda = true }) {
+  const S = DADOS.serie || [];
+  const n = S.length;
+  const qs = quebra ? indicesQuebra() : [];
+  const traco = (cor, tipo = [6, 5]) => ({ color: cor, type: tipo, width: 1.5 });
+  const rotLim = (cor, txt) => ({ show: true, fontFamily: p.sans, fontSize: 11.5,
+    formatter: `{d|——} {t|${txt}}`,
+    rich: { d: { color: cor, fontWeight: 800, fontSize: 11 }, t: { color: p.tinta, fontWeight: 600, fontSize: 11.5 } } });
+  const valores = series.flatMap((s) => s.dados).filter((v) => v != null);
+  const topo = Math.max(...valores, ...limites.map((l) => l.valor));
+  const piso = Math.min(0, ...valores);   // DCL fica negativa quando o caixa supera a dívida
+  // etiqueta da quebra no trecho mais vazio da vertical da quebra (linhas: onde a
+  // série passa NO MEIO dos dois quadrimestres; barras: acima de todas, num respiro
+  // aberto no topo do eixo — ao lado, o texto cobria as barras ou saía pela borda)
+  const alturaPilula = (i) => {
+    if (barras) return topo * 1.12;
+    const meio = series.map((s) => {
+      const a = s.dados[i - 1], b = s.dados[i];
+      return a != null && b != null ? (a + b) / 2 : (b ?? a);
+    }).filter((v) => v != null).concat(limites.map((l) => l.valor));  // longe das linhas de limite também
+    const cands = [0.85, 0.5, 0.15].map((f) => piso + (topo - piso) * f);
+    return cands.reduce((melhor, y) => {
+      const folga = Math.min(...meio.map((v) => Math.abs(v - y)), Infinity);
+      return folga > melhor.folga ? { y, folga } : melhor;
+    }, { y: cands[0], folga: -1 }).y;
   };
+  const ladoPilula = (i) => (i > n * 0.6 ? "left" : "right");
+  // rótulo do limite em cima da linha; o do alerta desce para baixo dela quando a série
+  // começa longe (senão o texto fica espremido entre as duas linhas tracejadas)
+  const posicaoLimite = (l, k) => {
+    if (k === 0) return "insideStartTop";
+    const inicio = series[0].dados.slice(0, 3).filter((v) => v != null);
+    return inicio.every((v) => Math.abs(v - l.valor) > (topo - piso) * 0.12) ? "insideStartBottom" : "insideStartTop";
+  };
+  const largBarra = Math.max(6, Math.min(26, Math.floor((larg - 80) / n * 0.55)));
+  const marcas = [
+    ...limites.map((l, k) => ({ yAxis: l.valor, lineStyle: traco(l.cor),
+      label: { ...rotLim(l.cor, l.rotulo), position: posicaoLimite(l, k) } })),
+    ...qs.map((i) => ({ xAxis: i - 0.5, lineStyle: traco(p.amarelo, [4, 4]), label: { show: false } })),
+  ];
+  const pilulas = qs.map((i) => ({
+    coord: [i - 0.5, alturaPilula(i)], symbol: "circle", symbolSize: 8,
+    itemStyle: { color: p.amarelo, borderColor: p.card, borderWidth: 2 },
+    label: { show: true, position: ladoPilula(i), distance: 8,
+      formatter: `quebra contábil · ${S[i].rotulo}`, color: p.tinta, fontFamily: p.sans, fontWeight: 600,
+      fontSize: 11, backgroundColor: p.card, borderColor: p.amarelo, borderWidth: 1, borderRadius: 999, padding: [4, 9] },
+  }));
+  return {
+    grid: { left: 4, right: 14, top: legenda && series.length > 1 ? 34 : 22, bottom: 6, containLabel: true },
+    legend: legenda && series.length > 1
+      ? { top: 0, left: 0, itemWidth: 18, itemHeight: 8, selectedMode: false, textStyle: { fontSize: p.celular ? 11.5 : 12 } }
+      : undefined,
+    tooltip: { trigger: "axis", confine: true, axisPointer: { type: barras ? "shadow" : "line", snap: true },
+      formatter: (ps) => {
+        const i = Math.max(0, Math.min(n - 1, Math.round(ps[0].axisValue)));
+        const pt = S[i];
+        return Comum.dicaGrafico(pt.rotulo,
+          series.map((s) => [s.cor, s.nome, s.dados[i] == null ? "—" : fmt(s.dados[i])]),
+          pt.quebra ? "Quebra contábil: não compare com os pontos anteriores." : "", !!pt.quebra);
+      } },
+    xAxis: { type: "value", min: barras ? -0.5 : 0, max: barras ? n - 0.5 : n - 1, interval: 1, splitLine: { show: false },
+      axisLine: { show: true, lineStyle: { color: p.linha } }, axisTick: { show: false },
+      axisLabel: { fontFamily: p.sans, fontSize: 11.5, color: p.muted, margin: 10,
+        formatter: (v) => { const pt = S[v]; if (!pt || pt.q !== 1) return ""; return p.celular && pt.ano % 2 ? "" : String(pt.ano); } } },
+    yAxis: { type: "value", min: piso < 0 ? null : 0,
+      max: limites.length ? (v) => arredondarCima(Math.max(v.max, ...limites.map((l) => l.valor)) * 1.04)
+        : barras && qs.length ? (v) => arredondarCima(v.max * 1.22) : null,
+      axisLabel: { formatter: fmtEixo } },
+    series: series.map((s, k) => {
+      const dados = s.dados.map((v, i) => [i, v]);
+      const base = { name: s.nome, data: dados, z: 3 + k,
+        markLine: k === 0 && marcas.length ? { silent: true, symbol: ["none", "none"], animation: false, data: marcas } : undefined,
+        markPoint: k === 0 && pilulas.length ? { silent: true, animation: false, data: pilulas } : undefined };
+      if (barras) return { ...base, type: "bar", barWidth: largBarra,
+        itemStyle: { color: s.cor, borderRadius: [3, 3, 0, 0] } };
+      return { ...base, type: "line", smooth: 0.25, connectNulls: false,
+        symbol: p.celular ? "none" : "circle", symbolSize: 5, showAllSymbol: true,
+        lineStyle: { width: 2, color: s.cor }, itemStyle: { color: s.cor, borderColor: p.card, borderWidth: 1.5 },
+        areaStyle: s.area ? { color: p.serieFill } : undefined };
+    }),
+  };
+}
+
+function renderGraficos() {
+  const S = DADOS.serie || [];
+  const u = S[S.length - 1] || {};
+  const vc = (v) => (v != null ? compacto(v) : "—");
+  const aviso = avisoQuebraTexto();
+  const rotA = (p) => p.rotulo + (p.quebra ? " (quebra contábil)" : "");
+  const eixoR = (v) => Comum.compactoEixo(v);
+  const eixoP = (v) => pct(v, 0);
+  const div = limitesDe("divida"), pes = limitesDe("pessoal");
+  const lim = (m, p) => (m ? [
+    { valor: m.limite, cor: p.vermelho, rotulo: `Limite legal · ${pct(m.limite, m.limite % 1 ? 1 : 0)}` },
+    { valor: m.alerta, cor: p.amarelo, rotulo: `Alerta · ${pct(m.alerta, m.alerta % 1 ? 1 : 0)}` },
+  ] : []);
+
+  // Dívida bruta × líquida
+  Comum.grafico("ch-divida", {
+    dependeDaLargura: false,
+    opcao: (p, larg) => opcaoQuadrimestral(p, larg, { quebra: true, fmt: vc, fmtEixo: eixoR, series: [
+      { nome: "Dívida bruta (DC)", dados: S.map((x) => x.dc), cor: p.serie, area: true },
+      { nome: "Dívida líquida (DCL)", dados: S.map((x) => x.dcl), cor: p.ouroLinha },
+    ] }),
+    acessivel: { descricao: `Dívida bruta e líquida por quadrimestre. Em ${u.rotulo || "—"}: bruta ${vc(u.dc)}, líquida ${vc(u.dcl)}.${aviso}`,
+      cabecalhos: ["Quadrimestre", "Dívida bruta", "Dívida líquida"], linhas: S.map((x) => [rotA(x), vc(x.dc), vc(x.dcl)]) },
+  });
+
+  // DCL % da RCL × limites (lidos do semáforo do índice — antes fixos no JS)
+  Comum.grafico("ch-dcl-pct", {
+    opcao: (p, larg) => opcaoQuadrimestral(p, larg, { quebra: true, fmt: (v) => pct(v), fmtEixo: eixoP, limites: lim(div, p),
+      series: [{ nome: "DCL / RCL", dados: S.map((x) => x.dcl_pct), cor: p.serie, area: true }] }),
+    acessivel: { descricao: `Dívida consolidada líquida em percentual da RCL${div ? `, contra o limite legal de ${pct(div.limite, 0)} e o alerta de ${pct(div.alerta, 0)}` : ""}. Em ${u.rotulo || "—"}: ${pct(u.dcl_pct)}.${aviso}`,
+      cabecalhos: ["Quadrimestre", "DCL/RCL"], linhas: S.map((x) => [rotA(x), pct(x.dcl_pct)]) },
+  });
+
+  // Pessoal % da RCL × limites
+  Comum.grafico("ch-pessoal", {
+    opcao: (p, larg) => opcaoQuadrimestral(p, larg, { fmt: (v) => pct(v), fmtEixo: eixoP, limites: lim(pes, p),
+      series: [{ nome: "Pessoal / RCL", dados: S.map((x) => x.pessoal_pct), cor: p.serie, area: true }] }),
+    acessivel: { descricao: `Despesa com pessoal em percentual da RCL${pes ? `, contra o limite legal de ${pct(pes.limite, 0)} e o alerta de ${pct(pes.alerta, 1)}` : ""}. Em ${u.rotulo || "—"}: ${pct(u.pessoal_pct)}.`,
+      cabecalhos: ["Quadrimestre", "Pessoal/RCL"], linhas: S.map((x) => [x.rotulo, pct(x.pessoal_pct)]) },
+  });
+
+  // Precatórios vencidos
+  Comum.grafico("ch-precatorios", {
+    dependeDaLargura: true,
+    opcao: (p, larg) => opcaoQuadrimestral(p, larg, { quebra: true, barras: true, legenda: false, fmt: vc, fmtEixo: eixoR,
+      series: [{ nome: "Precatórios vencidos e não pagos", dados: S.map((x) => x.precatorios), cor: p.ouro }] }),
+    acessivel: { descricao: `Precatórios vencidos e não pagos por quadrimestre. Em ${u.rotulo || "—"}: ${vc(u.precatorios)}.${aviso}`,
+      cabecalhos: ["Quadrimestre", "Precatórios vencidos"], linhas: S.map((x) => [rotA(x), vc(x.precatorios)]) },
+  });
+
+  // Restos a pagar × caixa
+  Comum.grafico("ch-caixa", {
+    opcao: (p, larg) => opcaoQuadrimestral(p, larg, { fmt: vc, fmtEixo: eixoR, series: [
+      { nome: "Caixa bruto", dados: S.map((x) => x.caixa_bruta), cor: p.verde },
+      { nome: "Restos a pagar", dados: S.map((x) => x.rp), cor: p.vermelho },
+    ] }),
+    acessivel: { descricao: `Caixa bruto contra restos a pagar por quadrimestre. Em ${u.rotulo || "—"}: caixa ${vc(u.caixa_bruta)}, restos a pagar ${vc(u.rp)}.`,
+      cabecalhos: ["Quadrimestre", "Caixa bruto", "Restos a pagar"], linhas: S.map((x) => [x.rotulo, vc(x.caixa_bruta), vc(x.rp)]) },
+  });
 }
 
 function renderNotasQuebra() {
@@ -204,106 +294,6 @@ function avisoQuebraTexto() {
     ? " Atenção: quebra contábil em " + qs.map(q => q.rotulo).join(", ") +
       " (reclassificação dos precatórios); não compare valores de antes e depois."
     : "";
-}
-
-function renderGraficos() {
-  if (!window.Chart) return;
-  // rerender (troca de tema): solta os charts anteriores antes de recriar
-  ["ch-divida", "ch-dcl-pct", "ch-pessoal", "ch-precatorios", "ch-caixa"].forEach(id => {
-    const c = Chart.getChart(id);
-    if (c) c.destroy();
-  });
-  const S = DADOS.serie || [];
-  const labels = S.map(rotuloQ);
-  const n = S.length;
-  const quebra = [pluginQuebras(indicesQuebra())];
-
-  // Dívida bruta × líquida
-  new Chart(document.getElementById("ch-divida"), {
-    type: "line",
-    data: { labels, datasets: [
-      { label: "Dívida bruta (DC)", data: S.map(p => p.dc), borderColor: NAVY,
-        backgroundColor: FILL_SERIE, fill: true, tension: .25, borderWidth: 2, pointRadius: 2 },
-      { label: "Dívida líquida (DCL)", data: S.map(p => p.dcl), borderColor: GOLD,
-        tension: .25, borderWidth: 2, pointRadius: 2, fill: false },
-    ] },
-    options: opts(compacto, true),
-    plugins: quebra,
-  });
-
-  // DCL % da RCL vs limites
-  new Chart(document.getElementById("ch-dcl-pct"), {
-    type: "line",
-    data: { labels, datasets: [
-      { label: "DCL / RCL", data: S.map(p => p.dcl_pct), borderColor: NAVY,
-        backgroundColor: FILL_SERIE, fill: true, tension: .25, borderWidth: 2, pointRadius: 2 },
-      linhaLimite("Limite legal (120%)", 120, COR_LIMITE, n),
-      linhaLimite("Alerta (108%)", 108, COR_ALERTA, n),
-    ] },
-    options: opts((v) => pct(v, 0), true),
-    plugins: quebra,
-  });
-
-  // Pessoal % da RCL vs limites
-  new Chart(document.getElementById("ch-pessoal"), {
-    type: "line",
-    data: { labels, datasets: [
-      { label: "Pessoal / RCL", data: S.map(p => p.pessoal_pct), borderColor: NAVY,
-        backgroundColor: FILL_SERIE, fill: true, tension: .25, borderWidth: 2, pointRadius: 2 },
-      linhaLimite("Limite legal (54%)", 54, COR_LIMITE, n),
-      linhaLimite("Alerta (48,6%)", 48.6, COR_ALERTA, n),
-    ] },
-    options: opts((v) => pct(v, 0), true),
-  });
-
-  // Precatórios vencidos
-  new Chart(document.getElementById("ch-precatorios"), {
-    type: "bar",
-    data: { labels, datasets: [
-      { label: "Precatórios vencidos e não pagos", data: S.map(p => p.precatorios),
-        backgroundColor: GOLD, borderRadius: 4, maxBarThickness: 26 },
-    ] },
-    options: opts(compacto, false),
-    plugins: quebra,
-  });
-
-  // Restos a pagar × caixa
-  new Chart(document.getElementById("ch-caixa"), {
-    type: "line",
-    data: { labels, datasets: [
-      { label: "Caixa bruto", data: S.map(p => p.caixa_bruta), borderColor: COR_VERDE,
-        tension: .25, borderWidth: 2, pointRadius: 2, fill: false },
-      { label: "Restos a pagar", data: S.map(p => p.rp), borderColor: COR_LIMITE,
-        tension: .25, borderWidth: 2, pointRadius: 2, fill: false },
-    ] },
-    options: opts(compacto, true),
-  });
-
-  // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
-  const u = S[S.length - 1] || {};
-  const vc = (v) => (v != null ? compacto(v) : "—");
-  const aviso = avisoQuebraTexto();
-  const rotA = (p) => p.rotulo + (p.quebra ? " (quebra contábil)" : "");
-  Comum.chartAcessivel("ch-divida",
-    `Dívida bruta e líquida por quadrimestre. Em ${u.rotulo || "—"}: bruta ${vc(u.dc)}, líquida ${vc(u.dcl)}.${aviso}`,
-    ["Quadrimestre", "Dívida bruta", "Dívida líquida"],
-    S.map(p => [rotA(p), vc(p.dc), vc(p.dcl)]));
-  Comum.chartAcessivel("ch-dcl-pct",
-    `Dívida consolidada líquida em percentual da RCL, contra o limite legal de 120% e o alerta de 108%. Em ${u.rotulo || "—"}: ${pct(u.dcl_pct)}.${aviso}`,
-    ["Quadrimestre", "DCL/RCL"],
-    S.map(p => [rotA(p), pct(p.dcl_pct)]));
-  Comum.chartAcessivel("ch-pessoal",
-    `Despesa com pessoal em percentual da RCL, contra o limite legal de 54% e o alerta de 48,6%. Em ${u.rotulo || "—"}: ${pct(u.pessoal_pct)}.`,
-    ["Quadrimestre", "Pessoal/RCL"],
-    S.map(p => [p.rotulo, pct(p.pessoal_pct)]));
-  Comum.chartAcessivel("ch-precatorios",
-    `Precatórios vencidos e não pagos por quadrimestre. Em ${u.rotulo || "—"}: ${vc(u.precatorios)}.${aviso}`,
-    ["Quadrimestre", "Precatórios vencidos"],
-    S.map(p => [rotA(p), vc(p.precatorios)]));
-  Comum.chartAcessivel("ch-caixa",
-    `Caixa bruto contra restos a pagar por quadrimestre. Em ${u.rotulo || "—"}: caixa ${vc(u.caixa_bruta)}, restos a pagar ${vc(u.rp)}.`,
-    ["Quadrimestre", "Caixa bruto", "Restos a pagar"],
-    S.map(p => [p.rotulo, vc(p.caixa_bruta), vc(p.rp)]));
 }
 
 // ── Dívida das estatais (curadoria anual — endividamento/estatais.json) ─────
@@ -371,60 +361,54 @@ async function renderServicoDivida() {
   desenharServicoDivida();
 }
 
-// desenho separado da carga: o "temamudou" repinta usando o SD cacheado
+// desenho separado da carga (a troca de tema é tratada pela camada comum)
 function desenharServicoDivida() {
-  if (!window.Chart || !SD) return;
-  ["ch-credores", "ch-servico-ano"].forEach(id => {
-    const c = Chart.getChart(id);
-    if (c) c.destroy();
-  });
+  if (!SD) return;
   const sd = SD;
 
-  // Credores (barra horizontal)
+  // Credores (barra horizontal, maior em cima)
   const cred = sd.credores.filter(c => c.valor >= 1e5).slice(0, 8);
-  new Chart(document.getElementById("ch-credores"), {
-    type: "bar",
-    data: { labels: cred.map(c => nomeCredor(c.nome)), datasets: [
-      { label: "Pago no mandato", data: cred.map(c => c.valor),
-        backgroundColor: GOLD, borderRadius: 4, maxBarThickness: 22 },
-    ] },
-    options: {
-      responsive: true, maintainAspectRatio: false, indexAxis: "y",
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (c) => compacto(c.parsed.x) } } },
-      scales: { x: { ticks: { callback: (v) => Comum.compactoEixo(v) } } },
-    },
+  Comum.grafico("ch-credores", {
+    altura: () => Math.max(180, cred.length * 34 + 30),
+    opcao: (p) => ({
+      grid: { left: 4, right: 22, top: 6, bottom: 4, containLabel: true },
+      tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" },
+        formatter: (ps) => Comum.dicaGrafico(nomeCredor(cred[ps[0].dataIndex].nome),
+          [[p.ouro, "Pago no mandato", compacto(cred[ps[0].dataIndex].valor), "p"]]) },
+      xAxis: { type: "value", axisLabel: { formatter: (v) => Comum.compactoEixo(v), alignMaxLabel: "right" } },
+      yAxis: { type: "category", inverse: true, data: cred.map(c => nomeCredor(c.nome)),
+        axisLabel: { width: p.celular ? 120 : 240, overflow: "truncate" } },
+      series: [{ type: "bar", barMaxWidth: 22, data: cred.map(c => c.valor),
+        itemStyle: { color: p.ouro, borderRadius: [0, 3, 3, 0] } }],
+    }),
+    acessivel: { descricao: "Maiores credores do serviço da dívida no mandato (juros e amortização pagos).",
+      cabecalhos: ["Credor", "Pago no mandato"], linhas: cred.map(c => [nomeCredor(c.nome), compacto(c.valor)]) },
   });
 
   // Juros × amortização por ano (barras agrupadas)
   const anos = [...new Set(sd.por_ano.map(p => p.ano))].sort();
   const serie = (tipo) => anos.map(a =>
     (sd.por_ano.find(p => p.ano === a && p.tipo === tipo) || {}).valor || 0);
-  new Chart(document.getElementById("ch-servico-ano"), {
-    type: "bar",
-    data: { labels: anos, datasets: [
-      { label: "Juros e encargos", data: serie("juros"),
-        backgroundColor: NAVY, borderRadius: 4, maxBarThickness: 40 },
-      { label: "Amortização", data: serie("amortizacao"),
-        backgroundColor: GOLD, borderRadius: 4, maxBarThickness: 40 },
-    ] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { boxWidth: 14, boxHeight: 3, font: { size: 11 } } },
-        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${compacto(c.parsed.y)}` } } },
-      scales: { y: { ticks: { callback: (v) => Comum.compactoEixo(v) } } },
-    },
-  });
-
-  Comum.chartAcessivel("ch-credores",
-    "Maiores credores do serviço da dívida no mandato (juros e amortização pagos).",
-    ["Credor", "Pago no mandato"],
-    cred.map(c => [nomeCredor(c.nome), compacto(c.valor)]));
   const vJuros = serie("juros"), vAmort = serie("amortizacao");
-  Comum.chartAcessivel("ch-servico-ano",
-    "Juros e encargos contra amortização pagos por ano.",
-    ["Ano", "Juros e encargos", "Amortização"],
-    anos.map((a, i) => [a, compacto(vJuros[i]), compacto(vAmort[i])]));
+  Comum.grafico("ch-servico-ano", {
+    opcao: (p) => ({
+      grid: { left: 4, right: 10, top: 34, bottom: 4, containLabel: true },
+      legend: { top: 0, left: 0, itemWidth: 14, itemHeight: 10, selectedMode: false },
+      tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" },
+        formatter: (ps) => Comum.dicaGrafico(String(anos[ps[0].dataIndex]), [
+          [p.serie, "Juros e encargos", compacto(vJuros[ps[0].dataIndex]), "p"],
+          [p.ouro, "Amortização", compacto(vAmort[ps[0].dataIndex]), "p"]]) },
+      xAxis: { type: "category", data: anos.map(String) },
+      yAxis: { type: "value", axisLabel: { formatter: (v) => Comum.compactoEixo(v) } },
+      series: [
+        { name: "Juros e encargos", type: "bar", barMaxWidth: 40, data: vJuros, itemStyle: { color: p.serie, borderRadius: [3, 3, 0, 0] } },
+        { name: "Amortização", type: "bar", barMaxWidth: 40, data: vAmort, itemStyle: { color: p.ouro, borderRadius: [3, 3, 0, 0] } },
+      ],
+    }),
+    acessivel: { descricao: "Juros e encargos contra amortização pagos por ano.",
+      cabecalhos: ["Ano", "Juros e encargos", "Amortização"],
+      linhas: anos.map((a, i) => [a, compacto(vJuros[i]), compacto(vAmort[i])]) },
+  });
 }
 
 // ── Tabela + CSV ─────────────────────────────────────────────────────────────

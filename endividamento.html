@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <meta name="description" content="A dívida da Prefeitura de Santos em um relance: semáforo dos limites da Lei de Responsabilidade Fiscal, evolução da dívida, precatórios e despesa com pessoal — dados oficiais do Tesouro Nacional." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -24,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=11" />
+    <link rel="stylesheet" href="./comum.css?v=12" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -106,7 +105,7 @@
 
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
-      .box canvas { height: 300px !important; width: 100% !important; }
+      .box .grafico { --altura-grafico: 300px; }
       /* quebra de série (reclassificação contábil) — aviso em texto, nunca só cor */
       .nota-quebra { color: var(--muted); font-size: 12.5px; line-height: 1.6; margin: 10px 0 0; max-width: 90ch; }
       tr.linha-quebra td { border-bottom: 2px dashed var(--line); }  /* tabela: mais recente no topo */
@@ -160,7 +159,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=21"></script>
+    <script src="./comum.js?v=22"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -204,18 +203,18 @@
       <p class="sec-sub">Série quadrimestral desde 2018, em valores correntes (sem correção pela inflação).</p>
       <div class="box">
         <h3>Dívida consolidada — bruta e líquida (R$)</h3>
-        <canvas id="ch-divida"></canvas>
+        <div class="grafico" id="ch-divida"></div>
         <p class="nota-quebra" data-quebra hidden></p>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><canvas id="ch-dcl-pct"></canvas>
+        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><div class="grafico" id="ch-dcl-pct"></div>
           <p class="nota-quebra" data-quebra hidden></p></div>
-        <div class="box"><h3>Despesa com pessoal em % da RCL — limite: 54%</h3><canvas id="ch-pessoal"></canvas></div>
+        <div class="box"><h3>Despesa com pessoal em % da RCL — limite: 54%</h3><div class="grafico" id="ch-pessoal"></div></div>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Precatórios vencidos e não pagos (R$)</h3><canvas id="ch-precatorios"></canvas>
+        <div class="box"><h3>Precatórios vencidos e não pagos (R$)</h3><div class="grafico" id="ch-precatorios"></div>
           <p class="nota-quebra" data-quebra hidden></p></div>
-        <div class="box"><h3>Restos a pagar × caixa disponível (R$)</h3><canvas id="ch-caixa"></canvas></div>
+        <div class="box"><h3>Restos a pagar × caixa disponível (R$)</h3><div class="grafico" id="ch-caixa"></div></div>
       </div>
 
       <div id="sec-estatais" hidden>
@@ -238,8 +237,8 @@
           credores. O ano corrente é parcial.
         </p>
         <div class="grid2">
-          <div class="box"><h3>Credores — total pago no mandato (R$)</h3><canvas id="ch-credores"></canvas></div>
-          <div class="box"><h3>Juros e encargos × amortização, por ano (R$)</h3><canvas id="ch-servico-ano"></canvas></div>
+          <div class="box"><h3>Credores — total pago no mandato (R$)</h3><div class="grafico" id="ch-credores"></div></div>
+          <div class="box"><h3>Juros e encargos × amortização, por ano (R$)</h3><div class="grafico" id="ch-servico-ano"></div></div>
         </div>
       </div>
 
@@ -296,6 +295,6 @@
       </p>
     </main>
 
-    <script src="./endividamento-app.js?v=8"></script>
+    <script src="./endividamento-app.js?v=9"></script>
   </body>
 </html>

@@ -127,6 +127,31 @@ Painel).** A linguagem da Retrospectiva levada a todos os topos, **no comum.css*
   igual ao padding do cartão; `#060e1a` no escuro), tag em mono `--gold-bright`; barra lateral
   dourada mantida. Grade uniforme conferida (mesma altura por fileira).
 
+**Gráficos: Apache ECharts 6.1.0 via `Comum.grafico` (M4, out/2026 — aprovado pelo usuário).**
+Todo gráfico novo passa por esta camada; **não usar Chart.js em página nova** (ainda em Despesas
+até o M7 e no Preço comparado, cujo item ficou para depois).
+- `Comum.grafico(idOuEl, { opcao(p, largura) → option, acessivel: {descricao, cabecalhos, linhas},
+  altura?(largura), eventos?(chart), dependeDaLargura?, renderer? })`. Contêiner =
+  `<div class="grafico" id="…">` no HTML (altura por `--altura-grafico`, reservada desde a 1ª
+  pintura); chamar de novo com o mesmo alvo atualiza (filtro, dado novo).
+- **Carga sob demanda**: a biblioteca (~370 KB gzip, cdnjs com SRI) só vem quando o 1º gráfico chega
+  a 300 px da tela, e cada gráfico só é desenhado ao se aproximar (IntersectionObserver) e depois das
+  fontes web (`quandoFonte`). Avaliar o ECharts custa 5–10× o Chart.js; tirar o Chart.js síncrono do
+  `<head>` baixou o bloqueio da thread principal (CPU 4×) no Semáforo de 4,6 s para 2,8 s.
+- `Comum.paleta()` = cores do tema atual (tokens; `serie` navy/#9fb6d9, `ouro`/`ouroLinha`,
+  `verde/amarelo/vermelho` do ramp, `rampa` de 5 dourados, `celular`); temas `gabinete-claro/escuro`
+  e locale pt-BR próprio registrados na carga (o do pacote tem erros). **Número sempre pelos
+  formatadores da casa** (`compactoEixo`, `brl`, `pct`) — o padrão do ECharts escreve "1,000".
+- Tabela oculta (`chartAcessivel`) entra na hora, sem esperar a biblioteca; repinta sozinho no
+  `temamudou` e ao cruzar 640 px; CDN fora do ar → `estadoErro` com "Tentar de novo" no lugar do
+  gráfico (o resto da página segue). Dica padrão: `Comum.dicaGrafico(titulo, [[cor, rótulo, valor,
+  "p"?]], nota, alerta)` (classes `.ec-dica*` no comum.css, texto escapado).
+- Padrões já resolvidos (Semáforo, `opcaoQuadrimestral`): **eixo x numérico** para a quebra contábil
+  ficar ENTRE dois pontos (markLine em i − 0,5) com pílula horizontal no trecho mais vazio; limites
+  lidos do `semaforo` do índice (não fixos no JS) com rótulo sobre a linha; eixo que desce abaixo de
+  zero quando há negativo (DCL); teto do eixo arredondado. Tesoura (Custo por Resultado): faixa =
+  série base invisível + diferença empilhada, com os cruzamentos inseridos.
+
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
 sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página

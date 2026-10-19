@@ -3,30 +3,15 @@
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
                "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-// cores conscientes do tema; recalculadas no "temamudou" (repinta sem reload)
-let ESCURO, NAVY;
-const GOLD = "#c9a84c";
-function definirCores() {
-  ESCURO = document.documentElement.dataset.tema === "escuro";
-  NAVY = ESCURO ? "#9fb6d9" : "#07111f";
-  if (window.Chart) {
-    Chart.defaults.color = ESCURO ? "#93a0b3" : "#5d6675";
-    Chart.defaults.borderColor = ESCURO ? "rgba(147,160,179,.16)" : "rgba(0,0,0,.08)";
-  }
-}
-definirCores();
+// gráficos pela camada comum (Comum.grafico, ECharts): tema, troca de tema, celular e
+// falha do CDN são tratados lá
 let DOSSIE = null;
-window.addEventListener("temamudou", () => {
-  definirCores();
-  if (DOSSIE) renderGraficosFav(DOSSIE);
-});
 const el = (id) => document.getElementById(id);
 // camada comum (eram cópias locais)
 const esc = Comum.escapar;
 const brl = Comum.brl;
 const brlc = (v) => Comum.brl(v, 2);
 const compacto = Comum.compacto;
-const eixoReais = { ticks: { callback: (v) => Comum.compactoEixo(v) } };
 const dataBR = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "—";
 const soDigitos = (s) => String(s || "").replace(/\D/g, "");
 
@@ -65,57 +50,57 @@ function serieCompleta(d) {
   return out;
 }
 
-// gráficos separados do resto do render: o "temamudou" repinta só esta parte
+// gráficos (Comum.grafico): desenhados quando chegam perto da tela; a tabela oculta
+// para leitor de tela entra na hora
 function renderGraficosFav(d) {
-  if (!window.Chart) {   // CDN fora do ar: o resto da página segue
-    document.querySelectorAll("#conteudo canvas").forEach((cv) => {
-      cv.hidden = true;
-      if (!cv.nextElementSibling?.classList.contains("nota"))
-        cv.insertAdjacentHTML("afterend", '<p class="nota">Gráfico indisponível — a biblioteca de gráficos não carregou.</p>');
-    });
-    return;
-  }
-  ["ch-mensal", "ch-funcao"].forEach((id) => {
-    const c = Chart.getChart(id);
-    if (c) c.destroy();
-  });
-
-  // gráfico mensal — meses ainda parciais na origem ficam claros e com *
+  // mensal — meses ainda parciais na origem ficam claros, com * e aviso na dica
   const serie = serieCompleta(d);
   const parc = parciais();
   const ehParcial = (s) => parc.has(`${s.ano}-${String(s.mes).padStart(2, "0")}`);
-  new Chart(el("ch-mensal"), {
-    type: "bar",
-    data: {
-      labels: serie.map((s) => `${MESES[s.mes]}/${String(s.ano).slice(2)}${ehParcial(s) ? "*" : ""}`),
-      datasets: [{ data: serie.map((s) => s.valor),
-                   backgroundColor: serie.map((s) => ehParcial(s) ? "rgba(201,168,76,.35)" : GOLD) }],
+  Comum.grafico("ch-mensal", {
+    opcao: (p) => ({
+      grid: { left: 4, right: 10, top: 14, bottom: 4, containLabel: true },
+      tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" },
+        formatter: (ps) => {
+          const s = serie[ps[0].dataIndex];
+          return Comum.dicaGrafico(`${MESES[s.mes]}/${s.ano}`, [[p.ouro, "Recebido", brlc(s.valor), "p"]],
+            ehParcial(s) ? "Mês parcial — a origem ainda está publicando." : "", ehParcial(s));
+        } },
+      xAxis: { type: "category",
+        data: serie.map((s) => `${MESES[s.mes]}/${String(s.ano).slice(2)}${ehParcial(s) ? "*" : ""}`) },
+      yAxis: { type: "value", axisLabel: { formatter: (v) => Comum.compactoEixo(v) } },
+      series: [{ type: "bar", barMaxWidth: 28,
+        data: serie.map((s) => ({ value: s.valor,
+          itemStyle: { color: ehParcial(s) ? p.ouroFill : p.ouro, borderRadius: [3, 3, 0, 0] } })) }],
+    }),
+    acessivel: {
+      descricao: `Pagamentos recebidos por mês, pela data do pagamento. Total no mandato: ${compacto(d.total)}.`,
+      cabecalhos: ["Mês", "Recebido"],
+      linhas: serie.map((s) => [`${MESES[s.mes]}/${s.ano}${ehParcial(s) ? " (parcial)" : ""}`, compacto(s.valor)]),
     },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (c) => brlc(c.parsed.y),
-          footer: (it) => it.length && ehParcial(serie[it[0].dataIndex]) ? "mês parcial — a origem ainda está publicando" : "" } } },
-      scales: { y: eixoReais } },
   });
 
-  // por função
+  // por função (barras deitadas, maior em cima)
   const fn = d.por_funcao || [];
-  new Chart(el("ch-funcao"), {
-    type: "bar",
-    data: { labels: fn.map((f) => f.funcao), datasets: [{ data: fn.map((f) => f.valor), backgroundColor: NAVY }] },
-    options: { responsive: true, maintainAspectRatio: false, indexAxis: "y",
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (c) => brlc(c.raw) } } },
-      scales: { x: eixoReais } },
+  Comum.grafico("ch-funcao", {
+    altura: () => Math.max(160, fn.length * 30 + 40),
+    opcao: (p) => ({
+      grid: { left: 4, right: 18, top: 6, bottom: 4, containLabel: true },
+      tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" },
+        formatter: (ps) => Comum.dicaGrafico(fn[ps[0].dataIndex].funcao,
+          [[p.serie, "Recebido", brlc(fn[ps[0].dataIndex].valor), "p"]]) },
+      xAxis: { type: "value", axisLabel: { formatter: (v) => Comum.compactoEixo(v), alignMaxLabel: "right" } },
+      yAxis: { type: "category", inverse: true, data: fn.map((f) => f.funcao),
+        axisLabel: { width: p.celular ? 120 : 230, overflow: "truncate" } },
+      series: [{ type: "bar", barMaxWidth: 22, data: fn.map((f) => f.valor),
+        itemStyle: { color: p.serie, borderRadius: [0, 3, 3, 0] } }],
+    }),
+    acessivel: {
+      descricao: "Distribuição do valor recebido por função de governo.",
+      cabecalhos: ["Função", "Recebido"],
+      linhas: fn.map((f) => [f.funcao, compacto(f.valor)]),
+    },
   });
-
-  // equivalentes acessíveis (tabela oculta + descrição por gráfico)
-  Comum.chartAcessivel("ch-mensal",
-    `Pagamentos recebidos por mês, pela data do pagamento. Total no mandato: ${compacto(d.total)}.`,
-    ["Mês", "Recebido"], serie.map((s) => [`${MESES[s.mes]}/${s.ano}${ehParcial(s) ? " (parcial)" : ""}`, compacto(s.valor)]));
-  Comum.chartAcessivel("ch-funcao",
-    "Distribuição do valor recebido por função de governo.",
-    ["Função", "Recebido"], fn.map((f) => [f.funcao, compacto(f.valor)]));
 }
 
 // card de alertas: "a conferir" (anomalia + inconsistência) separado de contexto,

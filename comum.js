@@ -264,6 +264,212 @@ window.Comum = (() => {
   // faces do número-manchete do hero (.hero-num): o número e a frase, com negrito
   const FACES_MANCHETE = ['600 52px "IBM Plex Mono"', '400 13.5px Manrope', '700 13.5px Manrope'];
 
+  // ── Gráficos: Apache ECharts 6.1.0 sob demanda (M4, 2026-10) ────────────────
+  // Uma camada só para os gráficos do site, no lugar do Chart.js:
+  //  • a biblioteca (~370 KB gzip) só é baixada quando o 1º gráfico vai aparecer —
+  //    promessa única, com SRI —, e cada gráfico só é desenhado quando chega perto
+  //    da tela: avaliar o ECharts custa 5–10× o Chart.js na thread principal; longe
+  //    da tela não trava a carga (medido no M0: bloqueio a 1× de 88 ms → 0);
+  //  • tema claro/escuro registrados a partir dos tokens (nenhuma cor nova) e locale
+  //    pt-BR próprio (o do pacote tem erros de português). Número sempre pelos
+  //    formatadores da casa (compacto, brl…): o padrão do ECharts escreve "1,000";
+  //  • a tabela oculta para leitor de tela (chartAcessivel) entra na hora, sem
+  //    esperar a biblioteca; repinta no "temamudou" e ao cruzar 640 px (legenda
+  //    embaixo no celular); se o CDN falhar, aviso com "Tentar de novo" no lugar.
+  // Uso: Comum.grafico(idOuElemento, {
+  //   opcao(p, largura) → option do ECharts (p = Comum.paleta(): cores do tema + `celular`),
+  //   acessivel: {descricao, cabecalhos, linhas} (ou função que os devolve),
+  //   altura?(largura) → px, eventos?(chart), dependeDaLargura?, renderer? ("canvas" | "svg") })
+  // Chamar de novo com o mesmo alvo atualiza o gráfico (dado novo, filtro).
+  const ECHARTS_URL = "https://cdnjs.cloudflare.com/ajax/libs/echarts/6.1.0/echarts.min.js";
+  const ECHARTS_SRI = "sha512-Uyq/AgtqFM4vT+unIGTDr4wMJDTUK9O5w2PXMQeBCSR8koqHpVz+qBmcQ+9Oeo5H+EmvT4pp/5QrsqhIbyjHTQ==";
+  const FONTE_SANS = 'Manrope, "Segoe UI", system-ui, sans-serif';
+  const FONTE_MONO = '"IBM Plex Mono", ui-monospace, Consolas, monospace';
+  const FACES_GRAFICO = ["400 12px Manrope", "600 12px Manrope", '500 11px "IBM Plex Mono"'];
+  // Cores por tema. Claro: linha dourada fina em --gold-texto (#8a6d1f, 4,8:1 sobre o
+  // cartão; o #c9a84c dá 2,3:1 e fica para áreas e barras). Escuro: o navy vira #9fb6d9.
+  // Status (verde/âmbar/vermelho) = o ramp semântico do Semáforo, nos dois temas.
+  const PALETAS = {
+    claro: {
+      card: "#fffdf8", tinta: "#0c1626", muted: "#5d6675", linha: "#e2dccd", grade: "rgba(7,17,31,.08)",
+      serie: "#07111f", serieFill: "rgba(10,22,40,.08)", ouro: "#c9a84c", ouroLinha: "#8a6d1f",
+      ouroClaro: "#e3c977", verde: "#067647", amarelo: "#b54708", vermelho: "#b42318",
+      ref: "#93a0b3", ambar: "rgba(201,168,76,.26)", ouroFill: "rgba(201,168,76,.12)",
+      rampa: ["#e8dab4", "#d8c07e", "#c9a84c", "#aa8a36", "#8a6d1f"], neutro: "#eceae4",
+      sombra: "0 10px 30px -12px rgba(7,17,31,.35)",
+    },
+    escuro: {
+      card: "#101f36", tinta: "#e8ecf3", muted: "#93a0b3", linha: "#22375c", grade: "rgba(147,160,179,.16)",
+      serie: "#9fb6d9", serieFill: "rgba(159,182,217,.10)", ouro: "#c9a84c", ouroLinha: "#c9a84c",
+      ouroClaro: "#e3c977", verde: "#4ade80", amarelo: "#fbbf24", vermelho: "#f87171",
+      ref: "#5d6675", ambar: "rgba(201,168,76,.24)", ouroFill: "rgba(201,168,76,.13)",
+      rampa: ["#4f4e3d", "#786c42", "#a08a47", "#c9a84c", "#e3c977"], neutro: "#1a2940",
+      sombra: "0 12px 34px -10px rgba(0,0,0,.6)",
+    },
+  };
+  const CELULAR_GRAF = matchMedia("(max-width: 640px)");
+  const MOVIMENTO_REDUZIDO = matchMedia("(prefers-reduced-motion: reduce)");
+  const paleta = () => ({ ...PALETAS[temaAtual() === "escuro" ? "escuro" : "claro"],
+    celular: CELULAR_GRAF.matches, sans: FONTE_SANS, mono: FONTE_MONO });
+
+  function temaEcharts(p) {
+    const eixoCat = {
+      axisLine: { show: true, lineStyle: { color: p.linha } }, axisTick: { show: false },
+      axisLabel: { color: p.muted, fontFamily: FONTE_SANS, fontSize: 11.5 }, splitLine: { show: false },
+      nameTextStyle: { color: p.muted, fontFamily: FONTE_SANS, fontSize: 11.5 },
+    };
+    const eixoVal = {
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: p.muted, fontFamily: FONTE_MONO, fontSize: 11 },
+      splitLine: { show: true, lineStyle: { color: p.grade, width: 1, type: "solid" } },
+      nameTextStyle: { color: p.muted, fontFamily: FONTE_SANS, fontSize: 11.5 },
+    };
+    return {
+      color: [p.serie, p.ouroLinha, p.ref, p.vermelho, p.amarelo, p.verde],
+      backgroundColor: "transparent",
+      textStyle: { fontFamily: FONTE_SANS, color: p.tinta },
+      legend: { textStyle: { color: p.tinta, fontFamily: FONTE_SANS, fontSize: 12 }, inactiveColor: p.linha,
+        pageTextStyle: { color: p.muted }, pageIconColor: p.tinta, pageIconInactiveColor: p.linha },
+      tooltip: {
+        backgroundColor: p.card, borderColor: p.linha, borderWidth: 1, padding: [9, 12],
+        textStyle: { color: p.tinta, fontFamily: FONTE_SANS, fontSize: 12.5 },
+        extraCssText: `border-radius:10px;box-shadow:${p.sombra};`,
+        axisPointer: { lineStyle: { color: p.muted, width: 1 }, crossStyle: { color: p.muted },
+          shadowStyle: { color: p.ouroFill } },
+      },
+      categoryAxis: eixoCat, valueAxis: eixoVal, logAxis: eixoVal,
+      dataZoom: {
+        borderColor: p.linha, backgroundColor: "transparent", fillerColor: p.ouroFill,
+        handleStyle: { color: p.card, borderColor: p.ouroLinha, borderWidth: 1.5 },
+        textStyle: { color: p.muted, fontFamily: FONTE_MONO, fontSize: 10.5 },
+      },
+      markLine: { label: { color: p.tinta } },
+    };
+  }
+
+  // locale pt-BR (o do pacote tem "entitulado", "As primeiros"…)
+  const LOCALE_PT = {
+    time: { month: ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro",
+      "outubro", "novembro", "dezembro"],
+    monthAbbr: ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+    dayOfWeek: ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"],
+    dayOfWeekAbbr: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"] },
+    legend: { selector: { all: "Todos", inverse: "Inverter" } },
+    toolbox: { restore: { title: "Restaurar" }, saveAsImage: { title: "Salvar imagem", lang: ["Clique com o botão direito para salvar"] },
+      dataZoom: { title: { zoom: "Zoom", back: "Desfazer zoom" } } },
+    aria: {
+      general: { withTitle: "Gráfico sobre “{title}”", withoutTitle: "Gráfico" },
+      series: { single: { prefix: "", withName: " do tipo {seriesType} chamado {seriesName}.", withoutName: " do tipo {seriesType}." },
+        multiple: { prefix: ". Tem {seriesCount} séries.", withName: " A série {seriesId} é {seriesType} e representa {seriesName}.",
+          withoutName: " A série {seriesId} é {seriesType}.", separator: { middle: "", end: "" } } },
+      data: { allData: "Os dados são: ", partialData: "Os primeiros {displayCnt} itens são: ",
+        withName: "{name}: {value}", withoutName: "{value}", separator: { middle: ", ", end: ". " } },
+    },
+  };
+
+  let promessaEcharts = null;
+  function carregarEcharts() {
+    if (!promessaEcharts) {
+      promessaEcharts = new Promise((ok, falha) => {
+        if (window.echarts) { ok(window.echarts); return; }
+        const s = document.createElement("script");
+        s.src = ECHARTS_URL;
+        s.integrity = ECHARTS_SRI;
+        s.crossOrigin = "anonymous";
+        s.referrerPolicy = "no-referrer";
+        s.onload = () => (window.echarts ? ok(window.echarts) : falha(new Error("ECharts sem global")));
+        s.onerror = () => { s.remove(); falha(new Error("ECharts indisponível")); };
+        document.head.appendChild(s);
+      }).then((ec) => {
+        ec.registerLocale("PT-BR", LOCALE_PT);
+        ec.registerTheme("gabinete-claro", temaEcharts(PALETAS.claro));
+        ec.registerTheme("gabinete-escuro", temaEcharts(PALETAS.escuro));
+        return ec;
+      }).catch((e) => { promessaEcharts = null; throw e; });  // permite "Tentar de novo"
+    }
+    return promessaEcharts;
+  }
+
+  const GRAFICOS = new Map();   // elemento → {el, def, chart, tema, larg, celular, visivel}
+  let observadorGraf = null;
+  function grafico(alvo, def) {
+    const el = typeof alvo === "string" ? document.getElementById(alvo) : alvo;
+    if (!el) return null;
+    let reg = GRAFICOS.get(el);
+    if (!reg) {
+      reg = { el, def, chart: null, larg: 0 };
+      GRAFICOS.set(el, reg);
+      el.classList.add("grafico");
+      new ResizeObserver(() => redimensionarGrafico(reg)).observe(el);
+      if (!observadorGraf) observadorGraf = new IntersectionObserver(aoAparecer, { rootMargin: "300px 0px" });
+      observadorGraf.observe(el);
+    } else reg.def = def;
+    const a = typeof def.acessivel === "function" ? def.acessivel() : def.acessivel;
+    if (a) chartAcessivel(el, a.descricao, a.cabecalhos, a.linhas);
+    if (reg.chart) montarGrafico(reg);
+    else if (reg.visivel) desenharGrafico(reg);
+    return reg;
+  }
+  function aoAparecer(entradas) {
+    for (const e of entradas) {
+      if (!e.isIntersecting) continue;
+      observadorGraf.unobserve(e.target);
+      const reg = GRAFICOS.get(e.target);
+      if (reg) { reg.visivel = true; desenharGrafico(reg); }
+    }
+  }
+  function desenharGrafico(reg) {
+    carregarEcharts()
+      .then(() => quandoFonte(FACES_GRAFICO, () => montarGrafico(reg)))
+      .catch(() => estadoErro(reg.el, "Não foi possível carregar o gráfico agora (biblioteca fora do ar). " +
+        "Os números continuam no texto e nas tabelas da página.", () => desenharGrafico(reg)));
+  }
+  function montarGrafico(reg) {
+    const ec = window.echarts;
+    if (!ec) return;
+    const tema = temaAtual() === "escuro" ? "gabinete-escuro" : "gabinete-claro";
+    const erro = reg.el.querySelector(":scope > .estado-erro");
+    if (erro) erro.remove();
+    if (reg.chart && reg.tema !== tema) { reg.chart.dispose(); reg.chart = null; }
+    const larg = Math.round(reg.el.getBoundingClientRect().width);
+    if (reg.def.altura) reg.el.style.height = reg.def.altura(larg) + "px";
+    if (!reg.chart) {
+      reg.chart = ec.init(reg.el, tema, { locale: "PT-BR", renderer: reg.def.renderer || "canvas" });
+      reg.tema = tema;
+      if (reg.def.eventos) reg.def.eventos(reg.chart);
+    } else reg.chart.resize();
+    reg.larg = larg;
+    reg.celular = CELULAR_GRAF.matches;
+    const op = reg.def.opcao(paleta(), larg);
+    if (MOVIMENTO_REDUZIDO.matches) op.animation = false;
+    reg.chart.setOption(op, { notMerge: true });
+  }
+  function redimensionarGrafico(reg) {
+    if (!reg.chart) return;
+    const larg = Math.round(reg.el.getBoundingClientRect().width);
+    if (!larg || larg === reg.larg) return;
+    if (reg.def.dependeDaLargura || CELULAR_GRAF.matches !== reg.celular) montarGrafico(reg);
+    else { reg.larg = larg; reg.chart.resize(); }
+  }
+  const repintarGraficos = () => { for (const reg of GRAFICOS.values()) if (reg.chart) montarGrafico(reg); };
+  window.addEventListener("temamudou", repintarGraficos);
+  CELULAR_GRAF.addEventListener("change", repintarGraficos);
+  // impressão: desenha também os que ainda não apareceram na tela (se a biblioteca já veio)
+  window.addEventListener("beforeprint", () => {
+    if (!window.echarts) return;
+    for (const reg of GRAFICOS.values()) if (!reg.chart && reg.el.offsetParent) montarGrafico(reg);
+  });
+
+  // Tooltip padrão dos gráficos (HTML; todo texto escapado — rótulos vêm de crawler).
+  // linhas: [cor, rótulo, valor, forma ("p" = bolinha)]; a cor só na chave, o valor em destaque.
+  function dicaGrafico(titulo, linhas, nota, alerta) {
+    return `<div class="ec-dica"><div class="ec-dica-t">${escapar(titulo)}</div>` +
+      linhas.filter(Boolean).map(([cor, rot, val, forma]) =>
+        `<div class="ec-dica-l"><span class="r">${cor ? `<span class="k${forma === "p" ? " p" : ""}" style="background:${escapar(cor)}"></span>` : ""}` +
+        `${escapar(rot)}</span><b>${escapar(val)}</b></div>`).join("") +
+      (nota ? `<div class="ec-dica-n${alerta ? " alerta" : ""}">${escapar(nota)}</div>` : "") + "</div>";
+  }
+
   // ── Visualizador de PDF embutido (Comum.visorPdf) ───────────────────────────
   // PDF.js 6 (ESM no cdnjs), carregado sob demanda no 1º uso. Os PDFs da Câmara
   // (proposituras) vêm com CORS aberto e renderizam em <canvas>, página a página
@@ -905,6 +1111,6 @@ window.Comum = (() => {
   }
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, destacarNumeros, norm, compacto, compactoEixo, brl, debounce, paginador, abrirPaleta,
-           alternarTema, temaAtual, chartAcessivel, toast, copiar, compartilhar, estadoErro, quandoFonte, FACES_MANCHETE, identidadeFavorecido,
+           alternarTema, temaAtual, chartAcessivel, toast, copiar, compartilhar, estadoErro, quandoFonte, FACES_MANCHETE, grafico, paleta, dicaGrafico, carregarEcharts, identidadeFavorecido,
            nomeNormalizado, visorPdf, POP_SANTOS };
 })();
