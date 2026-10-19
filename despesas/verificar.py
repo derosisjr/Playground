@@ -14,6 +14,8 @@ partição e por conservação, executadas sobre o que o export ACABOU de gravar
   3. manifestos × arquivos: cada `dados/AAAA-MM.json` e `dados/mov/AAAA-MM.json`
      listado existe, tem o nº de linhas anunciado e soma o valor anunciado;
   4. estágios: pago por mês na série = pago somado nos manifestos de movimentação;
+     calendário de pagamentos (soma dos dias de cada mês = série; documentos = pagamentos)
+     e caminho do dinheiro (cada nível soma o pago do ano sem o extra-orçamentário);
   5. favorecidos: soma do top-N ≤ total geral; cada dossiê existe e seu total bate
      com o ranking (raio-X e ranking coerentes);
   6. piso de escala (o antigo "≥ R$ 4 bi"), mantido só como sanidade grosseira.
@@ -41,6 +43,52 @@ TOL = 1.0                      # tolerância em R$ nas somas (arredondamento a 2
 def _ler(caminho):
     with open(caminho, encoding="utf-8") as f:
         return json.load(f)
+
+
+def verificar_cubos(raiz: str, idx: dict) -> list[str]:
+    """Cubos do Explorador de pagamentos (`cubos` do índice × dados/cubo/AAAA.json): todo
+    ano do índice tem cubo; cada arquivo existe, tem as linhas e os bytes anunciados, os
+    índices do dicionário são válidos e o pago conserva — por ano (= totais.por_ano) e por
+    mês (= series_mensais). Índice sem `cubos` (export anterior ao explorador) não é falha."""
+    falhas = []
+    manifesto = idx.get("cubos")
+    if manifesto is None:
+        return falhas
+    anos_idx = set((idx.get("totais") or {}).get("por_ano") or {})
+    faltam = sorted(anos_idx - {str(m["ano"]) for m in manifesto})
+    if faltam:
+        falhas.append(f"ano(s) sem cubo do explorador: {', '.join(faltam)}")
+    serie = {(s["ano"], s["mes"]): s["valor"] for s in idx.get("series_mensais") or []}
+    for m in manifesto:
+        arq = os.path.join(raiz, m["arquivo"])
+        if not os.path.exists(arq):
+            falhas.append(f"cubo do manifesto ausente: {m['arquivo']}")
+            continue
+        if os.path.getsize(arq) != m.get("bytes"):
+            falhas.append(f"{m['arquivo']}: {os.path.getsize(arq)} bytes × manifesto {m.get('bytes')}")
+        d = _ler(arq)
+        linhas, campos, dic = d.get("linhas") or [], d.get("campos") or [], d.get("dicionario") or {}
+        if len(linhas) != m["linhas"]:
+            falhas.append(f"{m['arquivo']}: {len(linhas)} linhas × manifesto {m['linhas']}")
+        if "pago" not in campos or "mes" not in campos:
+            falhas.append(f"{m['arquivo']}: sem as colunas mes/pago")
+            continue
+        iP, iM = campos.index("pago"), campos.index("mes")
+        fora = [c for c, valores in dic.items() if c in campos and
+                any(not 0 <= l[campos.index(c)] < len(valores) for l in linhas)]
+        if fora:
+            falhas.append(f"{m['arquivo']}: índice fora do dicionário em {', '.join(fora)}")
+        pago = round(sum(l[iP] for l in linhas), 2)
+        alvo = (idx.get("totais") or {}).get("por_ano", {}).get(str(m["ano"]))
+        if alvo is None or abs(pago - alvo) > TOL or abs(pago - m["pago"]) > TOL:
+            falhas.append(f"cubo {m['ano']}: pago {pago} × índice {alvo} × manifesto {m['pago']}")
+        por_mes = {}
+        for l in linhas:
+            por_mes[l[iM]] = por_mes.get(l[iM], 0) + l[iP]
+        for (a, mes), v in serie.items():
+            if a == m["ano"] and abs(round(por_mes.get(mes, 0), 2) - v) > TOL:
+                falhas.append(f"cubo {a}-{mes:02d}: pago {round(por_mes.get(mes, 0), 2)} × série mensal {v}")
+    return falhas
 
 
 def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
@@ -108,6 +156,12 @@ def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
             if v is None or abs(v - s["valor"]) > TOL:
                 falhas.append(f"série {s['ano']}-{s['mes']:02d}: pago {s['valor']} × movimentação {v}")
 
+    # 4b) cubos do Explorador de pagamentos × índice (ano a ano e mês a mês)
+    falhas += verificar_cubos(raiz, idx)
+    # 4c) calendário de pagamentos e caminho do dinheiro (dados/calendario.json e
+    # dados/fluxo.json, M8): somam o mesmo que a série mensal e o pago de cada ano
+    falhas += verificar_calendario(raiz, idx) + verificar_fluxo(raiz, idx)
+
     # 5) favorecidos: ranking × dossiês
     tops = idx.get("top_favorecidos") or []
     total = (idx.get("totais") or {}).get("geral") or 0
@@ -141,6 +195,113 @@ def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
         if pago >= PISO_NL_PAGO and nl / pago > LIMITE_NAO_LOCALIZADO:
             falhas.append(f"{s['ano']}-{s['mes']:02d}: {nl / pago:.0%} do pago com empenho não localizado "
                           f"(limite {LIMITE_NAO_LOCALIZADO:.0%}) — formato do nº de empenho mudou na origem?")
+    return falhas
+
+
+# ── Calendário de pagamentos e caminho do dinheiro (M8) ──────────────────────
+def _arquivo_grafico(raiz: str, idx: dict, nome: str):
+    """(conteúdo, falhas) do arquivo `nome` do manifesto `dados_graficos` do índice."""
+    man = (idx.get("dados_graficos") or {}).get(nome)
+    if not man:
+        return None, [f"índice sem `dados_graficos.{nome}` (export anterior ao M8?)"]
+    caminho = os.path.join(raiz, man["arquivo"])
+    if not os.path.exists(caminho):
+        return None, [f"arquivo do manifesto ausente: {man['arquivo']}"]
+    falhas = []
+    if os.path.getsize(caminho) != man.get("bytes"):
+        falhas.append(f"{man['arquivo']}: {os.path.getsize(caminho)} bytes × manifesto {man.get('bytes')}")
+    return _ler(caminho), falhas
+
+
+def verificar_calendario(raiz: str, idx: dict) -> list[str]:
+    """Soma dos dias de cada mês = série mensal do índice (o export conta o dia dentro do mês
+    da partição, como a série); documentos = pagamentos da base; dias válidos, únicos, em ordem."""
+    from datetime import date
+    cal, falhas = _arquivo_grafico(raiz, idx, "calendario")
+    if cal is None:
+        return falhas
+    campos = cal.get("campos") or []
+    if not {"dia", "pago", "n"} <= set(campos):
+        return falhas + [f"calendário com campos inesperados: {campos}"]
+    iD, iP, iN = (campos.index(c) for c in ("dia", "pago", "n"))
+    por_mes, docs, dias = {}, 0, []
+    for linha in cal.get("linhas") or []:
+        try:
+            date.fromisoformat(linha[iD])
+        except (TypeError, ValueError):
+            falhas.append(f"calendário: dia inválido {linha[iD]!r}")
+            continue
+        por_mes[linha[iD][:7]] = por_mes.get(linha[iD][:7], 0) + linha[iP]
+        docs += linha[iN]
+        dias.append(linha[iD])
+    if dias != sorted(set(dias)):
+        falhas.append("calendário: dias repetidos ou fora de ordem")
+    serie = {f"{s['ano']}-{s['mes']:02d}": s["valor"] for s in idx.get("series_mensais") or []}
+    for mes in sorted(set(serie) | set(por_mes)):
+        a, b = por_mes.get(mes), serie.get(mes)
+        if a is None or b is None or abs(a - b) > TOL:
+            falhas.append(f"calendário {mes}: soma dos dias {a if a is None else round(a, 2)} × série mensal {b}")
+    pagamentos = (idx.get("totais") or {}).get("pagamentos")
+    if docs != pagamentos:
+        falhas.append(f"calendário: {docs} documentos × {pagamentos} pagamentos na base")
+    if cal.get("ate") != (dias[-1] if dias else None):
+        falhas.append(f"calendário: `ate` {cal.get('ate')} × último dia {dias[-1] if dias else None}")
+    return falhas
+
+
+def verificar_fluxo(raiz: str, idx: dict) -> list[str]:
+    """Por ano e variante: cada nível (fonte, função, favorecido) e cada camada de ligações
+    somam o total, e cada nó entrega/recebe o próprio valor; o total de "todos" = pago do ano
+    sem o extra-orçamentário (execucao.por_ano); "privados" sem ente público."""
+    import formato   # mesmo diretório (o slug das identidades de entes_publicos)
+    fx, falhas = _arquivo_grafico(raiz, idx, "fluxo")
+    if fx is None:
+        return falhas
+    anos = fx.get("anos") or {}
+    anos_base = sorted((idx.get("totais") or {}).get("por_ano") or {})
+    if sorted(anos) != anos_base:
+        falhas.append(f"caminho do dinheiro: anos {sorted(anos)} × anos da base {anos_base}")
+    exe = (idx.get("execucao") or {}).get("por_ano") or {}
+    entes = {"v:" + formato.slug_favorecido(k) for k in idx.get("entes_publicos") or []}
+    for ano, a in sorted(anos.items()):
+        e = exe.get(ano) or {}
+        if abs((a.get("extra") or 0) - (e.get("extra") or 0)) > TOL:
+            falhas.append(f"caminho {ano}: extra-orçamentário {a.get('extra')} × execução {e.get('extra')}")
+        for var in ("todos", "privados"):
+            s = a.get(var) or {}
+            nos, lig, total = s.get("nos") or [], s.get("ligacoes") or [], s.get("total") or 0
+            rot = f"caminho {ano} ({var})"
+            if var == "todos":
+                alvo = round((e.get("pago") or 0) - (e.get("extra") or 0), 2)
+                if abs(total - alvo) > TOL:
+                    falhas.append(f"{rot}: total {total} × pago do ano sem o extra-orçamentário {alvo}")
+            elif total > ((a.get("todos") or {}).get("total") or 0) + TOL:
+                falhas.append(f"{rot}: total {total} acima do de todos os favorecidos")
+            if len(lig) > 300:
+                falhas.append(f"{rot}: {len(lig)} ligações (teto 300)")
+            nivel = {n["id"]: n["nivel"] for n in nos}
+            if len(nivel) != len(nos):
+                falhas.append(f"{rot}: id de nó repetido")
+            entra, sai = {}, {}
+            for de, para, v in lig:
+                if nivel.get(para, -1) != nivel.get(de, -9) + 1:
+                    falhas.append(f"{rot}: ligação inválida {de} → {para}")
+                    continue
+                sai[de] = sai.get(de, 0) + v
+                entra[para] = entra.get(para, 0) + v
+            for k in (0, 1, 2):
+                soma = sum(n["valor"] for n in nos if n["nivel"] == k)
+                if abs(soma - total) > TOL:
+                    falhas.append(f"{rot}: nível {k} soma {round(soma, 2)} × total {total}")
+            for n in nos:   # o que sai de um nó e o que chega nele é o valor dele
+                if n["nivel"] < 2 and abs(sai.get(n["id"], 0) - n["valor"]) > TOL:
+                    falhas.append(f"{rot}: {n['id']} entrega {round(sai.get(n['id'], 0), 2)} × valor {n['valor']}")
+                if n["nivel"] > 0 and abs(entra.get(n["id"], 0) - n["valor"]) > TOL:
+                    falhas.append(f"{rot}: {n['id']} recebe {round(entra.get(n['id'], 0), 2)} × valor {n['valor']}")
+            if var == "privados":
+                publicos = [n["nome"] for n in nos if n["id"] in entes or n.get("ente_publico")]
+                if publicos:
+                    falhas.append(f"{rot}: ente público entre os privados: {', '.join(publicos[:3])}")
     return falhas
 
 

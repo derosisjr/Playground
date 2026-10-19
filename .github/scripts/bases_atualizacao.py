@@ -68,7 +68,8 @@ def _ler_json(rel):
 
 def contagens():
     """Contagens que o hub exibia lendo os índices INTEIROS só para um `d.length`:
-    proposituras 4,9 MB, legis 1,3 MB, regimento 0,4 MB, requerimentos 0,25 MB —
+    proposituras 4,9 MB, legis 1,3 MB, regimento 0,4 MB, requerimentos 0,25 MB (e a
+    Lei Orgânica, 0,5 MB, desde 2026-10) —
     ~0,85 MB gzip por visita nova, mais o parse na main thread. Aqui custam um
     json.load no CI; no hub, poucas centenas de bytes. Chave = nome do arquivo
     (como em `bases`). Falha em um índice só tira a chave dele: o hub cai no fetch."""
@@ -94,6 +95,16 @@ def contagens():
         out["regimento-index.json"] = {"n": len(_ler_json("regimento-index.json"))}
     except (OSError, ValueError) as e:
         print(f"  aviso: contagem do regimento falhou: {e}", file=sys.stderr)
+    try:
+        # Lei Orgânica (~0,5 MB): o cartão mostra os artigos do CORPO (as Disposições
+        # Transitórias recomeçam no art. 1) e quantos têm nota de emenda
+        lom = _ler_json("lei-organica-index.json")
+        corpo = [a for a in lom if not a.get("adt")]
+        out["lei-organica-index.json"] = {
+            "n": len(corpo), "alterados": sum(1 for a in corpo if a.get("notas")),
+            "adt": len(lom) - len(corpo)}
+    except (OSError, ValueError, AttributeError) as e:
+        print(f"  aviso: contagem da Lei Orgânica falhou: {e}", file=sys.stderr)
     try:
         reqs = _ler_json("requerimentos-index.json")
         por_situacao = {}
@@ -122,6 +133,20 @@ def contagens():
             out["requerimentos-index.json"]["fora_do_prazo"] = sum(1 for r in reqs if vencido(r))
     except (OSError, ValueError) as e:
         print(f"  aviso: contagem de requerimentos falhou: {e}", file=sys.stderr)
+    try:
+        # cartão "Indicações & Respostas": total e quantas têm resposta de mérito (o hub
+        # escreve "N sem resposta de mérito"; indicação não tem prazo legal)
+        inds = _ler_json("indicacoes-index.json")
+        por_situacao = {}
+        for r in inds:
+            s = r.get("situacao") or ""
+            por_situacao[s] = por_situacao.get(s, 0) + 1
+        out["indicacoes-index.json"] = {
+            "n": len(inds), "respondidos": sum(1 for r in inds if r.get("respondido")),
+            "por_situacao": por_situacao,
+        }
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem de indicações falhou: {e}", file=sys.stderr)
     try:
         notas = _ler_json("regimento-notas.json")
         # chaves "_..." são comentário (ex.: "_leia-me"); o resto é id de artigo

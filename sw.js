@@ -43,12 +43,15 @@ const NUCLEO = [
   "./",
   "./index.html",
   "./despesas.html",
+  "./explorador.html",
   "./endividamento.html",
   "./proposituras.html",
   "./legis.html",
   "./precos.html",
   "./requerimentos.html",
+  "./indicacoes.html",
   "./regimento.html",
+  "./lei-organica.html",
   "./indicadores.html",
   "./consulta.html",
   "./favorecido.html",
@@ -56,6 +59,7 @@ const NUCLEO = [
   "./novidades.html",
   "./comum.css",
   "./comum.js",
+  "./regimento.css",  // era o <style> do regimento.html (pré-cacheado); hoje é das duas leis
   "./favicon.svg",
 ];
 

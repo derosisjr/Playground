@@ -8,6 +8,9 @@ paths:
   - "retrospectiva.html"
   - "retrospectiva-app.js"
   - "favorecidos/**"
+  - "explorador.html"
+  - "explorador-app.js"
+  - "explorador-worker.js"
 ---
 
 # Base de Despesas (`despesas/` + `despesas.html`)
@@ -103,6 +106,40 @@ A consolidação **não altera a soma geral** (teste `test_ranking_consolida_gra
   pelo `periodo_empenho` da linha. O índice grava `conservacao` (pago da base = execução =
   movimentação) e o `verificar.py` confere.
 
+## Cubo do Explorador de pagamentos (M9, 2026-10)
+
+`exportar_cubos(movimento, ident)` grava **`despesas/dados/cubo/AAAA.json`**: os PAGAMENTOS do
+ano — a fase P da movimentação, as mesmas linhas de `dados/mov/`, no mês da partição (= pela data do
+pagamento) — agregados por mês × unidade gestora × tipo × favorecido × função × subfunção ×
+programa × elemento × fonte × grupo, com `pago` (soma em centavos inteiros → 2 casas exatas) e `n`
+(nº de documentos). É a tabela que o `explorador.html` monta num SQLite no navegador (página em
+`site-frontend.md`).
+- Contrato: `{"versao": 1, "ano", "campos": ["mes", "unidade_gestora", "tipo", "favorecido",
+  "funcao", "subfuncao", "programa", "elemento_despesa", "fonte_recurso", "grupo_despesa", "pago",
+  "n"], "campos_favorecido": ["chave", "nome", "documento"], "dicionario": {campo: [valores]},
+  "linhas": [[…]]}` — as colunas 1 a 9 são índices no dicionário do campo; vazio da origem = `null`
+  (o extra-orçamentário não tem função/subfunção/programa); o favorecido é a **identidade**:
+  `[chave de formato.identidade_favorecido, nome de exibição do ranking, documento como a origem
+  publica]` (o JS não recalcula a chave; agrupar só por nome junta homônimos e só pelo CPF mascarado
+  junta pessoas).
+- Inclui extra-orçamentário (pelo `tipo`) e anulações (negativas): o pago do ano é o de
+  `totais.por_ano` e o de cada mês, o de `series_mensais`.
+- **Determinístico**: linhas por (mês, −valor, texto), dicionários pela 1ª aparição (os maiores
+  valores ganham índices curtos), JSON compacto; só regrava se os bytes mudaram. O ano fechado não
+  vira diff diário — muda quando o dado muda (inclusive o nome de exibição de um favorecido cuja
+  grafia dominante troca com o ano novo).
+- Privacidade: nada além do que `dados/mov/` e `nomes-favorecidos.json` já publicam (mesmos nomes,
+  CPF mascarado como na origem; a chave `cpf:…|NOME` é a mesma dos índices leves).
+- Tamanho (base de 2026-10-16): 2025 = 38.506 linhas, 1,95 MB (514 KB gzip); 2026 = 29.702 linhas,
+  1,60 MB (436 KB gzip); ~1 s no export.
+- Manifesto no índice: **`cubos: [{ano, arquivo, linhas, bytes, gzip, pago, n}]`** (~270 bytes; o
+  hub baixa o índice inteiro, por isso nada além disso). `gzip` = estimativa do download (nível 6).
+- `verificar.py` (`verificar_cubos`): todo ano de `totais.por_ano` tem cubo; o arquivo existe com as
+  linhas e os bytes do manifesto; índices dentro do dicionário; pago = `totais.por_ano` = manifesto;
+  por mês = `series_mensais`. Índice sem `cubos` (export anterior) não é falha. Testes em
+  `despesas/tests/test_cubo.py` (conservação, grafias do mesmo CNPJ, bytes determinísticos, ida e
+  volta do dicionário, verificação). O workflow já commita `despesas/dados` — os cubos vão juntos.
+
 ## Classificação das linhas e taxas (2026-09)
 
 `classificar_documento(tipo_fonte, empenho, na_base)`: **Extra-orçamentário** e **Restos a pagar**
@@ -185,7 +222,7 @@ classe padrão "A conferir", regra com ≥ 3 alertas vira grupo recolhível, fil
 
 ## Painel, raio-X, retrospectiva
 
-`despesas.html`+`despesas-app.js` (vanilla + Chart.js e plugin `chartjs-chart-treemap` via CDN):
+`despesas.html`+`despesas-app.js` (vanilla + ECharts via `Comum.grafico` desde o M7 — ver abaixo):
 abas Visão geral (movimentação; bloco de execução com taxa validada ou motivo + razões brutas;
 glossário com os tipos e as duas visões; linha de **cobertura** no rodapé), Alertas (filtro por
 classe/tipo/severidade, nota de histórico, badge NOVO, documentos em `<details>`, clique → `link`),
@@ -202,16 +239,17 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=20` (com `defer`, como o Chart.js),
-`retrospectiva-app.js?v=8`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=24` (com `defer`),
+`retrospectiva-app.js?v=8`, `favorecido-app.js?v=11` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
 
 **UI do painel (Lote D3, 2026-09-30).** Cards: total do período, acumulado jan–M (YoY), **último
 mês completo** vs média de 12 meses (`resumo.mes_ref`/`delta_media_pct` — o hub usa o mesmo mês)
-e **alertas a conferir** (link → `#alertas`). Chart.js/treemap e o app carregam com `defer`;
-`renderGraficosSeguro` mantém abas/alertas/tabelas funcionando se o CDN cair. Manifestos `meses`/
+e **alertas a conferir** (link → `#alertas`). O app carrega com `defer`; biblioteca de gráficos
+fora do ar = aviso com "Tentar de novo" em cada gráfico (camada comum) e `renderGraficosSeguro`
+segura dado inesperado num gráfico — abas/alertas/tabelas seguem funcionando. Manifestos `meses`/
 `meses_movimento` trazem **`bytes`** por arquivo → `sel-info` mostra "download ≈ X MB" (só o que
 não está em `DET_PARTES`). `carregarPartes` usa `allSettled` + `r.ok`; a falha nomeia os meses e
 oferece "Tentar de novo" (`Comum.estadoErro`) baixando só o que faltou. Facetas: `indicesBase()`
@@ -225,6 +263,103 @@ do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da mov
 o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
 extenso e período AAAA-MM. Modo escuro: textos em `var(--ink)` e vermelhos/âmbar claros
 (≥ 4,5:1). Service worker: dados de despesas network-first (`sw.js`, `CACHE` v3).
+
+**Gráficos em ECharts (M7, 2026-10).** Os 11 gráficos do painel (mensal, execução, anulações,
+publicidade, programa, funções, fonte, ano × ano, mapa, unidade gestora, cidades pares) saíram do
+Chart.js 4.4.1 + `chartjs-chart-treemap` para `Comum.grafico` (ver `site-frontend.md`): contêiner
+`<div class="grafico">` com altura no CSS (`.box .grafico` 300 px; mapa 400/320 px; rosca 420 px até
+640 px), desenho sob demanda (aba oculta desenha ao aparecer), tema/celular/CDN na camada comum, a
+descrição e a tabela oculta de cada gráfico no `acessivel`. Paridade de comportamento, com estes
+detalhes:
+- **Meses parciais**: `dividirParciais()` parte a linha em duas séries com o MESMO nome (a legenda
+  liga/desliga as duas) — meses completos + trecho tracejado do último completo aos parciais (ponto
+  vazado); `*` no eixo; na dica, "(parcial)" e a nota. Pontos fora do padrão (±25% da média dos 12
+  meses anteriores) em `vermelho`/`amarelo` do tema, maiores. Legendas seguem clicáveis (como no
+  Chart.js: esconder o empenhado reescala o eixo da execução); linha sem marcador tira o ponto da
+  legenda com `itemStyle: { opacity: 0 }` no item da legenda.
+- **Eixo dos meses**: todos os rótulos no desktop (`interval: 0` + `hideOverlap`), um a cada 4 no
+  celular. **Barras deitadas** (`opcaoBarrasDeitadas`, `dependeDaLargura`): `eixoValor()` escolhe
+  passo redondo e teto justo pelo espaço útil (o padrão do ECharts esticava o teto e encavalava
+  rótulos na caixa estreita) e a margem direita para o rótulo do teto, centrado no traço (o
+  `containLabel` não o conta); abaixo de ~140 px úteis só "R$ 0" e o teto têm rótulo; nome longo
+  cortado com "…" (230–280 px; 120–140 no celular), inteiro na dica.
+- **Cores** só de `Comum.paleta()`; a rosca usa `coresCategorias()` (navy/dourado do tema + as 6
+  categóricas que o painel já tinha; a 8ª, vermelha, é a das anulações); ano anterior e cidades pares
+  em `ref`; empenhado em #93a0b3 nos dois temas (`cinzaLinha`).
+- **Mapa do gasto**: a navegação é a trilha HTML `#mapa-trilha` (botões; o foco fica no nível
+  escolhido); o ECharts desenha só o nível atual (`nodeClick: false`, sem a trilha nativa) e o clique
+  numa área chama `abrirNoMapa()` — com filhos desce um nível; elemento (≠ "Demais elementos") →
+  `irParaDetalhe({funcao, elemento_despesa})`, o mesmo filtro pendente de antes; senão, toast. Rótulo
+  só onde cabe inteiro: `retangulosMapa()` reproduz o "squarified" do ECharts (conferido: 0 px de
+  diferença nos 85 níveis) e `rotuloMapa()` mede o texto — normal, compacto ou nome em 2 linhas.
+  `RAZAO_MAPA` = 1,4 (a áurea espichava as áreas médias e tirava o nome de Assistência social e
+  Previdência). O espaço entre as áreas é `itemStyle.borderColor` (padrão branco: no escuro virava
+  grade branca) = `card`.
+- **Dica**: valor com centavos (`brlc`, como antes) e as notas de antes ("Mês parcial — …", "+X% vs
+  média 12m — fora do padrão, ver aba Alertas.", "sem base no ano anterior"/"+X% vs AAAA", "R$ … no
+  total" nas vistas % e por habitante, "Deste nível" no mapa).
+
+**Pago por dia, calendário e caminho do dinheiro (M8, 2026-10 — os três aprovados na vitrine de
+ECharts).** Dados: `exportar_graficos_movimento()` grava, das MESMAS linhas de pagamento (fase P) de
+`montar_movimento` que vão para `dados/mov/`, dois arquivos em `despesas/dados/` (o workflow já os
+publica com a pasta), sem carimbo de hora e tudo ordenado — mesmo dado = mesmos bytes (teste com as
+linhas embaralhadas). O índice leva só o manifesto **`dados_graficos`** (`{calendario|fluxo:
+{arquivo, bytes}}`, ~150 bytes): **sem ele o painel nem baixa** (índice anterior ao 1º export com
+os arquivos → nada de 404 no console).
+- **`dados/calendario.json`** (~15 KB): `{"versao":1,"campos":["dia","pago","n","anulacoes"],"ate",
+  "redatados":{n,pago},"linhas":[["2025-01-02",1907.94,2,0],…]}` — pago líquido (centavos), nº de
+  documentos de pagamento (anulações inclusas; Σn = `totais.pagamentos`) e quantos são anulações, só
+  dias com documento. O dia conta **dentro do mês da partição** (`_dia_pagamento`), como a série
+  mensal: a origem traz pagamentos com a data de outro ano no mesmo mês (23, R$ 174 mil, todos
+  extra-orçamentários — 25/04/2024 na partição abr/2025), contados no mesmo dia do mês consultado
+  (`redatados`); dia inexistente no mês vai para o último.
+- **`dados/fluxo.json`** (~41 KB): `{"versao":1,"anos":{"2026":{"extra",
+  "todos":{total,nos,ligacoes},"privados":{…}}}}` — por ano da partição, **sem o extra-orçamentário**
+  (`extra` = o que ficou fora, igual a `execucao.por_ano[ano].extra`), grupo da fonte (prefixo AUDESP;
+  91–98 juntos em "9x", exercícios anteriores; nomes em `GRUPOS_FONTE`, 03/06/07/08/9x lidos da tabela
+  AUDESP e conferidos com as fontes da base [Verificar]) → função (pelo código, grafia por
+  `nome_exibicao`) → favorecido **por identidade** (nome por `nome_exibicao`, `documento`, `link` do
+  raio-X por `_link_fav`: `?f=` se há dossiê, senão `?doc=&nome=`; `ente_publico` em "todos").
+  `FLUXO_TOPOS` = 8/10/15 + nó "Demais" (`inclui` ou `qtd`); "Demais" de um só vira o próprio nó.
+  "privados" tira as identidades de `entes_publicos` (a mesma `formato.eh_ente_publico`). Ids
+  estáveis (`g:01`, `f:10`, `v:<slug>`), ligações `[de, para, valor]` (≤ ~130 por recorte; líquida
+  negativa fica no arquivo e o painel não a desenha).
+- **`verificar.py`** (bloco 4b): calendário somado por mês = `series_mensais` em todo mês, Σn =
+  `totais.pagamentos`, dias válidos/únicos/em ordem, `ate` = último dia; caminho: anos = anos da base,
+  `extra` = execução, "todos" = pago do ano − extra, cada nível e cada camada de ligações somam o
+  total, cada nó entrega/recebe o próprio valor, "privados" ≤ "todos" e sem ente público; manifesto ×
+  bytes. Testes: `despesas/tests/test_calendario_fluxo.py`.
+- **Mensal | Diário** (`#pago-escala`, `aria-pressed`, `?pago=dia`): o MESMO contêiner `#ch-mensal`
+  troca de definição (`desenharMensal`: `DEF_MENSAL` = o gráfico do M7, intocado — conferido pixel a
+  pixel — ou `defDiario()`). Diário = barras por dia em eixo de tempo, mês parcial mais claro e faixa
+  "mês parcial*", régua (slider) começando nos últimos 120 dias; arrastar o gráfico desloca a janela.
+  **O zoom de roda do ECharts captura a roda mesmo sem o Ctrl** (a página parava de rolar sobre o
+  gráfico): o `inside` tem `zoomLock` e o **Ctrl + roda** (e a pinça do trackpad) é da página
+  (`wheel` no contêiner → `dispatchAction`). No toque o `inside` fica desligado (só a régua). A janela
+  (`janelaDiario`) sobrevive à troca de tema e de escala; sem o arquivo, "Diário" fica desabilitado
+  (sem manifesto) ou avisa por toast e fica no Mensal (falha de rede).
+- **Calendário** (`#box-calendario`, logo abaixo do pago por mês): um bloco por ano (no celular,
+  semestres), cor = faixa entre os quintis dos dias com pagamento (`visualMap` por peças — um estilo
+  por dia custava ~25% mais), sem pagamento em `neutro`, dia ainda sem dado com a cor do cartão; mês
+  parcial hachurado numa série à parte com UMA hachura (hachura por dia dobrava o custo). Altura
+  reservada no CSS com unidades de contêiner (`.cal-area { container-type: inline-size }`, `cqw`,
+  `--anos`) pela mesma conta de `medidasCalendario` — o desenho não empurra a página. Legenda HTML
+  (`#cal-legenda`) com as faixas em R$, nascida com textos de reserva do mesmo formato (ocultos).
+- **Caminho do dinheiro** (`#box-caminho`, depois do mapa): Sankey com ano (`select`, `?caminho=`) e
+  "Todos | Só fornecedores privados" (`?so=privados`); rótulos cortados pela largura medida
+  (`rotulosCaminho`), nome do favorecido por `nomeLegivel` (cópia da do raio-X — candidata à camada
+  comum); clique num favorecido → `link`; "Demais" → toast. ~900 px de largura mínima (780 no
+  celular): a caixa rola na horizontal (`.rolagem-x`, `role=region`, entra no Tab só quando rola), a
+  página não.
+- **Acessível**: tabela oculta do Diário e do calendário **por mês** (total, documentos, maior dia —
+  ~470 linhas de dias seriam navegáveis só uma a uma; o dia a dia está no Detalhamento); a do caminho
+  lista as ligações (de, para, pago).
+- **Sem o arquivo**: com o manifesto ausente, aviso "disponível a partir da próxima atualização" no
+  lugar do gráfico — a caixa recolhe fora da tela; na tela mantém a altura (CLS zero); fetch que
+  falha → `estadoErro` com "Tentar de novo"; CDN fora → o erro da camada comum, como os demais.
+- **Custo** (CPU 4×, máquina compartilhada — medir intercalado): nada dos três é desenhado na carga
+  (fetch + tabelas ocultas ~30 ms); ao entrar na tela o calendário bloqueia ~0,4 s e o caminho ~0,3 s
+  (o mapa 0,25–0,35 s, fonte + funções 0,3–0,4 s); clicar em "Diário" ~0,25 s.
 
 **Raio-X (Lote D4, 2026-09-30).** O dossiê (`favorecidos/<slug>.json`) ganhou `por_elemento`
 (com `participacao_pct` = fatia do favorecido em todo o pago no elemento), `por_unidade`,
@@ -345,7 +480,7 @@ Parque Tecnológico (também é UG da base) e SP-PREVCOM. O JS não replica a he
 legal), pela data do pagamento (inclui restos): `por_ano`, `comparacao` (jan–M do último mês completo
 × mesmo período do ano anterior), `serie` mensal (lacuna = 0) e top 10 `favorecidos` por identidade.
 Caixa `#box-publicidade` na Visão geral (padrão do `box-prazos`; gráfico de barras empilhadas com
-`Comum.chartAcessivel`, mês parcial mais claro).
+tabela oculta, mês parcial mais claro).
 
 **Painel (Lote 2)**: filtro de severidade só com os valores presentes; cartão do alerta com
 "Abrir o recorte"/"Abrir o raio-X", **"Raio-X do favorecido"** (quando o recorte é o Detalhamento),

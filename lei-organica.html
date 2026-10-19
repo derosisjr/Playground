@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
+    <title>Lei Orgânica do Município — Santos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <meta name="description" content="Lei Orgânica do Município de Santos artigo por artigo: busca por número ou palavra-chave, citação pronta e as emendas que alteraram cada dispositivo." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#07111f" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gabinete Rui de Rosis Jr. — Transparência e Fiscalização" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Lei Orgânica do Município — Santos" />
+    <meta property="og:description" content="Lei Orgânica do Município de Santos artigo por artigo: busca por número ou palavra-chave, citação pronta e as emendas que alteraram cada dispositivo." />
+    <meta property="og:url" content="https://derosisjr.github.io/Playground/lei-organica.html" />
+    <meta property="og:image" content="https://derosisjr.github.io/Playground/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./comum.css?v=13" />
+    <!-- mesmo leitor do Regimento (regimento.css + regimento-app.js, data-doc="lom") -->
+    <link rel="stylesheet" href="./regimento.css?v=1" />
+  </head>
+  <body>
+    <script src="./comum.js?v=25"></script>
+    <script>Comum.topbar("lei-organica.html");</script>
+    <header class="hero">
+      <div class="hero-in">
+        <p class="eyebrow">Câmara · Lei Orgânica</p>
+        <h1>Lei Orgânica do Município</h1>
+        <p class="hero-sub">
+          A lei maior de Santos: organiza a Câmara e a Prefeitura, reparte o que cabe a cada
+          Poder e traça as diretrizes das políticas municipais. Busque por número de artigo —
+          <b>58</b> abre o artigo, <b>58 XVIII</b> marca o inciso — ou por palavra-chave, e copie
+          o link ou a citação. Texto extraído do PDF oficial
+          (<a href="https://egov.santos.sp.gov.br/legis/documents/9596" target="_blank" rel="noopener">Legis doc. 9596 ↗</a>),
+          com as notas de cada emenda no pé do artigo — confira sempre a publicação oficial.
+        </p>
+        <p class="base-de" data-base="lei-organica-index.json"></p>
+      </div>
+    </header>
+
+    <main class="shell" data-doc="lom">
+      <div class="barra-busca">
+        <div class="busca-wrap">
+          <input id="q" type="search" aria-label="Buscar na Lei Orgânica por número de artigo, dispositivo ou palavra-chave" placeholder="Ex.: 58, 58 XVIII, quinze dias…" />
+        </div>
+        <div class="dica">
+          <span><kbd>/</kbd> foca a busca</span>
+          <span><kbd>Enter</kbd> abre o 1º resultado</span>
+          <span><kbd>Esc</kbd> limpa</span>
+          <span class="contagem" id="contagem" aria-live="polite">Carregando…</span>
+          <a class="irmao" href="./regimento.html">Regimento Interno →</a>
+        </div>
+      </div>
+
+      <div class="lista" id="lista"><!-- skeleton: o índice tem ~0,5 MB e a tela ficava vazia -->
+        <div class="artigo" aria-hidden="true"><span class="skel" style="display:block;height:14px;width:28%"></span><span class="skel" style="display:block;height:12px;width:92%;margin-top:12px"></span><span class="skel" style="display:block;height:12px;width:80%;margin-top:8px"></span></div>
+        <div class="artigo" aria-hidden="true"><span class="skel" style="display:block;height:14px;width:28%"></span><span class="skel" style="display:block;height:12px;width:92%;margin-top:12px"></span><span class="skel" style="display:block;height:12px;width:80%;margin-top:8px"></span></div>
+        <div class="artigo" aria-hidden="true"><span class="skel" style="display:block;height:14px;width:28%"></span><span class="skel" style="display:block;height:12px;width:92%;margin-top:12px"></span><span class="skel" style="display:block;height:12px;width:80%;margin-top:8px"></span></div>
+      </div>
+      <div class="vazio" id="vazio" hidden>Nenhum artigo encontrado.</div>
+      <button class="mais" id="mais" hidden>Mostrar mais</button>
+
+      <p class="rodape">
+        Fonte: Lei Orgânica do Município de Santos (promulgada em 5 de abril de 1990), versão
+        compilada publicada no Legis da Prefeitura (documento 9596, baixado em 10/08/2026).
+        O texto vem da camada de texto do PDF, sem OCR; as notas "com redação dada pela
+        Emenda…" são as do próprio PDF, fora do texto do artigo. O preâmbulo e as assinaturas
+        ficam de fora. De caráter informativo — confira a publicação oficial antes de invocar
+        em sessão.
+      </p>
+    </main>
+
+    <script src="./regimento-app.js?v=5"></script>
+  </body>
+</html>

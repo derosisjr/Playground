@@ -20,8 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=13" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
@@ -33,19 +32,10 @@
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1000px; margin: 0 auto; padding: 0 20px 60px; }
 
-      header.hero { position: relative; overflow: hidden; color: #fff;
-        background:
-          radial-gradient(120% 90% at 12% -10%, var(--navy3) 0%, transparent 55%),
-          linear-gradient(180deg, var(--navy2) 0%, var(--navy) 100%);
-        border-bottom: 1px solid rgba(201,168,76,0.25); }
+      /* topo e etiqueta vêm do comum.css (direção Noturno) */
       .hero-in { position: relative; max-width: 1000px; margin: 0 auto; padding: 26px 20px; }
-      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
-        font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
-        letter-spacing: .22em; text-transform: uppercase; margin: 0 0 10px; }
-      .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); }
       /* o nome vem do portal e pode ter 80+ caracteres: menor que o título dos painéis */
-      h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600; margin: 0;
-        font-size: clamp(21px, 2.4vw, 28px); line-height: 1.15; letter-spacing: -0.01em; }
+      header.hero h1 { font-size: clamp(21px, 2.4vw, 28px); line-height: 1.15; letter-spacing: -0.01em; }
       .hero-sub { color: #c3cdda; margin: 10px 0 0; font-size: 14px;
         font-family: "IBM Plex Mono", monospace; display: flex; flex-wrap: wrap; gap: 8px 18px; }
       .hero-sub .rank { color: var(--gold-bright); }
@@ -53,7 +43,7 @@
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
         padding: 16px 18px; margin-top: 18px; }
       .box h3 { margin: 0 0 12px; font-size: 15px; }
-      .box canvas { max-height: 260px; }
+      .box .grafico { --altura-grafico: 260px; }
       /* modo escuro: o vermelho do tema claro fica ~2,5:1 sobre o card escuro */
       html[data-tema="escuro"] { --red: #f97066; }
 
@@ -120,7 +110,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=25"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -149,12 +139,12 @@
 
         <div class="box">
           <h3>Pagamentos recebidos por mês (R$)</h3>
-          <canvas id="ch-mensal"></canvas>
+          <div class="grafico" id="ch-mensal"></div>
         </div>
 
         <div class="box">
           <h3>Em que funções o dinheiro entra (R$)</h3>
-          <canvas id="ch-funcao"></canvas>
+          <div class="grafico" id="ch-funcao"></div>
         </div>
 
         <div class="box" id="box-composicao" hidden>
@@ -235,6 +225,6 @@
       </div>
     </main>
 
-    <script defer src="./favorecido-app.js?v=10"></script>
+    <script defer src="./favorecido-app.js?v=11"></script>
   </body>
 </html>

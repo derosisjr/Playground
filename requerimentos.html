@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=13" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -44,15 +44,7 @@
       }
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
-      header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-        background-image:
-          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
-          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
-        -webkit-mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
-        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%); }
       .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
-      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
-        letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 720px; line-height: 1.6; }
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;
         margin: 22px 0 14px; }
@@ -94,6 +86,8 @@
       .rodape { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.5; }
       .mais { display: block; margin: 14px auto 0; padding: 10px 18px; border: 1px solid var(--line);
         border-radius: var(--r-sm); background: var(--card); font: inherit; cursor: pointer; }
+      /* o display:block acima vence o [hidden]: sem isto o botão fica à vista sem mais nada a mostrar */
+      .mais[hidden] { display: none; }
       .filtros select[hidden] { display: none; }
       /* Prazo da Lei Orgânica: o texto diz tudo; a cor só reforça (ramp semântico acima) */
       .prazo { display: inline-flex; flex-direction: column; gap: 1px; font-size: 13px;
@@ -122,14 +116,21 @@
       .secretarias tbody td { padding: 6px 10px; }
       .secretarias td.n { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
       .secretarias td.fora { color: var(--vermelho); font-weight: 600; }
+      .grafico-sec { margin: 10px 0 4px; }
+      .nota-sec { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 2px 0 6px; max-width: 95ch; }
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=25"></script>
     <script>Comum.topbar("requerimentos.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
-        <p class="eyebrow">Câmara · Requerimentos</p>
+        <div class="hero-topo">
+          <p class="eyebrow">Câmara · Requerimentos</p>
+          <nav class="alterna" aria-label="Pedidos do mandato ao Executivo">
+            <a href="./requerimentos.html" aria-current="page">Requerimentos</a><a href="./indicacoes.html">Indicações</a>
+          </nav>
+        </div>
         <h1>Requerimentos &amp; Respostas</h1>
         <p class="hero-sub">
           Pesquisa rápida dos requerimentos do mandato e das respostas do Executivo.
@@ -144,6 +145,7 @@
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:2.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
+        <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
         <p class="base-de" data-base="requerimentos-index.json"></p>
       </div>
     </header>
@@ -185,6 +187,11 @@
 
       <details class="secretarias" id="secretarias">
         <summary>Atraso por secretaria <span class="sub" id="sec-sub">carregando…</span></summary>
+        <!-- um ponto por pedido (requerimentos-app.js, desenharSecretarias); clique abre o pedido -->
+        <div class="grafico grafico-sec" id="ch-secretarias"></div>
+        <p class="nota-sec">Cada ponto é um requerimento: cheio = já respondido (dias da sessão à resposta de mérito);
+          vazado = ainda sem resposta de mérito (dias desde a sessão). Escala logarítmica — as marcas são 15 e 30 dias,
+          2, 3 e 6 meses e 1 ano. Clique num ponto para abrir o pedido.</p>
         <div class="rolagem">
           <table>
             <thead>
@@ -227,7 +234,7 @@
       <button class="mais" id="mais" hidden>Mostrar mais</button>
 
       <p class="rodape">
-        <b>Prazo:</b> a Lei Orgânica de Santos (art. 58, XVIII) obriga o Prefeito a prestar as
+        <b>Prazo:</b> a Lei Orgânica de Santos (<a href="./lei-organica.html#art-58">art. 58, XVIII</a>) obriga o Prefeito a prestar as
         informações pedidas pela Câmara em quinze dias, prorrogáveis por igual período a pedido
         dele. Aqui o prazo conta da data da sessão que aprovou o requerimento, em dias corridos
         — a data de protocolo na Prefeitura não está registrada, então o atraso real pode ser
@@ -241,6 +248,6 @@
       </p>
     </main>
 
-    <script src="./requerimentos-app.js?v=9"></script>
+    <script src="./requerimentos-app.js?v=10"></script>
   </body>
 </html>

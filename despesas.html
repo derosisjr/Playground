@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <meta name="description" content="Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e busca por favorecido, função e fonte." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -25,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=13" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -40,15 +38,7 @@
       }
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
-      header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-        background-image:
-          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
-          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
-        -webkit-mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
-        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%); }
       .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
-      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
-        letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
 
       /* cartões de KPI (.stats/.stat) vêm do comum.css */
@@ -67,9 +57,41 @@
       @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
-      .box canvas { height: 300px !important; width: 100% !important; }
-      #box-mapa canvas { height: 400px !important; }
-      @media (max-width: 560px) { #box-mapa canvas { height: 320px !important; } }
+      .box .grafico { --altura-grafico: 300px; }
+      #box-mapa .grafico { --altura-grafico: 400px; }
+      @media (max-width: 560px) { #box-mapa .grafico { --altura-grafico: 320px; } }
+      /* rosca das fontes: no celular a legenda vai para baixo do anel (8 linhas) */
+      @media (max-width: 640px) { #ch-fonte { --altura-grafico: 420px; } }
+      /* calendário de pagamentos (M8): a altura é a do desenho — blocos de 7 linhas de células
+         da largura disponível (medidasCalendario no app: 53 semanas por ano, ou semestres de 27
+         no celular). Reservada desde a 1ª pintura: cqw = largura da .cal-area */
+      .cal-area { container-type: inline-size; }
+      #ch-calendario { --anos: 2;
+        --altura-grafico: calc(30px + (var(--anos) - 1) * 40px + 7 * var(--anos) * (100cqw - 62px) / 53); }
+      @media (max-width: 640px) { #ch-calendario {
+        --altura-grafico: calc(30px + (2 * var(--anos) - 1) * 34px + 14 * var(--anos) * (100cqw - 26px) / 27); } }
+      @supports not (height: 1cqw) { #ch-calendario { --altura-grafico: 340px; } }
+      .legenda-cal { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0;
+        list-style: none; font-size: 12px; color: var(--muted); }
+      .legenda-cal li { display: inline-flex; align-items: center; gap: 6px; }
+      .legenda-cal .sw { width: 13px; height: 13px; border-radius: 3px; flex: none;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+      .legenda-cal .sw.sem-dado { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+      .legenda-cal .faixa { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink); }
+      .legenda-cal .faixa.reserva, #caminho-nota.reserva { visibility: hidden; }
+      /* caminho do dinheiro (Sankey): o caminho inteiro pede ~900 px (780 no celular) — a caixa rola
+         na horizontal, a página não */
+      .caminho-controles { align-items: center; }
+      .caminho-controles select { padding: 5px 8px; min-width: 6.5em; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; font-size: 12px; color: var(--ink); }
+      #box-caminho .rolagem-x { overflow-x: auto; overscroll-behavior-x: contain; }
+      #box-caminho .rolagem-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      #ch-caminho { --altura-grafico: 620px; min-width: 900px; }
+      @media (max-width: 640px) { #ch-caminho { --altura-grafico: 660px; min-width: 780px; } }
+      @media (max-width: 980px) { #box-caminho .dica-scroll { display: block; } }
+      /* gráfico novo sem o arquivo ainda (índice anterior ao export que o gera): aviso no lugar */
+      .grafico > .aviso-grafico { position: absolute; inset: 0; display: grid; place-content: center;
+        margin: 0; padding: 0 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
 
       /* ── Filtros ──────────────────────────────────────────────────── */
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
@@ -316,7 +338,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=25"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -333,6 +355,14 @@
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
+        <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
+        <!-- "Em resumo" dentro do topo escuro (direção Noturno): vale para o painel todo.
+             Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
+        <div class="box resumo-box" id="em-resumo">
+          <p class="resumo-rotulo">Em resumo</p>
+          <p class="resumo-texto resumo-reserva" id="resumo-texto" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
+          <button type="button" class="hero-mais resumo-mais" id="resumo-mais" aria-controls="resumo-texto" aria-expanded="false">Ler o resumo inteiro ▾</button>
+        </div>
         <p class="base-de" data-base="despesas-index.json"></p>
       </div>
     </header>
@@ -345,13 +375,6 @@
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
       </div>
 
-      <!-- "Em resumo" acima das abas: vale para o painel todo, não só para a Visão geral.
-           Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
-      <div class="box resumo-box" id="em-resumo">
-        <p class="resumo-rotulo">Em resumo</p>
-        <p class="resumo-texto resumo-reserva" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
-      </div>
-
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" data-tab="geral" aria-selected="true">Visão geral</button>
         <button class="tab" role="tab" data-tab="alertas" aria-selected="false">Alertas fiscais <span id="badge-alertas"></span></button>
@@ -362,15 +385,42 @@
       <!-- ── Visão geral ── -->
       <section class="painel ativo" id="painel-geral">
         <h2 class="sr-only">Visão geral</h2>
-        <div class="box">
-          <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
-          <canvas id="ch-mensal"></canvas>
+        <div class="box" id="box-mensal">
+          <div class="box-toggle">
+            <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
+            <div class="acoes" id="pago-escala" role="group" aria-label="Escala do gráfico de pagamentos">
+              <button class="btn primario" data-escala="mes" type="button" aria-pressed="true">Mensal</button>
+              <button class="btn" data-escala="dia" type="button" aria-pressed="false">Diário</button>
+            </div>
+          </div>
+          <div class="grafico" id="ch-mensal"></div>
           <p class="contagem nota-parcial" hidden></p>
+          <p class="contagem" id="nota-diario" hidden></p>
+        </div>
+        <!-- calendário de pagamentos (M8): altura reservada no CSS desde a 1ª pintura -->
+        <div class="box" id="box-calendario">
+          <h3>Calendário de pagamentos — pago em cada dia (pela data do pagamento)</h3>
+          <div class="cal-area"><div class="grafico" id="ch-calendario"></div></div>
+          <ul class="legenda-cal" id="cal-legenda" aria-label="Legenda do calendário">
+            <li><span class="sw" data-cor="neutro"></span>sem pagamento</li>
+            <!-- faixas com o texto do formato final (oculto até o dado): a legenda nasce com a altura dela -->
+            <li><span class="sw" data-cor="0"></span><span class="faixa reserva">até R$ 0,0 mi</span></li>
+            <li><span class="sw" data-cor="1"></span><span class="faixa reserva">R$ 0,0 mi a R$ 0,0 mi</span></li>
+            <li><span class="sw" data-cor="2"></span><span class="faixa reserva">R$ 0,0 mi a R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="3"></span><span class="faixa reserva">R$ 00,0 mi a R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="4"></span><span class="faixa reserva">acima de R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="parcial"></span>mês parcial*</li>
+            <li><span class="sw sem-dado"></span>ainda sem dado</li>
+          </ul>
+          <p class="contagem" id="cal-nota" style="margin:10px 0 0">Cada quadrado é um dia: quanto mais forte o
+            dourado, mais dinheiro saiu do caixa. Faixas = quintis dos dias com pagamento (a mesma régua em todos
+            os anos); fins de semana e feriados ficam vazios. * Mês parcial, hachurado: a origem ainda está
+            publicando. Pagamento com a data de outro ano na origem conta no mês em que o portal o lista.</p>
         </div>
         <div class="box" id="box-execucao" hidden>
           <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
           <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
-          <canvas id="ch-execucao"></canvas>
+          <div class="grafico" id="ch-execucao"></div>
           <p class="contagem nota-parcial" hidden></p>
         </div>
         <div class="box" id="box-prazos" hidden>
@@ -391,7 +441,7 @@
           <div class="box" id="box-anulacoes" hidden>
             <h3>Anulações de empenho</h3>
             <p class="contagem" id="anul-resumo" style="margin:0 0 10px"></p>
-            <canvas id="ch-anulacoes"></canvas>
+            <div class="grafico" id="ch-anulacoes"></div>
             <h4 class="sub-h" style="margin-top:12px">Quem mais teve empenho anulado</h4>
             <div class="tabela-wrap"><table class="tabela-resp mini">
               <thead><tr><th>Favorecido</th><th class="r">Anulado</th><th class="r">% do empenhado</th></tr></thead>
@@ -408,7 +458,7 @@
         <div class="box" id="box-publicidade" hidden>
           <h3>Publicidade — quanto a Prefeitura paga em propaganda e publicidade legal</h3>
           <p class="contagem" id="pub-resumo" style="margin:0 0 10px"></p>
-          <canvas id="ch-publicidade"></canvas>
+          <div class="grafico" id="ch-publicidade"></div>
           <h4 class="sub-h" style="margin-top:12px">Quem recebeu</h4>
           <div class="tabela-wrap"><table class="tabela-resp mini">
             <thead><tr><th>Favorecido</th><th class="r">Propaganda</th><th class="r">Publicidade legal</th><th class="r">Total</th></tr></thead>
@@ -417,7 +467,7 @@
         </div>
         <div class="box" id="box-programa" hidden>
           <h3>Por programa do PPA — o “para quê” do gasto (orçamentário)</h3>
-          <canvas id="ch-programa"></canvas>
+          <div class="grafico" id="ch-programa"></div>
           <p class="contagem" style="margin:10px 0 0">Programas são temáticos e não correspondem 1 a 1 às
             secretarias (ex.: “Gestão e apoio administrativo” aparece em várias áreas).</p>
         </div>
@@ -496,26 +546,51 @@
                 <button class="btn" data-vista="capita" type="button">Por santista</button>
               </div>
             </div>
-            <canvas id="ch-funcao"></canvas>
+            <div class="grafico" id="ch-funcao"></div>
           </div>
-          <div class="box"><h3>Por fonte de recurso</h3><canvas id="ch-fonte"></canvas></div>
+          <div class="box"><h3>Por fonte de recurso</h3><div class="grafico" id="ch-fonte"></div></div>
         </div>
         <div class="box" id="box-comparativo" hidden>
           <h3 id="comparativo-titulo">Ano contra ano, por função</h3>
           <p class="contagem" id="comparativo-sub" style="margin:0 0 10px"></p>
-          <canvas id="ch-comparativo"></canvas>
+          <div class="grafico" id="ch-comparativo"></div>
         </div>
         <div class="box" id="box-mapa" hidden>
           <div class="box-toggle">
             <h3>Mapa do gasto — clique numa área para abrir</h3>
             <div class="acoes" id="mapa-trilha" aria-label="Nível do mapa do gasto"></div>
           </div>
-          <canvas id="ch-mapa"></canvas>
+          <div class="grafico" id="ch-mapa"></div>
           <p class="contagem" style="margin:10px 0 0">
             Função → subfunção → elemento de despesa (pago pela data do pagamento). Tocar num
             elemento prepara o Detalhamento já filtrado — você confere o período e o tamanho do
             download antes de carregar. A tabela equivalente está disponível para leitores de tela.
           </p>
+        </div>
+        <!-- caminho do dinheiro (M8): fonte do recurso → função → favorecido, por ano -->
+        <div class="box" id="box-caminho">
+          <div class="box-toggle">
+            <h3 id="caminho-titulo">Caminho do dinheiro — da fonte do recurso à função e a quem recebeu</h3>
+            <div class="acoes caminho-controles">
+              <select id="caminho-ano" aria-label="Ano do caminho do dinheiro"><option value="">—</option></select>
+              <div class="acoes" id="caminho-modo" role="group" aria-label="Favorecidos no caminho do dinheiro">
+                <button class="btn primario" data-modo="todos" type="button" aria-pressed="true">Todos</button>
+                <button class="btn" data-modo="privados" type="button" aria-pressed="false"
+                        title="Exclui Município, IPREV, CAPEP, bancos públicos e demais repasses institucionais">Só fornecedores privados</button>
+              </div>
+            </div>
+          </div>
+          <p class="contagem" style="margin:0 0 10px">Pago no ano, da fonte do recurso para a função e dela para
+            quem recebeu — a espessura de cada faixa é o valor. Fica de fora o extra-orçamentário (retenções e
+            consignações, que só transitam pelo caixa); os menores vão para “Demais”. Clique num favorecido para
+            abrir o raio-X.</p>
+          <p class="dica-scroll" aria-hidden="true">→ arraste para o lado para ver o caminho inteiro</p>
+          <div class="rolagem-x" id="caminho-rolagem" role="region" aria-labelledby="caminho-titulo">
+            <div class="grafico" id="ch-caminho"></div>
+          </div>
+          <!-- texto no formato final, oculto até o dado: a nota nasce com a altura dela -->
+          <p class="contagem reserva" id="caminho-nota" style="margin:10px 0 0">2026 (até 00/00/2026): R$ 0,00 bi
+            pagos. Fora do gráfico: o extra-orçamentário (R$ 000,0 mi).</p>
         </div>
         <div class="box" id="box-r100" hidden>
           <h3>De cada R$ 100 pagos, para onde foi o dinheiro</h3>
@@ -544,7 +619,7 @@
           </p>
         </div>
         <div class="box">
-          <h3>Por unidade gestora</h3><canvas id="ch-unidade"></canvas>
+          <h3>Por unidade gestora</h3><div class="grafico" id="ch-unidade"></div>
         </div>
         <div class="box" id="box-pares" hidden>
           <div class="box-toggle">
@@ -552,7 +627,7 @@
             <select id="pares-funcao" aria-label="Função para comparar" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color: var(--ink)"></select>
           </div>
           <p class="resumo-texto" id="pares-frase" style="font-size:14px;margin:0 0 10px"></p>
-          <canvas id="ch-pares"></canvas>
+          <div class="grafico" id="ch-pares"></div>
           <p class="contagem" id="pares-nota" style="margin:10px 0 0"></p>
         </div>
       </section>
@@ -625,6 +700,8 @@
         <h2 class="sr-only">Detalhamento</h2>
         <div class="box">
           <h3>Escolha a visão e o período</h3>
+          <p class="det-explica">Para cruzar dimensões (função × mês, favorecido × unidade…) sem baixar documento por
+            documento, use o <a href="./explorador.html">Explorador de pagamentos</a> — tabela dinâmica e SQL no navegador.</p>
           <div class="periodo-acoes" id="det-visao" role="group" aria-label="Visão do detalhamento">
             <button class="btn primario" data-visao="exe" type="button"
               title="Uma linha por empenho emitido no período, com o liquidado e o pago acumulados">Execução dos empenhos</button>
@@ -777,6 +854,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=21"></script>
+    <script defer src="./despesas-app.js?v=24"></script>
   </body>
 </html>

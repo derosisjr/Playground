@@ -95,6 +95,23 @@ p { text-wrap: pretty; }
    (não gera rolagem) e sem mudar o display, que apagaria a semântica de tabela */
 table.sr-only { left: -10000px; }
 
+/* ── Gráficos (Comum.grafico, ECharts) ───────────────────────────────────────
+   O contêiner é um <div class="grafico"> com altura por variável (o canvas interno
+   é do ECharts). A dica (tooltip) usa as classes .ec-dica (Comum.dicaGrafico). */
+.grafico { position: relative; width: 100%; height: var(--altura-grafico, 300px); }
+.grafico > .estado-erro { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ec-dica { font-family: "Manrope", sans-serif; font-size: 12.5px; line-height: 1.45; color: var(--ink); min-width: 150px; }
+.ec-dica-t { font-weight: 700; margin: 0 0 5px; white-space: normal; max-width: 290px; }
+.ec-dica-l { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.ec-dica-l .r { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); }
+.ec-dica-l .k { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+.ec-dica-l .k.p { width: 8px; height: 8px; border-radius: 50%; }
+.ec-dica-l b { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ec-dica-n { margin: 6px 0 0; color: var(--muted); font-size: 11.5px; white-space: normal; max-width: 280px; line-height: 1.45; }
+/* modificador com prefixo: um ".alerta" solto pegava o cartão de alerta das páginas (borda e padding) */
+.ec-dica-n.ec-dica-alerta { color: #b54708; font-weight: 600; }
+html[data-tema="escuro"] .ec-dica-n.ec-dica-alerta { color: #fbbf24; }
+
 /* ── Skeleton de carregamento (base clara; a variante escura sobrescreve) ───── */
 .skel {
   background: linear-gradient(90deg, rgba(7,17,31,0.06) 25%, rgba(7,17,31,0.13) 50%, rgba(7,17,31,0.06) 75%);
@@ -280,6 +297,22 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 @media (max-width: 1024px) { .resumo-box .resumo-reserva { min-height: calc(6 * 1.55em); } }
 @media (max-width: 900px) { .resumo-box .resumo-reserva { min-height: calc(7 * 1.55em); } }
 @media (max-width: 600px) { .resumo-box .resumo-reserva { min-height: calc(14 * 1.5em); } }
+/* Noturno: em Despesas o "Em resumo" fica DENTRO do topo escuro, logo depois da
+   manchete. No celular ele recolhe em 5 linhas ("Ler o resumo inteiro", em
+   despesas-app.js) — a reserva acompanha, senão a caixa encolhe ao chegar o texto. */
+header.hero .resumo-box { background: rgba(255,255,255,.035); border: 1px solid rgba(201,168,76,.28);
+  border-left: 3px solid var(--gold); border-radius: var(--r-md); padding: 16px 18px; margin: 26px 0 4px; }
+header.hero .resumo-rotulo { color: var(--gold); }
+header.hero .resumo-box .resumo-texto { color: #dfe5ee; }
+header.hero .resumo-box .resumo-texto b { color: #fff; }
+@media (max-width: 600px) {
+  header.hero .resumo-box { padding: 14px 14px 10px; margin-top: 20px; }
+  header.hero .resumo-box .resumo-texto:not(.aberto) { display: -webkit-box; -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical; overflow: hidden; }
+  header.hero .resumo-box .resumo-reserva { min-height: calc(5 * 1.5em); }
+  header.hero .resumo-box .resumo-mais { display: inline-block; }  /* reservado desde o início */
+}
+.resumo-mais, header.hero .resumo-box .resumo-mais[hidden] { display: none; }
 
 /* ── Botões de ação da barra (exportar etc.) ────────────────────────────────── */
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }  /* 5 botões no celular: quebra em vez de estourar */
@@ -366,27 +399,53 @@ a.pdf, a.det { display: inline-block; min-height: 24px; padding: 3px 0; }
    regra daqui no <style> local (mesma especificidade, vem depois). */
 * { box-sizing: border-box; }
 ::selection { background: var(--gold); color: var(--navy); }
+/* ── Topo dos painéis — direção "Noturno" (2026-10, M2) ─────────────────────────
+   A linguagem da Retrospectiva em todos os topos: navy mais profundo com brilho
+   dourado à direita, trama em todo o topo, título e números grandes. Antes cada
+   painel repetia a trama, o padding e o tamanho do título no <style> local (e o
+   título tinha 34 px em todos). Página que precisa de outro tamanho (Raio-X: nome
+   longo; Escuta: coluna estreita) redefine `header.hero h1` no próprio <style>. */
 header.hero { position: relative; overflow: hidden; color: #fff;
   background:
-    radial-gradient(120% 90% at 12% -10%, var(--navy3, var(--navy-3)) 0%, transparent 55%),
-    radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
-    linear-gradient(180deg, var(--navy2, var(--navy-2)) 0%, var(--navy) 100%);
+    radial-gradient(120% 90% at 12% -10%, var(--navy-3) 0%, transparent 55%),
+    radial-gradient(70% 90% at 88% 0%, rgba(201,168,76,0.17) 0%, transparent 60%),
+    linear-gradient(180deg, var(--navy-2) 0%, #060e1a 100%);
   border-bottom: 1px solid rgba(201,168,76,0.25); }
+header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .85;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px); }
 header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
   background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
-.eyebrow { display: inline-flex; align-items: center; gap: 10px;
-  font-family: "IBM Plex Mono", monospace; color: var(--gold-bright); font-size: 11px;
-  letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; font-weight: 500; }
-.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--gold); display: inline-block; }
+header.hero .hero-in { padding-top: clamp(26px, 3.6vw, 44px); padding-bottom: clamp(26px, 3.6vw, 44px); }
+header.hero h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 600;
+  font-size: clamp(34px, 5vw, 60px); line-height: 1.02; letter-spacing: -0.015em; }
+.eyebrow { display: inline-flex; align-items: center; gap: 14px;
+  font-family: "IBM Plex Mono", monospace; color: var(--gold); font-size: 11px;
+  letter-spacing: .3em; text-transform: uppercase; margin: 0 0 14px; font-weight: 500; }
+.eyebrow::before { content: ""; width: 34px; height: 1px; background: var(--gold); display: inline-block; }
+/* Bases irmãs (Requerimentos | Indicações, out/2026): a etiqueta à esquerda e a
+   alternância discreta à direita, na mesma linha; no celular a alternância desce. */
+.hero-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 20px; margin: 0 0 14px; }
+.hero-topo .eyebrow { margin: 0; }
+.alterna { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid rgba(201,168,76,.35);
+  border-radius: 999px; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+  letter-spacing: .12em; text-transform: uppercase; }
+.alterna a { display: inline-flex; align-items: center; min-height: 26px; padding: 3px 12px;
+  border-radius: 999px; color: #9fb0c4; text-decoration: none; }
+.alterna a:hover { color: var(--gold-bright); }
+.alterna a[aria-current="page"] { background: rgba(201,168,76,.16); color: var(--gold-bright); }
+.alterna a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ── Número-manchete do hero: um número grande + a frase que o explica ──────────
    Era cópia idêntica no Semáforo Fiscal e no Preço comparado; desde 2026-10 também
    abre Despesas e Requerimentos. Nasce com esqueleto (sem "pulo" quando o dado chega). */
 .hero-num { margin: 22px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 22px; }
 .hero-num .grande { font-family: "IBM Plex Mono", monospace; font-weight: 600;
-  font-size: clamp(34px, 6vw, 52px); line-height: 1; color: var(--gold-bright);
+  font-size: clamp(44px, 7.4vw, 92px); line-height: 1; color: var(--gold-bright);
   font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.hero-num .contexto { color: #c3cdda; font-size: 13.5px; line-height: 1.55; max-width: 430px; }
+.hero-num .contexto { color: #c3cdda; font-size: 15px; line-height: 1.55; max-width: 470px; }
 .hero-num .contexto b { color: #fff; }
 /* o hero é sempre navy: o esqueleto claro (cinza sobre creme) sumia nele. :where()
    zera o peso do header — a variante própria do hub (.ind-val .skel) continua valendo */
@@ -453,7 +512,13 @@ header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0;
   header.hero .hero-sub:not(.aberto) { display: -webkit-box; -webkit-line-clamp: 3;
     -webkit-box-orient: vertical; overflow: hidden; }
   header.hero.com-manchete .hero-sub:not(.aberto) { display: none; }
+  /* a frase do número tem ~3 linhas no celular: reserva desde o esqueleto (eram 2) */
+  .hero-num .contexto { min-height: calc(3 * 1.55em); }
 }
+/* "Sobre este painel" já vem no HTML dos painéis com número-manchete (criado por JS,
+   ele chegava depois da 1ª pintura e empurrava a página); só aparece no celular */
+.sobre-painel { display: none; }
+@media (max-width: 600px) { header.hero.com-manchete .sobre-painel { display: inline-block; } }
 .hero-mais { background: none; border: 0; padding: 4px 0; min-height: 24px; margin-top: 4px;
   color: var(--gold-bright); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .hero-mais:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -476,7 +541,7 @@ header.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0;
 @media print {
   .topnav, .topnav-lista, .filtros, .acoes, .barra .btn, .mais, .chips, #chips,
   .paleta-fundo, .toast-comum, .faixa-dados-novos, .hero-mais, .lnk.reiterar,
-  .skel { display: none !important; }
+  .skel, .alterna { display: none !important; }
   html, body { background: #fff !important; color: #000 !important; }
   /* o tema escuro não vai para o papel */
   html[data-tema="escuro"] body { --ink: #111; --card: #fff; --line: #ccc; --muted: #444;

@@ -64,6 +64,8 @@
       .vazio { padding: 46px 10px; text-align: center; color: var(--muted); }
       .mais { display: block; margin: 18px auto 0; padding: 9px 18px; border: 1px solid var(--line);
         border-radius: 10px; background: var(--card); color: var(--navy); font: inherit; cursor: pointer; }
+      /* o display:block acima vence o [hidden]: sem isto o botão fica à vista sem mais nada a mostrar */
+      .mais[hidden] { display: none; }
       .rodape { color: var(--muted); font-size: 11.5px; margin-top: 24px; line-height: 1.6; }
       kbd { background: var(--card); border: 1px solid var(--line); border-radius: 4px;
         padding: 1px 6px; font-family: "IBM Plex Mono", monospace; font-size: 11px; }

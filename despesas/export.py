@@ -2287,6 +2287,280 @@ def exportar_movimento_mensal(rows: list[dict]) -> list[dict]:
     return manifesto
 
 
+# ── Cubo do Explorador de pagamentos (despesas/dados/cubo/AAAA.json) ──────────
+# Os PAGAMENTOS de um ano (fase P da movimentação: as mesmas linhas de dados/mov/, no
+# mês da partição = pela data do pagamento) agregados por mês × unidade gestora × tipo ×
+# favorecido × função × subfunção × programa × elemento × fonte × grupo, com `pago`
+# (soma em centavos inteiros → 2 casas exatas) e `n` (nº de documentos). É a tabela que
+# o explorador.html monta no SQLite do navegador (~30 mil linhas/ano em vez de ~75 mil
+# documentos). Colunas textuais por dicionário, como em dados/mov/; o favorecido é a
+# IDENTIDADE (formato.identidade_favorecido), publicada como [chave, nome, documento] — a
+# chave do ranking/dossiês (agrupar só por nome ou só por CPF mascarado funde pessoas), o
+# nome de exibição do ranking e o documento como a origem o publica (CPF mascarado): nada
+# que dados/mov/ e nomes-favorecidos.json já não publiquem. Vazio vira null (a função "(sem função)" do extra-orçamentário). Serialização
+# determinística (ordem das linhas e dos dicionários só depende do dado): mesmo dado →
+# mesmos bytes, então o ano fechado não vira diff diário no git.
+CAMPOS_CUBO = ["mes", "unidade_gestora", "tipo", "favorecido", "funcao", "subfuncao", "programa",
+               "elemento_despesa", "fonte_recurso", "grupo_despesa", "pago", "n"]
+CUBO_DICIONARIO = CAMPOS_CUBO[1:10]     # colunas por dicionário (mes, pago e n vão como número)
+CUBO_VERSAO = 1
+
+
+def montar_cubos(rows: list[dict], ident: dict) -> dict:
+    """{ano: objeto do cubo} a partir das linhas de montar_movimento (só a fase P)."""
+    agg: dict = defaultdict(lambda: defaultdict(lambda: [0, 0]))   # ano → chave → [centavos, n]
+    for r in rows:
+        if r["fase"] != "P":
+            continue
+        nome, doc = r.get("nome_favorecido") or "", r.get("documento_favorecido") or ""
+        chave = identidade_favorecido(nome, doc)[0]
+        o = ident.get(chave)
+        fav = (chave, o["nome"], o["documento"] or "") if o else (chave, nome, doc)
+        k = (r["_periodo"] % 100, r["unidade_gestora"] or None, r["tipo"] or None, fav,
+             r["funcao"] or None, r["subfuncao"] or None, r["programa"] or None,
+             r["elemento_despesa"] or None, r["fonte_recurso"] or None, r["grupo_despesa"] or None)
+        a = agg[r["_periodo"] // 100][k]
+        a[0] += round((r["pago"] or 0) * 100)
+        a[1] += 1
+
+    def ordem(item):   # mês, maior valor primeiro, depois o texto (desempate total e estável)
+        k, (centavos, _) = item
+        return (k[0], -centavos, tuple("\x1f".join(v) if isinstance(v, tuple) else (v or "") for v in k[1:]))
+
+    cubos = {}
+    for ano in sorted(agg):
+        dic = {c: {} for c in CUBO_DICIONARIO}
+        linhas = []
+        for k, (centavos, n) in sorted(agg[ano].items(), key=ordem):
+            lin = [k[0]]
+            for campo, v in zip(CUBO_DICIONARIO, k[1:]):
+                d = dic[campo]
+                if v not in d:
+                    d[v] = len(d)   # 1ª aparição: os maiores valores ganham os índices curtos
+                lin.append(d[v])
+            lin += [centavos // 100 if centavos % 100 == 0 else centavos / 100, n]
+            linhas.append(lin)
+        cubos[ano] = {"versao": CUBO_VERSAO, "ano": ano, "campos": CAMPOS_CUBO,
+                      "campos_favorecido": ["chave", "nome", "documento"],
+                      "dicionario": {c: [list(v) if isinstance(v, tuple) else v for v in d]
+                                     for c, d in dic.items()},
+                      "linhas": linhas}
+    return cubos
+
+
+def exportar_cubos(rows: list[dict], ident: dict) -> list[dict]:
+    """Grava dados/cubo/AAAA.json (só se os bytes mudaram) e devolve o manifesto do
+    índice (`cubos`): ano, arquivo, linhas, bytes, gzip (estimativa do download), pago, n."""
+    pasta = os.path.join(DADOS_DIR, "cubo")   # segue o --saida (DADOS_DIR já é o do candidato)
+    os.makedirs(pasta, exist_ok=True)
+    cubos = montar_cubos(rows, ident)
+    validos = {f"{a}.json" for a in cubos}
+    for nome in os.listdir(pasta):
+        if nome.endswith(".json") and nome not in validos:
+            os.remove(os.path.join(pasta, nome))
+    manifesto = []
+    for ano, obj in cubos.items():
+        dados = json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        caminho = os.path.join(pasta, f"{ano}.json")
+        try:
+            with open(caminho, "rb") as f:
+                igual = f.read() == dados
+        except OSError:
+            igual = False
+        if not igual:
+            gravar_bytes(caminho, dados)
+        iP, iN = CAMPOS_CUBO.index("pago"), CAMPOS_CUBO.index("n")
+        manifesto.append({"ano": ano, "arquivo": f"despesas/dados/cubo/{ano}.json",
+                          "linhas": len(obj["linhas"]), "bytes": len(dados),
+                          "gzip": len(gzip.compress(dados, 6, mtime=0)),
+                          "pago": round(sum(l[iP] for l in obj["linhas"]), 2),
+                          "n": sum(l[iN] for l in obj["linhas"])})
+    return manifesto
+
+
+# ── Calendário de pagamentos e caminho do dinheiro (M8, 2026-10) ──────────────
+# Dois agregados pequenos do Visão geral, tirados das MESMAS linhas de pagamento (fase P)
+# que vão para dados/mov/ — conservam por construção com a série mensal e com o pago do ano:
+#   dados/calendario.json  pago e nº de documentos por DIA, mandato inteiro;
+#   dados/fluxo.json       por ano: grupo da fonte → função → favorecido (identidade), SEM o
+#                          extra-orçamentário (só transita pelo caixa), em duas variantes —
+#                          todos e só fornecedores privados (sem formato.eh_ente_publico).
+# O índice leva só o manifesto (`dados_graficos`: arquivo + bytes): sem ele o painel nem
+# tenta baixar (é o caso do índice publicado antes do 1º export que gera os arquivos).
+CAMPOS_CALENDARIO = ["dia", "pago", "n", "anulacoes"]   # n = documentos de pagamento (anulações inclusas)
+# Grupo da fonte = prefixo AUDESP do código ("01-1100000 - GERAL" → "01"); 91–98 são os mesmos
+# grupos com saldo de exercícios anteriores e vão juntos ("9x"). 01/02/04/05 seguem o glossário
+# do painel; os demais, a tabela AUDESP conferida com as fontes de cada grupo na base (03 = FUNDURB,
+# FEPAR e outros fundos; 07 = FINISA; 08 = metade Saúde, metade geral, como as emendas
+# impositivas) [Verificar]. A dica do gráfico mostra as principais fontes de cada grupo.
+GRUPOS_FONTE = {
+    "01": "Tesouro municipal", "02": "Transferências estaduais", "03": "Fundos especiais",
+    "04": "Adm. indireta (recursos próprios)", "05": "Transferências federais", "06": "Outras fontes",
+    "07": "Operações de crédito", "08": "Emendas parlamentares", "9x": "Exercícios anteriores",
+}
+FLUXO_TOPOS = (8, 10, 15)     # grupos de fonte, funções e favorecidos por recorte; o resto vira "Demais"
+FLUXO_DEMAIS = ("Demais fontes", "Demais funções", "Demais favorecidos")
+FLUXO_FONTES_GRUPO = 3        # fontes que exemplificam cada grupo (dica do gráfico)
+
+
+def _centavos(v: float) -> float:
+    return round(v, 2) + 0.0   # + 0.0: o -0.0 de um arredondamento vira 0.0 (mesmos bytes)
+
+
+def _dia_pagamento(r: dict) -> str:
+    """Dia da linha DENTRO do mês da partição: a série mensal soma por partição (a consulta
+    à API). A origem traz alguns pagamentos com a data de outro ano no mesmo mês (23 em
+    out/2026, R$ 174 mil, todos extra-orçamentários — 25/04/2024 na partição abr/2025):
+    contam no mesmo dia do mês consultado (dia fora do mês vai para o último dia dele)."""
+    ano, mes = divmod(r["_periodo"], 100)
+    ultimo = (date(ano + mes // 12, mes % 12 + 1, 1) - timedelta(days=1)).day
+    try:
+        dia = int((r["data"] or "")[8:10])
+    except ValueError:
+        dia = 1
+    return f"{ano}-{mes:02d}-{min(max(dia, 1), ultimo):02d}"
+
+
+def calendario_pagamentos(mov: list[dict]) -> dict:
+    """Pago (líquido das anulações) e nº de documentos de pagamento por dia."""
+    dias: dict[str, list] = {}
+    redatados = [0, 0.0]
+    for r in mov:
+        if r["fase"] != "P":
+            continue
+        dia, v = _dia_pagamento(r), r["pago"] or 0.0
+        if dia != (r["data"] or "")[:10]:
+            redatados[0] += 1
+            redatados[1] += v
+        d = dias.setdefault(dia, [0.0, 0, 0])
+        d[0] += v
+        d[1] += 1
+        d[2] += r["especie"] == "Anulação"
+    linhas = [[dia, _centavos(v), n, a] for dia, (v, n, a) in sorted(dias.items())]
+    return {"versao": 1, "campos": CAMPOS_CALENDARIO, "ate": linhas[-1][0] if linhas else None,
+            # pagamentos com a data de outro ano na origem, contados no mês da partição
+            "redatados": {"n": redatados[0], "pago": _centavos(redatados[1])},
+            "linhas": linhas}
+
+
+def _grupo_fonte(fonte) -> str:
+    m = re.match(r"(\d{2})-", fonte or "")
+    if not m:
+        return "??"
+    return "9x" if m.group(1).startswith("9") else m.group(1)
+
+
+def _cod_funcao(funcao) -> str:
+    """'10 - SAÚDE' → '10': o código une as grafias da mesma função."""
+    m = re.match(r"\s*(\d+)\s*-", funcao or "")
+    return m.group(1) if m else sem_acento(funcao or "(sem função)").strip()
+
+
+def _sankey(linhas: list[tuple], ident: dict, tops_slugs: set, entes: set) -> dict:
+    """Nós (3 níveis, maiores primeiro, a cauda em "Demais") e ligações de um recorte.
+    `linhas`: (grupo, código da função, função, chave do favorecido, fonte, valor)."""
+    soma = (defaultdict(float), defaultdict(float), defaultdict(float))
+    nomes_funcao: dict[str, Counter] = defaultdict(Counter)
+    soma_fontes: dict[str, dict] = defaultdict(lambda: defaultdict(float))
+    for g, cf, f, k, fonte, v in linhas:
+        soma[0][g] += v
+        soma[1][cf] += v
+        soma[2][k] += v
+        nomes_funcao[cf][f] += 1
+        soma_fontes[g][fonte] += v
+    # em centavos logo de saída: a ordem (e o desempate) não depende da ordem das linhas
+    tot = [{c: _centavos(v) for c, v in s.items()} for s in soma]
+    fontes = {g: sorted(((f, _centavos(v)) for f, v in fs.items()), key=lambda fv: (-fv[1], fv[0]))
+              for g, fs in soma_fontes.items()}
+    prefixo = ("g:", "f:", "v:")
+    nos, destino = [], ({}, {}, {})   # destino[nível]: código → id do nó (o próprio ou "Demais")
+    for nivel in range(3):
+        ordem = sorted(tot[nivel].items(), key=lambda kv: (-kv[1], kv[0]))
+        topo = [c for c, v in ordem if v > 0][:FLUXO_TOPOS[nivel]]
+        no_topo = set(topo)
+        resto = [c for c, _ in ordem if c not in no_topo]
+        if len(resto) == 1 and tot[nivel][resto[0]] > 0:
+            topo.append(resto.pop())   # "Demais" de um só é ele mesmo
+        for c in topo:
+            # favorecido: id pelo slug do dossiê (estável entre exports, curto)
+            no = {"id": prefixo[nivel] + (slug_favorecido(c) if nivel == 2 else c),
+                  "nivel": nivel, "valor": tot[nivel][c]}
+            if nivel == 0:
+                no["nome"] = GRUPOS_FONTE.get(c, "Fonte sem grupo na origem")
+                no["fontes"] = [[f, v] for f, v in fontes[c] if v > 0][:FLUXO_FONTES_GRUPO]
+            elif nivel == 1:
+                no["nome"] = nome_exibicao(nomes_funcao[c])
+            else:   # raio-X: dossiê pré-computado (?f=) ou a rota por documento e nome
+                fav = _fav_campos(ident, c)
+                no.update(nome=fav["nome"], documento=fav["documento"], link=_link_fav(fav, tops_slugs))
+                if c in entes:
+                    no["ente_publico"] = True
+            destino[nivel][c] = no["id"]
+            nos.append(no)
+        if resto:
+            no = {"id": prefixo[nivel] + "demais", "nivel": nivel, "nome": FLUXO_DEMAIS[nivel], "demais": True,
+                  "valor": _centavos(sum(tot[nivel][c] for c in resto))}
+            if nivel == 0:
+                no["inclui"] = [GRUPOS_FONTE.get(c, "Fonte sem grupo na origem") for c in resto]
+            elif nivel == 1:
+                no["inclui"] = [nome_exibicao(nomes_funcao[c]) for c in resto]
+            else:
+                no["qtd"] = len(resto)
+            destino[nivel].update(dict.fromkeys(resto, no["id"]))
+            nos.append(no)
+    lig: dict[tuple, float] = defaultdict(float)
+    for g, cf, _, k, _, v in linhas:
+        a, b, c = destino[0][g], destino[1][cf], destino[2][k]
+        lig[(0, a, b)] += v
+        lig[(1, b, c)] += v
+    ordem = sorted(((k, _centavos(v)) for k, v in lig.items()), key=lambda kv: (kv[0][0], -kv[1], kv[0][1], kv[0][2]))
+    # ligação líquida negativa (mais anulação que pagamento) fica no arquivo — conserva a soma —
+    # e o painel não a desenha; zero não leva informação
+    return {"total": _centavos(sum(l[-1] for l in linhas)), "nos": nos,
+            "ligacoes": [[a, b, v] for (_, a, b), v in ordem if v != 0]}
+
+
+def fluxo_dinheiro(mov: list[dict], ident: dict, indice: dict) -> dict:
+    """Caminho do dinheiro por ano (pela partição, como totais.por_ano): todos os
+    favorecidos e só os fornecedores privados; o extra-orçamentário fica fora, declarado."""
+    entes = set(indice.get("entes_publicos") or [])
+    tops_slugs = {f["slug"] for f in indice.get("top_favorecidos") or []}   # quem tem dossiê
+    chaves: dict[tuple, str] = {}
+    por_ano: dict[int, list] = defaultdict(list)
+    extra: dict[int, float] = defaultdict(float)
+    for r in mov:
+        if r["fase"] != "P":
+            continue
+        ano, v = r["_periodo"] // 100, r["pago"] or 0.0
+        if r["tipo"] == T_EXTRA:
+            extra[ano] += v
+            continue
+        par = (r["nome_favorecido"] or "", r["documento_favorecido"] or "")
+        if par not in chaves:
+            chaves[par] = _chave_fav(*par)
+        funcao = r["funcao"] or "(sem função)"
+        por_ano[ano].append((_grupo_fonte(r["fonte_recurso"]), _cod_funcao(funcao), funcao, chaves[par],
+                             r["fonte_recurso"] or "", v))
+    anos = {}
+    for ano in sorted(set(por_ano) | set(extra)):
+        linhas = por_ano.get(ano, [])
+        anos[str(ano)] = {"extra": _centavos(extra.get(ano, 0.0)),
+                          "todos": _sankey(linhas, ident, tops_slugs, entes),
+                          "privados": _sankey([l for l in linhas if l[3] not in entes], ident, tops_slugs, entes)}
+    return {"versao": 1, "anos": anos}
+
+
+def exportar_graficos_movimento(mov: list[dict], ident: dict, indice: dict) -> dict:
+    """Grava dados/calendario.json e dados/fluxo.json (bytes estáveis: sem carimbo de hora,
+    tudo ordenado) e devolve o manifesto que vai no índice."""
+    saida = {}
+    for nome, obj in (("calendario", calendario_pagamentos(mov)), ("fluxo", fluxo_dinheiro(mov, ident, indice))):
+        caminho = os.path.join(DADOS_DIR, nome + ".json")
+        gravar_json(caminho, obj, separators=(",", ":"))
+        saida[nome] = {"arquivo": f"despesas/dados/{nome}.json", "bytes": os.path.getsize(caminho)}
+    return saida
+
+
 # ── Exports tabulares (completos, gitignored) ─────────────────────────────────
 def exportar_csv(rows: list[dict]) -> None:
     with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
@@ -2568,6 +2842,9 @@ def main():
     movimento = montar_movimento(conn)
     indice["meses"] = exportar_detalhe_mensal(execucao)
     indice["meses_movimento"] = exportar_movimento_mensal(movimento)
+    indice["cubos"] = exportar_cubos(movimento, ident)   # Explorador de pagamentos (SQL no navegador)
+    # calendário de pagamentos e caminho do dinheiro (M8): das mesmas linhas de dados/mov/
+    indice["dados_graficos"] = exportar_graficos_movimento(movimento, ident, indice)
     exportar_indices_leves(execucao, movimento)
     # nome de exibição + documento de TODAS as identidades (~7,8 mil): o raio-X por nome
     # (?nome=) acha quem está fora do top-300 sem varrer os 45 MB da movimentação
