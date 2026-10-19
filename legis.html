@@ -107,6 +107,8 @@
       .rodape { color: var(--muted); font-size: 12px; margin-top: 16px; line-height: 1.5; }
       .mais { display: block; margin: 14px auto 0; padding: 10px 18px; border: 1px solid var(--line);
         border-radius: var(--r-sm); background: var(--card); font: inherit; cursor: pointer; }
+      /* o display:block acima vence o [hidden]: sem isto o botão fica à vista sem mais nada a mostrar */
+      .mais[hidden] { display: none; }
     </style>
   </head>
   <body>
