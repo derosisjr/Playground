@@ -1,32 +1,18 @@
-/* Painel Custo por Resultado — gasto per capita × indicadores (Chart.js).
+/* Painel Custo por Resultado — gasto per capita × indicadores (ECharts via Comum.grafico).
    Assinatura visual: a "tesoura" — séries em base 100 com a área entre elas
    sombreada em âmbar; a distância entre pagar e receber é a mensagem. */
 (function () {
   "use strict";
 
-  // cores conscientes do tema claro/escuro; recalculadas no "temamudou"
-  // (não confundir com o `tema` do painel = saúde/educação)
-  let COR;
-  function definirCores() {
-    const escuro = document.documentElement.dataset.tema === "escuro";
-    COR = {
-      gasto: "#c9a84c",
-      // navy do site (o azul #1d6fb8 fugia da paleta navy/dourado); no escuro, o
-      // mesmo azul-acinzentado claro do Raio-X do favorecido
-      indicador: escuro ? "#9fb6d9" : "#07111f",
-      ambar: "rgba(201,168,76,0.25)",
-      grade: escuro ? "rgba(255,255,255,0.08)" : "rgba(7,17,31,0.07)",
-      texto: escuro ? "#c3cdda" : "#5d6675",
-    };
-  }
-  definirCores();
+  // cores do tema vêm de Comum.paleta() (gasto = dourado, indicador = navy do site;
+  // não confundir o tema claro/escuro com o `tema` do painel = saúde/educação). A
+  // legenda é HTML: na troca de tema ela é refeita junto com o gráfico.
+  const cor = (p) => ({ gasto: p.ouroLinha, indicador: p.serie, ambar: p.ambar, texto: p.ref });
 
   let DADOS = null;
   let tema = "saude";
-  let grafico = null;
 
   window.addEventListener("temamudou", () => {
-    definirCores();
     if (DADOS) renderGrafico();
   });
 
@@ -92,7 +78,7 @@
   const fmt = (formato, v) => (FMT[formato] || FMT.num)(v);
   // cores estáveis para as linhas por município no modo série (Santos = dourado; a 2ª
   // é o navy do tema, no lugar do azul fora da paleta)
-  const coresMun = () => [COR.gasto, COR.indicador, "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
+  const coresMun = (p) => [cor(p).gasto, cor(p).indicador, "#17805e", "#a34d6e", "#7a4dbe", "#b8861d"];
 
   // Ano-base dos valores em R$ (o export corrige pelo IPCA médio anual); null
   // em índice antigo, ainda em valores correntes — aí o painel diz isso.
@@ -159,6 +145,9 @@
   }
 
   // ── A tesoura (saúde/educação): gasto × indicador em base 100, +linha SP ────
+  // A faixa âmbar entre as linhas = série "base" (mínimo) invisível + diferença
+  // empilhada, com os pontos de cruzamento inseridos (retas, para a área ficar
+  // exatamente entre as duas linhas).
   function renderTesoura() {
     const t = temaAtual();
     const ind = indSelecionado();
@@ -183,36 +172,79 @@
     const sSp = anos.map((a) => temSp && spPorAno.has(a)
       ? +(spPorAno.get(a) / baseSp * 100).toFixed(1) : null);
 
-    const sobe = ind.melhor === "maior" ? "melhora" : "piora";
-    $("legenda").innerHTML =
-      `<span><span class="sw" style="background:${COR.gasto}"></span>Gasto por habitante${anoBaseReal() ? " corrigido pelo IPCA" : ""} (base ${anoBase} = 100)</span>` +
-      `<span><span class="sw" style="background:${COR.indicador}"></span>${Comum.escapar(ind.nome)} — linha subindo = ${sobe}</span>` +
-      (temSp ? `<span><span class="sw" style="background:${COR.texto}"></span>tendência da média do Estado de SP</span>` : "") +
-      `<span><span class="sw" style="background:${COR.ambar};height:10px"></span>distância gasto × resultado</span>`;
-
-    const datasets = [
-      { label: "Gasto por habitante", data: sGasto, borderColor: COR.gasto,
-        backgroundColor: COR.gasto, borderWidth: 3, pointRadius: 3, tension: 0.25 },
-      { label: ind.nome, data: sInd, borderColor: COR.indicador,
-        backgroundColor: COR.ambar, borderWidth: 3, pointRadius: 4, tension: 0.25,
-        spanGaps: true, fill: "-1" },
-    ];
-    if (temSp) {
-      datasets.push({ label: "Média SP (tendência)", data: sSp, borderColor: COR.texto,
-        borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, tension: 0.25,
-        spanGaps: true, fill: false });
+    // faixa: base (mínimo) + diferença, com os cruzamentos
+    const lo = [], dif = [];
+    for (let k = 0; k < anos.length; k++) {
+      if (sInd[k] == null) continue;
+      lo.push([anos[k], Math.min(sGasto[k], sInd[k])]);
+      dif.push([anos[k], Math.abs(sGasto[k] - sInd[k])]);
+      const k2 = k + 1;
+      if (k2 < anos.length && sInd[k2] != null) {
+        const d1 = sGasto[k] - sInd[k], d2 = sGasto[k2] - sInd[k2];
+        if (d1 * d2 < 0) {
+          const f = d1 / (d1 - d2);
+          lo.push([anos[k] + f * (anos[k2] - anos[k]), sGasto[k] + f * (sGasto[k2] - sGasto[k])]);
+          dif.push([anos[k] + f * (anos[k2] - anos[k]), 0]);
+        }
+      }
     }
 
-    desenhar(anos, datasets, `índice (${anoBase} = 100)`, (c) => {
-      const ano = anos[c.dataIndex];
-      if (c.datasetIndex === 0)
-        return ` Gasto: ${brl(gastoPorAno.get(ano))}/hab${anoBaseReal() ? ` em R$ de ${anoBaseReal()}` : ""} (índice ${c.formattedValue})`;
-      if (c.datasetIndex === 1) {
-        const v = indPorAno.get(ano);
-        return v == null ? null : ` ${ind.nome}: ${fmt(ind.formato, v)} (índice ${c.formattedValue})`;
-      }
-      const v = spPorAno.get(ano);
-      return v == null ? null : ` Média SP: ${fmt(ind.formato, v)}`;
+    const sobe = ind.melhor === "maior" ? "melhora" : "piora";
+    const real = anoBaseReal();
+    const C = cor(Comum.paleta());
+    $("legenda").innerHTML =
+      `<span><span class="sw" style="background:${C.gasto}"></span>Gasto por habitante${real ? " corrigido pelo IPCA" : ""} (base ${anoBase} = 100)</span>` +
+      `<span><span class="sw" style="background:${C.indicador}"></span>${Comum.escapar(ind.nome)} — linha subindo = ${sobe}</span>` +
+      (temSp ? `<span><span class="sw" style="background:${C.texto}"></span>tendência da média do Estado de SP</span>` : "") +
+      `<span><span class="sw" style="background:${C.ambar};height:10px"></span>distância gasto × resultado</span>`;
+
+    const todos = [...sGasto, ...sInd, ...sSp].filter((v) => v != null);
+    const minY = Math.floor((Math.min(...todos) - 2) / 20) * 20, maxY = Math.ceil((Math.max(...todos) + 2) / 20) * 20;
+    const dica = (ano, p) => {
+      const k = anos.indexOf(ano);
+      const v = indPorAno.get(ano), vs = spPorAno.get(ano);
+      return Comum.dicaGrafico(String(ano), [
+        [cor(p).gasto, `Gasto/hab${real ? ` (R$ de ${real})` : ""}`, `${brl(gastoPorAno.get(ano))} · ${num(sGasto[k])}`],
+        [cor(p).indicador, ind.nome, v == null ? "—" : `${fmt(ind.formato, v)} · ${num(sInd[k])}`],
+        temSp ? [cor(p).texto, "Média SP", vs == null ? "—" : fmt(ind.formato, vs)] : null,
+      ], "Depois do “·”, o índice (base 100).");
+    };
+
+    Comum.grafico("grafico", {
+      opcao: (p) => {
+        const C = cor(p);
+        const anel = { borderColor: p.card, borderWidth: 2 };
+        return {
+          grid: { left: 6, right: 16, top: 30, bottom: 6, containLabel: true },
+          tooltip: { trigger: "axis", confine: true, axisPointer: { type: "line", snap: true },
+            formatter: (ps) => dica(Math.round(ps[0].axisValue), p) },
+          xAxis: { type: "value", min: anos[0], max: anos[anos.length - 1], interval: 1, splitLine: { show: false },
+            axisLine: { show: true, lineStyle: { color: p.linha } },
+            axisLabel: { fontFamily: p.sans, fontSize: 11.5, color: p.muted, margin: 10, formatter: (v) => String(v) } },
+          yAxis: { type: "value", min: minY, max: maxY, interval: 20, name: `índice (${anoBase} = 100)`,
+            nameLocation: "end", nameGap: 12,
+            nameTextStyle: { color: p.muted, fontFamily: p.sans, fontSize: 11.5, align: "left", padding: [0, 0, 0, -30] },
+            axisLabel: { formatter: (v) => num(v) } },
+          series: [
+            { name: "base", type: "line", data: lo, stack: "faixa", symbol: "none", lineStyle: { opacity: 0 },
+              areaStyle: { opacity: 0 }, silent: true, tooltip: { show: false }, emphasis: { disabled: true }, z: 1 },
+            { name: "faixa", type: "line", data: dif, stack: "faixa", symbol: "none", lineStyle: { opacity: 0 },
+              areaStyle: { color: C.ambar, opacity: 1 }, silent: true, tooltip: { show: false }, emphasis: { disabled: true }, z: 1 },
+            ...(temSp ? [{ name: "Média SP", type: "line", data: anos.map((a, k) => [a, sSp[k]]), connectNulls: true,
+              symbol: "none", lineStyle: { width: 1.5, type: [5, 4], color: C.texto }, itemStyle: { color: C.texto }, z: 2 }] : []),
+            { name: "Gasto por habitante", type: "line", data: anos.map((a, k) => [a, sGasto[k]]), symbol: "circle",
+              symbolSize: 8, lineStyle: { width: 3, color: C.gasto }, itemStyle: { color: C.gasto, ...anel }, z: 4 },
+            { name: ind.nome, type: "line", data: anos.map((a, k) => [a, sInd[k]]), connectNulls: true, symbol: "circle",
+              symbolSize: 8, lineStyle: { width: 3, color: C.indicador }, itemStyle: { color: C.indicador, ...anel }, z: 5 },
+          ],
+        };
+      },
+      acessivel: {
+        descricao: `Série anual — índice (${anoBase} = 100): gasto por habitante${real ? " corrigido pelo IPCA" : ""} e ${ind.nome}. Para este indicador, linha subindo significa ${sobe}.`,
+        cabecalhos: ["Ano", "Gasto por habitante (índice)", `${ind.nome} (índice)`, ...(temSp ? ["Média SP (índice)"] : [])],
+        linhas: anos.map((a, k) => [String(a), num(sGasto[k]), sInd[k] == null ? "—" : num(sInd[k]),
+          ...(temSp ? [sSp[k] == null ? "—" : num(sSp[k])] : [])]),
+      },
     });
   }
 
@@ -224,53 +256,40 @@
       .filter((m) => m !== "3548500")];
     const anos = ind.serie.map((p) => p.ano);
     const valorMun = (p, m) => m === "3548500" ? p.santos : (p.comparaveis[m] ?? null);
-    const CORES = coresMun();
-
-    const datasets = municipios.map((m, i) => ({
-      label: DADOS.comparaveis[m],
-      data: ind.serie.map((p) => valorMun(p, m)),
-      borderColor: CORES[i % CORES.length],
-      backgroundColor: CORES[i % CORES.length],
-      borderWidth: m === "3548500" ? 3.5 : 1.5,
-      pointRadius: m === "3548500" ? 3 : 0,
-      tension: 0.25, spanGaps: true,
-    }));
+    const CORES = coresMun(Comum.paleta());
 
     $("legenda").innerHTML = municipios.map((m, i) =>
       `<span><span class="sw" style="background:${CORES[i % CORES.length]}"></span>${Comum.escapar(DADOS.comparaveis[m])}</span>`
     ).join("");
 
-    desenhar(anos, datasets, ind.nome, (c) =>
-      ` ${c.dataset.label}: ${fmt(ind.formato, c.parsed.y)}`, ind.formato);
-  }
-
-  // Desenha o gráfico (destrói o anterior). tickFmt opcional formata o eixo Y.
-  function desenhar(labels, datasets, tituloY, tooltipLabel, formatoY) {
-    if (grafico) grafico.destroy();
-    // equivalente acessível: uma coluna por série, gerado dos mesmos datasets
-    Comum.chartAcessivel("grafico", `Série anual — ${tituloY}.`,
-      ["Ano", ...datasets.map((d) => d.label)],
-      labels.map((a, i) => [a, ...datasets.map((d) =>
-        d.data[i] == null ? "—" : (formatoY ? fmt(formatoY, d.data[i]) : d.data[i]))]));
-    grafico = new Chart($("grafico"), {
-      type: "line",
-      data: { labels, datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: tooltipLabel } },
-        },
-        scales: {
-          x: { grid: { color: COR.grade }, ticks: { color: COR.texto } },
-          y: {
-            grid: { color: COR.grade },
-            ticks: { color: COR.texto,
-              callback: formatoY ? (v) => fmt(formatoY, v) : (v) => v },
-            title: { display: true, text: tituloY, color: COR.texto },
-          },
-        },
+    Comum.grafico("grafico", {
+      opcao: (p) => {
+        const CS = coresMun(p);
+        return {
+          grid: { left: 6, right: 16, top: 30, bottom: 6, containLabel: true },
+          tooltip: { trigger: "axis", confine: true,
+            formatter: (ps) => Comum.dicaGrafico(String(anos[ps[0].dataIndex]),
+              ps.map((x) => [x.color, x.seriesName, fmt(ind.formato, x.value)])) },
+          xAxis: { type: "category", data: anos.map(String), boundaryGap: false },
+          yAxis: { type: "value", name: ind.nome, nameLocation: "end", nameGap: 12,
+            nameTextStyle: { color: p.muted, fontFamily: p.sans, fontSize: 11.5, align: "left", padding: [0, 0, 0, -30] },
+            axisLabel: { formatter: (v) => fmt(ind.formato, v) } },
+          series: municipios.map((m, i) => ({
+            name: DADOS.comparaveis[m], type: "line", connectNulls: true,
+            data: ind.serie.map((pt) => valorMun(pt, m)),
+            symbol: m === "3548500" ? "circle" : "none", symbolSize: 6,
+            lineStyle: { width: m === "3548500" ? 3.5 : 1.5, color: CS[i % CS.length] },
+            itemStyle: { color: CS[i % CS.length] }, z: m === "3548500" ? 5 : 2,
+          })),
+        };
+      },
+      acessivel: {
+        descricao: `Série anual — ${ind.nome}, Santos e municípios comparáveis.`,
+        cabecalhos: ["Ano", ...municipios.map((m) => DADOS.comparaveis[m])],
+        linhas: anos.map((a, k) => [String(a), ...municipios.map((m) => {
+          const v = valorMun(ind.serie[k], m);
+          return v == null ? "—" : fmt(ind.formato, v);
+        })]),
       },
     });
   }

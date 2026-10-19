@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <meta name="description" content="Quanto Santos gasta e o que o cidadão recebe: gasto por habitante em saúde e educação cruzado com indicadores de resultado, comparado a cidades paulistas de porte similar." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -24,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=11" />
+    <link rel="stylesheet" href="./comum.css?v=12" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -71,6 +70,7 @@
       .controles select { font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line);
         border-radius: var(--r-sm); background: var(--card); color: var(--tinta); }
       .grafico-wrap { position: relative; height: 340px; }
+      .grafico-wrap .grafico { --altura-grafico: 100%; }
       .legenda-tesoura { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
         margin-top: 10px; font-family: "IBM Plex Mono", monospace; }
       .legenda-tesoura .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px;
@@ -104,7 +104,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=21"></script>
+    <script src="./comum.js?v=22"></script>
     <script>Comum.topbar("indicadores.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -138,7 +138,7 @@
           <label for="sel-indicador">Indicador:</label>
           <select id="sel-indicador"></select>
         </div>
-        <div class="grafico-wrap"><canvas id="grafico"></canvas></div>
+        <div class="grafico-wrap"><div class="grafico" id="grafico"></div></div>
         <div class="legenda-tesoura" id="legenda"></div>
       </div>
 
@@ -165,6 +165,6 @@
       </p>
     </main>
 
-    <script src="./indicadores-app.js?v=7"></script>
+    <script src="./indicadores-app.js?v=8"></script>
   </body>
 </html>
