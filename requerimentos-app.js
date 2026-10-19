@@ -255,6 +255,7 @@ function atualizarSecretarias(ano) {
   }
   const pct = Math.round((com.length / base.length) * 100);
   el("sec-sub").textContent = `${grandes.length} secretarias · indicada em ${pct}% dos pedidos${ano ? ` de ${ano}` : ""}`;
+  desenharSecretarias(grandes, pequenas, ano);
   el("sec-corpo").innerHTML = linhas.map((l) => `<tr>
       <th scope="row">${l.sigla
         ? `<button type="button" class="lnk" data-sec="${escapar(l.sigla)}" aria-label="Filtrar pedidos da ${escapar(l.sigla)}">${escapar(l.nome)}</button>`
@@ -266,6 +267,131 @@ function atualizarSecretarias(ano) {
       <td class="n">${l.med == null ? "—" : `${l.med} dias`}</td>
     </tr>`).join("");
   caixa.hidden = false;
+}
+
+// Tempo até a resposta, por secretaria: um ponto por pedido (beeswarm do ECharts v6 —
+// `jitter` sem sobreposição no eixo de categorias). Cheio = respondido (dias até o
+// mérito); vazado = sem resposta de mérito (idade). Eixo LOGARÍTMICO com marcos de
+// tempo: na escala linear 70 pedidos de 20–60 dias cabiam em ~60 px e o espalhamento
+// desistia de ~140 pontos. Linhas de 15 dias (Lei Orgânica, art. 58, XVIII) e 30 (com
+// prorrogação); traço dourado = mediana dos respondidos. Segue o filtro de ano.
+const MARCOS_DIAS = [15, 30, 60, 90, 180, 365];
+const ROTULO_MARCO = { 15: "15 d", 30: "30 d", 60: "2 meses", 90: "3 meses", 180: "6 meses", 365: "1 ano" };
+function desenharSecretarias(grandes, pequenas, ano) {
+  const nomeOutras = `Outras (${pequenas.length} siglas)`;
+  const pontos = [];
+  const grupo = (g, itens) => {
+    for (const i of itens) {
+      if (i.respondido && i._diasMerito != null) {
+        pontos.push({ g, i, sit: "r", dias: Math.max(1, i._diasMerito) });
+      } else if (!i.respondido && i._diasSem != null) {
+        pontos.push({ g, i, sit: "p", dias: Math.max(1, i._diasSem) });
+      }
+    }
+  };
+  grandes.forEach(([s, itens]) => grupo(s, itens));
+  if (pequenas.length) grupo(nomeOutras, pequenas.flatMap(([, itens]) => itens));
+  const porGrupo = new Map();
+  for (const p of pontos) {
+    if (!porGrupo.has(p.g)) porGrupo.set(p.g, { g: p.g, n: 0, resp: [] });
+    const x = porGrupo.get(p.g);
+    x.n++;
+    if (p.sit === "r") x.resp.push(p.dias);
+  }
+  const grupos = [...porGrupo.values()].map((x) => ({ ...x, med: mediana(x.resp) }))
+    .sort((a, b) => (a.g === nomeOutras) - (b.g === nomeOutras) || (b.med ?? -1) - (a.med ?? -1) || b.n - a.n);
+  const nomes = grupos.map((x) => x.g);
+  const rotulos = new Map(grupos.map((x) => [x.g, x]));
+  const maxD = Math.max(400, ...pontos.map((p) => p.dias));
+  const resp = pontos.filter((p) => p.sit === "r").map((p) => p.dias);
+  const dica = (d) => {
+    const p = d.ponto;
+    const r = p.sit === "r";
+    const ref = r ? (p.i.data_resposta_merito || p.i.data_resposta) : p.i.vence_em;
+    return Comum.dicaGrafico(`Req. ${p.i.numero} — ${fmt(p.dias)} dias`, [
+      [null, "Secretaria", p.i.secretaria],
+      r ? [d.cor, p.i.data_resposta_merito ? "Até a resposta de mérito" : "Até a resposta (data genérica)", `${fmt(p.dias)} dias`, "p"]
+        : [d.cor, "Sem resposta de mérito há", `${fmt(p.dias)} dias`, "p"],
+    ], r ? `Sessão em ${p.i.data_sessao}; resposta em ${ref}.`
+      : `Sessão em ${p.i.data_sessao}` + (ref ? `; prazo venceu em ${ref}.` : "."));
+  };
+  Comum.grafico("ch-secretarias", {
+    dependeDaLargura: true,
+    altura: () => Math.max(260, nomes.length * 30 + 120),
+    opcao: (p, larg) => {
+      const cel = p.celular;
+      const topo = cel ? 16 : 58, base = cel ? 100 : 56;
+      const banda = (Math.max(260, nomes.length * 30 + 120) - topo - base) / Math.max(1, nomes.length);
+      const tam = cel ? 6 : 7;
+      const item = (pt, cor) => ({ value: [pt.dias, pt.g], ponto: pt, cor });
+      return {
+        grid: { left: 4, right: 18, top: topo, bottom: base, containLabel: true },
+        legend: { data: [
+            { name: "Respondido", icon: "circle", itemStyle: { color: p.serie, borderWidth: 0 } },
+            { name: "Sem resposta de mérito", icon: "circle", itemStyle: { color: p.card, borderColor: p.vermelho, borderWidth: 1.6 } },
+            { name: "Mediana dos respondidos", icon: "path://M0,0 h3 v14 h-3 Z", itemStyle: { color: p.ouroLinha } }],
+          [cel ? "bottom" : "top"]: 0, left: 0, itemGap: 18, itemWidth: 12, itemHeight: 12, selectedMode: false },
+        tooltip: { trigger: "item", confine: true, formatter: (x) => (x.data && x.data.ponto ? dica(x.data) : "") },
+        xAxis: { type: "log", logBase: 10, min: 10, max: Math.ceil(maxD / 100) * 100,
+          name: cel ? "dias desde a sessão (escala log.)" : "dias desde a sessão — escala logarítmica",
+          nameLocation: "middle", nameGap: 30, nameTextStyle: { color: p.muted, fontFamily: p.sans, fontSize: 11.5 },
+          axisLine: { show: true, lineStyle: { color: p.linha } },
+          axisTick: { show: true, customValues: MARCOS_DIAS, length: 4, lineStyle: { color: p.linha } },
+          axisLabel: { customValues: cel ? [15, 30, 90, 365] : MARCOS_DIAS, hideOverlap: true,
+            formatter: (v) => ROTULO_MARCO[v] || fmt(v) },
+          splitLine: { show: true, lineStyle: { color: p.grade } }, minorSplitLine: { show: false } },
+        yAxis: { type: "category", data: nomes, inverse: true, boundaryGap: true,
+          jitter: Math.max(8, banda * 0.9), jitterOverlap: false, jitterMargin: 0.5,
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { show: true, lineStyle: { color: p.grade, width: 1 } },
+          axisLabel: { margin: 12, formatter: (g) => `{s|${String(g).replace(/[{}|]/g, "")}} {n|${rotulos.get(g).n}}`,
+            rich: { s: { fontFamily: p.sans, fontWeight: 700, fontSize: cel ? 11 : 12, color: p.tinta },
+              n: { fontFamily: p.mono, fontSize: cel ? 10 : 10.5, color: p.muted } } } },
+        series: [
+          { name: "Respondido", type: "scatter", data: pontos.filter((x) => x.sit === "r").map((x) => item(x, p.serie)),
+            symbol: "circle", symbolSize: tam, cursor: "pointer",
+            itemStyle: { color: p.serie, opacity: 0.82, borderColor: p.card, borderWidth: 1 },
+            emphasis: { scale: 1.6, itemStyle: { opacity: 1 } }, z: 3,
+            markLine: { silent: true, symbol: ["none", "none"], animation: false, data: [
+              { xAxis: 15, lineStyle: { color: p.amarelo, type: [5, 4], width: 1.5 },
+                label: { show: true, position: "start", formatter: cel ? "15 d" : "15 dias · prazo da Lei Orgânica", align: "right",
+                  color: p.tinta, fontFamily: p.sans, fontSize: 11, fontWeight: 600, distance: 6, padding: [0, 4, 0, 0] } },
+              { xAxis: 30, lineStyle: { color: p.vermelho, type: [5, 4], width: 1.5 },
+                label: { show: true, position: "start", formatter: cel ? "30 d" : "30 · com prorrogação", align: "left",
+                  color: p.tinta, fontFamily: p.sans, fontSize: 11, fontWeight: 600, distance: 6, padding: [0, 0, 0, 4] } },
+            ] } },
+          { name: "Sem resposta de mérito", type: "scatter", data: pontos.filter((x) => x.sit === "p").map((x) => item(x, p.vermelho)),
+            symbol: "circle", symbolSize: tam, cursor: "pointer",
+            itemStyle: { color: "rgba(0,0,0,0)", borderColor: p.vermelho, borderWidth: 1.6 },
+            emphasis: { scale: 1.6 }, z: 4 },
+          { name: "Mediana dos respondidos", type: "custom", silent: true, z: 5, itemStyle: { color: p.ouroLinha },
+            data: grupos.filter((x) => x.med != null).map((x) => [x.med, x.g]), encode: { x: 0, y: 1 },
+            renderItem: (params, api) => {
+              const c = api.coord([api.value(0), api.value(1)]);
+              const h = api.size([0, 1], [api.value(0), api.value(1)])[1] * 0.82;
+              return { type: "line", shape: { x1: c[0], y1: c[1] - h / 2, x2: c[0], y2: c[1] + h / 2 },
+                style: { stroke: p.ouroLinha, lineWidth: 3, lineCap: "round" } };
+            } },
+        ],
+      };
+    },
+    // clique num ponto: mostra o pedido (mesmo foco do ?n=)
+    eventos: (chart) => chart.on("click", (x) => {
+      const pt = x.data && x.data.ponto;
+      if (!pt) return;
+      FOCO = pt.i.numero;
+      aplicarFiltros();
+      el("foco").scrollIntoView({ block: "nearest" });
+    }),
+    acessivel: {
+      descricao: `Dias entre a sessão e a resposta de mérito de ${fmt(pontos.length)} requerimentos com secretaria indicada` +
+        `${ano ? ` em ${ano}` : ""}, um ponto por pedido. Mediana dos respondidos: ${resp.length ? fmt(mediana(resp)) + " dias" : "—"}; ` +
+        `${fmt(resp.filter((d) => d <= PRAZO_LOM).length)} de ${fmt(resp.length)} chegaram em até ${PRAZO_LOM} dias (prazo da Lei Orgânica). ` +
+        `${fmt(pontos.length - resp.length)} seguem sem resposta de mérito.`,
+      cabecalhos: ["Secretaria", "Requerimento", "Situação", "Dias"],
+      linhas: pontos.map((x) => [x.i.secretaria, x.i.numero, x.sit === "r" ? "respondido" : "sem resposta de mérito", fmt(x.dias)]),
+    },
+  });
 }
 
 // Exporta o resultado filtrado (mesmas colunas da tabela + prazo)
