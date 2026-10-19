@@ -6,7 +6,7 @@
     <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
-    <link rel="stylesheet" href="./comum.css?v=12" />
+    <link rel="stylesheet" href="./comum.css?v=13" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#07111f" />
@@ -161,9 +161,9 @@
       /* Segunda seção — respiro entre os dois blocos e continuação da cascata
          (o nth-child reinicia na segunda grade, por isso os delays são redefinidos) */
       .secao-2 { margin-top: clamp(28px, 3.6vw, 44px); }
-      .grade-2 .cartao:nth-child(1) { animation-delay: 1.12s; }
-      .grade-2 .cartao:nth-child(2) { animation-delay: 1.22s; }
-      .grade-2 .cartao:nth-child(3) { animation-delay: 1.32s; }
+      .grade-2 .cartao:nth-child(1) { animation-delay: 1.22s; }
+      .grade-2 .cartao:nth-child(2) { animation-delay: 1.32s; }
+      .grade-2 .cartao:nth-child(3) { animation-delay: 1.42s; }
 
       /* o min() impede que a trilha de 300px estoure viewports estreitos (≤348px) */
       .grade { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
@@ -191,6 +191,7 @@
       .cartao:nth-child(5) { animation-delay: .82s; }
       .cartao:nth-child(6) { animation-delay: .92s; }
       .cartao:nth-child(7) { animation-delay: 1.02s; }  /* Preço comparado (2026-08) */
+      .cartao:nth-child(8) { animation-delay: 1.12s; }  /* 8º cartão: entrou com Indicações (2026-10) */
       /* Barra de acento à esquerda — o dispositivo mais repetido do site
          (comum.css:95/171, despesas.html:106, endividamento.html:139/161, regimento.html:87).
          Via ::before e NÃO border-left: o .cartao:hover troca border-color e atropelaria
@@ -396,6 +397,17 @@
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
+        <a class="cartao" href="./indicacoes.html" aria-labelledby="t-indicacoes">
+          <span class="cartao-topo"><span class="tag">Câmara · Indicações</span></span>
+          <h3 id="t-indicacoes">Indicações &amp; Respostas</h3>
+          <p class="desc">Indicações do mandato à Prefeitura — poda, iluminação, buraco,
+             fiscalização — no mapa dos bairros de Santos, com o que já foi respondido.</p>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-indicacoes"><span class="skel"></span></span>
+            <span class="lbl" id="stat-indicacoes-lbl">indicações monitoradas</span>
+            <span class="quando" id="stat-indicacoes-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
         <a class="cartao" href="./regimento.html" aria-labelledby="t-regimento">
           <span class="cartao-topo"><span class="tag">Câmara · Regimento Interno</span></span>
           <h3 id="t-regimento">Regimento Interno</h3>
@@ -455,7 +467,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=22"></script>
+    <script src="./comum.js?v=23"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -632,6 +644,9 @@
       // por isso o 5º argumento (a chave no bases-atualizacao.json) é o que salva o frescor
       stat(pRequerimentos, "stat-requerimentos", (d) => contagem(total(d)),
         null, "requerimentos-index.json");
+      // indicações: a contagem leve só serve com `respondidos` (o rótulo fala dos sem mérito)
+      const pIndicacoes = contagemOuIndice("indicacoes-index.json", (c) => typeof c.respondidos === "number");
+      stat(pIndicacoes, "stat-indicacoes", (d) => contagem(total(d)), null, "indicacoes-index.json");
       stat(contagemOuIndice("proposituras-index.json"), "stat-proposituras", (d) => contagem(total(d)),
         null, "proposituras-index.json");
       stat(pLegis, "stat-legis", (d) => contagem(total(d)), null, "legis-index.json");
@@ -710,6 +725,12 @@
           : fora === pend ? ", todos fora do prazo" : ` (${num(fora)} fora do prazo)`;
         if (pend) set("stat-requerimentos-lbl", `monitorados · ${num(pend)} ` +
           (classificada(r) ? "sem resposta de mérito" : "sem retorno") + prazo);
+      }).catch(() => {});
+
+      // Indicações: sem prazo legal (ao contrário do requerimento) — só os sem mérito
+      pIndicacoes.then(({ dados: r }) => {
+        const sem = Array.isArray(r) ? r.filter((x) => !x.respondido).length : r.n - r.respondidos;
+        if (sem) set("stat-indicacoes-lbl", `monitoradas · ${num(sem)} sem resposta de mérito`);
       }).catch(() => {});
 
       // Notas do Regimento: só falar delas quando existirem

@@ -18,6 +18,9 @@ window.Comum = (() => {
     ["proposituras.html", "Proposituras", "Base de Proposituras", "Bases de dados"],
     ["legis.html", "Legislação", "Base de Legislação", "Bases de dados"],
     ["requerimentos.html", "Requerimentos", "Requerimentos & Respostas", "Bases de dados"],
+    // fora da faixa do desktop (sem folga): menu do celular, cartão do hub e a alternância
+    // "Requerimentos | Indicações" no topo das duas páginas
+    ["indicacoes.html", null, "Indicações & Respostas", "Bases de dados"],
     ["regimento.html", "Regimento", "Regimento Interno", "Bases de dados"],
     ["indicadores.html", "Indicadores", "Custo por Resultado", "Leituras e participação"],
     ["retrospectiva.html", null, "O ano em gastos", "Leituras e participação"],
@@ -806,6 +809,15 @@ window.Comum = (() => {
         url: "./requerimentos.html?n=" + encodeURIComponent(i.numero || ""),
         h: norm([i.numero, i.assunto, i.ano].join(" ")),
       })) },
+    // ~0,2 MB, como requerimentos: entra na 1ª abertura. O bairro entra na busca
+    // ("poda gonzaga"); o link mostra só a indicação, com "Ver a lista inteira"
+    { id: "indicacoes", rotulo: "Indicações", url: "./indicacoes-index.json",
+      mapear: (d) => d.map((i) => ({
+        t: "Indicação " + i.numero,
+        s: (i.assunto || "").slice(0, 110),
+        url: "./indicacoes.html?n=" + encodeURIComponent(i.numero || ""),
+        h: norm([i.numero, i.assunto, i.ano, i.bairro, i.regiao].join(" ")),
+      })) },
     { id: "favorecidos", rotulo: "Despesas · favorecidos", url: "./despesas-index.json", grande: true,
       paginas: ["despesas.html", "favorecido.html"],
       mapear: (d) => (d.top_favorecidos || []).map((f) => ({
@@ -972,7 +984,7 @@ window.Comum = (() => {
     }
     if (!norm(q).trim()) {
       paletaRes.innerHTML = '<div class="paleta-vazio" role="presentation">Digite para buscar em Despesas, ' +
-        "Proposituras, Legislação, Requerimentos, Regimento, Endividamento, Indicadores e Preço comparado.<br>" +
+        "Proposituras, Legislação, Requerimentos, Indicações, Regimento, Endividamento, Indicadores e Preço comparado.<br>" +
         'Dica: <b>art 79</b> abre o artigo direto; um <b>CNPJ</b> abre o raio-X do favorecido.</div>' + avisoFalhas;
       atualizarAtivo();
       return;

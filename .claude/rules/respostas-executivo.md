@@ -3,6 +3,9 @@ paths:
   - "respostas-executivo/**"
   - "requerimentos.html"
   - "requerimentos-app.js"
+  - "indicacoes.html"
+  - "indicacoes-app.js"
+  - "geo/**"
 ---
 
 # Respostas do Executivo (`respostas-executivo/index.py`)
@@ -48,6 +51,57 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 - **`garantir_colunas` só cria as colunas de classificação** (as que a automação grava). Antes
   completava todas as de `ABAS` e, em 12/10/2026, criou "Ordem", "Prazo" e "Data do Protocolo na
   PMS" vazias no fim da aba — podem ser apagadas à mão sem que voltem.
+
+## Indicações & Respostas — export, bairros e mapa (out/2026, M5)
+
+- **Export** (`export.py --indicacoes [--dry-run]`, mesma planilha, aba `indicações`) →
+  `indicacoes-index.json` na raiz. Lista branca **`CAMPOS_PUBLICOS_INDICACOES`** (`numero`, `ano`,
+  `assunto`, as 3 datas, `situacao`, `respondido`, `url_resposta`, `bairro`, `regiao`); `main`
+  sai 1 com chave fora dela **ou com CPF/e-mail no assunto** (`dados_pessoais`; telefone só
+  avisa). O export só lê as colunas de `COLUNAS_INDICACOES`: **"sta", "A contento" (anotações
+  como "pediu número"), "Prazo" e "Data do Protocolo na PMS" nunca saem de `linhas_indicacoes`**.
+  O caminho de requerimentos ficou byte a byte igual (conferido contra o `HEAD` anterior).
+- **Linhas repetidas**: 887 linhas → **562 indicações** (out/2026; 318 números com 2 linhas, 3
+  com 3, 1 linha sem número descartada). A linha da assessoria (resumo curto + bairro, datas
+  exibidas em M/D) e a que o robô anexou depois (ementa da Câmara, datas dd/mm, mérito) são a
+  mesma indicação. `linha_oficial`: a última com data de mérito; senão a última com a sessão no
+  formato do robô (`_formato_robo`: exibida dd/mm/aaaa); senão a última da aba (o robô anexa no
+  fim). Texto e datas: da oficial, depois das outras na ordem da aba. Bairro: o 1º texto que o
+  normalizador reconhece. Situação: a mais forte entre as linhas (respondido > só encaminhamento
+  > só prorrogação > pendente); sem nenhuma, **`a_classificar`** se há sinal de documento (pasta
+  no Drive, "SIM" na coluna Resposta, data de resposta) — senão `pendente`. A situação publicada
+  sai sempre desse vocabulário (texto estranho na coluna é ignorado). Número com zero à
+  esquerda é normalizado ("0845/2026" → "845/2026").
+- **Datas**: a planilha é pt_BR — o nº de série (UNFORMATTED) é o mesmo nas duas linhas; vale
+  ele. Texto só se for dd/mm/aaaa válido; ano com um dígito a mais ("18/03/82025") é consertado
+  quando bate com o ano do número. Divergência entre linhas (7441/2025: 27/11 × 25/11): vale a
+  do robô.
+- **Bairro** (`bairros.py`, modelo `secretarias.py`): a coluna é texto livre e já trouxe
+  anotação interna ("RESPOSTA EM 07 MESES") — **o texto cru nunca é publicado**. `canonico(t)` →
+  (nome oficial do GeoJSON, região) ou (None, None): sem acento/caixa/pontuação, acento solto
+  ("P´RAIA"), "JD."→Jardim, sufixo "- ZN", "Morro do X"→"Morro X" se existir, `SINONIMOS`
+  (Jardim Castelo → Castelo, Apartecida → Aparecida…) e `REGIOES` (Orla, Zona Noroeste, Morros,
+  Área Continental, Centro Histórico, "GERAL" = Cidade toda; nunca repartidas entre bairros).
+  Não reconhecidos ficam vazios: Itararé (São Vicente), CET, Morro do Ilhéu (só há "Ilhéu
+  Alto"), População de rua. Out/2026: 362 num bairro do mapa (64%, 29 bairros), 34 em região,
+  166 sem bairro reconhecível. Testes com as 47 grafias reais: `testes_bairros.py`.
+- **Geo** (`geo/preparar_bairros.py`, só stdlib; `geo/README.md`): GeoServer da Prefeitura,
+  camadas `santos:bairros` (72 feições, 71 nomes) e `santos:subprefeituras` (marca
+  `area_continental`: 11 bairros, inclusive as ilhas de Barnabé e Bagres); Douglas–Peucker de
+  4 m, 5 casas, ~113 KB; licença não declarada pelo serviço [Verificar]. Rodar de novo só se a
+  Prefeitura mudar o abairramento — os nomes alimentam o normalizador e a guarda.
+- **Log público**: o `--dry-run` local lista as grafias não reconhecidas e os resumos
+  descartados da assessoria; a execução normal (workflow) só imprime contagens — o log do
+  Actions de repo público é público.
+- **Guarda** (`.github/scripts/checar_publicos.py`): além das chaves, confere os VALORES de
+  `bairro` (nomes do GeoJSON) e `regiao` (`REGIOES` lido pela árvore sintática) e aponta só o
+  número dos itens, nunca o valor.
+- **Workflow**: passo próprio "Exportar indicacoes-index.json" (mesmas condições do de
+  requerimentos, guarda anti-vazio com exit 1); o commit leva só o arquivo cujo passo deu certo.
+  Fora da guarda de frescor de propósito (`ISENTAS` em `frescor_bases.py`): as respostas a
+  indicações vêm em lotes espaçados (51 dias sem nenhuma em 18/10/2026).
+- **Sem prazo legal**: indicação não tem o prazo do requerimento (LOM art. 58, XVIII) — o painel
+  e o hub nunca falam em "fora do prazo"; `so_prorrogacao` vira "Pedido de prorrogação".
 
 ## Nem todo anexo é resposta (`classificar.py`)
 
@@ -116,8 +170,15 @@ python respostas-executivo/index.py
 # Respostas do Executivo — ano específico
 python respostas-executivo/index.py --ano 2026
 
-# Classificador — testes com PDFs reais como fixture
+# Classificador, exports e bairros — testes (PDFs reais como fixture; sem Google)
 python -m unittest discover -s respostas-executivo -p "testes_*.py"
+
+# Indicações — contagens e detalhe (grafias não reconhecidas) sem gravar; depois de verdade
+python respostas-executivo/export.py --indicacoes --dry-run
+python respostas-executivo/export.py --indicacoes
+
+# Limites dos bairros (só se a Prefeitura mudar o abairramento)
+python geo/preparar_bairros.py --dry-run
 
 # Backfill da classificação (relatório sem gravar; depois de verdade)
 python respostas-executivo/reclassificar.py --dry-run

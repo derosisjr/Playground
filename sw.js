@@ -48,6 +48,7 @@ const NUCLEO = [
   "./legis.html",
   "./precos.html",
   "./requerimentos.html",
+  "./indicacoes.html",
   "./regimento.html",
   "./indicadores.html",
   "./consulta.html",

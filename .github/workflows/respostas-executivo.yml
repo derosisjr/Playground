@@ -128,10 +128,31 @@ jobs:
             exit 1  # falha visível: com exit 0 a base de Proposituras ficou 2 meses parada sem ninguém notar
           fi
 
+      # Mesma planilha, aba "indicações" → indicacoes-index.json (painel de Indicações).
+      # Mesmas condições do passo acima, mas passo PRÓPRIO: uma indicação barrada (campo
+      # fora da lista, CPF/e-mail no assunto — o export sai 1) não segura a publicação
+      # dos requerimentos, e vice-versa. O job fica vermelho do mesmo jeito.
+      - name: Exportar indicacoes-index.json
+        id: export_indicacoes
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' }}
+        env:
+          GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: |
+          python respostas-executivo/export.py --indicacoes
+          # Guarda anti-truncamento: se vier vazio (falha de auth/leitura), não commita.
+          N=$(python -c "import json;print(len(json.load(open('indicacoes-index.json',encoding='utf-8'))))")
+          echo "indicacoes-index.json com $N item(ns)."
+          if [ "$N" -eq 0 ]; then
+            echo "ABORTANDO commit: base de indicações vazia, provável falha de leitura da planilha."
+            exit 1
+          fi
+
+      # Só entra no commit o arquivo cujo passo deu certo (o outro fica como estava).
       - name: Commitar e publicar
-        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.export.outcome == 'success' || steps.export_indicacoes.outcome == 'success') }}
         uses: ./.github/actions/commitar
         with:
-          caminhos: requerimentos-index.json
-          mensagem: "chore: atualiza base de Requerimentos"
-          sem-mudancas: "Sem mudancas na base de requerimentos."
+          caminhos: ${{ steps.export.outcome == 'success' && 'requerimentos-index.json' || '' }} ${{ steps.export_indicacoes.outcome == 'success' && 'indicacoes-index.json' || '' }}
+          mensagem: "chore: atualiza bases de Requerimentos e Indicações"
+          sem-mudancas: "Sem mudancas nas bases de requerimentos e indicacoes."

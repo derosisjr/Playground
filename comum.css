@@ -423,6 +423,19 @@ header.hero h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight
   font-family: "IBM Plex Mono", monospace; color: var(--gold); font-size: 11px;
   letter-spacing: .3em; text-transform: uppercase; margin: 0 0 14px; font-weight: 500; }
 .eyebrow::before { content: ""; width: 34px; height: 1px; background: var(--gold); display: inline-block; }
+/* Bases irmãs (Requerimentos | Indicações, out/2026): a etiqueta à esquerda e a
+   alternância discreta à direita, na mesma linha; no celular a alternância desce. */
+.hero-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 20px; margin: 0 0 14px; }
+.hero-topo .eyebrow { margin: 0; }
+.alterna { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid rgba(201,168,76,.35);
+  border-radius: 999px; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+  letter-spacing: .12em; text-transform: uppercase; }
+.alterna a { display: inline-flex; align-items: center; min-height: 26px; padding: 3px 12px;
+  border-radius: 999px; color: #9fb0c4; text-decoration: none; }
+.alterna a:hover { color: var(--gold-bright); }
+.alterna a[aria-current="page"] { background: rgba(201,168,76,.16); color: var(--gold-bright); }
+.alterna a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ── Número-manchete do hero: um número grande + a frase que o explica ──────────
    Era cópia idêntica no Semáforo Fiscal e no Preço comparado; desde 2026-10 também
@@ -527,7 +540,7 @@ header.hero h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight
 @media print {
   .topnav, .topnav-lista, .filtros, .acoes, .barra .btn, .mais, .chips, #chips,
   .paleta-fundo, .toast-comum, .faixa-dados-novos, .hero-mais, .lnk.reiterar,
-  .skel { display: none !important; }
+  .skel, .alterna { display: none !important; }
   html, body { background: #fff !important; color: #000 !important; }
   /* o tema escuro não vai para o papel */
   html[data-tema="escuro"] body { --ink: #111; --card: #fff; --line: #ccc; --muted: #444;

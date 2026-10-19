@@ -123,6 +123,20 @@ def contagens():
     except (OSError, ValueError) as e:
         print(f"  aviso: contagem de requerimentos falhou: {e}", file=sys.stderr)
     try:
+        # cartão "Indicações & Respostas": total e quantas têm resposta de mérito (o hub
+        # escreve "N sem resposta de mérito"; indicação não tem prazo legal)
+        inds = _ler_json("indicacoes-index.json")
+        por_situacao = {}
+        for r in inds:
+            s = r.get("situacao") or ""
+            por_situacao[s] = por_situacao.get(s, 0) + 1
+        out["indicacoes-index.json"] = {
+            "n": len(inds), "respondidos": sum(1 for r in inds if r.get("respondido")),
+            "por_situacao": por_situacao,
+        }
+    except (OSError, ValueError) as e:
+        print(f"  aviso: contagem de indicações falhou: {e}", file=sys.stderr)
+    try:
         notas = _ler_json("regimento-notas.json")
         # chaves "_..." são comentário (ex.: "_leia-me"); o resto é id de artigo
         out["regimento-notas.json"] = {
