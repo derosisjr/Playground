@@ -541,7 +541,7 @@ header.hero h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight
 @media print {
   .topnav, .topnav-lista, .filtros, .acoes, .barra .btn, .mais, .chips, #chips,
   .paleta-fundo, .toast-comum, .faixa-dados-novos, .hero-mais, .lnk.reiterar,
-  .skel, .alterna { display: none !important; }
+  .skel, .alterna, .ap-botao { display: none !important; }
   html, body { background: #fff !important; color: #000 !important; }
   /* o tema escuro não vai para o papel */
   html[data-tema="escuro"] body { --ink: #111; --card: #fff; --line: #ccc; --muted: #444;
@@ -570,3 +570,283 @@ header.hero h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-weight
   font-size: 12.5px; font-weight: 600; color: #0a58ca; cursor: pointer; text-align: left;
   text-decoration: underline; text-underline-offset: 2px; }
 html[data-tema="escuro"] .lnk { color: var(--gold-bright); }
+
+/* ── Modo apresentação (Comum.apresentar, M10, out/2026) ───────────────────────
+   O painel em slides para projetar e salvar em PDF. Tamanhos em --u = 1% da altura
+   do slide 16:9 (unidades do contêiner .ap-palco): o mesmo desenho a 1920×1080, a
+   1366×768 e no papel (1280×720). Capa, manchete e texto são sempre "noturnos" (o
+   topo da página); os slides de dados seguem o tema — a apresentação abre no escuro
+   e "Fundo claro" vale para sala iluminada. --uk = --u × encolhimento (texto que não
+   cabe diminui em passos — ver encaixarAltura no comum.js). */
+
+/* Botão "Apresentar": nas barras de ação é um .btn comum; nos topos escuros (Despesas,
+   Semáforo) fica no canto da linha da etiqueta, fora do fluxo — o topo não muda de
+   altura —, e no celular ao lado do "Sobre este painel" (mesma linha, mesma altura). */
+.ap-botao { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.ap-botao svg { width: 1em; height: 1em; flex: none; fill: currentColor; }
+.ap-botao-topo { position: absolute; right: 20px; top: calc(clamp(26px, 3.6vw, 44px) - 7px); min-height: 30px;
+  padding: 6px 14px; border: 1px solid rgba(201,168,76,.45); border-radius: 999px; background: rgba(4,9,15,.35);
+  color: var(--gold-bright); font: 600 10.5px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .14em;
+  text-transform: uppercase; }
+.ap-botao-topo:hover { background: rgba(201,168,76,.16); border-color: var(--gold); color: #fff; }
+.ap-botao-topo:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .ap-botao-topo { position: static; display: inline-flex; margin: 4px 0 0 18px; min-height: 24px; padding: 4px 0;
+    border: 0; border-radius: 0; background: none; font: 600 12.5px/1.2 "Manrope", sans-serif; letter-spacing: 0;
+    text-transform: none; vertical-align: top; }
+  .ap-botao-topo:hover { background: none; color: var(--gold-bright); }
+  /* Raio-X (sem "Sobre este painel"): fica no canto, só o ícone (o nome vai no aria-label);
+     a 1ª linha da etiqueta deixa ~80 px livres à direita mesmo a 320 px */
+  .ap-botao-topo.ap-canto { position: absolute; top: 17px; right: 16px; width: 34px; height: 34px; min-height: 0;
+    margin: 0; padding: 0; justify-content: center; border: 1px solid rgba(201,168,76,.45); border-radius: 50%;
+    background: rgba(4,9,15,.35); font-size: 14px; }
+  .ap-canto .ap-botao-rot { display: none; }
+}
+/* 320–360 px: a 1ª linha da etiqueta chega a ~277 px — o botão encolhe (28 px, alvo ≥ 24) e encosta na borda */
+@media (max-width: 360px) { .ap-botao-topo.ap-canto { top: 19px; right: 8px; width: 28px; height: 28px; font-size: 12px; } }
+
+html.ap-ativo { overflow: hidden; scrollbar-gutter: stable; }
+.ap, .ap-impressao {
+  /* slide de dados no tema claro (papel) */
+  --ap-fundo: #fbf9f3; --ap-tinta: #0c1626; --ap-tinta-2: #1f2a3a; --ap-mudo: #5d6675;
+  --ap-fio: rgba(12, 22, 38, .14); --ap-ouro: #8a6d1f; --ap-delta-pos: #b42318; --ap-delta-neg: #067647;
+  --ap-noite: radial-gradient(120% 90% at 12% -10%, #12263f 0%, transparent 55%),
+    radial-gradient(70% 90% at 88% 0%, rgba(201,168,76,.17) 0%, transparent 60%),
+    linear-gradient(180deg, #0c1b30 0%, #060e1a 100%);
+}
+html[data-tema="escuro"] .ap, html[data-tema="escuro"] .ap-impressao, .ap-noturno {
+  --ap-tinta: #f2f5f9; --ap-tinta-2: #d6dde8; --ap-mudo: #a3afc0; --ap-fio: rgba(201, 168, 76, .24);
+  --ap-ouro: #c9a84c; --ap-delta-pos: #f97066; --ap-delta-neg: #4ade80;
+}
+/* no papel (Salvar PDF) o comum troca o tema escuro por cores claras no body — os
+   slides guardam as suas */
+html[data-tema="escuro"] .ap-impressao { --ink: #e8ecf3; --card: #101f36; --line: #22375c; --muted: #93a0b3;
+  --paper: #0a1422; --paper-2: #0c1b30; --bg: #0a1422; }
+
+.ap { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0;
+  padding: 0; border: 0; overflow: hidden; background: #04090f; color: #eef2f7;
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif; }
+.ap::backdrop { background: #04090f; }
+.ap-quadro { position: absolute; inset: 0; background: #04090f; }
+.ap-quadro.ap-sem-cursor { cursor: none; }
+/* o palco deixa 56 px para a barra; em tela cheia a barra flutua e some sozinha. touch-action
+   pan-y (aqui e no slide, que no celular rola sozinho): o deslizar para o lado chega inteiro
+   aos eventos de ponteiro — sem ele o navegador o toma como gesto e cancela */
+.ap-palco { position: absolute; inset: 0 0 56px; display: grid; place-items: center; container-type: size;
+  outline: none; touch-action: pan-y; }
+.ap-quadro:fullscreen .ap-palco { inset: 0; }
+
+.ap-slide { --u: min(1cqh, .5625cqw); --uk: calc(var(--u) * var(--ap-k, 1));
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  width: calc(var(--u) * 177.78); height: calc(var(--u) * 100);
+  padding: calc(var(--u) * 5.6) calc(var(--u) * 7.4) 0; touch-action: pan-y;
+  background: var(--ap-fundo); color: var(--ap-tinta); }
+.ap-slide[hidden] { display: none; }
+.ap-slide:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }   /* slide que rola (celular) */
+.ap-slide > * { position: relative; z-index: 1; }
+.ap-noturno, html[data-tema="escuro"] .ap-slide { background: var(--ap-noite); }
+/* a trama de losangos e o fio dourado do topo das páginas */
+.ap-noturno::before, html[data-tema="escuro"] .ap-slide::before { content: ""; position: absolute; inset: 0;
+  pointer-events: none; opacity: .85; background-image:
+    repeating-linear-gradient(45deg, rgba(201,168,76,.05) 0 1px, transparent 1px calc(var(--u) * .95)),
+    repeating-linear-gradient(-45deg, rgba(201,168,76,.045) 0 1px, transparent 1px calc(var(--u) * .95)); }
+.ap-slide::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(2px, calc(var(--u) * .22));
+  background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent); }
+
+.ap-olho { flex: none; margin: 0 0 calc(var(--uk) * 1.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 500 max(10px, calc(var(--uk) * 1.5))/1.3 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--ap-ouro); }
+.ap-olho::before { content: ""; display: inline-block; vertical-align: middle; width: calc(var(--u) * 3.4); height: 1px;
+  margin: 0 calc(var(--u) * 1.4) .25em 0; background: currentColor; }
+.ap-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: calc(var(--u) * 2.6); }
+.ap-titulo { margin: 0; font: 600 calc(var(--uk) * 5)/1.06 "Fraunces", Georgia, serif; letter-spacing: -.015em;
+  color: var(--ap-tinta); max-width: 40ch; text-wrap: balance; }
+.ap-sintese { margin: calc(var(--uk) * 1.6) 0 0; font: 400 calc(var(--uk) * 2.9)/1.36 "Fraunces", Georgia, serif;
+  color: var(--ap-tinta-2); max-width: 58ch; text-wrap: pretty; }
+.ap-sintese b { font-weight: 600; color: var(--ap-tinta); font-variant-numeric: tabular-nums; }
+.ap-nota { margin: calc(var(--uk) * 1.3) 0 0; font-size: max(11px, calc(var(--uk) * 2)); line-height: 1.45;
+  color: var(--ap-mudo); max-width: 90ch; }
+
+/* capa e manchete: centradas na vertical, como a abertura da Retrospectiva */
+.ap-capa .ap-corpo, .ap-manchete .ap-corpo { justify-content: center; }
+.ap-capa-titulo { margin: 0; font: 600 calc(var(--uk) * 10)/1 "Fraunces", Georgia, serif; letter-spacing: -.02em;
+  color: #fff; max-width: 13ch; text-wrap: balance; }
+.ap-longo .ap-capa-titulo { font-size: calc(var(--uk) * 6.4); line-height: 1.04; max-width: 22ch; }
+.ap-capa-fio { flex: none; width: calc(var(--u) * 12); height: max(2px, calc(var(--u) * .3));
+  margin: calc(var(--uk) * 3.2) 0 calc(var(--uk) * 2.4); background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
+.ap-capa-linha { margin: 0 0 calc(var(--uk) * .6); font: 500 calc(var(--uk) * 2.3)/1.4 "IBM Plex Mono", ui-monospace, monospace;
+  color: #c3cdda; }
+.ap-recorte { margin: calc(var(--uk) * .6) 0 0; max-width: 62ch; font-size: calc(var(--uk) * 2.6); line-height: 1.45;
+  color: #dfe5ee; }
+.ap-recorte-rot { margin-right: calc(var(--u) * 1.4); font: 600 max(10px, calc(var(--uk) * 1.5))/1 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--gold); vertical-align: .2em; }
+.ap-capa-site { margin: calc(var(--uk) * 4.6) 0 0; font: 500 max(10px, calc(var(--uk) * 1.6))/1.4 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: .16em; text-transform: uppercase; color: #a3afc0; }
+/* losango (a marca do "◆ Início") à direita da capa */
+.ap-capa .ap-corpo::before, .ap-capa .ap-corpo::after { content: ""; position: absolute; top: 50%; pointer-events: none; }
+.ap-capa .ap-corpo::before { right: calc(var(--u) * 10); width: calc(var(--u) * 34); height: calc(var(--u) * 34);
+  transform: translateY(-50%) rotate(45deg); border: 1px solid rgba(201,168,76,.3);
+  outline: 1px solid rgba(201,168,76,.13); outline-offset: calc(var(--u) * 4); }
+.ap-capa .ap-corpo::after { right: calc(var(--u) * 27); width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2);
+  transform: translate(50%, -50%) rotate(45deg); background: var(--gold); }
+.ap-grande { margin: 0; white-space: nowrap; overflow: hidden; font: 600 calc(var(--uk) * 18)/1.12 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: -.02em; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.ap-contexto { margin: calc(var(--uk) * 2.6) 0 0; max-width: 31ch; font: 400 calc(var(--uk) * 3.7)/1.32 "Fraunces", Georgia, serif;
+  color: #dfe5ee; text-wrap: pretty; }
+.ap-contexto b { color: #fff; font-weight: 600; }
+
+/* texto corrido: uma frase por passo (as seguintes guardam o lugar, invisíveis) */
+.ap-frases { list-style: none; margin: calc(var(--uk) * 3.2) 0 0; padding: 0; display: grid; gap: calc(var(--uk) * 1.8); }
+/* o fio dourado acompanha cada frase (a que ainda não entrou não mostra o seu) */
+.ap-frase { padding-left: calc(var(--u) * 2.8); border-left: max(2px, calc(var(--u) * .32)) solid var(--gold);
+  max-width: 60ch; font: 400 calc(var(--uk) * 3.05)/1.36 "Fraunces", Georgia, serif; color: #dfe5ee; text-wrap: pretty; }
+.ap-frase b { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ap-frase.ap-visto { opacity: .5; }
+.ap-frase.ap-futuro { opacity: 0; visibility: hidden; }
+
+/* cartões */
+.ap-grade { flex: 1; min-height: 0; margin-top: calc(var(--uk) * 3); display: grid; gap: calc(var(--u) * 2.2);
+  grid-template-columns: repeat(var(--ap-cols, 2), minmax(0, 1fr)); align-content: center; }
+.ap-kpi { position: relative; overflow: hidden; background: var(--card); border: 1px solid var(--line);
+  border-radius: calc(var(--u) * 1.3); padding: calc(var(--uk) * 3) calc(var(--u) * 3.2) calc(var(--uk) * 3) calc(var(--u) * 3.8); }
+.ap-kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--u) * .5); background: var(--gold); }
+.ap-kpi-rotulo { font: 700 max(11px, calc(var(--uk) * 1.8))/1.3 "Manrope", sans-serif; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); }
+.ap-kpi-valor { margin-top: calc(var(--uk) * .7); white-space: nowrap; overflow: hidden; color: var(--ink);
+  font: 600 calc(var(--uk) * 7)/1.12 "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ap-kpi-valor .delta { margin-left: .35em; font-size: .4em; font-weight: 600; vertical-align: .6em; }
+.ap-kpi-valor .delta.pos { color: var(--ap-delta-pos); }
+.ap-kpi-valor .delta.neg { color: var(--ap-delta-neg); }
+.ap-kpi-sub { margin-top: calc(var(--uk) * .9); font-size: max(12px, calc(var(--uk) * 2.4)); line-height: 1.4; color: var(--muted); }
+
+/* gráfico: desenhado num quadro virtual e ampliado (o alvo recebe scale()) */
+.ap-cartao { flex: 1; min-height: calc(var(--u) * 30); margin-top: calc(var(--uk) * 2.4); display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--line); border-radius: calc(var(--u) * 1.3);
+  padding: calc(var(--u) * 1.8) calc(var(--u) * 2); }
+/* overflow: a tabela oculta (chartAcessivel) é absoluta e da altura do conteúdo — solta, ela
+   esticava a rolagem do slide e o encaixe de texto encolhia tudo */
+.ap-caixa-grafico { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+/* centrada por left/top em px (comum.js): com top 50% + translate o PDF saía deslocado e cortado */
+.ap-moldura { position: absolute; left: 0; top: 0; }
+.ap-alvo { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.ap-legenda { flex: none; margin-top: calc(var(--u) * .8); }
+.ap-lateral .ap-corpo { flex-direction: row; align-items: stretch; gap: calc(var(--u) * 4); }
+.ap-lateral .ap-texto { flex: 0 0 33%; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.ap-lateral .ap-cartao { margin-top: 0; }
+.ap-sem-grafico { display: flex; flex-direction: column; gap: calc(var(--u) * 1.2); }
+.ap-aviso { margin: 0; font-size: max(12px, calc(var(--uk) * 2)); color: var(--ap-mudo); }
+.ap-reserva { flex: 1; min-height: 0; overflow: auto; }
+.ap-reserva:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.ap-reserva .ap-tabela { margin-top: 0; font-size: max(12px, calc(var(--uk) * 2.1)); }
+
+/* listas curtas (tabela de verdade); zera o que o CSS da página põe em th/td */
+.ap-tabela { width: 100%; margin-top: calc(var(--uk) * 2.6); border-collapse: collapse; font-size: calc(var(--uk) * 2.5);
+  color: var(--ap-tinta); }
+.ap-tabela th, .ap-tabela td { position: static; background: none; color: inherit; cursor: auto; border: 0;
+  border-bottom: 1px solid var(--ap-fio); white-space: normal; max-width: none; overflow: visible; text-align: left;
+  vertical-align: baseline; }
+.ap-tabela th { padding: 0 calc(var(--u) * 1.2) calc(var(--uk) * 1.1);
+  font: 600 max(10px, calc(var(--uk) * 1.45))/1.3 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ap-mudo); }
+.ap-tabela td { padding: calc(var(--uk) * 1.25) calc(var(--u) * 1.2); line-height: 1.32; }
+.ap-tabela td:first-child { font-weight: 600; }
+.ap-tabela th:first-child, .ap-tabela td:first-child { padding-left: 0; }
+.ap-tabela th:last-child, .ap-tabela td:last-child { padding-right: 0; }
+.ap-tabela .ap-num { text-align: right; white-space: nowrap; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 500; font-variant-numeric: tabular-nums; }
+.ap .ap-tabela tbody tr:hover, .ap-impressao .ap-tabela tbody tr:hover { background: none; }
+.ap .ap-tabela tbody tr:hover td:first-child { box-shadow: none; }
+.ap-celula { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* o bloco copiado ocupa o resto do slide, centrado na vertical (o semáforo não fica colado no título) */
+.ap-clone { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; margin-top: calc(var(--uk) * 2.6); }
+
+.ap-rodape { flex: none; display: flex; align-items: center; gap: calc(var(--u) * 2.4); min-height: calc(var(--u) * 6.6);
+  border-top: 1px solid var(--ap-fio); color: var(--ap-mudo); letter-spacing: .02em;
+  font: 500 max(10px, calc(var(--u) * 1.45))/1.3 "IBM Plex Mono", ui-monospace, monospace; }
+.ap-rodape-fonte { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-url { flex: none; max-width: 46%; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ap-ouro); }
+.ap-n { flex: none; color: var(--ap-tinta); font-weight: 600; }
+
+/* barra de controles (sempre escura: é a moldura, não o slide) */
+.ap-barra { position: absolute; left: 50%; bottom: 7px; z-index: 3; transform: translateX(-50%); display: flex;
+  align-items: center; gap: 2px; padding: 3px; white-space: nowrap; background: rgba(8, 18, 33, .94);
+  border: 1px solid rgba(201, 168, 76, .38); border-radius: 999px; box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .7); }
+.ap-barra button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 40px; height: 40px;
+  padding: 0 12px; border: 0; border-radius: 999px; background: none; color: #dfe5ee; font: 600 13px/1 "Manrope", sans-serif;
+  cursor: pointer; }
+.ap-barra button:hover { background: rgba(201, 168, 76, .16); color: #fff; }
+.ap-barra button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.ap-barra button[aria-disabled="true"] { opacity: .4; cursor: default; }
+.ap-barra button[hidden] { display: none; }
+.ap-barra svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ap-barra .ap-ant, .ap-barra .ap-prox { padding: 0; font-size: 25px; font-weight: 500; }
+.ap-prog { min-width: 62px; text-align: center; color: var(--gold-bright); font: 600 13px/1 "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums; }
+.ap-quadro:fullscreen .ap-barra.ap-oculta { opacity: 0; pointer-events: none; }
+.ap-carregando { position: absolute; inset: 0 0 56px; margin: 0; display: grid; place-content: center; color: #c3cdda;
+  font: 500 16px/1.4 "Manrope", sans-serif; }
+.ap-carregando[hidden], .ap-irpara[hidden], .ap-ajuda[hidden] { display: none; }
+.ap-irpara { position: absolute; left: 50%; top: 22px; z-index: 4; transform: translateX(-50%); padding: 10px 18px;
+  border: 1px solid var(--gold); border-radius: 999px; background: rgba(8, 18, 33, .96); color: #fff; font: 600 15px/1.2 "Manrope", sans-serif; }
+.ap-irpara b { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--gold-bright); }
+.ap-irpara kbd { padding: 1px 6px; border: 1px solid rgba(201, 168, 76, .4); border-radius: 4px; color: #c3cdda;
+  font: 500 12px "IBM Plex Mono", ui-monospace, monospace; }
+.ap-ajuda { position: absolute; left: 50%; bottom: 62px; z-index: 4; transform: translateX(-50%); width: min(440px, calc(100% - 32px));
+  padding: 16px 20px 14px; border: 1px solid rgba(201, 168, 76, .45); border-radius: 14px; background: rgba(8, 18, 33, .97);
+  color: #dfe5ee; box-shadow: 0 20px 50px -16px rgba(0, 0, 0, .8); }
+.ap-ajuda h2 { margin: 0 0 8px; color: var(--gold); font: 600 11px/1.3 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: .22em; text-transform: uppercase; }
+.ap-ajuda dl { margin: 0; display: grid; gap: 5px; }
+.ap-ajuda dl div { display: flex; justify-content: space-between; gap: 16px; font-size: 13.5px; }
+.ap-ajuda dt { color: var(--gold-bright); font: 500 12.5px/1.5 "IBM Plex Mono", ui-monospace, monospace; }
+.ap-ajuda dd { margin: 0; color: #c3cdda; text-align: right; }
+.ap-ajuda p { margin: 10px 0 0; color: #a3afc0; font-size: 12.5px; }
+@media (pointer: coarse) { .ap-barra .ap-ajuda-b { display: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ap-slide.ap-entra { animation: ap-entra .34s cubic-bezier(.2, .7, .2, 1) both; }
+  .ap-slide.ap-volta { animation: ap-volta .34s cubic-bezier(.2, .7, .2, 1) both; }
+  .ap-frase { transition: opacity .35s ease, visibility .35s; }
+  .ap-barra { transition: opacity .3s ease; }
+}
+@keyframes ap-entra { from { opacity: 0; transform: translateX(1.6%); } }
+@keyframes ap-volta { from { opacity: 0; transform: translateX(-1.6%); } }
+
+/* celular em pé (e paisagem baixa): o slide ocupa a tela, empilha e rola. Só na tela: na impressão
+   as media queries olham o papel padrão (Carta, em pé) antes do @page 16:9 e o PDF saía empilhado */
+@media screen and (orientation: portrait) and (max-width: 820px), screen and (orientation: landscape) and (max-height: 500px) {
+  .ap-palco { place-items: stretch; }
+  .ap-slide { --u: min(1.62cqw, .9cqh); width: 100%; height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    padding: 22px 18px 0; }
+  .ap-capa .ap-corpo::before, .ap-capa .ap-corpo::after { display: none; }
+  /* o corpo não encolhe: o que passa da tela rola, e o rodapé vem depois dele */
+  .ap-corpo { flex: 1 0 auto; }
+  .ap-lateral .ap-corpo { flex-direction: column; gap: 0; }
+  .ap-lateral .ap-texto { flex: none; }
+  .ap-lateral .ap-cartao { margin-top: calc(var(--uk) * 2.4); }
+  .ap-cartao { flex: none; min-height: 0; padding: 10px; }
+  .ap-caixa-grafico { flex: none; }   /* a altura vem do gráfico (comum.js), não da sobra */
+  .ap-grade { grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .ap-rodape { flex-wrap: wrap; gap: 2px 12px; padding: 10px 0 12px; font-size: 11px; }
+  .ap-rodape-fonte { flex-basis: 100%; white-space: normal; }
+  .ap-url { flex: 1 1 auto; max-width: none; margin-left: 0; }
+  .ap-barra .ap-rot { display: none; }
+  .ap-barra button { min-width: 38px; height: 38px; padding: 0 8px; }
+}
+@media screen and (orientation: landscape) and (max-height: 500px) { .ap-slide { --u: 5.2px; } }
+
+/* PDF: a cópia dos slides é montada fora da tela (para medir e desenhar) e só ela
+   vai para o papel, uma por página 16:9, com as cores da tela */
+.ap-impressao { position: absolute; left: -100000px; top: 0; width: 1280px; visibility: hidden; pointer-events: none; }
+.ap-impressao .ap-slide { --u: 7.2px; width: 1280px; height: 720px; }
+.ap-impressao .ap-frase { opacity: 1; visibility: visible; }
+@media print {
+  html.ap-imprimindo, html.ap-imprimindo body { overflow: visible !important; height: auto !important;
+    background: #04090f !important; }
+  html.ap-imprimindo body > *:not(.ap-impressao) { display: none !important; }
+  html.ap-imprimindo .ap-impressao { position: static; left: auto; visibility: visible; }
+  .ap-impressao .ap-slide { break-after: page; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ap-impressao .ap-slide:last-child { break-after: auto; }
+  /* a regra geral de impressão pinta o cabeçalho de toda tabela de cinza e preto */
+  .ap-impressao .ap-tabela thead th { background: none !important; color: var(--ap-mudo) !important; }
+}

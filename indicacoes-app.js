@@ -451,10 +451,26 @@ function dicaMapa(nome, p) {
   ], nota);
 }
 
+// Moldura e rótulo do recorte continental desenhados no próprio gráfico: no slide do
+// modo apresentação (Comum.apresentar) não existe a camada HTML #inset, que é da página
+function molduraContinental(L, p, nCont) {
+  const m = L.moldura;
+  const sub = nCont ? plural(nCont, "indicação", "indicações") : "nenhuma indicação";
+  return [
+    { type: "rect", silent: true, z: 90, shape: { x: m.x + 0.5, y: m.y + 0.5, width: m.w - 1, height: m.h - 1, r: 8 },
+      style: { fill: "transparent", stroke: p.linha, lineWidth: 1 } },
+    { type: "text", silent: true, z: 91, x: m.x + 8, y: L.faixa ? m.y + m.h / 2 : m.y + 5,
+      style: { text: `{t|ÁREA CONTINENTAL}\n{s|${sub}}`, verticalAlign: L.faixa ? "middle" : "top",
+        rich: { t: { fontFamily: p.mono, fontSize: 10, fontWeight: 600, fill: p.tinta, lineHeight: 14 },
+          s: { fontFamily: p.sans, fontSize: 10.5, fill: p.muted, lineHeight: 14 } } } },
+  ];
+}
+
 // option do ECharts (Comum.grafico chama de novo a cada filtro, tema e largura)
-function opcaoMapa(p, largura) {
+function opcaoMapa(p, largura, ctx) {
   registrarMapas();
-  const W = largura, H = el("mapa").clientHeight;
+  const noSlide = !!(ctx && ctx.apresentacao);
+  const W = largura, H = (ctx && ctx.altura) || el("mapa").clientHeight;
   const L = enquadrar(W, H);
   const pequeno = L.ilha.width < 520;
   const centro = ZOOM > 1 ? (CENTRO || centroIlha()) : centroIlha();
@@ -465,20 +481,22 @@ function opcaoMapa(p, largura) {
     type: "map", nameProperty: "nome", aspectScale: ASPECTO, selectedMode: false,
     itemStyle: { borderJoin: "round" }, label: { show: false }, select: { disabled: true },
   };
-  // moldura e rótulo do recorte (HTML por cima do canvas, sem capturar o ponteiro)
-  const ins = el("inset");
-  ins.classList.toggle("ver", mostraInset);
-  ins.classList.toggle("faixa", L.faixa);
-  Object.assign(ins.style, { left: L.moldura.x + "px", top: L.moldura.y + "px", width: L.moldura.w + "px", height: L.moldura.h + "px" });
   const nCont = GEO.cont.reduce((a, f) => a + ((STATS.get(f.properties.nome) || { n: 0 }).n), 0);
-  el("inset-sub").textContent = nCont ? plural(nCont, "indicação", "indicações") : "nenhuma indicação";
+  if (!noSlide) {
+    // moldura e rótulo do recorte (HTML por cima do canvas, sem capturar o ponteiro)
+    const ins = el("inset");
+    ins.classList.toggle("ver", mostraInset);
+    ins.classList.toggle("faixa", L.faixa);
+    Object.assign(ins.style, { left: L.moldura.x + "px", top: L.moldura.y + "px", width: L.moldura.w + "px", height: L.moldura.h + "px" });
+    el("inset-sub").textContent = nCont ? plural(nCont, "indicação", "indicações") : "nenhuma indicação";
+  }
   return {
     // linhas-guia dos rótulos postos fora: desenhadas à mão, em pixels do quadro (a linha
     // automática do ECharts liga à caixa envolvente da região e errava o bairro)
     graphic: [...rotulos.entries()].filter(([, r]) => r.fora && r.linha).map(([nome, r]) => ({
       id: "guia-" + nome, type: "polyline", silent: true, z: 100,
       shape: { points: r.linha }, style: { stroke: p.muted, lineWidth: 1, fill: null },
-    })),
+    })).concat(noSlide && mostraInset ? molduraContinental(L, p, nCont) : []),
     animationDurationUpdate: 250,
     tooltip: { trigger: "item", confine: true, transitionDuration: 0, formatter: (ps) => dicaMapa(ps.name, p) },
     series: [

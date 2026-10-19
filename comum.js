@@ -30,6 +30,11 @@ window.Comum = (() => {
     ["novidades.html", null, "Novidades das bases", "Acompanhamento"],
   ];
   let paginaAtual = null;
+  // estado do modo apresentação (Comum.apresentar, mais abaixo) — aqui em cima porque
+  // toast() e os atalhos globais consultam AP.aberto
+  const AP = { dlg: null, quadro: null, palco: null, barra: null, slides: [], i: 0, passo: 0,
+    aberto: false, montando: false, origem: null, temaAntes: null, buffer: "", tBuffer: 0, tBarra: 0,
+    toque: null, impressao: null, gerando: 0 };
 
   const escapar = (s) =>
     (s == null ? "" : String(s)).replace(/[&<>"']/g,
@@ -166,8 +171,12 @@ window.Comum = (() => {
     return document.documentElement.dataset.tema === "escuro" ? "escuro" : "claro";
   }
   function alternarTema() {
-    const novo = temaAtual() === "escuro" ? "claro" : "escuro";
-    try { localStorage.setItem("tema", novo); } catch (e) { /* modo privado */ }
+    aplicarTema(temaAtual() === "escuro" ? "claro" : "escuro", true);
+  }
+  // `persistir` = false: a apresentação troca o tema só enquanto está aberta, sem mexer
+  // na preferência salva de quem lê o painel
+  function aplicarTema(novo, persistir) {
+    if (persistir) try { localStorage.setItem("tema", novo); } catch (e) { /* modo privado */ }
     if (novo === "escuro") document.documentElement.dataset.tema = "escuro";
     else delete document.documentElement.dataset.tema;
     document.querySelectorAll(".topnav-tema, .hub-tema").forEach((b) =>
@@ -215,8 +224,11 @@ window.Comum = (() => {
       toastEl = document.createElement("div");
       toastEl.className = "toast-comum";
       toastEl.setAttribute("role", "status");
-      document.body.appendChild(toastEl);
     }
+    // com a apresentação aberta o aviso vai dentro dela (a página fica atrás do modal
+    // e, em tela cheia, só o quadro da apresentação aparece)
+    const pai = AP.aberto ? AP.quadro : document.body;
+    if (toastEl.parentNode !== pai) pai.appendChild(toastEl);
     toastEl.textContent = msg;
     toastEl.classList.add("ver");
     clearTimeout(toastTimer);
@@ -282,7 +294,8 @@ window.Comum = (() => {
   //    esperar a biblioteca; repinta no "temamudou" e ao cruzar 640 px (legenda
   //    embaixo no celular); se o CDN falhar, aviso com "Tentar de novo" no lugar.
   // Uso: Comum.grafico(idOuElemento, {
-  //   opcao(p, largura) → option do ECharts (p = Comum.paleta(): cores do tema + `celular`),
+  //   opcao(p, largura, ctx) → option do ECharts (p = Comum.paleta(): cores do tema + `celular`;
+  //     ctx = {altura, apresentacao}: altura do quadro e se é o slide de Comum.apresentar),
   //   acessivel: {descricao, cabecalhos, linhas} (ou função que os devolve),
   //   altura?(largura) → px, eventos?(chart), dependeDaLargura?, renderer? ("canvas" | "svg") })
   // Chamar de novo com o mesmo alvo atualiza o gráfico (dado novo, filtro).
@@ -445,7 +458,7 @@ window.Comum = (() => {
     } else reg.chart.resize();
     reg.larg = larg;
     reg.celular = CELULAR_GRAF.matches;
-    const op = reg.def.opcao(paleta(), larg);
+    const op = reg.def.opcao(paleta(), larg, { altura: reg.el.clientHeight, apresentacao: false });
     if (MOVIMENTO_REDUZIDO.matches) op.animation = false;
     reg.chart.setOption(op, { notMerge: true });
   }
@@ -662,6 +675,7 @@ window.Comum = (() => {
     if (!b) return;
     if (b.dataset.acao === "compartilhar") compartilhar();
     else if (b.dataset.acao === "imprimir") window.print();
+    else if (b.dataset.acao === "apresentar") apresentar({ origem: b });
   });
 
   // Impressão (material de sessão/comissão): a folha leva a lista inteira até
@@ -743,7 +757,7 @@ window.Comum = (() => {
     document.body.appendChild(avisoDados);
   }
 
-  function aoCarregar() { preencherBases(); recolherHero(); }
+  function aoCarregar() { preencherBases(); recolherHero(); abrirApresentacaoPeloLink(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", aoCarregar);
   else aoCarregar();
 
@@ -1127,6 +1141,7 @@ window.Comum = (() => {
 
   // Atalhos globais: Ctrl+K / ⌘K sempre; "/" onde não conflita com atalho local
   document.addEventListener("keydown", (e) => {
+    if (AP.aberto) return;   // a apresentação (modal) tem os seus atalhos
     const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "");
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
@@ -1137,6 +1152,947 @@ window.Comum = (() => {
       abrirPaleta();
     }
   });
+
+  // ── Modo apresentação (Comum.apresentar — M10, out/2026) ────────────────────
+  // O painel vira slides para projetar em sessão, comissão ou reunião de bairro
+  // (passador de slides, teclado ou toque) e para salvar em PDF. Nada é inventado: os
+  // slides saem dos elementos marcados com data-slide (contrato no site-frontend.md) —
+  // capa automática, número-manchete, "Em resumo" frase a frase, cartões, gráficos
+  // REDESENHADOS grandes com a mesma `opcao` do registro GRAFICOS (não são capturas) e
+  // listas curtas —, no recorte (filtros) em que a página está. Tamanhos em --u (1% da
+  // altura do slide 16:9): o mesmo desenho a 1920×1080, a 1366×768 e no PDF (1280×720);
+  // no celular em pé o slide ocupa a tela e empilha. Abre no "Noturno" (tema escuro)
+  // sem mexer na preferência salva; "Fundo claro" serve a sala muito iluminada.
+  const AP_TEMA = "apresentacao:tema";        // tema da apresentação (à parte do tema do site)
+  const AP_PAPEL = { larg: 1280, alt: 720 };  // página do PDF, 16:9
+  const AP_EMPILHADO = matchMedia("screen and (orientation: portrait) and (max-width: 820px), screen and (orientation: landscape) and (max-height: 500px)");
+  // "art. 58", "2º quad. 2026", "Res. Senado": o ponto não fecha a frase
+  const ABREVIACOES = /(?:^|[\s(])(?:arts?|inc|quad|res|n|nº|sra?|dra?|av|p|pág|fls|cap|ex|vs|aprox|[a-z])\.$/i;
+
+  const criar = (tag, cls, texto) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (texto != null) e.textContent = texto;
+    return e;
+  };
+  const maiuscula = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const semPontaInicial = (s) => (s || "").replace(/^[·\s—–-]+/, "");
+  const naPagina = (el) => !!el && !el.closest("[hidden]");
+
+  // Texto visível de um nó: some com o que `ignorar` pegar (selos, contadores, botões) e
+  // separa com " · " o que a página mostra em linhas (prazo · vencimento, p. ex.)
+  function textoLimpo(el, ignorar) {
+    if (!el) return "";
+    let s = "";
+    const andar = (n) => {
+      for (const f of n.childNodes) {
+        if (f.nodeType === 3) { s += f.nodeValue; continue; }
+        if (f.nodeType !== 1 || f.matches("script, style, template, .sr-only, .skel, [aria-hidden='true']")
+            || (ignorar && f.matches(ignorar))) continue;
+        if (f.tagName === "BR") { s += " "; continue; }
+        const d = getComputedStyle(f).display;
+        const sep = d === "inline" || d === "contents" ? "" : " ¶ ";   // selo, bloco, linha própria
+        s += sep;
+        andar(f);
+        s += sep;
+      }
+    };
+    andar(el);
+    return s.replace(/\s+/g, " ").replace(/^[\s¶]+|[\s¶]+$/g, "").replace(/\s*(¶\s*)+/g, " · ").trim();
+  }
+
+  function frasesDe(texto) {
+    const out = [];
+    let ini = 0;
+    const re = /[.!?…]+["”’»]?(?=\s+["“«(]?[A-ZÁÉÍÓÚÂÊÔÃÕÀÇ0-9])/g;
+    for (let m; (m = re.exec(texto));) {
+      if (ABREVIACOES.test(texto.slice(Math.max(ini, m.index - 7), m.index + 1))) continue;
+      const fim = m.index + m[0].length;
+      out.push(texto.slice(ini, fim).trim());
+      ini = fim;
+    }
+    out.push(texto.slice(ini).trim());
+    return out.filter(Boolean);
+  }
+  // "2" ou "1,2" (1 = a primeira frase); sem escolha válida, a 1ª frase com número
+  // (a que costuma trazer a conclusão) ou a 1ª — se `padrao`
+  function escolherFrases(frases, escolha, padrao = true) {
+    const idx = String(escolha || "").split(",").map((x) => parseInt(x, 10) - 1)
+      .filter((k) => k >= 0 && k < frases.length);
+    if (idx.length) return idx.map((k) => frases[k]);
+    if (!padrao || !frases.length) return [];
+    return [frases.find((f) => /\d/.test(f)) || frases[0]];
+  }
+
+  // Valor que um filtro mostra agora ("" = sem filtro): select fora da 1ª opção, busca
+  // preenchida, item ligado (aria-pressed/selected/current) ou o texto de um aviso
+  // (foco num item). `sempre` = mostra mesmo na 1ª opção (tema, indicador escolhido).
+  function valorDoFiltro(el, sempre) {
+    if (!el) return "";
+    if (el.matches("select")) {
+      const op = el.selectedOptions[0];
+      return op && (sempre || el.selectedIndex > 0) ? op.textContent.trim() : "";
+    }
+    if (el.matches("input, textarea")) { const v = el.value.trim(); return v ? `“${v}”` : ""; }
+    const ligado = el.querySelector('[aria-pressed="true"], [aria-selected="true"], [aria-current]:not([aria-current="false"])');
+    if (ligado) return textoLimpo(ligado, ".n");
+    if (el.querySelector("[aria-pressed], [aria-selected], [aria-current]")) return "";
+    return semPontaInicial(textoLimpo(el, "button"));
+  }
+
+  function enderecoCurto() {
+    const p = new URLSearchParams(location.search);
+    p.delete("apresentar");
+    p.delete("slide");
+    let qs = p.toString();
+    try { qs = decodeURIComponent(qs.replace(/\+/g, " ")); } catch (e) { /* fica codificado */ }
+    return (location.host + location.pathname).replace(/^www\./, "").replace(/\/index\.html$/, "/") + (qs ? "?" + qs : "");
+  }
+
+  // Dados da página para a capa e o rodapé: etiqueta e título do topo, recorte (filtros
+  // marcados com data-slide-filtro), linhas de identificação (data-slide-capa), fonte e
+  // data da base (data-slide-fonte e data-slide-base no botão "Apresentar")
+  function infoApresentacao() {
+    const botao = document.querySelector('[data-acao="apresentar"]');
+    const titulo = textoLimpo(document.querySelector("header.hero h1") || document.querySelector("h1")) || document.title;
+    const filtros = [...document.querySelectorAll("[data-slide-filtro]")];
+    return {
+      titulo,
+      olho: textoLimpo(document.querySelector("header.hero .eyebrow")),
+      base: maiuscula(textoLimpo(document.querySelector((botao && botao.dataset.slideBase) || ".base-de"))),
+      fonte: (botao && botao.dataset.slideFonte) || "",
+      url: enderecoCurto(),
+      site: (document.querySelector('meta[property="og:site_name"]') || {}).content || "",
+      capa: [...document.querySelectorAll("[data-slide-capa]")].filter(naPagina)
+        .map((e) => semPontaInicial(textoLimpo(e))).filter(Boolean),
+      temFiltros: filtros.length > 0,
+      recorte: filtros.filter(naPagina).map((e) => valorDoFiltro(e, e.dataset.slideFiltro === "sempre")).filter(Boolean),
+    };
+  }
+
+  // elementos marcados, na ordem: data-slide="N" primeiro (por N), depois a do documento
+  function marcadosParaSlides() {
+    return [...document.querySelectorAll("[data-slide]")]
+      .filter((el) => naPagina(el) && !el.closest(".ap, .ap-impressao"))
+      .map((el, k) => ({ el, k, n: parseFloat(el.dataset.slide) }))
+      .sort((a, b) => ((isNaN(a.n) ? Infinity : a.n) - (isNaN(b.n) ? Infinity : b.n)) || a.k - b.k)
+      .map((x) => x.el);
+  }
+  function tiposDe(el) {
+    const t = (el.dataset.slideTipo || "").trim();
+    if (t) return t.split(/\s+/);
+    if (el.matches(".hero-num")) return ["manchete"];
+    if (el.matches(".stats")) return ["kpis"];
+    if (GRAFICOS.has(el) || el.matches(".grafico")) return ["grafico"];
+    if (el.matches("table, ul, ol") || el.querySelector("table")) return ["lista"];
+    if (el.matches(".resumo-box, p") || el.querySelector(".resumo-texto")) return ["texto"];
+    return ["bloco"];
+  }
+  // título: data-slide-titulo ("{#id}" vira o valor daquele controle) ou o cabeçalho da caixa
+  function tituloDe(el, padrao) {
+    const t = el.dataset.slideTitulo;
+    if (t) return t.replace(/\{([^}]+)\}/g, (_, sel) => valorDoFiltro(document.querySelector(sel), true)).trim();
+    const caixa = el.closest(".box, .cartao, .caixa, details, section");
+    const h = caixa && caixa.querySelector("h2, h3, summary");
+    return (textoLimpo(h, ".sub, .pos-chip, .contagem") || padrao).replace(/^[⚠\s]+/, "");
+  }
+  // texto de apoio (nota): data-slide-nota-de="<seletor>", procurado na caixa do elemento
+  function textoDeApoio(el, sel) {
+    if (!sel) return "";
+    const raiz = sel.startsWith("#") ? document : (el.closest(".box, .cartao, .caixa, section, details") || document);
+    const alvo = raiz.querySelector(sel);
+    return naPagina(alvo) ? textoLimpo(alvo) : "";
+  }
+  // só texto e negrito: o slide não herda botões nem estilos da página
+  function fragmentoTexto(el) {
+    const f = document.createDocumentFragment();
+    if (!el) return f;
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) f.append(n.nodeValue);
+      else if (n.nodeType === 1 && !n.matches(".skel, .sr-only, [aria-hidden='true']"))
+        f.append(/^(B|STRONG)$/.test(n.tagName) ? criar("b", "", n.textContent) : textoLimpo(n));
+    }
+    return f;
+  }
+  // valor de um cartão: o número e a variação (▲/▼, com a cor da página)
+  function fragmentoValor(el) {
+    const f = document.createDocumentFragment();
+    if (!el) return f;
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) f.append(n.nodeValue);
+      else if (n.nodeType === 1 && n.matches(".delta")) f.append(criar("span", n.className, n.textContent.trim()));
+      else if (n.nodeType === 1 && !n.matches(".skel, .sr-only")) f.append(n.textContent);
+    }
+    return f;
+  }
+  // Cópia só para ver: sem ids (não duplicar), sem foco nem papéis de controle; links e
+  // botões viram texto — a ação continua na página
+  const PAPEIS_OK = /^(img|group|list|listitem|table|row|cell|columnheader|rowheader|note|presentation|none|figure|term|definition)$/;
+  function clonarLimpo(el) {
+    const c = el.cloneNode(true);
+    for (const n of [c, ...c.querySelectorAll("*")]) {
+      for (const a of [...n.attributes]) {
+        if (/^(id|for|name|tabindex|contenteditable|draggable|data-slide.*|data-acao|on.*|aria-(live|controls|describedby|labelledby|expanded|pressed|selected|current|busy|haspopup|activedescendant|sort))$/.test(a.name))
+          n.removeAttribute(a.name);
+      }
+      const r = n.getAttribute("role");
+      if (r && !PAPEIS_OK.test(r)) n.removeAttribute("role");
+    }
+    c.querySelectorAll(".skel, table.sr-only, script, template, input, select, textarea").forEach((n) => n.remove());
+    c.querySelectorAll("a, button, summary, label").forEach((n) => {
+      const sp = criar("span", n.matches("a") ? "" : n.className);
+      sp.append(...n.childNodes);
+      n.replaceWith(sp);
+    });
+    c.querySelectorAll("details").forEach((d) => d.setAttribute("open", ""));
+    return c;
+  }
+  // células de um item de lista que não é tabela: os nós com texto (rótulo, valor…) ou,
+  // com data-slide-celulas, um seletor por célula, na ordem pedida
+  function celulasDe(it, seletores, ignorar) {
+    if (seletores) return seletores.split(",").map((sel) => semPontaInicial(textoLimpo(it.querySelector(sel.trim()), ignorar)));
+    const out = [];
+    for (const n of it.childNodes) {
+      let t = "";
+      if (n.nodeType === 3) t = n.nodeValue.replace(/\s+/g, " ").trim();
+      else if (n.nodeType === 1 && n.tagName !== "BR" && !(ignorar && n.matches(ignorar))
+               && !n.matches(".sr-only, .skel, [aria-hidden='true']")) t = textoLimpo(n, ignorar);
+      if (t) out.push(semPontaInicial(t));
+    }
+    return out;
+  }
+  // coluna numérica (à direita, em Plex Mono): todas as células com cara de número
+  // ("R$ 4,2 mi", "37 dias", "12%", "9,04") — "—" e vazio não decidem
+  const NUMERICO = /^[−+–-]?\s*(R\$\s*)?\d[\d.,]*\s*(mi|bi|mil|%|dias?|d|×)?$/;
+  function tabelaDe(cab, linhas, legenda) {
+    const t = criar("table", "ap-tabela");
+    if (legenda) t.append(criar("caption", "sr-only", legenda));
+    const ncol = Math.max(cab.length, ...linhas.map((l) => l.length));
+    const numerica = Array.from({ length: ncol }, (_, k) => {
+      const vals = linhas.map((l) => (l[k] || "").trim()).filter((v) => v && v !== "—");
+      return k > 0 && vals.length > 0 && vals.every((v) => NUMERICO.test(v));
+    });
+    if (cab.some(Boolean)) {
+      const tr = criar("tr");
+      for (let k = 0; k < ncol; k++) {
+        const th = criar("th", numerica[k] ? "ap-num" : "", cab[k] || "");
+        th.scope = "col";
+        tr.append(th);
+      }
+      const thead = criar("thead");
+      thead.append(tr);
+      t.append(thead);
+    }
+    const tb = criar("tbody");
+    for (const l of linhas) {
+      const tr = criar("tr");
+      for (let k = 0; k < ncol; k++) {
+        const v = l[k] || "";
+        const td = criar("td", numerica[k] ? "ap-num" : "");
+        td.append(criar("span", "ap-celula", v));
+        tr.append(td);
+      }
+      tb.append(tr);
+    }
+    t.append(tb);
+    return t;
+  }
+
+  // ── construtores de slide ──
+  function novoSlide(tipo, titulo, { noturno = false, olho = "" } = {}) {
+    const sec = criar("section", `ap-slide ap-${tipo}${noturno ? " ap-noturno" : ""}`);
+    sec.setAttribute("role", "group");
+    sec.setAttribute("aria-roledescription", "slide");
+    if (olho) sec.append(criar("p", "ap-olho", olho));
+    const corpo = criar("div", "ap-corpo");
+    sec.append(corpo);
+    return { tipo, titulo, sec, corpo, passos: 0 };
+  }
+  const tituloH2 = (texto, cls = "ap-titulo") => criar("h2", cls, texto);
+
+  function slideCapa(info) {
+    const s = novoSlide("capa", info.titulo, { noturno: true, olho: info.olho });
+    if (info.titulo.length > 28) s.sec.classList.add("ap-longo");
+    s.corpo.append(tituloH2(info.titulo, "ap-capa-titulo"), criar("div", "ap-capa-fio"));
+    for (const linha of info.capa) s.corpo.append(criar("p", "ap-capa-linha", linha));
+    if (info.temFiltros) {
+      const p = criar("p", "ap-recorte");
+      p.append(criar("span", "ap-recorte-rot", "Recorte"),
+        info.recorte.length ? info.recorte.join(" · ") : "a base inteira, sem filtros");
+      s.corpo.append(p);
+    }
+    if (info.site) s.corpo.append(criar("p", "ap-capa-site", info.site));
+    return s;
+  }
+
+  // número-manchete (.hero-num) ou o 1º cartão de um .stats ("manchete kpis")
+  function slideManchete(el, info) {
+    let grande, contexto;
+    const stat = el.matches(".hero-num") ? null : el.querySelector(".stat");
+    if (stat) {
+      if (stat.querySelector(".skel")) return null;
+      grande = textoLimpo(stat.querySelector(".valor"), ".delta");
+      const rot = textoLimpo(stat.querySelector(".rotulo"));
+      contexto = document.createTextNode([rot.charAt(0).toLowerCase() + rot.slice(1),
+        textoLimpo(stat.querySelector(".sub"))].filter(Boolean).join(" · "));
+    } else {
+      const g = el.querySelector(".grande");
+      if (!g || g.querySelector(".skel")) return null;
+      grande = textoLimpo(g);
+      contexto = fragmentoTexto(el.querySelector(".contexto"));
+    }
+    if (!grande) return null;
+    const frase = contexto.textContent.trim();
+    const s = novoSlide("manchete", `${grande} ${frase}`.trim(), { noturno: true, olho: info.titulo });
+    const c = criar("p", "ap-contexto");
+    c.append(contexto);
+    s.corpo.append(criar("p", "ap-grande", grande), c);
+    return s;
+  }
+
+  // texto corrido ("Em resumo", a regra da Lei Orgânica): uma frase por passo do passador
+  function slideTexto(el, info) {
+    const fonte = el.querySelector("[data-slide-texto], .resumo-texto") || (el.matches("p") ? el : el.querySelector("p")) || el;
+    if (fonte.querySelector(".skel") || fonte.classList.contains("resumo-reserva")) return null;
+    let frases = frasesDe(textoLimpo(fonte, el.dataset.slideIgnorar));
+    const escolha = escolherFrases(frases, el.dataset.slideFrase, false);
+    if (escolha.length) frases = escolha;
+    if (!frases.length) return null;
+    frases[0] = maiuscula(frases[0]);
+    const titulo = tituloDe(el, "Em resumo");
+    const s = novoSlide("texto", titulo, { noturno: true, olho: info.titulo });
+    const lista = criar("ul", "ap-frases");
+    frases.forEach((f, k) => {
+      const li = criar("li", "ap-frase");
+      li.innerHTML = destacarNumeros(f);
+      li.dataset.passo = k;
+      lista.append(li);
+    });
+    s.corpo.append(tituloH2(titulo), lista);
+    s.passos = frases.length - 1;
+    s.frases = frases;
+    return s;
+  }
+
+  function slideKpis(el, info, { semPrimeiro } = {}) {
+    let cards = [...el.querySelectorAll(".stat")].filter((c) => !c.querySelector(".skel"));
+    if (semPrimeiro) cards = cards.slice(1);   // o 1º já foi a manchete
+    if (!cards.length) return null;
+    const titulo = tituloDe(el, "Em números");
+    const s = novoSlide("kpis", titulo, { olho: info.titulo });
+    const grade = criar("div", "ap-grade");
+    grade.style.setProperty("--ap-cols", cards.length === 4 ? 2 : Math.min(cards.length, 3));
+    for (const c of cards) {
+      const k = criar("div", "ap-kpi");
+      const v = criar("div", "ap-kpi-valor");
+      v.append(fragmentoValor(c.querySelector(".valor")));
+      k.append(criar("div", "ap-kpi-rotulo", textoLimpo(c.querySelector(".rotulo"))), v);
+      // "→ ver" é o convite do link da página; no slide não há para onde ir
+      const sub = textoLimpo(c.querySelector(".sub")).replace(/\s*→\s*ver$/i, "");
+      if (sub) k.append(criar("div", "ap-kpi-sub", sub));
+      grade.append(k);
+    }
+    s.corpo.append(tituloH2(titulo), grade);
+    return s;
+  }
+
+  // gráfico do registro, redesenhado grande (desenharNoSlide) com a frase-síntese tirada
+  // da descrição acessível (data-slide-frase escolhe qual)
+  function slideGrafico(el, info) {
+    const reg = GRAFICOS.get(el);
+    if (!reg) return null;
+    const a = (typeof reg.def.acessivel === "function" ? reg.def.acessivel() : reg.def.acessivel) || {};
+    const frases = frasesDe(a.descricao || "");
+    const titulo = tituloDe(el, "Gráfico");
+    const lateral = el.dataset.slideLayout ? el.dataset.slideLayout === "lateral" : !!reg.def.altura;
+    const s = novoSlide("grafico", titulo, { olho: info.titulo });
+    if (lateral) s.sec.classList.add("ap-lateral");
+    const texto = criar("div", "ap-texto");
+    texto.append(tituloH2(titulo));
+    const sintese = escolherFrases(frases, el.dataset.slideFrase).join(" ");
+    if (sintese) {
+      const p = criar("p", "ap-sintese");
+      p.innerHTML = destacarNumeros(sintese);
+      texto.append(p);
+    }
+    const cartao = criar("div", "ap-cartao");
+    const caixa = criar("div", "ap-caixa-grafico");
+    const moldura = criar("div", "ap-moldura");
+    const alvo = criar("div", "ap-alvo");
+    alvo.id = "ap-grafico-" + (++AP.gerando);
+    moldura.append(alvo);
+    caixa.append(moldura);
+    cartao.append(caixa);
+    const leg = el.dataset.slideLegenda && document.querySelector(el.dataset.slideLegenda);
+    if (naPagina(leg) && leg.textContent.trim()) {
+      const l = criar("div", "ap-legenda");
+      l.append(clonarLimpo(leg));
+      cartao.append(l);
+    }
+    const nota = el.dataset.slideNota || escolherFrases(frases, el.dataset.slideNotaFrase, false).join(" ")
+      || textoDeApoio(el, el.dataset.slideNotaDe);
+    s.corpo.append(texto, cartao);
+    if (nota) (lateral ? texto : s.corpo).append(criar("p", "ap-nota", nota));
+    if (a.descricao) chartAcessivel(alvo, a.descricao, a.cabecalhos || [], a.linhas || []);
+    s.grafico = { el, alvo, moldura, caixa, cartao, acessivel: a, inst: null, chave: "" };
+    return s;
+  }
+
+  // lista curta (os N primeiros, na ordem da página): tabela ou itens (data-slide-itens)
+  function slideLista(el, info) {
+    const max = parseInt(el.dataset.slideMax, 10) || 6;
+    const ign = el.dataset.slideIgnorar;
+    const tabela = el.matches("table") ? el : el.querySelector("table");
+    let cab = [], linhas;
+    if (tabela && !el.dataset.slideItens) {
+      cab = [...tabela.querySelectorAll("thead th")].map((th) => textoLimpo(th, ign));
+      linhas = [...tabela.querySelectorAll("tbody > tr")].map((tr) => [...tr.children].map((c) => textoLimpo(c, ign)));
+      const cols = (el.dataset.slideColunas || "").split(",").map((x) => parseInt(x, 10) - 1).filter((k) => k >= 0);
+      if (cols.length) {
+        cab = cols.map((k) => cab[k] || "");
+        linhas = linhas.map((l) => cols.map((k) => l[k] || ""));
+      }
+    } else {
+      linhas = [...el.querySelectorAll(el.dataset.slideItens || ":scope > *")]
+        .map((it) => celulasDe(it, el.dataset.slideCelulas, ign));
+    }
+    linhas = linhas.filter((l) => l.some(Boolean));
+    if (!linhas.length) return null;
+    const titulo = tituloDe(el, "Lista");
+    const s = novoSlide("lista", titulo, { olho: info.titulo });
+    s.corpo.append(tituloH2(titulo), tabelaDe(cab, linhas.slice(0, max), titulo));
+    const notas = [];
+    if (linhas.length > max) notas.push(`e mais ${linhas.length - max} na página`);
+    if (el.dataset.slideNota) notas.push(el.dataset.slideNota);
+    if (notas.length) s.corpo.append(criar("p", "ap-nota", notas.join(" · ")));
+    return s;
+  }
+
+  // bloco da página copiado e ampliado (o semáforo, p. ex.): o CSS da página vale aqui
+  function slideBloco(el, info) {
+    if (el.querySelector(".skel") || !el.textContent.trim()) return null;
+    const titulo = tituloDe(el, "");
+    const s = novoSlide("bloco", titulo || info.titulo, { olho: info.titulo });
+    const w = criar("div", "ap-clone");
+    w.dataset.zoom = el.dataset.slideZoom || "1";
+    w.append(clonarLimpo(el));
+    if (titulo) s.corpo.append(tituloH2(titulo));
+    s.corpo.append(w);
+    return s;
+  }
+
+  function rodapeSlide(info, fonte, n, total) {
+    const f = criar("footer", "ap-rodape");
+    f.append(criar("span", "ap-rodape-fonte", [fonte && "Fonte: " + fonte, info.base].filter(Boolean).join(" · ")),
+      criar("span", "ap-url", info.url), criar("span", "ap-n", `${n}/${total}`));
+    return f;
+  }
+
+  const CONSTRUTORES = { manchete: slideManchete, texto: slideTexto, kpis: slideKpis, grafico: slideGrafico,
+    lista: slideLista, bloco: slideBloco };
+  function montarDeck(paraImpressao) {
+    const info = infoApresentacao();
+    const slides = [slideCapa(info)];
+    for (const el of marcadosParaSlides()) {
+      const tipos = tiposDe(el);
+      for (const tipo of tipos) {
+        try {
+          const s = CONSTRUTORES[tipo] && CONSTRUTORES[tipo](el, info,
+            { semPrimeiro: tipo === "kpis" && tipos.includes("manchete") });
+          if (s) { s.fonte = el.dataset.slideFonte || info.fonte; slides.push(s); }
+        } catch (e) { console.warn("apresentação: slide pulado —", e); }
+      }
+    }
+    slides.forEach((s, k) => {
+      s.sec.append(rodapeSlide(info, s.fonte ?? info.fonte, k + 1, slides.length));
+      s.sec.setAttribute("aria-label", `${k + 1} de ${slides.length}: ${s.titulo}`);
+      s.sec.hidden = !paraImpressao;
+    });
+    return slides;
+  }
+
+  // ── ajuste ao tamanho: número numa linha só, texto que não cabe encolhe, gráfico ──
+  function unidadeAp(impressao) {
+    if (impressao) return AP_PAPEL.alt / 100;
+    const r = AP.palco.getBoundingClientRect();
+    return Math.min(r.height / 100, (r.width * 0.5625) / 100);
+  }
+  function encaixarLinha(el) {
+    el.style.fontSize = "";
+    const w = el.clientWidth, sw = el.scrollWidth;
+    if (w && sw > w + 1) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * w / sw * 0.98).toFixed(1) + "px";
+  }
+  function encaixarAltura(sec) {
+    let k = 1;
+    sec.style.removeProperty("--ap-k");
+    while (k > 0.64 && sec.scrollHeight > sec.clientHeight + 1) {
+      k = +(k - 0.06).toFixed(2);
+      sec.style.setProperty("--ap-k", k);
+    }
+  }
+  function ajustarSlide(s, impressao = false) {
+    if (!s || !s.sec.isConnected) return;
+    const empilhado = AP_EMPILHADO.matches && !impressao;
+    const u = unidadeAp(impressao);
+    s.sec.querySelectorAll(".ap-clone").forEach((c) => {
+      c.style.zoom = empilhado ? "" : String(((u / 5.6) * (parseFloat(c.dataset.zoom) || 1)).toFixed(3));
+    });
+    // legenda HTML da página (~12 px) a ~1,75% da altura do slide
+    s.sec.querySelectorAll(".ap-legenda").forEach((l) => { l.style.zoom = empilhado ? "1.1" : ((u * 1.75) / 12).toFixed(3); });
+    s.sec.querySelectorAll(".ap-grande, .ap-kpi-valor").forEach(encaixarLinha);
+    if (!empilhado) encaixarAltura(s.sec);
+    if (s.grafico) desenharNoSlide(s, impressao);
+    if (!impressao) marcarRolagem(s);
+  }
+  // no celular, o slide que passa da tela rola: ganha foco pelo teclado (as setas ↑/↓
+  // rolam; PageUp/PageDown, do passador, continuam trocando de slide)
+  function marcarRolagem(s) {
+    if (AP_EMPILHADO.matches && s.sec.scrollHeight > s.sec.clientHeight + 1) s.sec.tabIndex = 0;
+    else s.sec.removeAttribute("tabindex");
+  }
+
+  // Altura em que o gráfico foi pensado: a definição (altura) ou a do quadro na página.
+  // O desenho no slide usa ESSA altura, ampliada por escala — o `opcao` que mede o próprio
+  // quadro (mapa do gasto, rosca, mapa dos bairros) continua coerente.
+  function alturaNatural(reg, larg) {
+    if (reg.def.altura) return reg.def.altura(larg);
+    if (reg.el.clientHeight) return reg.el.clientHeight;
+    const css = getComputedStyle(reg.el).getPropertyValue("--altura-grafico").trim();
+    return /px$/.test(css) ? parseFloat(css) : 300;
+  }
+  function desenharNoSlide(s, impressao) {
+    const g = s.grafico;
+    const reg = GRAFICOS.get(g.el);
+    if (!reg || g.reserva) return;
+    if (!window.echarts) {
+      if (impressao) { tabelaNoLugar(s, true); return; }
+      carregarEcharts()
+        .then(() => quandoFonte(FACES_GRAFICO, () => { if (s.sec.isConnected && !s.sec.hidden) desenharNoSlide(s); }))
+        .catch(() => tabelaNoLugar(s));
+      return;
+    }
+    const empilhado = AP_EMPILHADO.matches && !impressao;
+    if (empilhado) g.caixa.style.height = alturaNatural(reg, g.caixa.clientWidth) + "px";
+    else g.caixa.style.height = "";
+    const r = g.caixa.getBoundingClientRect();
+    if (r.width < 40 || r.height < 40) return;
+    // escala: fontes do gráfico (~11,5 px na página) ≈ 2% da altura do slide, limitada pelo
+    // que cabe na caixa; largura virtual de no mínimo 520 px (o desenho de desktop).
+    // data-slide-altura="livre" (gráfico cujo `opcao` não mede o próprio quadro): a altura
+    // virtual acompanha a caixa e a escala fica no alvo
+    const livre = g.el.dataset.slideAltura === "livre" && !reg.def.altura && !empilhado;
+    let esc = 1;
+    if (!empilhado) {
+      const alvoEsc = unidadeAp(impressao) / 5.6;
+      esc = livre ? Math.min(alvoEsc, r.width / 520)
+        : Math.max(0.6, Math.min(r.height / alturaNatural(reg, r.width / alvoEsc), r.width / 520, alvoEsc * 1.3));
+    }
+    const vw = Math.round(r.width / esc);
+    const vh = Math.round(livre ? r.height / esc : alturaNatural(reg, vw));
+    if (!empilhado) esc = Math.min(esc, r.height / vh);
+    const tema = temaAtual() === "escuro" ? "gabinete-escuro" : "gabinete-claro";
+    const chave = [vw, vh, esc.toFixed(3), tema, impressao].join("|");
+    if (g.inst && g.chave === chave) return;
+    g.chave = chave;
+    Object.assign(g.moldura.style, { width: vw * esc + "px", height: vh * esc + "px",
+      left: Math.max(0, (r.width - vw * esc) / 2) + "px", top: Math.max(0, (r.height - vh * esc) / 2) + "px" });
+    Object.assign(g.alvo.style, { width: vw + "px", height: vh + "px", transform: esc === 1 ? "" : `scale(${esc})` });
+    try {
+      if (g.inst) g.inst.dispose();
+      g.inst = window.echarts.init(g.alvo, tema, { renderer: "svg", locale: "PT-BR", width: vw, height: vh });
+      const op = reg.def.opcao({ ...paleta(), celular: empilhado }, vw, { altura: vh, apresentacao: true });
+      if (impressao || MOVIMENTO_REDUZIDO.matches) op.animation = false;
+      g.inst.setOption(op, { notMerge: true });
+      if (!impressao) marcarRolagem(s);   // a altura do gráfico pode ter feito o slide rolar
+    } catch (e) {
+      console.warn("apresentação: gráfico", e);
+      tabelaNoLugar(s, impressao);
+    }
+  }
+  // biblioteca fora do ar (ou dado inesperado): a tabela equivalente, à vista, no lugar
+  function tabelaNoLugar(s, impressao) {
+    const g = s.grafico, a = g.acessivel;
+    if (g.reserva) return;
+    g.reserva = true;
+    if (g.inst) { g.inst.dispose(); g.inst = null; }
+    g.caixa.replaceChildren(criar("p", "ap-aviso", "Gráfico indisponível agora (biblioteca fora do ar) — os números estão na tabela."));
+    const area = criar("div", "ap-reserva");
+    if (!impressao) {
+      area.tabIndex = 0;
+      area.setAttribute("role", "region");
+      area.setAttribute("aria-label", "Tabela: " + s.titulo);
+    }
+    area.append(tabelaDe(a.cabecalhos || [], a.linhas || [], a.descricao || s.titulo));
+    g.caixa.append(area);
+    g.caixa.classList.add("ap-sem-grafico");
+  }
+
+  // ── a moldura: <dialog> modal com o palco, a barra e os atalhos ──
+  const ICONES = {
+    tela: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    tema: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
+  };
+  function montarDialogo() {
+    if (AP.dlg) return;
+    const d = criar("dialog", "ap");
+    d.innerHTML =
+      '<div class="ap-quadro">' +
+      '<div class="ap-palco" tabindex="-1"></div>' +
+      '<p class="ap-carregando" role="status">Preparando a apresentação…</p>' +
+      '<div class="ap-irpara" hidden></div>' +
+      '<div class="ap-ajuda" id="ap-ajuda" role="region" aria-labelledby="ap-ajuda-tit" hidden>' +
+      '<h2 id="ap-ajuda-tit">Atalhos</h2><dl>' +
+      "<div><dt>→ · PageDown · Espaço</dt><dd>avançar</dd></div>" +
+      "<div><dt>← · PageUp</dt><dd>voltar</dd></div>" +
+      "<div><dt>Home · End</dt><dd>primeiro · último slide</dd></div>" +
+      "<div><dt>número + Enter</dt><dd>ir para o slide</dd></div>" +
+      "<div><dt>F</dt><dd>tela cheia</dd></div>" +
+      "<div><dt>?</dt><dd>estes atalhos</dd></div>" +
+      "<div><dt>Esc</dt><dd>sair</dd></div></dl>" +
+      "<p>No celular, deslize para os lados.</p></div>" +
+      '<div class="ap-barra">' +
+      '<button type="button" class="ap-ant" aria-label="Slide anterior">‹</button>' +
+      '<span class="ap-prog"><span class="sr-only">Slide </span><span class="ap-prog-n">1</span>' +
+      '<span aria-hidden="true"> / </span><span class="sr-only"> de </span><span class="ap-prog-t">1</span></span>' +
+      '<button type="button" class="ap-prox" aria-label="Próximo slide">›</button>' +
+      `<button type="button" class="ap-tema">${ICONES.tema}<span class="ap-rot"></span></button>` +
+      `<button type="button" class="ap-tela" aria-label="Tela cheia (F)" aria-pressed="false">${ICONES.tela}<span class="ap-rot">Tela cheia</span></button>` +
+      `<button type="button" class="ap-pdf" aria-label="Salvar PDF">${ICONES.pdf}<span class="ap-rot">Salvar PDF</span></button>` +
+      '<button type="button" class="ap-ajuda-b" aria-expanded="false" aria-controls="ap-ajuda" aria-label="Atalhos do teclado (?)">?</button>' +
+      '<button type="button" class="ap-fechar" aria-label="Sair da apresentação (Esc)">✕<span class="ap-rot">Sair</span></button>' +
+      "</div>" +
+      '<div class="ap-anuncio sr-only" aria-live="polite"></div></div>';
+    document.body.append(d);
+    const $ = (sel) => d.querySelector(sel);
+    Object.assign(AP, { dlg: d, quadro: $(".ap-quadro"), palco: $(".ap-palco"), barra: $(".ap-barra"),
+      carregando: $(".ap-carregando"), irParaEl: $(".ap-irpara"), ajuda: $(".ap-ajuda"), anuncio: $(".ap-anuncio"),
+      progN: $(".ap-prog-n"), progT: $(".ap-prog-t"), btAnt: $(".ap-ant"), btProx: $(".ap-prox"), btTema: $(".ap-tema"),
+      btTela: $(".ap-tela"), btAjuda: $(".ap-ajuda-b") });
+    if (!document.fullscreenEnabled) AP.btTela.hidden = true;   // iPhone: sem tela cheia de página
+    AP.btAnt.addEventListener("click", voltarAp);
+    AP.btProx.addEventListener("click", avancarAp);
+    AP.btTema.addEventListener("click", alternarTemaAp);
+    AP.btTela.addEventListener("click", alternarTelaCheia);
+    $(".ap-pdf").addEventListener("click", salvarPdf);
+    AP.btAjuda.addEventListener("click", () => alternarAjuda());
+    $(".ap-fechar").addEventListener("click", fecharApresentacao);
+    d.addEventListener("keydown", teclaAp);
+    d.addEventListener("cancel", (e) => { e.preventDefault(); fecharApresentacao(); });
+    d.addEventListener("close", () => { if (AP.aberto) fecharApresentacao(); });
+    d.addEventListener("pointermove", mostrarBarra);
+    d.addEventListener("focusin", mostrarBarra);
+    // deslizar (toque/caneta): para o lado avança ou volta; na vertical o slide rola
+    AP.palco.addEventListener("pointerdown", (e) => {
+      AP.toque = e.pointerType === "mouse" ? null : { x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    AP.palco.addEventListener("pointerup", (e) => {
+      const t = AP.toque;
+      AP.toque = null;
+      if (!t) return;
+      const dx = e.clientX - t.x, dy = e.clientY - t.y;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy) && performance.now() - t.t < 900) (dx < 0 ? avancarAp : voltarAp)();
+    });
+    AP.palco.addEventListener("pointercancel", () => { AP.toque = null; });
+  }
+
+  // Espera a página terminar de desenhar: sem esqueleto à vista e o DOM quieto por um
+  // instante (o índice, o mapa e os gráficos chegam em tempos diferentes). Teto de 8 s.
+  function aguardarPagina(maxMs = 8000) {
+    return new Promise((ok) => {
+      const t0 = performance.now();
+      let ultima = t0;
+      const obs = new MutationObserver((ms) => {
+        if (ms.some((m) => !(m.target.closest ? m.target : m.target.parentElement)?.closest(".ap, .toast-comum"))) ultima = performance.now();
+      });
+      obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
+      const esqueleto = () => [...document.querySelectorAll(".skel")].some((s) => !s.closest(".ap") && s.getClientRects().length);
+      const passo = () => {
+        const agora = performance.now();
+        if (agora - t0 > maxMs || (document.readyState === "complete" && !esqueleto() && agora - ultima > 250)) {
+          obs.disconnect();
+          ok();
+        } else setTimeout(passo, 100);
+      };
+      passo();
+    });
+  }
+
+  // Abre a apresentação da página (botão data-acao="apresentar" ou ?apresentar=1&slide=N)
+  async function apresentar(op = {}) {
+    if (AP.aberto) return;
+    montarDialogo();
+    AP.aberto = true;
+    AP.montando = true;
+    AP.origem = op.origem || document.querySelector('[data-acao="apresentar"]');
+    AP.temaAntes = temaAtual();
+    let temaAp = "escuro";
+    try { temaAp = localStorage.getItem(AP_TEMA) || "escuro"; } catch (e) { /* modo privado */ }
+    if (temaAp !== AP.temaAntes) aplicarTema(temaAp, false);
+    document.documentElement.classList.add("ap-ativo");
+    AP.dlg.setAttribute("aria-label", "Apresentação: " +
+      (textoLimpo(document.querySelector("header.hero h1") || document.querySelector("h1")) || document.title));
+    AP.palco.replaceChildren();
+    AP.carregando.hidden = false;
+    AP.barra.classList.remove("ap-oculta");
+    AP.dlg.showModal();
+    AP.palco.focus();
+    carregarEcharts().catch(() => { /* cada gráfico cai na tabela */ });
+    await aguardarPagina();
+    AP.montando = false;
+    if (!AP.aberto) return;
+    construirDeck(op.slide ? op.slide - 1 : 0, op.slide ? "fim" : 0);
+    AP.carregando.hidden = true;
+    anunciar(`Apresentação com ${AP.slides.length} slides. Setas ou passador avançam e voltam; Esc sai.`);
+    if (matchMedia("(pointer: coarse)").matches) toast("Deslize para os lados para trocar de slide.");
+  }
+  function construirDeck(i, passo) {
+    for (const s of AP.slides) if (s.grafico && s.grafico.inst) s.grafico.inst.dispose();
+    AP.slides = montarDeck(false);
+    AP.palco.replaceChildren(...AP.slides.map((s) => s.sec));
+    AP.i = -1;
+    irPara(i, passo, false);
+  }
+  function fecharApresentacao() {
+    if (!AP.aberto) return;
+    AP.aberto = false;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    for (const s of AP.slides) if (s.grafico && s.grafico.inst) s.grafico.inst.dispose();
+    AP.slides = [];
+    AP.palco.replaceChildren();
+    alternarAjuda(false);
+    limparBuffer();
+    if (AP.dlg.open) AP.dlg.close();
+    document.documentElement.classList.remove("ap-ativo");
+    if (temaAtual() !== AP.temaAntes) aplicarTema(AP.temaAntes, false);
+    gravarUrlApresentacao();
+    const o = AP.origem;
+    if (o && o.isConnected && typeof o.focus === "function") o.focus();
+  }
+
+  function irPara(i, passo = 0, anunciarTroca = true) {
+    const n = AP.slides.length;
+    if (!n) return;
+    i = Math.max(0, Math.min(n - 1, i));
+    const ant = AP.slides[AP.i], s = AP.slides[i];
+    const troca = ant !== s;
+    if (ant && troca) ant.sec.hidden = true;
+    AP.passo = passo === "fim" ? s.passos : Math.max(0, Math.min(s.passos, passo));
+    s.sec.hidden = false;
+    s.sec.classList.remove("ap-entra", "ap-volta");
+    if (troca && ant && !MOVIMENTO_REDUZIDO.matches) {
+      void s.sec.offsetWidth;   // reinicia a animação
+      s.sec.classList.add(i > AP.i ? "ap-entra" : "ap-volta");
+    }
+    AP.i = i;
+    aplicarPassos(s);
+    ajustarSlide(s);
+    atualizarBarra();
+    gravarUrlApresentacao();
+    if (troca && anunciarTroca) anunciar(`Slide ${i + 1} de ${n}: ${s.titulo}`);
+  }
+  function aplicarPassos(s) {
+    if (!s.passos) return;
+    s.sec.querySelectorAll(".ap-frase").forEach((li) => {
+      const k = +li.dataset.passo;
+      li.classList.toggle("ap-visto", k < AP.passo);
+      li.classList.toggle("ap-agora", k === AP.passo);
+      li.classList.toggle("ap-futuro", k > AP.passo);
+    });
+  }
+  function avancarAp() {
+    const s = AP.slides[AP.i];
+    if (!s) return;
+    if (AP.passo < s.passos) {
+      AP.passo++;
+      aplicarPassos(s);
+      atualizarBarra();
+      anunciar(s.frases[AP.passo]);
+    } else if (AP.i < AP.slides.length - 1) irPara(AP.i + 1, 0);
+  }
+  function voltarAp() {
+    const s = AP.slides[AP.i];
+    if (!s) return;
+    if (AP.passo > 0) {
+      AP.passo--;
+      aplicarPassos(s);
+      atualizarBarra();
+    } else if (AP.i > 0) irPara(AP.i - 1, "fim");
+  }
+  function atualizarBarra() {
+    const n = AP.slides.length, s = AP.slides[AP.i];
+    AP.progN.textContent = String(AP.i + 1);
+    AP.progT.textContent = String(n);
+    AP.btAnt.setAttribute("aria-disabled", String(AP.i <= 0 && AP.passo === 0));
+    AP.btProx.setAttribute("aria-disabled", String(!s || (AP.i >= n - 1 && AP.passo >= s.passos)));
+    const escuro = temaAtual() === "escuro";
+    AP.btTema.setAttribute("aria-label", escuro ? "Fundo claro (sala iluminada)" : "Fundo escuro");
+    AP.btTema.querySelector(".ap-rot").textContent = escuro ? "Fundo claro" : "Fundo escuro";
+  }
+  function gravarUrlApresentacao() {
+    const p = new URLSearchParams(location.search);
+    if (AP.aberto) { p.set("apresentar", "1"); p.set("slide", String(AP.i + 1)); }
+    else { p.delete("apresentar"); p.delete("slide"); }
+    const qs = p.toString();
+    history.replaceState(history.state, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+  }
+  function anunciar(msg) {
+    if (!AP.anuncio) return;
+    AP.anuncio.textContent = "";
+    setTimeout(() => { AP.anuncio.textContent = msg; }, 30);   // repetir a mesma frase também é lido
+  }
+
+  function teclaAp(e) {
+    if (!AP.aberto || e.altKey || e.ctrlKey || e.metaKey) return;   // Ctrl+P etc. seguem para o navegador
+    const k = e.key;
+    const emBotao = !!(e.target.closest && e.target.closest("button"));
+    // ↑/↓ rolam o que rola (tabela de reserva, slide comprido no celular)
+    const emTabela = !!(e.target.closest && e.target.closest(".ap-reserva, .ap-slide[tabindex='0']"));
+    if (k === "Tab") { prenderFoco(e); return; }
+    if (k === "Escape") {
+      e.preventDefault();
+      if (AP.buffer) limparBuffer();
+      else if (!AP.ajuda.hidden) alternarAjuda(false);
+      else fecharApresentacao();
+      return;
+    }
+    if (!AP.slides.length) return;
+    if (/^[0-9]$/.test(k)) { e.preventDefault(); digitar(k); return; }
+    if (k === "Backspace" && AP.buffer) { e.preventDefault(); digitar(null); return; }
+    if (k === "Enter" && AP.buffer) { e.preventDefault(); irParaBuffer(); return; }
+    const avanca = k === "ArrowRight" || k === "PageDown" || (k === "ArrowDown" && !emTabela)
+      || (k === " " && !e.shiftKey && !emBotao) || (k === "Enter" && !emBotao);
+    const volta = k === "ArrowLeft" || k === "PageUp" || (k === "ArrowUp" && !emTabela) || (k === " " && e.shiftKey && !emBotao);
+    if (avanca || volta) { e.preventDefault(); (avanca ? avancarAp : voltarAp)(); return; }
+    if (k === "Home") { e.preventDefault(); irPara(0, 0); }
+    else if (k === "End") { e.preventDefault(); irPara(AP.slides.length - 1, "fim"); }
+    else if (k === "f" || k === "F") { e.preventDefault(); alternarTelaCheia(); }
+    else if (k === "?") { e.preventDefault(); alternarAjuda(); }
+  }
+  // foco preso no diálogo: Tab circula entre os controles visíveis
+  function prenderFoco(e) {
+    const itens = [...AP.dlg.querySelectorAll("button, [tabindex='0']")]
+      .filter((x) => !x.closest("[hidden]") && x.getClientRects().length);
+    if (!itens.length) return;
+    e.preventDefault();
+    const k = itens.indexOf(document.activeElement);
+    itens[e.shiftKey ? (k <= 0 ? itens.length - 1 : k - 1) : (k < 0 || k >= itens.length - 1 ? 0 : k + 1)].focus();
+  }
+  function digitar(d) {
+    AP.buffer = d === null ? AP.buffer.slice(0, -1) : (AP.buffer + d).slice(-3);
+    clearTimeout(AP.tBuffer);
+    if (!AP.buffer) { limparBuffer(); return; }
+    AP.irParaEl.hidden = false;
+    AP.irParaEl.innerHTML = `Ir para o slide <b>${escapar(AP.buffer)}</b> · <kbd>Enter</kbd>`;
+    AP.tBuffer = setTimeout(limparBuffer, 3000);
+  }
+  function limparBuffer() {
+    AP.buffer = "";
+    clearTimeout(AP.tBuffer);
+    if (AP.irParaEl) AP.irParaEl.hidden = true;
+  }
+  function irParaBuffer() {
+    const n = parseInt(AP.buffer, 10);
+    limparBuffer();
+    if (n >= 1) irPara(n - 1, 0);
+  }
+  function alternarAjuda(mostrar) {
+    if (!AP.ajuda) return;
+    const m = mostrar ?? AP.ajuda.hidden;
+    AP.ajuda.hidden = !m;
+    AP.btAjuda.setAttribute("aria-expanded", String(m));
+  }
+  // em tela cheia a barra some depois de 2,6 s parada (o rodapé do slide já diz "3/8")
+  function mostrarBarra() {
+    if (!AP.barra) return;
+    AP.barra.classList.remove("ap-oculta");
+    AP.quadro.classList.remove("ap-sem-cursor");
+    clearTimeout(AP.tBarra);
+    if (document.fullscreenElement !== AP.quadro) return;
+    AP.tBarra = setTimeout(() => {
+      if (AP.barra.contains(document.activeElement) && document.activeElement.matches(":focus-visible")) return;
+      AP.barra.classList.add("ap-oculta");
+      AP.quadro.classList.add("ap-sem-cursor");
+    }, 2600);
+  }
+  function alternarTelaCheia() {
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+    const aviso = () => toast("Tela cheia indisponível neste navegador — use a tecla F11.");
+    if (!AP.quadro.requestFullscreen) { aviso(); return; }
+    try { AP.quadro.requestFullscreen({ navigationUI: "hide" }).catch(aviso); } catch (e) { aviso(); }
+  }
+  document.addEventListener("fullscreenchange", () => {
+    if (!AP.btTela) return;
+    const cheia = document.fullscreenElement === AP.quadro;
+    AP.btTela.setAttribute("aria-pressed", String(cheia));
+    AP.btTela.setAttribute("aria-label", cheia ? "Sair da tela cheia (F)" : "Tela cheia (F)");
+    mostrarBarra();
+  });
+  function alternarTemaAp() {
+    const novo = temaAtual() === "escuro" ? "claro" : "escuro";
+    try { localStorage.setItem(AP_TEMA, novo); } catch (e) { /* modo privado */ }
+    aplicarTema(novo, false);
+  }
+  // tema trocado: refaz os slides DEPOIS dos outros ouvintes (a página repinta as legendas
+  // HTML que o slide copia) — mesmo slide e mesmo passo
+  window.addEventListener("temamudou", () => {
+    if (!AP.aberto || AP.montando) return;
+    setTimeout(() => { if (AP.aberto && !AP.montando) construirDeck(AP.i, AP.passo); }, 60);
+  });
+  let tAjusteAp = 0;
+  window.addEventListener("resize", () => {
+    if (!AP.aberto) return;
+    clearTimeout(tAjusteAp);
+    tAjusteAp = setTimeout(() => ajustarSlide(AP.slides[AP.i]), 120);
+  });
+
+  // ── PDF: todos os slides, um por página 16:9, gráficos em SVG e as cores da tela ──
+  // Uma cópia dos slides (.ap-impressao) é montada fora da tela, medida e desenhada
+  // antes da impressão; o @page 16:9 só existe enquanto ela existe — o "Imprimir" da
+  // página continua como era.
+  function prepararImpressao() {
+    desfazerImpressao();
+    const caixa = criar("div", "ap-impressao");
+    caixa.setAttribute("aria-hidden", "true");
+    const slides = montarDeck(true);
+    caixa.append(...slides.map((s) => s.sec));
+    document.body.append(caixa);
+    for (const s of slides) ajustarSlide(s, true);
+    const estilo = criar("style");
+    estilo.textContent = `@page { size: ${AP_PAPEL.larg}px ${AP_PAPEL.alt}px; margin: 0; }`;
+    document.head.append(estilo);
+    document.documentElement.classList.add("ap-imprimindo");
+    AP.impressao = { caixa, slides, estilo };
+  }
+  function desfazerImpressao() {
+    const im = AP.impressao;
+    if (!im) return;
+    for (const s of im.slides) if (s.grafico && s.grafico.inst) s.grafico.inst.dispose();
+    im.caixa.remove();
+    im.estilo.remove();
+    document.documentElement.classList.remove("ap-imprimindo");
+    AP.impressao = null;
+  }
+  async function salvarPdf() {
+    toast("Preparando o PDF…");
+    try { await carregarEcharts(); } catch (e) { /* sem biblioteca: as tabelas vão no lugar dos gráficos */ }
+    await new Promise((ok) => quandoFonte(FACES_GRAFICO, ok));
+    if (!AP.aberto) return;
+    prepararImpressao();
+    toast("Na janela de impressão, escolha “Salvar como PDF”.");
+    window.print();
+  }
+  // Ctrl+P com a apresentação aberta também imprime os slides
+  window.addEventListener("beforeprint", () => { if (AP.aberto && !AP.impressao) prepararImpressao(); });
+  window.addEventListener("afterprint", desfazerImpressao);
+
+  // link ?apresentar=1&slide=N (só em página que tem o botão)
+  function abrirApresentacaoPeloLink() {
+    const p = lerParams();
+    if (p.get("apresentar") !== "1" || !document.querySelector('[data-acao="apresentar"]')) return;
+    // depois de a camada comum terminar de carregar (aoCarregar pode rodar durante ela)
+    setTimeout(() => apresentar({ slide: parseInt(p.get("slide"), 10) || 1 }), 0);
+  }
 
   // ── PWA: service worker (offline com a última versão vista) ─────────────────
   if ("serviceWorker" in navigator) {
@@ -1151,5 +2107,5 @@ window.Comum = (() => {
 
   return { topbar, lerParams, gravarParams, exportarCsv, escapar, destacarNumeros, norm, compacto, compactoEixo, brl, debounce, paginador, abrirPaleta,
            alternarTema, temaAtual, chartAcessivel, toast, copiar, compartilhar, estadoErro, quandoFonte, FACES_MANCHETE, grafico, paleta, dicaGrafico, carregarEcharts, identidadeFavorecido,
-           nomeNormalizado, visorPdf, POP_SANTOS };
+           nomeNormalizado, visorPdf, apresentar, POP_SANTOS };
 })();

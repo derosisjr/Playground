@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f;
@@ -49,6 +49,8 @@
 
       .voltar { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font-size: 13.5px; }
       .voltar a { color: inherit; font-weight: 700; }
+      /* tabelas largas roláveis pelo teclado (axe: scrollable-region-focusable), como no Semáforo */
+      [role="region"][tabindex="0"]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .nota { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0 0 10px; }
       .comp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
       @media (max-width: 760px) { .comp-grid { grid-template-columns: 1fr; } }
@@ -110,18 +112,21 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero">
       <div class="hero-in">
         <p class="eyebrow">Prefeitura · Raio-X do favorecido</p>
         <h1 id="fav-nome">Carregando…</h1>
         <p class="hero-sub">
-          <span id="fav-doc"></span>
-          <span class="rank" id="fav-rank"></span>
+          <span id="fav-doc" data-slide-capa></span>
+          <span class="rank" id="fav-rank" data-slide-capa></span>
           <span id="fav-grafias" class="rank"></span>
           <span id="fav-atualizado"></span>
         </p>
+        <!-- modo apresentação (Comum.apresentar): no canto do topo; no celular, só o ícone -->
+        <button type="button" class="ap-botao ap-botao-topo ap-canto" data-acao="apresentar" aria-label="Apresentar"
+          data-slide-base="#fav-atualizado" data-slide-fonte="Portal da Transparência da Prefeitura de Santos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span class="ap-botao-rot">Apresentar</span></button>
       </div>
     </header>
 
@@ -135,16 +140,16 @@
       <div class="vazio" id="carregando">Carregando o dossiê…</div>
 
       <div id="conteudo" hidden>
-        <div class="stats" id="stats"></div>
+        <div class="stats" id="stats" data-slide data-slide-tipo="manchete kpis" data-slide-titulo="Em números"></div>
 
         <div class="box">
           <h3>Pagamentos recebidos por mês (R$)</h3>
-          <div class="grafico" id="ch-mensal"></div>
+          <div class="grafico" id="ch-mensal" data-slide data-slide-altura="livre" data-slide-frase="2"></div>
         </div>
 
         <div class="box">
           <h3>Em que funções o dinheiro entra (R$)</h3>
-          <div class="grafico" id="ch-funcao"></div>
+          <div class="grafico" id="ch-funcao" data-slide data-slide-layout="empilhado"></div>
         </div>
 
         <div class="box" id="box-composicao" hidden>
@@ -152,7 +157,8 @@
           <p class="nota">Participação = quanto deste favorecido representa de tudo o que a Prefeitura
             pagou naquele elemento de despesa no período.</p>
           <div class="comp-grid">
-            <div><h4>Elemento de despesa</h4><ul class="comp" id="comp-elemento"></ul></div>
+            <div><h4>Elemento de despesa</h4><ul class="comp" id="comp-elemento" data-slide data-slide-titulo="Em que elemento de despesa"
+              data-slide-max="5"></ul></div>
             <div><h4>Unidade gestora</h4><ul class="comp" id="comp-unidade"></ul></div>
             <div><h4>Tipo de pagamento</h4><ul class="comp" id="comp-tipo"></ul></div>
           </div>
@@ -162,7 +168,7 @@
           <h3>Nomes com que aparece na origem</h3>
           <p class="nota">O mesmo CNPJ pode vir grafado de formas diferentes. Quando o nome muda de verdade
             (marcado “outro nome”), pode ser troca de razão social — vale conferir no cadastro da Receita.</p>
-          <div style="overflow-x:auto">
+          <div style="overflow-x:auto" tabindex="0" role="region" aria-label="Nomes na origem (role na horizontal para ver todas as colunas)">
             <table class="tabela-resp">
               <thead><tr><th>Nome na origem</th><th style="text-align:right">Recebido</th><th style="text-align:right">Pagamentos</th><th>Período</th></tr></thead>
               <tbody id="corpo-grafias"></tbody>
@@ -172,7 +178,9 @@
 
         <div class="box" id="box-alertas" hidden>
           <h3>⚠ Alertas fiscais deste favorecido</h3>
-          <div id="lista-alertas"></div>
+          <div id="lista-alertas" data-slide data-slide-tipo="lista" data-slide-titulo="Alertas fiscais deste favorecido"
+            data-slide-itens=":scope > .alerta" data-slide-celulas=".tit, .sev.classe" data-slide-max="5"
+            data-slide-nota="Nenhum alerta é conclusão de irregularidade."></div>
         </div>
 
         <div class="box cad" id="box-externo" hidden>
@@ -184,8 +192,8 @@
 
         <div class="box" id="box-pagamentos">
           <h3 id="tit-pagamentos">Últimos pagamentos</h3>
-          <div style="overflow-x:auto">
-            <table class="tabela-resp">
+          <div style="overflow-x:auto" tabindex="0" role="region" aria-label="Últimos pagamentos (role na horizontal para ver todas as colunas)">
+            <table class="tabela-resp" data-slide data-slide-titulo="Últimos pagamentos" data-slide-colunas="1,3,7" data-slide-max="5">
               <thead><tr><th>Data</th><th>Função</th><th>Elemento</th><th>Unidade</th><th>Tipo</th><th>Nº pagamento · empenho</th><th style="text-align:right">Valor</th></tr></thead>
               <tbody id="corpo-pagamentos"></tbody>
             </table>
@@ -202,7 +210,7 @@
           <div class="vazio" id="lanc-carregando">Carregando os lançamentos…</div>
           <div style="text-align:center"><button class="btn" id="lanc-carregar" type="button" hidden></button></div>
           <div id="lanc-conteudo" hidden>
-            <div style="overflow-x:auto">
+            <div style="overflow-x:auto" tabindex="0" role="region" aria-label="Lançamentos de execução (role na horizontal para ver todas as colunas)">
               <table id="lanc-tabela" class="tabela-resp">
                 <thead><tr id="lanc-cabecalho"></tr></thead>
                 <tbody id="lanc-corpo"></tbody>

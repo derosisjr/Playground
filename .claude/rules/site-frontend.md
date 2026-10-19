@@ -136,8 +136,9 @@ Painel).** A linguagem da Retrospectiva levada a todos os topos, **no comum.css*
 **Gráficos: Apache ECharts 6.1.0 via `Comum.grafico` (M4, out/2026 — aprovado pelo usuário).**
 Todo gráfico novo passa por esta camada; **não usar Chart.js em página nova** (Despesas migrou no
 M7, out/2026; resta só o Preço comparado, cujo item ficou para depois).
-- `Comum.grafico(idOuEl, { opcao(p, largura) → option, acessivel: {descricao, cabecalhos, linhas},
-  altura?(largura), eventos?(chart), dependeDaLargura?, renderer? })`. Contêiner =
+- `Comum.grafico(idOuEl, { opcao(p, largura, ctx) → option, acessivel: {descricao, cabecalhos, linhas},
+  altura?(largura), eventos?(chart), dependeDaLargura?, renderer? })` — `ctx = {altura, apresentacao}`
+  (altura do quadro; `apresentacao: true` no slide do modo apresentação, ver abaixo). Contêiner =
   `<div class="grafico" id="…">` no HTML (altura por `--altura-grafico`, reservada desde a 1ª
   pintura); chamar de novo com o mesmo alvo atualiza (filtro, dado novo).
 - **Carga sob demanda**: a biblioteca (~370 KB gzip, cdnjs com SRI) só vem quando o 1º gráfico chega
@@ -206,6 +207,61 @@ em `respostas-executivo.md`). **Nunca falar em prazo**: indicação não tem pra
   fica visível mesmo sem mais nada a mostrar — não corrigido aqui.)
 - **Alternância "Requerimentos | Indicações"** (`.hero-topo` + `nav.alterna` no comum.css): a
   etiqueta à esquerda e a alternância à direita no topo das duas páginas; no celular desce.
+
+**Modo apresentação: `Comum.apresentar()` (M10, out/2026).** O painel vira slides para projetar
+(sessão, comissão, reunião de bairro — passador, teclado ou toque) e para salvar em PDF. Nos 6 painéis:
+Despesas, Semáforo, Requerimentos, Indicações, Custo por Resultado e Raio-X. **Os slides só mostram o
+que a página mostra**, no recorte (filtros) em que ela está — nada de número ou frase nova.
+- **Botão** `data-acao="apresentar"` (delegação, como compartilhar/imprimir): na barra de ações onde
+  há (Requerimentos, Indicações, Custo por Resultado); nos topos de Despesas, Semáforo e Raio-X,
+  `.ap-botao.ap-botao-topo` absoluto no canto da linha da etiqueta (fora do fluxo) e, até 600 px, ao
+  lado do "Sobre este painel" (Raio-X, sem ele: `.ap-canto`, só o ícone, 28 px até 360 px). Posição
+  dos elementos abaixo conferida igual a 390/980/1366 px, CLS igual. Some na impressão normal.
+  No botão: `data-slide-fonte` (fonte curta do rodapé) e `data-slide-base` (seletor da data; padrão
+  `.base-de`).
+- **Contrato `data-slide`** (elemento oculto por `[hidden]` não vira slide). Ordem: `data-slide="N"`
+  primeiro, por N, depois a do documento. Tipo inferido — `.hero-num` → manchete; `.stats` → cartões;
+  `.grafico` do registro → gráfico; tabela/lista → lista; `.resumo-box`/`<p>` → texto; outro → bloco
+  (cópia limpa do HTML, com o CSS da página; o Semáforo usa) — ou `data-slide-tipo` (vários separados
+  por espaço = vários slides do mesmo elemento: `"manchete kpis"` no Raio-X). Opcionais:
+  `data-slide-titulo` (`{#id}` = valor atual daquele controle), `data-slide-frase` (frase(s) da
+  descrição acessível que viram a síntese do gráfico: `"2"`, `"1,2"`; padrão = 1ª com número; no texto,
+  as frases mostradas), `data-slide-nota` (texto fixo) / `-nota-frase` (frase da descrição) / `-nota-de`
+  (seletor na caixa do gráfico, ex. `.nota-parcial`), `data-slide-legenda` (legenda HTML copiada),
+  `data-slide-layout` (`lateral`/`empilhado`; padrão lateral quando a definição tem `altura`),
+  `data-slide-altura="livre"` (só para `opcao` que não mede o próprio quadro: a altura acompanha o
+  slide), e nas listas `data-slide-itens`, `-celulas`, `-colunas` (1 = a 1ª), `-ignorar`, `-max`.
+  Capa automática: etiqueta + título do topo, `data-slide-capa` (linhas de identificação) e o
+  **recorte** dos controles com `data-slide-filtro` (select fora da 1ª opção, busca preenchida, item
+  com `aria-pressed/selected/current`, aviso de foco; `="sempre"` mostra até a 1ª opção) ou "a base
+  inteira, sem filtros". Rodapé de todo slide: fonte · "Base atualizada em…" · endereço curto · n/N.
+- **Gráficos**: redesenhados com a MESMA `opcao` do registro `GRAFICOS`, em SVG, num quadro virtual
+  da altura natural (a de `altura()` ou a do quadro na página — o `opcao` que mede o próprio quadro
+  continua coerente) e ampliados com `scale()` (fontes ≈ 2% da altura do slide; largura virtual
+  ≥ 520 px). O desenho não depende de o gráfico já ter aparecido na página (aba oculta, `<details>`
+  fechado); biblioteca fora do ar → a tabela equivalente à vista. Indicações: com
+  `ctx.apresentacao` a moldura da área continental vira `graphic` (o `#inset` da página não é tocado).
+- **Texto** ("Em resumo", a regra da Lei Orgânica): uma frase por passo do passador (até ~30 palavras
+  à vista; as seguintes guardam o lugar invisíveis). **Tema**: abre no escuro (Noturno) sem gravar a
+  preferência (`aplicarTema(…, false)`); "Fundo claro" (sala iluminada) fica em
+  `localStorage["apresentacao:tema"]`; capa, manchete e texto são sempre noturnos; ao sair volta o
+  tema do site. A troca refaz os slides depois dos ouvintes de `temamudou` (legendas HTML repintadas).
+- **Teclas**: → · PageDown · Espaço · ↓ · Enter avançam; ← · PageUp · Shift+Espaço · ↑ voltam; Home/End;
+  número + Enter vai ao slide; F tela cheia (do `.ap-quadro`; a barra some após 2,6 s parada); ?
+  atalhos; Esc fecha (antes o "ir para" e os atalhos) e devolve o foco ao botão; Tab preso no
+  `<dialog>` modal; deslizar para os lados (toque; `touch-action: pan-y`). `aria-live` anuncia
+  "Slide 3 de 8: título"; cada slide é `role=group` + `aria-roledescription="slide"`.
+- **Link** `?apresentar=1&slide=N` (só em página com o botão): abre depois de a página assentar (sem
+  esqueleto à vista e DOM quieto por 250 ms, teto de 8 s); a URL acompanha o slide e é limpa ao sair.
+- **Tamanho**: `--u` = 1% da altura do slide 16:9 (unidades de contêiner do `.ap-palco`): o mesmo
+  desenho a 1920×1080, 1366×768 e no PDF; texto que não cabe encolhe em passos (`--ap-k`). Celular em
+  pé (≤ 820 px) e paisagem baixa: o slide ocupa a tela, empilha e rola (focável quando rola).
+- **PDF** ("Salvar PDF" ou Ctrl+P com a apresentação aberta): monta `.ap-impressao` fora da tela
+  (1280×720 px por slide, todas as frases, gráficos em SVG sem animação) e injeta
+  `@page { size: 1280px 720px; margin: 0 }` só enquanto ela existe (`afterprint` desfaz) — o
+  "Imprimir" da página segue igual (mesmo nº de páginas A4). `print-color-adjust: exact`. As regras
+  do celular são `screen`: na impressão as media queries olham o papel padrão e empilhavam o PDF.
+  Quadro do gráfico centrado por left/top em px (com `top: 50%` + `translate` o PDF saía cortado).
 
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
