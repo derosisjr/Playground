@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js"></script>
     <meta name="description" content="Empenhado, liquidado e pago da Prefeitura de Santos, com alertas fiscais automáticos e busca por favorecido, função e fonte." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
@@ -59,9 +57,11 @@
       @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
       .box { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; margin-bottom: 16px; }
       .box h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; letter-spacing: .02em; }
-      .box canvas { height: 300px !important; width: 100% !important; }
-      #box-mapa canvas { height: 400px !important; }
-      @media (max-width: 560px) { #box-mapa canvas { height: 320px !important; } }
+      .box .grafico { --altura-grafico: 300px; }
+      #box-mapa .grafico { --altura-grafico: 400px; }
+      @media (max-width: 560px) { #box-mapa .grafico { --altura-grafico: 320px; } }
+      /* rosca das fontes: no celular a legenda vai para baixo do anel (8 linhas) */
+      @media (max-width: 640px) { #ch-fonte { --altura-grafico: 420px; } }
 
       /* ── Filtros ──────────────────────────────────────────────────── */
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
@@ -357,13 +357,13 @@
         <h2 class="sr-only">Visão geral</h2>
         <div class="box">
           <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
-          <canvas id="ch-mensal"></canvas>
+          <div class="grafico" id="ch-mensal"></div>
           <p class="contagem nota-parcial" hidden></p>
         </div>
         <div class="box" id="box-execucao" hidden>
           <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
           <p class="contagem" id="exe-taxas" style="margin:0 0 10px"></p>
-          <canvas id="ch-execucao"></canvas>
+          <div class="grafico" id="ch-execucao"></div>
           <p class="contagem nota-parcial" hidden></p>
         </div>
         <div class="box" id="box-prazos" hidden>
@@ -384,7 +384,7 @@
           <div class="box" id="box-anulacoes" hidden>
             <h3>Anulações de empenho</h3>
             <p class="contagem" id="anul-resumo" style="margin:0 0 10px"></p>
-            <canvas id="ch-anulacoes"></canvas>
+            <div class="grafico" id="ch-anulacoes"></div>
             <h4 class="sub-h" style="margin-top:12px">Quem mais teve empenho anulado</h4>
             <div class="tabela-wrap"><table class="tabela-resp mini">
               <thead><tr><th>Favorecido</th><th class="r">Anulado</th><th class="r">% do empenhado</th></tr></thead>
@@ -401,7 +401,7 @@
         <div class="box" id="box-publicidade" hidden>
           <h3>Publicidade — quanto a Prefeitura paga em propaganda e publicidade legal</h3>
           <p class="contagem" id="pub-resumo" style="margin:0 0 10px"></p>
-          <canvas id="ch-publicidade"></canvas>
+          <div class="grafico" id="ch-publicidade"></div>
           <h4 class="sub-h" style="margin-top:12px">Quem recebeu</h4>
           <div class="tabela-wrap"><table class="tabela-resp mini">
             <thead><tr><th>Favorecido</th><th class="r">Propaganda</th><th class="r">Publicidade legal</th><th class="r">Total</th></tr></thead>
@@ -410,7 +410,7 @@
         </div>
         <div class="box" id="box-programa" hidden>
           <h3>Por programa do PPA — o “para quê” do gasto (orçamentário)</h3>
-          <canvas id="ch-programa"></canvas>
+          <div class="grafico" id="ch-programa"></div>
           <p class="contagem" style="margin:10px 0 0">Programas são temáticos e não correspondem 1 a 1 às
             secretarias (ex.: “Gestão e apoio administrativo” aparece em várias áreas).</p>
         </div>
@@ -489,21 +489,21 @@
                 <button class="btn" data-vista="capita" type="button">Por santista</button>
               </div>
             </div>
-            <canvas id="ch-funcao"></canvas>
+            <div class="grafico" id="ch-funcao"></div>
           </div>
-          <div class="box"><h3>Por fonte de recurso</h3><canvas id="ch-fonte"></canvas></div>
+          <div class="box"><h3>Por fonte de recurso</h3><div class="grafico" id="ch-fonte"></div></div>
         </div>
         <div class="box" id="box-comparativo" hidden>
           <h3 id="comparativo-titulo">Ano contra ano, por função</h3>
           <p class="contagem" id="comparativo-sub" style="margin:0 0 10px"></p>
-          <canvas id="ch-comparativo"></canvas>
+          <div class="grafico" id="ch-comparativo"></div>
         </div>
         <div class="box" id="box-mapa" hidden>
           <div class="box-toggle">
             <h3>Mapa do gasto — clique numa área para abrir</h3>
             <div class="acoes" id="mapa-trilha" aria-label="Nível do mapa do gasto"></div>
           </div>
-          <canvas id="ch-mapa"></canvas>
+          <div class="grafico" id="ch-mapa"></div>
           <p class="contagem" style="margin:10px 0 0">
             Função → subfunção → elemento de despesa (pago pela data do pagamento). Tocar num
             elemento prepara o Detalhamento já filtrado — você confere o período e o tamanho do
@@ -537,7 +537,7 @@
           </p>
         </div>
         <div class="box">
-          <h3>Por unidade gestora</h3><canvas id="ch-unidade"></canvas>
+          <h3>Por unidade gestora</h3><div class="grafico" id="ch-unidade"></div>
         </div>
         <div class="box" id="box-pares" hidden>
           <div class="box-toggle">
@@ -545,7 +545,7 @@
             <select id="pares-funcao" aria-label="Função para comparar" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color: var(--ink)"></select>
           </div>
           <p class="resumo-texto" id="pares-frase" style="font-size:14px;margin:0 0 10px"></p>
-          <canvas id="ch-pares"></canvas>
+          <div class="grafico" id="ch-pares"></div>
           <p class="contagem" id="pares-nota" style="margin:10px 0 0"></p>
         </div>
       </section>
@@ -770,6 +770,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=22"></script>
+    <script defer src="./despesas-app.js?v=23"></script>
   </body>
 </html>

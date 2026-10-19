@@ -185,7 +185,7 @@ classe padrão "A conferir", regra com ≥ 3 alertas vira grupo recolhível, fil
 
 ## Painel, raio-X, retrospectiva
 
-`despesas.html`+`despesas-app.js` (vanilla + Chart.js e plugin `chartjs-chart-treemap` via CDN):
+`despesas.html`+`despesas-app.js` (vanilla + ECharts via `Comum.grafico` desde o M7 — ver abaixo):
 abas Visão geral (movimentação; bloco de execução com taxa validada ou motivo + razões brutas;
 glossário com os tipos e as duas visões; linha de **cobertura** no rodapé), Alertas (filtro por
 classe/tipo/severidade, nota de histórico, badge NOVO, documentos em `<details>`, clique → `link`),
@@ -202,16 +202,17 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=20` (com `defer`, como o Chart.js),
-`retrospectiva-app.js?v=8`, `favorecido-app.js?v=9` (com `defer`), `comum.js?v=10`, `comum.css?v=5` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=23` (com `defer`),
+`retrospectiva-app.js?v=8`, `favorecido-app.js?v=11` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
 
 **UI do painel (Lote D3, 2026-09-30).** Cards: total do período, acumulado jan–M (YoY), **último
 mês completo** vs média de 12 meses (`resumo.mes_ref`/`delta_media_pct` — o hub usa o mesmo mês)
-e **alertas a conferir** (link → `#alertas`). Chart.js/treemap e o app carregam com `defer`;
-`renderGraficosSeguro` mantém abas/alertas/tabelas funcionando se o CDN cair. Manifestos `meses`/
+e **alertas a conferir** (link → `#alertas`). O app carrega com `defer`; biblioteca de gráficos
+fora do ar = aviso com "Tentar de novo" em cada gráfico (camada comum) e `renderGraficosSeguro`
+segura dado inesperado num gráfico — abas/alertas/tabelas seguem funcionando. Manifestos `meses`/
 `meses_movimento` trazem **`bytes`** por arquivo → `sel-info` mostra "download ≈ X MB" (só o que
 não está em `DET_PARTES`). `carregarPartes` usa `allSettled` + `r.ok`; a falha nomeia os meses e
 oferece "Tentar de novo" (`Comum.estadoErro`) baixando só o que faltou. Facetas: `indicesBase()`
@@ -225,6 +226,41 @@ do gasto (treemap) **não baixa sozinho**: `irParaDetalhe` marca os meses da mov
 o filtro pendente (`detPendente`) até "Carregar dados". CSV sai com vírgula decimal, fase por
 extenso e período AAAA-MM. Modo escuro: textos em `var(--ink)` e vermelhos/âmbar claros
 (≥ 4,5:1). Service worker: dados de despesas network-first (`sw.js`, `CACHE` v3).
+
+**Gráficos em ECharts (M7, 2026-10).** Os 11 gráficos do painel (mensal, execução, anulações,
+publicidade, programa, funções, fonte, ano × ano, mapa, unidade gestora, cidades pares) saíram do
+Chart.js 4.4.1 + `chartjs-chart-treemap` para `Comum.grafico` (ver `site-frontend.md`): contêiner
+`<div class="grafico">` com altura no CSS (`.box .grafico` 300 px; mapa 400/320 px; rosca 420 px até
+640 px), desenho sob demanda (aba oculta desenha ao aparecer), tema/celular/CDN na camada comum, a
+descrição e a tabela oculta de cada gráfico no `acessivel`. Paridade de comportamento, com estes
+detalhes:
+- **Meses parciais**: `dividirParciais()` parte a linha em duas séries com o MESMO nome (a legenda
+  liga/desliga as duas) — meses completos + trecho tracejado do último completo aos parciais (ponto
+  vazado); `*` no eixo; na dica, "(parcial)" e a nota. Pontos fora do padrão (±25% da média dos 12
+  meses anteriores) em `vermelho`/`amarelo` do tema, maiores. Legendas seguem clicáveis (como no
+  Chart.js: esconder o empenhado reescala o eixo da execução); linha sem marcador tira o ponto da
+  legenda com `itemStyle: { opacity: 0 }` no item da legenda.
+- **Eixo dos meses**: todos os rótulos no desktop (`interval: 0` + `hideOverlap`), um a cada 4 no
+  celular. **Barras deitadas** (`opcaoBarrasDeitadas`, `dependeDaLargura`): `eixoValor()` escolhe
+  passo redondo e teto justo pelo espaço útil (o padrão do ECharts esticava o teto e encavalava
+  rótulos na caixa estreita) e a margem direita para o rótulo do teto, centrado no traço (o
+  `containLabel` não o conta); abaixo de ~140 px úteis só "R$ 0" e o teto têm rótulo; nome longo
+  cortado com "…" (230–280 px; 120–140 no celular), inteiro na dica.
+- **Cores** só de `Comum.paleta()`; a rosca usa `coresCategorias()` (navy/dourado do tema + as 6
+  categóricas que o painel já tinha; a 8ª, vermelha, é a das anulações); ano anterior e cidades pares
+  em `ref`; empenhado em #93a0b3 nos dois temas (`cinzaLinha`).
+- **Mapa do gasto**: a navegação é a trilha HTML `#mapa-trilha` (botões; o foco fica no nível
+  escolhido); o ECharts desenha só o nível atual (`nodeClick: false`, sem a trilha nativa) e o clique
+  numa área chama `abrirNoMapa()` — com filhos desce um nível; elemento (≠ "Demais elementos") →
+  `irParaDetalhe({funcao, elemento_despesa})`, o mesmo filtro pendente de antes; senão, toast. Rótulo
+  só onde cabe inteiro: `retangulosMapa()` reproduz o "squarified" do ECharts (conferido: 0 px de
+  diferença nos 85 níveis) e `rotuloMapa()` mede o texto — normal, compacto ou nome em 2 linhas.
+  `RAZAO_MAPA` = 1,4 (a áurea espichava as áreas médias e tirava o nome de Assistência social e
+  Previdência). O espaço entre as áreas é `itemStyle.borderColor` (padrão branco: no escuro virava
+  grade branca) = `card`.
+- **Dica**: valor com centavos (`brlc`, como antes) e as notas de antes ("Mês parcial — …", "+X% vs
+  média 12m — fora do padrão, ver aba Alertas.", "sem base no ano anterior"/"+X% vs AAAA", "R$ … no
+  total" nas vistas % e por habitante, "Deste nível" no mapa).
 
 **Raio-X (Lote D4, 2026-09-30).** O dossiê (`favorecidos/<slug>.json`) ganhou `por_elemento`
 (com `participacao_pct` = fatia do favorecido em todo o pago no elemento), `por_unidade`,
@@ -345,7 +381,7 @@ Parque Tecnológico (também é UG da base) e SP-PREVCOM. O JS não replica a he
 legal), pela data do pagamento (inclui restos): `por_ano`, `comparacao` (jan–M do último mês completo
 × mesmo período do ano anterior), `serie` mensal (lacuna = 0) e top 10 `favorecidos` por identidade.
 Caixa `#box-publicidade` na Visão geral (padrão do `box-prazos`; gráfico de barras empilhadas com
-`Comum.chartAcessivel`, mês parcial mais claro).
+tabela oculta, mês parcial mais claro).
 
 **Painel (Lote 2)**: filtro de severidade só com os valores presentes; cartão do alerta com
 "Abrir o recorte"/"Abrir o raio-X", **"Raio-X do favorecido"** (quando o recorte é o Detalhamento),
