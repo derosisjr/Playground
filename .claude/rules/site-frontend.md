@@ -18,8 +18,9 @@ busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, 
 abas de despesas), `exportarCsv` (dialeto Excel pt-BR `;`+BOM; **número vira vírgula decimal** — passe número, não string de `toFixed`), **modo escuro** (toggle na
 topbar/hub, persiste em localStorage, default `prefers-color-scheme`; snippet inline anti-flash no
 `<head>` de cada página; `html[data-tema="escuro"]` no comum.css vence os `:root` locais por
-especificidade; páginas com Chart.js escutam o evento **`temamudou`** e repintam os gráficos em
-memória via `definirCores()` + `Chart.getChart(id)?.destroy()` — SEM reload) e `POP_SANTOS`
+especificidade; os gráficos repintam no evento **`temamudou`** sem reload — os do ECharts pela
+camada comum (`Comum.grafico`); o Preço comparado, último com Chart.js, via `definirCores()` +
+`Chart.getChart(id)?.destroy()`) e `POP_SANTOS`
 (**418.608**, Censo 2022 definitivo do IBGE — unificado em 2026-07 com o benchmark de despesas; era
 433.656). Favicon SVG + `og.png` + meta OG/Twitter em todas as páginas.
 
@@ -128,8 +129,8 @@ Painel).** A linguagem da Retrospectiva levada a todos os topos, **no comum.css*
   dourada mantida. Grade uniforme conferida (mesma altura por fileira).
 
 **Gráficos: Apache ECharts 6.1.0 via `Comum.grafico` (M4, out/2026 — aprovado pelo usuário).**
-Todo gráfico novo passa por esta camada; **não usar Chart.js em página nova** (ainda em Despesas
-até o M7 e no Preço comparado, cujo item ficou para depois).
+Todo gráfico novo passa por esta camada; **não usar Chart.js em página nova** (Despesas migrou no
+M7, out/2026; resta só o Preço comparado, cujo item ficou para depois).
 - `Comum.grafico(idOuEl, { opcao(p, largura) → option, acessivel: {descricao, cabecalhos, linhas},
   altura?(largura), eventos?(chart), dependeDaLargura?, renderer? })`. Contêiner =
   `<div class="grafico" id="…">` no HTML (altura por `--altura-grafico`, reservada desde a 1ª
@@ -151,6 +152,16 @@ até o M7 e no Preço comparado, cujo item ficou para depois).
   lidos do `semaforo` do índice (não fixos no JS) com rótulo sobre a linha; eixo que desce abaixo de
   zero quando há negativo (DCL); teto do eixo arredondado. Tesoura (Custo por Resultado): faixa =
   série base invisível + diferença empilhada, com os cruzamentos inseridos.
+- Padrões do Radar de Despesas (M7, detalhes em `despesas.md`): trecho parcial = 2ª série com o
+  MESMO nome (a legenda liga/desliga as duas); linha sem marcador → `itemStyle: { opacity: 0 }` no
+  item da `legend.data` (o ECharts desenha um ponto no ícone mesmo com `symbol: "none"`); eixo de
+  categoria com todos os rótulos = `interval: 0` + `hideOverlap`; barras deitadas em caixa estreita
+  com passo e teto calculados (`eixoValor`); treemap: o espaço entre as áreas é
+  `itemStyle.borderColor` (padrão branco — no escuro vira grade) e, para rótulo só onde cabe, o
+  layout "squarified" pode ser reproduzido antes de desenhar (`retangulosMapa`).
+- A nota em destaque de `Comum.dicaGrafico(…, alerta)` usa `.ec-dica-alerta`, com prefixo: com a
+  classe solta `alerta` ela herdava o cartão de alerta do Raio-X e do Despesas (borda, padding, fundo).
+  Classe nova dentro da dica leva o prefixo `ec-dica-`.
 
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
