@@ -1687,7 +1687,11 @@ window.Comum = (() => {
       esc = livre ? Math.min(alvoEsc, r.width / 520)
         : Math.max(0.6, Math.min(r.height / alturaNatural(reg, r.width / alvoEsc), r.width / 520, alvoEsc * 1.3));
     }
-    const vw = Math.round(r.width / esc);
+    // gráfico que a página só desenha a partir de uma largura mínima, numa faixa que rola (o
+    // caminho do dinheiro: 780 px no celular), faz o mesmo no slide empilhado — espremido na
+    // largura do celular, as três colunas do Sankey se sobrepunham
+    const minimo = empilhado ? parseFloat(getComputedStyle(g.el).minWidth) || 0 : 0;
+    const vw = Math.round(Math.max(r.width / esc, minimo));
     const vh = Math.round(livre ? r.height / esc : alturaNatural(reg, vw));
     if (!empilhado) esc = Math.min(esc, r.height / vh);
     const tema = temaAtual() === "escuro" ? "gabinete-escuro" : "gabinete-claro";
@@ -1697,6 +1701,15 @@ window.Comum = (() => {
     Object.assign(g.moldura.style, { width: vw * esc + "px", height: vh * esc + "px",
       left: Math.max(0, (r.width - vw * esc) / 2) + "px", top: Math.max(0, (r.height - vh * esc) / 2) + "px" });
     Object.assign(g.alvo.style, { width: vw + "px", height: vh + "px", transform: esc === 1 ? "" : `scale(${esc})` });
+    if (vw * esc > r.width + 1) {   // rola para os lados: focável pelo teclado, com nome
+      g.caixa.style.overflowX = "auto";
+      g.caixa.tabIndex = 0;
+      g.caixa.setAttribute("role", "region");
+      g.caixa.setAttribute("aria-label", s.titulo + " (role para os lados)");
+    } else {
+      g.caixa.style.overflowX = "";
+      ["tabindex", "role", "aria-label"].forEach((a) => g.caixa.removeAttribute(a));
+    }
     try {
       if (g.inst) g.inst.dispose();
       g.inst = window.echarts.init(g.alvo, tema, { renderer: "svg", locale: "PT-BR", width: vw, height: vh });

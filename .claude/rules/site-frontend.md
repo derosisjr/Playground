@@ -255,7 +255,9 @@ que a página mostra**, no recorte (filtros) em que ela está — nada de númer
   esqueleto à vista e DOM quieto por 250 ms, teto de 8 s); a URL acompanha o slide e é limpa ao sair.
 - **Tamanho**: `--u` = 1% da altura do slide 16:9 (unidades de contêiner do `.ap-palco`): o mesmo
   desenho a 1920×1080, 1366×768 e no PDF; texto que não cabe encolhe em passos (`--ap-k`). Celular em
-  pé (≤ 820 px) e paisagem baixa: o slide ocupa a tela, empilha e rola (focável quando rola).
+  pé (≤ 820 px) e paisagem baixa: o slide ocupa a tela, empilha e rola (focável quando rola); gráfico
+  com `min-width` na página (o caminho do dinheiro do Despesas: 780 px) é desenhado nessa largura e a
+  caixa do slide rola para os lados (`role=region`, focável) — espremido, o Sankey se sobrepunha.
 - **PDF** ("Salvar PDF" ou Ctrl+P com a apresentação aberta): monta `.ap-impressao` fora da tela
   (1280×720 px por slide, todas as frases, gráficos em SVG sem animação) e injeta
   `@page { size: 1280px 720px; margin: 0 }` só enquanto ela existe (`afterprint` desfaz) — o
