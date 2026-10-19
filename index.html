@@ -191,8 +191,9 @@
       .cartao:nth-child(5) { animation-delay: .82s; }
       .cartao:nth-child(6) { animation-delay: .92s; }
       .cartao:nth-child(7) { animation-delay: 1.02s; }  /* Preço comparado (2026-08) */
+      .cartao:nth-child(8) { animation-delay: 1.12s; }  /* Lei Orgânica (2026-10) */
       /* Barra de acento à esquerda — o dispositivo mais repetido do site
-         (comum.css:95/171, despesas.html:106, endividamento.html:139/161, regimento.html:87).
+         (comum.css:95/171, despesas.html:106, endividamento.html:139/161, regimento.css:65).
          Via ::before e NÃO border-left: o .cartao:hover troca border-color e atropelaria
          a barra. Ornamento, não informação — o estado vai no .selo, que tem texto. */
       .cartao::before {
@@ -404,6 +405,17 @@
           <div class="stat" aria-busy="true"><span class="val" id="stat-regimento"><span class="skel"></span></span>
             <span class="lbl" id="stat-regimento-lbl">artigos indexados</span>
             <span class="quando" id="stat-regimento-quando"></span></div>
+          <span class="abrir">Abrir painel <span class="arw">→</span></span>
+        </a>
+
+        <a class="cartao" href="./lei-organica.html" aria-labelledby="t-lom">
+          <span class="cartao-topo"><span class="tag">Câmara · Lei Orgânica</span></span>
+          <h3 id="t-lom">Lei Orgânica</h3>
+          <p class="desc">A lei maior do Município, artigo por artigo: busca por número ou
+             palavra-chave, citação pronta e as emendas que alteraram cada dispositivo.</p>
+          <div class="stat" aria-busy="true"><span class="val" id="stat-lom"><span class="skel"></span></span>
+            <span class="lbl" id="stat-lom-lbl">artigos</span>
+            <span class="quando" id="stat-lom-quando"></span></div>
           <span class="abrir">Abrir painel <span class="arw">→</span></span>
         </a>
 
@@ -637,6 +649,15 @@
       stat(pLegis, "stat-legis", (d) => contagem(total(d)), null, "legis-index.json");
       stat(contagemOuIndice("regimento-index.json"), "stat-regimento", (d) => contagem(total(d)),
         null, "regimento-index.json");
+      // Lei Orgânica: artigos do CORPO (as Disposições Transitórias recomeçam no art. 1) e
+      // quantos têm nota de emenda — da contagem leve; sem ela, do índice inteiro (~0,5 MB)
+      stat(contagemOuIndice("lei-organica-index.json", (c) => typeof c.alterados === "number"),
+        "stat-lom", (d) => {
+          const corpo = Array.isArray(d) ? d.filter((a) => !a.adt) : null;
+          const alt = corpo ? corpo.filter((a) => a.notas && a.notas.length).length : d.alterados;
+          if (alt) set("stat-lom-lbl", `artigos · ${num(alt)} ${plural(alt, "alterado", "alterados")} por emenda`);
+          return contagem(corpo ? corpo.length : d.n);
+        }, null, "lei-organica-index.json");
       stat(carregar("./precos-index.json"), "stat-precos", (d) => {
         // nº de cidades COM dado espelhado, não o tamanho da lista de alvos:
         // dizer "9 cidades" com 4 carregadas seria propaganda, não dado

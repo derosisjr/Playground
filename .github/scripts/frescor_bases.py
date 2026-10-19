@@ -154,6 +154,7 @@ BASES = {
 # Fora da vigília DE PROPÓSITO — silêncio aqui seria esquecimento, então fica escrito:
 ISENTAS = {
     "regimento-index.json": "estático (OCR manual do Regimento; só muda se o texto mudar)",
+    "lei-organica-index.json": "estático (texto do PDF oficial da Lei Orgânica; só muda com emenda nova)",
     "consulta/consultas/*.json": "escuta pública parada — worker pendente de deploy",
     "diario-oficial/": "sem índice no repo para medir — o DOM sai da rotina agendada direto para a planilha (skill dom-santos); vigiar lá",
 }

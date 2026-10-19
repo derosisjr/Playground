@@ -38,7 +38,9 @@ pauta_md.py (scraping+PDF→MD) → skill briefing-ordem-do-dia (MD→briefing.m
   A composição da legislatura atualiza-se em `composicao-camara.md` sem tocar no prompt.
 - **`references/lei-organica-santos.md`** — texto da Lei Orgânica (baixado do Legis/egov,
   camada de texto, sem OCR): a análise jurídica só cita artigo **conferido** ali (ou no
-  `regimento-index.json`); senão, [Verificar].
+  `regimento-index.json`); senão, [Verificar]. É também a fonte única da página
+  `lei-organica.html` (2026-10): mexeu nele, rode `python regimento/lei_organica.py` — o teste do
+  `testes.yml` falha se o `lei-organica-index.json` publicado não bater (ver `regimento.md`).
 - **`enviar.py`/`email_briefing.py`** — e-mail HTML (template movido do `index.py`); SMTP
   com fallback **Gmail API** via `gmail_api.py` (raiz — módulo comum com o monitor do DOM;
   o ambiente das rotinas não abre a porta 587).

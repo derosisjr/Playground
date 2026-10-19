@@ -17,6 +17,10 @@ on:
       - "endividamento/**"
       - "indicadores/**"
       - "respostas-executivo/**"
+      - "regimento/**"
+      - "regimento-index.json"
+      - "lei-organica-index.json"
+      - "ordem-do-dia/references/lei-organica-santos.md"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
       - "**.html"
@@ -33,6 +37,10 @@ on:
       - "endividamento/**"
       - "indicadores/**"
       - "respostas-executivo/**"
+      - "regimento/**"
+      - "regimento-index.json"
+      - "lei-organica-index.json"
+      - "ordem-do-dia/references/lei-organica-santos.md"
       - ".github/scripts/**"
       - ".github/workflows/testes.yml"
       - "**.html"
@@ -105,6 +113,13 @@ jobs:
       - name: Testes — endividamento + indicadores
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: python -m pytest endividamento/tests indicadores/tests -q
+
+      # Regimento (teste dourado: o parser reaproveitado não muda o índice publicado) e
+      # Lei Orgânica (contagens, art. 58 XVIII, notas de emenda fora do texto, índice em dia
+      # com a fonte ordem-do-dia/references/lei-organica-santos.md). Só biblioteca padrão.
+      - name: Testes — Regimento e Lei Orgânica (parser)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest regimento/tests -q
 
       - name: Testes — respostas do Executivo (classificador)
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}

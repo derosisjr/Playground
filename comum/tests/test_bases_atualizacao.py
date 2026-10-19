@@ -67,7 +67,20 @@ def test_notas_do_regimento_ignoram_comentario(tmp_path, monkeypatch):
     assert ba.contagens()["regimento-notas.json"] == {"artigos_com_nota": 1}
 
 
+def test_lei_organica_conta_so_o_corpo_e_os_alterados(tmp_path, monkeypatch):
+    # o cartão mostra os artigos do corpo; as Disposições Transitórias recomeçam no art. 1
+    monkeypatch.setattr(ba, "RAIZ", Path(tmp_path))
+    _gravar(tmp_path, "lei-organica-index.json", [
+        {"id": "art-1", "numero": "1", "adt": False, "notas": [{"bloco": 0, "texto": "x"}]},
+        {"id": "art-2", "numero": "2", "adt": False, "notas": []},
+        {"id": "art-2-a", "numero": "2-A", "adt": False, "notas": [{"bloco": None, "texto": "y"}]},
+        {"id": "adt-art-1", "numero": "1", "adt": True, "notas": [{"bloco": 0, "texto": "z"}]},
+    ])
+    assert ba.contagens()["lei-organica-index.json"] == {"n": 3, "alterados": 2, "adt": 1}
+
+
 def test_falha_num_indice_so_tira_a_chave_dele(tmp_path, monkeypatch):
     monkeypatch.setattr(ba, "RAIZ", Path(tmp_path))
     out = ba.contagens()  # nenhum arquivo: nenhuma chave, nenhuma exceção
     assert "requerimentos-index.json" not in out and "regimento-notas.json" not in out
+    assert "lei-organica-index.json" not in out

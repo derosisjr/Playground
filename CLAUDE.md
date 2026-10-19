@@ -48,7 +48,7 @@ trabalhar nos arquivos correspondentes):
 | Respostas do Executivo | Respostas a requerimentos → Drive + Sheets + painel | `.claude/rules/respostas-executivo.md` |
 | Base de Proposituras | Índice dos projetos da Câmara (crawler+painel) | `.claude/rules/proposituras.md` |
 | Base de Legislação | Índice da legislação municipal (crawler+painel) | `.claude/rules/legis.md` |
-| Regimento Interno | Consulta rápida ao Regimento (OCR+parser+painel) | `.claude/rules/regimento.md` |
+| Regimento Interno e Lei Orgânica | Consulta rápida ao Regimento (OCR) e à Lei Orgânica (texto do PDF) — parser+painel compartilhados | `.claude/rules/regimento.md` |
 | GitHub Actions | Tabela de secrets e padrões dos workflows | `.claude/rules/github-actions.md` |
 
 Além das rules, há **skills versionadas em `.claude/skills/`** — `dom-santos` (classifica
