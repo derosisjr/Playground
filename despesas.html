@@ -25,7 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=11" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -40,15 +40,7 @@
       }
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
-      header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-        background-image:
-          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
-          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
-        -webkit-mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
-        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%); }
       .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px; }
-      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
-        letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
 
       /* cartões de KPI (.stats/.stat) vêm do comum.css */
@@ -316,7 +308,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=21"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -333,6 +325,14 @@
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
+        <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
+        <!-- "Em resumo" dentro do topo escuro (direção Noturno): vale para o painel todo.
+             Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
+        <div class="box resumo-box" id="em-resumo">
+          <p class="resumo-rotulo">Em resumo</p>
+          <p class="resumo-texto resumo-reserva" id="resumo-texto" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
+          <button type="button" class="hero-mais resumo-mais" id="resumo-mais" aria-controls="resumo-texto" aria-expanded="false">Ler o resumo inteiro ▾</button>
+        </div>
         <p class="base-de" data-base="despesas-index.json"></p>
       </div>
     </header>
@@ -343,13 +343,6 @@
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
-      </div>
-
-      <!-- "Em resumo" acima das abas: vale para o painel todo, não só para a Visão geral.
-           Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
-      <div class="box resumo-box" id="em-resumo">
-        <p class="resumo-rotulo">Em resumo</p>
-        <p class="resumo-texto resumo-reserva" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
       </div>
 
       <div class="tabs" role="tablist">
@@ -777,6 +770,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=21"></script>
+    <script defer src="./despesas-app.js?v=22"></script>
   </body>
 </html>

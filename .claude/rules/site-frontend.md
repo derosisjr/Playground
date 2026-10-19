@@ -105,6 +105,28 @@ mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). A
   formas societárias intactas (lista `SIGLAS`, palavra sem vogal, romano); nome que já tem
   minúscula fica como está; o original vai no `title` do `<h1>` e nas grafias. Título 21–28 px.
 
+**Direção visual "Noturno" (M2, out/2026 — escolha do usuário entre 3 previews: Gazeta, Noturno,
+Painel).** A linguagem da Retrospectiva levada a todos os topos, **no comum.css**:
+- `header.hero`: navy mais profundo (`--navy-2` → `#060e1a`) com brilho dourado à direita, trama de
+  losangos em todo o topo (`::before`, opacidade .85, sem máscara) e o fio dourado (`::after`);
+  `header.hero .hero-in` com padding vertical maior; `header.hero h1` em clamp(34–60 px). Até então
+  cada painel repetia a trama e o título de 34 px no `<style>` local — **não recriar** essas regras
+  na página. Exceções conscientes, redefinidas no `<style>` local com o mesmo seletor: Raio-X
+  (`header.hero h1` 21–28 px, nome do favorecido) e Escuta (28–38 px, coluna de 640 px). O hub tem
+  título próprio (40–76 px, `max-width: 12em` = 2 linhas) e régua com números de 22–31 px e entrada
+  escalonada.
+- `.eyebrow` em `--gold`, tracking .3em, fio de 34 px; `.hero-num .grande` 44–92 px.
+- **Despesas: "Em resumo" dentro do topo escuro**, depois da manchete (`header.hero .resumo-box`).
+  No celular recolhe em 5 linhas com "Ler o resumo inteiro" (`#resumo-mais`, no HTML desde o início;
+  some se o texto couber) — a reserva `.resumo-reserva` acompanha (5 linhas no celular).
+- **"Sobre este painel" no HTML** dos painéis com `com-manchete` (`.sobre-painel`, só aparece no
+  celular): criado por JS ele chegava depois da 1ª pintura e empurrava a página; `recolherHero()`
+  reaproveita o botão pronto. A frase do número reserva 3 linhas no celular. CLS no celular:
+  Despesas 0,05 → 0,02, Requerimentos 0,07 → 0,005, Semáforo 0,07 → 0,02.
+- **Cartões do hub**: a origem vai numa **faixa navy no topo** (`.cartao-topo` com margem negativa
+  igual ao padding do cartão; `#060e1a` no escuro), tag em mono `--gold-bright`; barra lateral
+  dourada mantida. Grade uniforme conferida (mesma altura por fileira).
+
 **Visor de PDF embutido (2026-09): `Comum.visorPdf(url, titulo)`.** Diálogo acessível (foco
 preso, Esc fecha, foco devolvido) que renderiza o PDF com **PDF.js 6** (ESM do cdnjs, carregado
 sob demanda no 1º clique; worker cross-origin resolvido pelo próprio PDF.js), página a página

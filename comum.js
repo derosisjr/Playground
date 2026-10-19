@@ -500,9 +500,11 @@ window.Comum = (() => {
     // vem depois do número — título, número, "Sobre este painel", data da base
     const manchete = hero.classList.contains("com-manchete") && hero.querySelector(".hero-num");
     if (!manchete && sub.scrollHeight <= sub.clientHeight + 2) return;  // cabe nas 3 linhas
-    const b = document.createElement("button");
+    // painel com manchete traz o botão pronto no HTML (.sobre-painel) — sem "pulo"
+    const pronto = hero.querySelector(".sobre-painel");
+    const b = pronto || document.createElement("button");
     b.type = "button";
-    b.className = "hero-mais";
+    b.className = pronto ? "hero-mais sobre-painel" : "hero-mais";
     b.setAttribute("aria-expanded", "false");
     b.textContent = "Sobre este painel ▾";
     b.addEventListener("click", () => {
@@ -510,7 +512,7 @@ window.Comum = (() => {
       b.setAttribute("aria-expanded", String(aberto));
       b.textContent = aberto ? "Menos ▴" : "Sobre este painel ▾";
     });
-    (manchete || sub).after(b);
+    if (!pronto) (manchete || sub).after(b);
   }
 
   // ── Aviso de dados novos (mensagem do sw.js) ────────────────────────────────

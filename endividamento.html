@@ -24,7 +24,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=11" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -48,15 +48,7 @@
       a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
       .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
 
-      header.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-        background-image:
-          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
-          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
-        -webkit-mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
-        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%); }
       .hero-in { position: relative; max-width: 1180px; margin: 0 auto; padding: 30px 20px 34px; }
-      h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 34px; font-weight: 600;
-        letter-spacing: -0.015em; line-height: 1.05; }
       .hero-sub { color: #c3cdda; margin: 12px 0 0; font-size: 14px; max-width: 760px; line-height: 1.6; }
       /* número-âncora no hero (.hero-num): no comum.css */
 
@@ -168,7 +160,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=21"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -184,6 +176,7 @@
           <span class="grande" id="hero-divida"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
+        <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
         <p class="base-de" data-base="endividamento-index.json"></p>
       </div>
     </header>
