@@ -167,6 +167,11 @@ M7, out/2026; resta só o Preço comparado, cujo item ficou para depois).
 - A nota em destaque de `Comum.dicaGrafico(…, alerta)` usa `.ec-dica-alerta`, com prefixo: com a
   classe solta `alerta` ela herdava o cartão de alerta do Raio-X e do Despesas (borda, padding, fundo).
   Classe nova dentro da dica leva o prefixo `ec-dica-`.
+- Armadilhas medidas no M8 (Despesas, `despesas.md`): o `dataZoom` **inside captura a roda do mouse
+  mesmo com `zoomOnMouseWheel: "ctrl"`** (o controlador liga a roda e decide depois) — a página para
+  de rolar sobre o gráfico; use `zoomLock: true` (só arrasto) e trate o Ctrl + roda na página. Cor
+  por faixa em centenas de itens: `visualMap` por peças, não `itemStyle` por item; `decal` (hachura)
+  com cor própria por item dobra o custo — uma série à parte com uma hachura só.
 
 **Indicações & Respostas (`indicacoes.html` + `indicacoes-app.js`, M5, out/2026 — protótipo
 aprovado pelo usuário, público).** Irmã de Requerimentos: topo Noturno com manchete (sem

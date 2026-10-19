@@ -62,6 +62,36 @@
       @media (max-width: 560px) { #box-mapa .grafico { --altura-grafico: 320px; } }
       /* rosca das fontes: no celular a legenda vai para baixo do anel (8 linhas) */
       @media (max-width: 640px) { #ch-fonte { --altura-grafico: 420px; } }
+      /* calendário de pagamentos (M8): a altura é a do desenho — blocos de 7 linhas de células
+         da largura disponível (medidasCalendario no app: 53 semanas por ano, ou semestres de 27
+         no celular). Reservada desde a 1ª pintura: cqw = largura da .cal-area */
+      .cal-area { container-type: inline-size; }
+      #ch-calendario { --anos: 2;
+        --altura-grafico: calc(30px + (var(--anos) - 1) * 40px + 7 * var(--anos) * (100cqw - 62px) / 53); }
+      @media (max-width: 640px) { #ch-calendario {
+        --altura-grafico: calc(30px + (2 * var(--anos) - 1) * 34px + 14 * var(--anos) * (100cqw - 26px) / 27); } }
+      @supports not (height: 1cqw) { #ch-calendario { --altura-grafico: 340px; } }
+      .legenda-cal { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0;
+        list-style: none; font-size: 12px; color: var(--muted); }
+      .legenda-cal li { display: inline-flex; align-items: center; gap: 6px; }
+      .legenda-cal .sw { width: 13px; height: 13px; border-radius: 3px; flex: none;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+      .legenda-cal .sw.sem-dado { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+      .legenda-cal .faixa { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink); }
+      .legenda-cal .faixa.reserva, #caminho-nota.reserva { visibility: hidden; }
+      /* caminho do dinheiro (Sankey): o caminho inteiro pede ~900 px (780 no celular) — a caixa rola
+         na horizontal, a página não */
+      .caminho-controles { align-items: center; }
+      .caminho-controles select { padding: 5px 8px; min-width: 6.5em; border: 1px solid var(--line);
+        border-radius: var(--r-sm); background: var(--card); font: inherit; font-size: 12px; color: var(--ink); }
+      #box-caminho .rolagem-x { overflow-x: auto; overscroll-behavior-x: contain; }
+      #box-caminho .rolagem-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      #ch-caminho { --altura-grafico: 620px; min-width: 900px; }
+      @media (max-width: 640px) { #ch-caminho { --altura-grafico: 660px; min-width: 780px; } }
+      @media (max-width: 980px) { #box-caminho .dica-scroll { display: block; } }
+      /* gráfico novo sem o arquivo ainda (índice anterior ao export que o gera): aviso no lugar */
+      .grafico > .aviso-grafico { position: absolute; inset: 0; display: grid; place-content: center;
+        margin: 0; padding: 0 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
 
       /* ── Filtros ──────────────────────────────────────────────────── */
       .filtros { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin: 0 0 14px; }
@@ -355,10 +385,37 @@
       <!-- ── Visão geral ── -->
       <section class="painel ativo" id="painel-geral">
         <h2 class="sr-only">Visão geral</h2>
-        <div class="box">
-          <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
+        <div class="box" id="box-mensal">
+          <div class="box-toggle">
+            <h3>Movimentação financeira — pago por mês (pela data do pagamento)</h3>
+            <div class="acoes" id="pago-escala" role="group" aria-label="Escala do gráfico de pagamentos">
+              <button class="btn primario" data-escala="mes" type="button" aria-pressed="true">Mensal</button>
+              <button class="btn" data-escala="dia" type="button" aria-pressed="false">Diário</button>
+            </div>
+          </div>
           <div class="grafico" id="ch-mensal"></div>
           <p class="contagem nota-parcial" hidden></p>
+          <p class="contagem" id="nota-diario" hidden></p>
+        </div>
+        <!-- calendário de pagamentos (M8): altura reservada no CSS desde a 1ª pintura -->
+        <div class="box" id="box-calendario">
+          <h3>Calendário de pagamentos — pago em cada dia (pela data do pagamento)</h3>
+          <div class="cal-area"><div class="grafico" id="ch-calendario"></div></div>
+          <ul class="legenda-cal" id="cal-legenda" aria-label="Legenda do calendário">
+            <li><span class="sw" data-cor="neutro"></span>sem pagamento</li>
+            <!-- faixas com o texto do formato final (oculto até o dado): a legenda nasce com a altura dela -->
+            <li><span class="sw" data-cor="0"></span><span class="faixa reserva">até R$ 0,0 mi</span></li>
+            <li><span class="sw" data-cor="1"></span><span class="faixa reserva">R$ 0,0 mi a R$ 0,0 mi</span></li>
+            <li><span class="sw" data-cor="2"></span><span class="faixa reserva">R$ 0,0 mi a R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="3"></span><span class="faixa reserva">R$ 00,0 mi a R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="4"></span><span class="faixa reserva">acima de R$ 00,0 mi</span></li>
+            <li><span class="sw" data-cor="parcial"></span>mês parcial*</li>
+            <li><span class="sw sem-dado"></span>ainda sem dado</li>
+          </ul>
+          <p class="contagem" id="cal-nota" style="margin:10px 0 0">Cada quadrado é um dia: quanto mais forte o
+            dourado, mais dinheiro saiu do caixa. Faixas = quintis dos dias com pagamento (a mesma régua em todos
+            os anos); fins de semana e feriados ficam vazios. * Mês parcial, hachurado: a origem ainda está
+            publicando. Pagamento com a data de outro ano na origem conta no mês em que o portal o lista.</p>
         </div>
         <div class="box" id="box-execucao" hidden>
           <h3>Execução do orçamento — empenhado, liquidado e pago por mês (cada estágio pela própria data)</h3>
@@ -509,6 +566,31 @@
             elemento prepara o Detalhamento já filtrado — você confere o período e o tamanho do
             download antes de carregar. A tabela equivalente está disponível para leitores de tela.
           </p>
+        </div>
+        <!-- caminho do dinheiro (M8): fonte do recurso → função → favorecido, por ano -->
+        <div class="box" id="box-caminho">
+          <div class="box-toggle">
+            <h3 id="caminho-titulo">Caminho do dinheiro — da fonte do recurso à função e a quem recebeu</h3>
+            <div class="acoes caminho-controles">
+              <select id="caminho-ano" aria-label="Ano do caminho do dinheiro"><option value="">—</option></select>
+              <div class="acoes" id="caminho-modo" role="group" aria-label="Favorecidos no caminho do dinheiro">
+                <button class="btn primario" data-modo="todos" type="button" aria-pressed="true">Todos</button>
+                <button class="btn" data-modo="privados" type="button" aria-pressed="false"
+                        title="Exclui Município, IPREV, CAPEP, bancos públicos e demais repasses institucionais">Só fornecedores privados</button>
+              </div>
+            </div>
+          </div>
+          <p class="contagem" style="margin:0 0 10px">Pago no ano, da fonte do recurso para a função e dela para
+            quem recebeu — a espessura de cada faixa é o valor. Fica de fora o extra-orçamentário (retenções e
+            consignações, que só transitam pelo caixa); os menores vão para “Demais”. Clique num favorecido para
+            abrir o raio-X.</p>
+          <p class="dica-scroll" aria-hidden="true">→ arraste para o lado para ver o caminho inteiro</p>
+          <div class="rolagem-x" id="caminho-rolagem" role="region" aria-labelledby="caminho-titulo">
+            <div class="grafico" id="ch-caminho"></div>
+          </div>
+          <!-- texto no formato final, oculto até o dado: a nota nasce com a altura dela -->
+          <p class="contagem reserva" id="caminho-nota" style="margin:10px 0 0">2026 (até 00/00/2026): R$ 0,00 bi
+            pagos. Fora do gráfico: o extra-orçamentário (R$ 000,0 mi).</p>
         </div>
         <div class="box" id="box-r100" hidden>
           <h3>De cada R$ 100 pagos, para onde foi o dinheiro</h3>
@@ -772,6 +854,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=23"></script>
+    <script defer src="./despesas-app.js?v=24"></script>
   </body>
 </html>
