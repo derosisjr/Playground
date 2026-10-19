@@ -10,12 +10,12 @@ paths:
 
 Compartilhada por todas as páginas (sem build): tokens navy/gold, **topbar fixa** de navegação
 entre painéis (`Comum.topbar("<pagina>.html")`; o hub não a usa; inclui Indicadores e Escuta Pública),
-**busca universal Ctrl+K/"/"** (paleta sobre 8 fontes — regimento, proposituras, legislação,
-requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" abre o artigo direto; no Regimento o
+**busca universal Ctrl+K/"/"** (paleta sobre 9 fontes — regimento, lei orgânica, proposituras, legislação,
+requerimentos, favorecidos, endividamento, indicadores, preço comparado — carregadas sob demanda — as pequenas na 1ª abertura; as grandes (proposituras ~5 MB, legislação, `despesas-index.json`, Lei Orgânica ~0,5 MB) só quando a busca chega a 3 caracteres ou na própria página da base, com "carregando…" no grupo e `role=status` p/ leitor de tela; "art 79" lista o artigo do Regimento e o da Lei Orgânica, o Regimento primeiro; "lom 58"/"lei orgânica 58" só a Lei Orgânica (Disposições Transitórias entram pelo texto, não pelo número); no Regimento e na Lei Orgânica o
 "/" continua focando a busca local; input é combobox ARIA com `aria-activedescendant` e aviso de
 fonte fora do ar), **estado na URL** (`lerParams`/`gravarParams` — filtros e
-busca viram links compartilháveis em todos os painéis; `#art-N` no regimento, `#alertas` etc. nas
-abas de despesas), `exportarCsv` (dialeto Excel pt-BR `;`+BOM; **número vira vírgula decimal** — passe número, não string de `toFixed`), **modo escuro** (toggle na
+busca viram links compartilháveis em todos os painéis; `#art-N` no Regimento e na Lei Orgânica —
+`#adt-art-N` nas Disposições Transitórias —, `#alertas` etc. nas abas de despesas), `exportarCsv` (dialeto Excel pt-BR `;`+BOM; **número vira vírgula decimal** — passe número, não string de `toFixed`), **modo escuro** (toggle na
 topbar/hub, persiste em localStorage, default `prefers-color-scheme`; snippet inline anti-flash no
 `<head>` de cada página; `html[data-tema="escuro"]` no comum.css vence os `:root` locais por
 especificidade; páginas com Chart.js escutam o evento **`temamudou`** e repintam os gráficos em
@@ -42,7 +42,8 @@ mais antigas; bump do sufixo `-vN` dos nomes no sw.js se mudar a estratégia). A
   desktop **não tem folga** (986 px medidos para 10 itens; os nomes completos dos cartões pediriam
   ~1.260 px) — rótulos curtos, nome do cartão no `title`; "Endividamento" virou "Semáforo
   Fiscal" (+15 px, cabe a 1280). **Até 640 px** a faixa mostra só "Início" + botão **"Painéis"**,
-  que abre a lista com o nome e as seções dos cartões (inclui "O ano em gastos", fora da faixa);
+  que abre a lista com o nome e as seções dos cartões (inclui "O ano em gastos" e "Lei Orgânica",
+  fora da faixa — rótulo `null` em `PAGINAS`);
   foco vai para a página atual, Esc fecha e devolve o foco, clique fora fecha.
 - **Ctrl+K**: links pela **chave estável** — proposituras `?cod=`, legislação `?id=`,
   requerimentos `?n=` (cada painel mostra só o item, com aviso `.foco` e "Ver a lista inteira";
@@ -150,11 +151,14 @@ para páginas dedicadas. Hero com **régua de indicadores** (pago no mês, alert
 removidos em 2026-07: o Briefing Ordem do Dia e a Base de Despesas cobrem os mesmos casos de uso
 com dados automáticos.)
 
-**Geometria em duas seções (2026-08):** "Bases de dados" com **7 cartões** (Despesas,
+**Geometria em duas seções (2026-08):** "Bases de dados" com **8 cartões** (Despesas,
 Endividamento, Preço comparado — 7º, entrou em 2026-08-09 —, Proposituras, Legislação,
-Requerimentos, Regimento) + "Leituras e participação" com 3 (Custo por Resultado, O ano em
-gastos, Escuta pública). A **linha órfã que o 7º cartão produz foi aceita por decisão do
-usuário em 2026-08** (registrada também em `precos.md`) — não "corrigir" movendo cartões.
+Requerimentos, Regimento, **Lei Orgânica** — 8º, 2026-10, M3, logo depois do Regimento) +
+"Leituras e participação" com 3 (Custo por Resultado, O ano em gastos, Escuta pública). A **linha
+incompleta da 1ª seção foi aceita por decisão do usuário em 2026-08** (registrada também em
+`precos.md`) — não "corrigir" movendo cartões: a 3 colunas a 3ª fileira tem 2 cartões (Regimento
+e Lei Orgânica); a 2 colunas são 4 fileiras cheias. **Quando Indicações entrar (decisão D5, cartão
+próprio) a seção vai a 9 = 3×3** e some a linha incompleta.
 Retrospectiva e escuta pública, antes um `<p>` com emoji abaixo da grade, viraram cartões.
 Em 2 colunas (~668–988px) a seção 2 fica 2+1; é o custo aceito.
 
@@ -201,7 +205,8 @@ qualquer mexida ali:
   bytes), gerado por `.github/scripts/bases_atualizacao.py` a partir de `git log -1 --format=%aI`.
   Precedência no `stat()`: data dentro do próprio JSON (`atualizado_em`/`gerado_em`) > git >
   `Last-Modified`. O 5º argumento de `stat()` é a chave nesse índice — obrigatório para os índices
-  em formato de array (proposituras, legis, requerimentos, regimento), que não têm onde guardar data.
+  em formato de array (proposituras, legis, requerimentos, regimento, lei orgânica), que não têm onde
+  guardar data.
 - **Contagens leves (`contagens` no `bases-atualizacao.json`)** substituem o download dos índices
   grandes. `contagemOuIndice(arquivo, completa)` só aceita a contagem se ela trouxer tudo o que o
   hub usa (senão baixa o índice): requerimentos exige `classificada` (mesma regra de
@@ -210,7 +215,10 @@ qualquer mexida ali:
   só uma das situações), mais o prazo da Lei Orgânica vencido (`fora_do_prazo` da contagem leve, ou
   `vence_em` do índice inteiro): "monitorados · 87 sem resposta de mérito, todos fora do prazo" —
   medido em ≤ 2 linhas a 1366/980/390 px. `regimento-notas.json` → `artigos_com_nota`: o cartão do Regimento só fala
-  de notas quando há alguma.
+  de notas quando há alguma. `lei-organica-index.json` → `{n, alterados, adt}`: o cartão da Lei
+  Orgânica mostra os artigos do **corpo** (256; as Disposições Transitórias recomeçam no art. 1) e
+  "artigos · 68 alterados por emenda" (artigos com nota de emenda) — 1 linha a 1366/980/390 px. Sem
+  a chave (antes do 1º `bases-atualizacao.yml` depois do merge) o hub baixa o índice inteiro.
 - **Texto do cartão não promete o que a página não entrega**: as `.desc` são estáticas (trocar por
   JS mudaria a altura da fileira); o que depende de estado vai em rótulo/CTA — a Escuta pública
   diz "Ver consulta" e só vira "Participar" com a consulta aberta.

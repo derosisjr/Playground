@@ -11,6 +11,12 @@ so e cabecalho o que aparece no comeco de uma linha. O parser e TOLERANTE a
 residuos de OCR — o que nao casar como artigo vira texto do artigo anterior, e
 nunca quebra a geracao.
 
+Reuso (2026-10): `parse(texto, opcoes)` serve a outras leis. O padrao (`REGIMENTO`)
+reproduz byte a byte o indice do Regimento — teste dourado em
+regimento/tests/test_regimento_dourado.py. A Lei Orgânica (regimento/lei_organica.py)
+passa as proprias `Opcoes`: rotulos com a pontuacao oficial, numeros de pagina,
+notas de emenda, nome dos Titulos nas linhas seguintes, Disposicoes Transitorias.
+
 CLI:
   python regimento/parser.py            # gera regimento-index.json
   python regimento/parser.py --dry-run  # so imprime contagens + amostra
@@ -21,6 +27,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 
 from comum.formato import sem_acento  # noqa: E402
 
 import argparse, json, os, re, sys, unicodedata
+from dataclasses import dataclass
+from typing import Callable, Optional
 
 AQUI = os.path.dirname(__file__)
 RAIZ = os.path.dirname(AQUI)
@@ -32,7 +40,10 @@ RE_TITULO   = re.compile(r"^T[IÍ]TULO\b(.*)$", re.I)
 RE_CAPITULO = re.compile(r"^CAP[IÍ]TULO\b(.*)$", re.I)
 RE_SECAO    = re.compile(r"^SE[CÇ][AÃ]O\b(.*)$", re.I)
 RE_ARTIGO   = re.compile(r"^Art\.?\s*(\d+)(-[A-Z])?\s*[ºo°]?\s*[\.\-–]?\s*(.*)$")
-RE_PARAG    = re.compile(r"^§\s*(\d+)\s*[ºo°]?\s*(.*)$|^Par[aá]grafo\s+[uú]nico\.?\s*(.*)$", re.I)
+# grupos nomeados (num/texto/unico; a Lei Orgânica acrescenta `suf`) para o mesmo
+# codigo servir as duas leis — o casamento e o mesmo de antes no Regimento
+RE_PARAG    = re.compile(r"^§\s*(?P<num>\d+)\s*[ºo°]?\s*(?P<texto>.*)$"
+                         r"|^Par[aá]grafo\s+[uú]nico\.?\s*(?P<unico>.*)$", re.I)
 RE_INCISO   = re.compile(r"^([IVXLC]{1,5}|[Il|]{1,4})\s*[-–]\s*(.*)$")  # romano OCR-tolerante
 RE_ALINEA   = re.compile(r"^([a-z])\)\s*(.*)$")
 
@@ -76,6 +87,11 @@ def _rotulo_artigo(numero: str) -> str:
     return f"Art. {numero}"
 
 
+def _rotulo_paragrafo(num: str, sufixo: str = "") -> str:
+    """Regimento: sempre ordinal ("§ 10º") — e o que o indice publicado sempre trouxe."""
+    return f"§ {num}º"
+
+
 def _norm_busca(s: str) -> str:
     return re.sub(r"\s+", " ", sem_acento(s, caixa="baixa")).strip()
 
@@ -93,18 +109,116 @@ def _limpa_rotulo_estrutura(resto: str) -> str:
     return " ".join(partes).strip()
 
 
-def parse(texto: str):
+@dataclass(frozen=True)
+class Opcoes:
+    """O que muda de uma lei para outra. Os valores padrao SAO o Regimento."""
+    re_artigo: re.Pattern = RE_ARTIGO
+    re_paragrafo: re.Pattern = RE_PARAG
+    re_inciso: re.Pattern = RE_INCISO
+    # Regimento: linha de inciso com menos de 5 caracteres e residuo de OCR, nao inciso
+    inciso_min: int = 5
+    # Regimento: incisos/alineas renumerados em sequencia (corrige o romano do OCR)
+    renumerar: bool = True
+    rotulo_artigo: Callable[[str], str] = _rotulo_artigo
+    rotulo_paragrafo: Callable[[str, str], str] = _rotulo_paragrafo
+    rotulo_unico: str = "Parágrafo único"
+    rotulo_inciso: Callable[[str], str] = lambda r: r
+    # linhas descartadas antes de tudo (ex.: numero de pagina do PDF)
+    ignorar: Optional[re.Pattern] = None
+    # linha que encerra o texto normativo (ex.: assinaturas)
+    fim: Optional[re.Pattern] = None
+    # caracteres que abrem uma nota de alteracao: a nota vai para `notas` do artigo
+    # (presa ao bloco que ela segue) e continua ate a proxima ancora
+    marcadores_nota: str = ""
+    # nome do Titulo/Capitulo/Secao nas linhas seguintes ("TÍTULO I" / "DISPOSIÇÕES…")
+    nomes_estrutura: bool = False
+    # linhas que, depois do nome de um cabecalho, viram uma secao sem numero
+    subtitulos: frozenset = frozenset()
+    # nome de Titulo que abre as Disposicoes Transitorias (numeracao recomeca em 1)
+    re_transitorias: Optional[re.Pattern] = None
+    # palavra partida no hifen no fim da linha ("reunir-" + "se-ão") junta sem espaco
+    juntar_hifen: bool = False
+
+
+REGIMENTO = Opcoes()
+
+
+def _juntar(texto: str, linha: str, op: Opcoes) -> str:
+    if op.juntar_hifen and re.search(r"\w-$", texto):
+        return texto + linha
+    return (texto + " " + linha).strip()
+
+
+def parse(texto: str, opcoes: Optional[Opcoes] = None):
+    op = opcoes or REGIMENTO
     linhas = texto.splitlines()
     artigos = []
     titulo = capitulo = secao = ""
-    atual = None  # artigo em construcao
+    nomes = {"titulo": "", "capitulo": "", "secao": ""}  # nomes nas linhas seguintes
+    nome_de = None        # cabecalho cujo nome esta sendo lido (nomes_estrutura)
+    atual = None          # artigo em construcao
+    nota = None           # nota de alteracao em construcao
+    nota_pendente = False  # marcador sozinho na linha: a nota vem na proxima
+    pendentes = []        # notas lidas entre um cabecalho e o artigo seguinte
 
     def fechar():
         if atual and atual["blocos"]:
             artigos.append(atual)
 
+    def composto(nivel, rotulo):
+        nome = nomes[nivel]
+        return f"{rotulo} — {nome}" if rotulo and nome else (rotulo or nome)
+
+    def abrir_nota(txt):
+        nonlocal nota
+        if atual is not None:
+            nota = {"bloco": len(atual["blocos"]) - 1, "texto": txt}
+            atual["notas"].append(nota)
+        else:  # depois de um cabecalho: vai para o artigo seguinte, sem bloco
+            nota = {"bloco": None, "texto": txt}
+            pendentes.append(nota)
+
+    def fechar_nota():
+        nonlocal nota
+        if nota is not None:
+            nota["texto"] = re.sub(r"\s+", " ", nota["texto"]).strip()
+        nota = None
+
+    def eh_ancora(ln):
+        return bool(RE_TITULO.match(ln) or RE_CAPITULO.match(ln) or RE_SECAO.match(ln)
+                    or op.re_artigo.match(ln) or op.re_paragrafo.match(ln)
+                    or op.re_inciso.match(ln) or RE_ALINEA.match(ln))
+
     for raw in linhas:
+        if op.fim and op.fim.match(raw.strip()):
+            break
+        if op.ignorar and op.ignorar.match(raw):
+            continue
         ln = raw.strip()
+
+        # notas de alteracao (Lei Orgânica): o marcador do PDF abre a nota
+        if op.marcadores_nota:
+            if any(c in ln for c in op.marcadores_nota):
+                for c in op.marcadores_nota:
+                    ln = ln.replace(c, "")
+                ln = ln.strip()
+                fechar_nota()
+                nome_de = None
+                if ln:
+                    abrir_nota(ln)
+                else:
+                    nota_pendente = True
+                continue
+            if ln and nota_pendente:
+                nota_pendente = False
+                abrir_nota(ln)
+                continue
+            if ln and nota is not None:
+                if not eh_ancora(ln):
+                    nota["texto"] = _juntar(nota["texto"], ln, op)
+                    continue
+                fechar_nota()
+
         if not ln or ln.startswith("<!--") or ln.startswith("#"):
             continue
 
@@ -113,50 +227,77 @@ def parse(texto: str):
             fechar(); atual = None
             titulo = "TÍTULO " + _limpa_rotulo_estrutura(m.group(1))
             capitulo = secao = ""
+            nomes.update(titulo="", capitulo="", secao="")
+            nome_de = "titulo"
             continue
         m = RE_CAPITULO.match(ln)
         if m:
             fechar(); atual = None
             capitulo = "CAPÍTULO " + _limpa_rotulo_estrutura(m.group(1))
             secao = ""
+            nomes.update(capitulo="", secao="")
+            nome_de = "capitulo"
             continue
         m = RE_SECAO.match(ln)
         if m:
             fechar(); atual = None
-            secao = "Seção " + _limpa_rotulo_estrutura(m.group(1))
+            # Regimento: "Seção I …" (o nome vem na mesma linha); LOM: "SEÇÃO I", como no PDF
+            secao = ("SEÇÃO " if op.nomes_estrutura else "Seção ") + _limpa_rotulo_estrutura(m.group(1))
+            nomes["secao"] = ""
+            nome_de = "secao"
             continue
 
-        m = RE_ARTIGO.match(ln)
+        m = op.re_artigo.match(ln)
         if m:
             fechar()
+            nome_de = None
             numero = m.group(1) + (m.group(2) or "")   # "23" ou "23-A"
+            tit = composto("titulo", titulo) if op.nomes_estrutura else titulo
+            cap = composto("capitulo", capitulo) if op.nomes_estrutura else capitulo
+            sec = composto("secao", secao) if op.nomes_estrutura else secao
+            adt = bool(op.re_transitorias and op.re_transitorias.search(tit))
             atual = {
-                "id": "art-" + numero.lower(),
+                "id": ("adt-" if adt else "") + "art-" + numero.lower(),
                 "numero": numero,
-                "titulo_sup": titulo,
-                "capitulo": capitulo,
-                "secao": secao,
-                "blocos": [{"tipo": "caput", "rotulo": _rotulo_artigo(numero),
+                "titulo_sup": tit,
+                "capitulo": cap,
+                "secao": sec,
+                "blocos": [{"tipo": "caput", "rotulo": op.rotulo_artigo(numero),
                             "texto": m.group(3).strip()}],
             }
+            if op.marcadores_nota:
+                atual["notas"] = pendentes
+                pendentes = []
+            if op.re_transitorias:
+                atual["adt"] = adt
+            continue
+
+        # fora de artigo: nome do cabecalho (Lei Orgânica) ou lixo de cabecalho
+        if atual is None:
+            if op.nomes_estrutura and nome_de:
+                if ln in op.subtitulos and nomes[nome_de]:
+                    # "CAPÍTULO I / DA POLÍTICA ECONÔMICA / DISPOSIÇÕES GERAIS"
+                    secao, nomes["secao"], nome_de = ln, "", None
+                else:
+                    nomes[nome_de] = _juntar(nomes[nome_de], ln, op)
             continue
 
         # dentro de um artigo: paragrafos / incisos / alineas / continuacao
-        if atual is None:
-            continue
-        mp = RE_PARAG.match(ln)
+        mp = op.re_paragrafo.match(ln)
         if mp:
-            if mp.group(1):  # § N
-                atual["blocos"].append({"tipo": "paragrafo", "rotulo": f"§ {mp.group(1)}º",
-                                        "texto": (mp.group(2) or "").strip()})
-            else:            # Paragrafo unico
-                atual["blocos"].append({"tipo": "paragrafo", "rotulo": "Parágrafo único",
-                                        "texto": (mp.group(3) or "").strip()})
+            if mp.group("num"):  # § N
+                suf = mp.groupdict().get("suf") or ""
+                atual["blocos"].append({"tipo": "paragrafo",
+                                        "rotulo": op.rotulo_paragrafo(mp.group("num"), suf),
+                                        "texto": (mp.group("texto") or "").strip()})
+            else:                # Paragrafo unico
+                atual["blocos"].append({"tipo": "paragrafo", "rotulo": op.rotulo_unico,
+                                        "texto": (mp.group("unico") or "").strip()})
             continue
-        mi = RE_INCISO.match(ln)
-        if mi and len(ln) > 4:
+        mi = op.re_inciso.match(ln)
+        if mi and len(ln) >= op.inciso_min:
             rot = _ROMANO_FIX.get(mi.group(1), mi.group(1)).upper()
-            atual["blocos"].append({"tipo": "inciso", "rotulo": rot,
+            atual["blocos"].append({"tipo": "inciso", "rotulo": op.rotulo_inciso(rot),
                                     "texto": mi.group(2).strip()})
             continue
         ma = RE_ALINEA.match(ln)
@@ -165,16 +306,21 @@ def parse(texto: str):
                                     "texto": ma.group(2).strip()})
             continue
         # continuacao do texto do ultimo bloco
-        atual["blocos"][-1]["texto"] = (atual["blocos"][-1]["texto"] + " " + ln).strip()
+        atual["blocos"][-1]["texto"] = _juntar(atual["blocos"][-1]["texto"], ln, op)
 
+    fechar_nota()
     fechar()
 
     # campo de busca (sem acento) e limpeza final
     for a in artigos:
-        _renumerar(a["blocos"])
+        if op.renumerar:
+            _renumerar(a["blocos"])
         partes = [a["titulo_sup"], a["capitulo"], a["secao"],
                   f"art {a['numero']}", "artigo " + a["numero"]]
+        if a.get("adt"):
+            partes.append("adt")
         partes += [b["texto"] for b in a["blocos"]]
+        partes += [n["texto"] for n in a.get("notas", [])]
         a["texto_busca"] = _norm_busca(" ".join(partes))
         a["tags"] = ""
     return artigos

@@ -19,6 +19,7 @@ window.Comum = (() => {
     ["legis.html", "Legislação", "Base de Legislação", "Bases de dados"],
     ["requerimentos.html", "Requerimentos", "Requerimentos & Respostas", "Bases de dados"],
     ["regimento.html", "Regimento", "Regimento Interno", "Bases de dados"],
+    ["lei-organica.html", null, "Lei Orgânica", "Bases de dados"],
     ["indicadores.html", "Indicadores", "Custo por Resultado", "Leituras e participação"],
     ["retrospectiva.html", null, "O ano em gastos", "Leituras e participação"],
     ["consulta.html", "Escuta Pública", "Escuta pública", "Leituras e participação"],
@@ -574,6 +575,18 @@ window.Comum = (() => {
         h: norm("art artigo " + a.numero + " " + (a.texto_busca || "")),
         numArt: String(a.numero).toLowerCase(),
       })) },
+    // Lei Orgânica (~0,5 MB): "lom 58" / "lei orgânica 58" abrem o artigo; "art 58" lista
+    // as duas leis, o Regimento primeiro. As Disposições Transitórias (numeração própria,
+    // recomeça no 1) entram pela busca de texto, não pelo número.
+    { id: "lom", rotulo: "Lei Orgânica", url: "./lei-organica-index.json", grande: true,
+      paginas: ["lei-organica.html"],
+      mapear: (d) => d.map((a) => ({
+        t: (a.adt ? "Disposições Transitórias, art. " : "Art. ") + a.numero,
+        s: ((a.blocos && a.blocos[0] && a.blocos[0].texto) || "").slice(0, 110),
+        url: "./lei-organica.html#" + a.id,
+        h: norm("lom lei organica art artigo " + a.numero + " " + (a.texto_busca || "")),
+        numArt: a.adt ? null : String(a.numero).toLowerCase(),
+      })) },
     { id: "proposituras", rotulo: "Proposituras", url: "./proposituras-index.json", grande: true,
       paginas: ["proposituras.html"],
       // link pela chave estável (`cod`): "?q=1/2026" casava também 11/2026, 101/2026…
@@ -700,10 +713,11 @@ window.Comum = (() => {
     }
   }
 
-  // "art 79" / "artigo 23-a" / "79" → busca direta por número de artigo
+  // "art 79" / "artigo 23-a" / "79" → nº de artigo no Regimento e na Lei Orgânica;
+  // "lom 58" / "lei orgânica 58" / "lom, art. 58" → só na Lei Orgânica
   function alvoArtigo(q) {
-    const m = q.trim().match(/^(?:art(?:igo)?\.?\s*)?(\d+(?:-[a-z])?)$/i);
-    return m ? m[1].toLowerCase() : null;
+    const m = norm(q).trim().match(/^(lom|lei organica)?[\s,]*(?:art(?:igo)?\.?\s*)?(\d+(?:-[a-z])?)$/);
+    return m ? { num: m[2], lom: !!m[1] } : null;
   }
 
   function buscarPaleta(q) {
@@ -715,12 +729,13 @@ window.Comum = (() => {
     const vistos = new Set();  // documentos já listados no ranking (não repetir no grupo por CPF/CNPJ)
     for (const f of FONTES) {
       if (!fonteAtiva(f, q)) continue;
+      if (art && art.lom && f.id === "regimento") continue;  // "lom 58": só a Lei Orgânica
       const itens = cacheFontes[f.id];
       if (itens === "erro") continue;
       if (!itens) { grupos.push({ f, carregando: true, hits: [] }); continue; }
       let hits;
-      if (art && f.id === "regimento") {
-        hits = itens.filter((i) => i.numArt === art);
+      if (art && (f.id === "regimento" || f.id === "lom")) {
+        hits = itens.filter((i) => i.numArt === art.num);
         if (!hits.length) hits = itens.filter((i) => termos.every((t) => i.h.includes(t)));
       } else {
         hits = itens.filter((i) => termos.every((t) => i.h.includes(t)));
@@ -729,7 +744,12 @@ window.Comum = (() => {
       for (const i of hits) if (i.dg) vistos.add(i.dg);
       if (hits.length) grupos.push({ f, hits: hits.slice(0, 5) });
     }
-    if (art) grupos.sort((a, b) => (b.f.id === "regimento") - (a.f.id === "regimento"));
+    // nº de artigo: as leis primeiro — o Regimento antes da Lei Orgânica ("lom 58": o contrário)
+    if (art) {
+      const ordem = art.lom ? ["lom", "regimento"] : ["regimento", "lom"];
+      const peso = (g) => { const k = ordem.indexOf(g.f.id); return k < 0 ? ordem.length : k; };
+      grupos.sort((a, b) => peso(a) - peso(b));
+    }
     // CNPJ completo digitado: o raio-X abre direto, mesmo fora do índice (a página
     // resolve a identidade e diz se não houver pagamento)
     const dq = digitos(q);
@@ -766,8 +786,9 @@ window.Comum = (() => {
     }
     if (!norm(q).trim()) {
       paletaRes.innerHTML = '<div class="paleta-vazio" role="presentation">Digite para buscar em Despesas, ' +
-        "Proposituras, Legislação, Requerimentos, Regimento, Endividamento, Indicadores e Preço comparado.<br>" +
-        'Dica: <b>art 79</b> abre o artigo direto; um <b>CNPJ</b> abre o raio-X do favorecido.</div>' + avisoFalhas;
+        "Proposituras, Legislação, Requerimentos, Regimento, Lei Orgânica, Endividamento, Indicadores e Preço comparado.<br>" +
+        'Dica: <b>art 79</b> abre o artigo do Regimento e <b>lom 58</b>, o da Lei Orgânica; um <b>CNPJ</b> ' +
+        'abre o raio-X do favorecido.</div>' + avisoFalhas;
       atualizarAtivo();
       return;
     }
@@ -886,8 +907,8 @@ window.Comum = (() => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
       (paletaFundo && !paletaFundo.hidden) ? fecharPaleta() : abrirPaleta();
-    } else if (e.key === "/" && !digitando && paginaAtual !== "regimento.html") {
-      // no Regimento, "/" foca a busca local (atalho de plenário) — não interceptar
+    } else if (e.key === "/" && !digitando && !["regimento.html", "lei-organica.html"].includes(paginaAtual)) {
+      // no Regimento e na Lei Orgânica, "/" foca a busca local (atalho de plenário) — não interceptar
       e.preventDefault();
       abrirPaleta();
     }
