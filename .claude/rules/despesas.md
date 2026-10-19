@@ -8,6 +8,9 @@ paths:
   - "retrospectiva.html"
   - "retrospectiva-app.js"
   - "favorecidos/**"
+  - "explorador.html"
+  - "explorador-app.js"
+  - "explorador-worker.js"
 ---
 
 # Base de Despesas (`despesas/` + `despesas.html`)
@@ -102,6 +105,40 @@ A consolidação **não altera a soma geral** (teste `test_ranking_consolida_gra
   "Recorte") e link citável carregam a visão. A ficha do empenho na movimentação acha os estágios
   pelo `periodo_empenho` da linha. O índice grava `conservacao` (pago da base = execução =
   movimentação) e o `verificar.py` confere.
+
+## Cubo do Explorador de pagamentos (M9, 2026-10)
+
+`exportar_cubos(movimento, ident)` grava **`despesas/dados/cubo/AAAA.json`**: os PAGAMENTOS do
+ano — a fase P da movimentação, as mesmas linhas de `dados/mov/`, no mês da partição (= pela data do
+pagamento) — agregados por mês × unidade gestora × tipo × favorecido × função × subfunção ×
+programa × elemento × fonte × grupo, com `pago` (soma em centavos inteiros → 2 casas exatas) e `n`
+(nº de documentos). É a tabela que o `explorador.html` monta num SQLite no navegador (página em
+`site-frontend.md`).
+- Contrato: `{"versao": 1, "ano", "campos": ["mes", "unidade_gestora", "tipo", "favorecido",
+  "funcao", "subfuncao", "programa", "elemento_despesa", "fonte_recurso", "grupo_despesa", "pago",
+  "n"], "campos_favorecido": ["chave", "nome", "documento"], "dicionario": {campo: [valores]},
+  "linhas": [[…]]}` — as colunas 1 a 9 são índices no dicionário do campo; vazio da origem = `null`
+  (o extra-orçamentário não tem função/subfunção/programa); o favorecido é a **identidade**:
+  `[chave de formato.identidade_favorecido, nome de exibição do ranking, documento como a origem
+  publica]` (o JS não recalcula a chave; agrupar só por nome junta homônimos e só pelo CPF mascarado
+  junta pessoas).
+- Inclui extra-orçamentário (pelo `tipo`) e anulações (negativas): o pago do ano é o de
+  `totais.por_ano` e o de cada mês, o de `series_mensais`.
+- **Determinístico**: linhas por (mês, −valor, texto), dicionários pela 1ª aparição (os maiores
+  valores ganham índices curtos), JSON compacto; só regrava se os bytes mudaram. O ano fechado não
+  vira diff diário — muda quando o dado muda (inclusive o nome de exibição de um favorecido cuja
+  grafia dominante troca com o ano novo).
+- Privacidade: nada além do que `dados/mov/` e `nomes-favorecidos.json` já publicam (mesmos nomes,
+  CPF mascarado como na origem; a chave `cpf:…|NOME` é a mesma dos índices leves).
+- Tamanho (base de 2026-10-16): 2025 = 38.506 linhas, 1,95 MB (514 KB gzip); 2026 = 29.702 linhas,
+  1,60 MB (436 KB gzip); ~1 s no export.
+- Manifesto no índice: **`cubos: [{ano, arquivo, linhas, bytes, gzip, pago, n}]`** (~270 bytes; o
+  hub baixa o índice inteiro, por isso nada além disso). `gzip` = estimativa do download (nível 6).
+- `verificar.py` (`verificar_cubos`): todo ano de `totais.por_ano` tem cubo; o arquivo existe com as
+  linhas e os bytes do manifesto; índices dentro do dicionário; pago = `totais.por_ano` = manifesto;
+  por mês = `series_mensais`. Índice sem `cubos` (export anterior) não é falha. Testes em
+  `despesas/tests/test_cubo.py` (conservação, grafias do mesmo CNPJ, bytes determinísticos, ida e
+  volta do dicionário, verificação). O workflow já commita `despesas/dados` — os cubos vão juntos.
 
 ## Classificação das linhas e taxas (2026-09)
 

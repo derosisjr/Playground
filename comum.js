@@ -13,6 +13,7 @@ window.Comum = (() => {
   const PAGINAS = [
     ["index.html", "Início", "Início", ""],
     ["despesas.html", "Despesas", "Radar de Despesas", "Bases de dados"],
+    ["explorador.html", null, "Explorador de pagamentos", "Bases de dados"],
     ["endividamento.html", "Semáforo Fiscal", "Semáforo Fiscal", "Bases de dados"],
     ["precos.html", "Preços", "Preço comparado", "Bases de dados"],
     ["proposituras.html", "Proposituras", "Base de Proposituras", "Bases de dados"],
@@ -847,6 +848,11 @@ window.Comum = (() => {
         s: "consulta com filtros, ficha do empenho e link citável",
         url: "./despesas.html#detalhe",
         h: norm("detalhamento despesas empenho liquidacao pagamento consulta lancamentos documentos"),
+      }, {
+        t: "Explorador de pagamentos (tabela dinâmica e SQL)",
+        s: "cruze função, favorecido, mês e unidade gestora no navegador",
+        url: "./explorador.html",
+        h: norm("explorador pagamentos tabela dinamica pivo cruzar sql consulta funcao favorecido mes unidade"),
       }]) },
     // CPF/CNPJ de TODOS os favorecidos (o ranking acima só tem os 300 maiores) —
     // ~0,7 MB, por isso só entra quando a busca tem MIN_DIGITOS dígitos ou mais.
