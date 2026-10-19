@@ -36,6 +36,11 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
   de fornecedor). Atenção ao NFKD: o acento agudo solto vira espaço ("SED S").
 - **Desdobramentos**: `cita` = pedidos anteriores citados no assunto ("Resposta ao requerimento
   210/2025 - …"), só os que existem na base; o painel monta a volta ("desdobrado em").
+- **Tempo até a resposta, por secretaria** (M6, out/2026): dentro de "Atraso por secretaria", um ponto
+  por pedido (ECharts via `Comum.grafico`, dispersão com `jitter` do v6): cheio = respondido (dias da
+  sessão ao mérito), vazado = sem mérito (idade); eixo **logarítmico** com marcos (15/30 d, 2/3/6
+  meses, 1 ano — na linear o espalhamento desistia de ~140 pontos); linhas de 15 e 30 dias; traço
+  dourado = mediana; segue o filtro de ano e a regra de cobertura; clique no ponto = foco `?n=`.
 - **Painel**: número-manchete no topo (sem resposta de mérito na base inteira — os KPIs abaixo
   seguem o filtro; "todos fora do prazo de 15 dias da Lei Orgânica" só com `vence_em` no
   índice); KPIs com mediana (não média) e "N de M em até 15 dias"; coluna Prazo em texto

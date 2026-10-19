@@ -116,6 +116,8 @@
       .secretarias tbody td { padding: 6px 10px; }
       .secretarias td.n { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
       .secretarias td.fora { color: var(--vermelho); font-weight: 600; }
+      .grafico-sec { margin: 10px 0 4px; }
+      .nota-sec { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 2px 0 6px; max-width: 95ch; }
     </style>
   </head>
   <body>
@@ -180,6 +182,11 @@
 
       <details class="secretarias" id="secretarias">
         <summary>Atraso por secretaria <span class="sub" id="sec-sub">carregando…</span></summary>
+        <!-- um ponto por pedido (requerimentos-app.js, desenharSecretarias); clique abre o pedido -->
+        <div class="grafico grafico-sec" id="ch-secretarias"></div>
+        <p class="nota-sec">Cada ponto é um requerimento: cheio = já respondido (dias da sessão à resposta de mérito);
+          vazado = ainda sem resposta de mérito (dias desde a sessão). Escala logarítmica — as marcas são 15 e 30 dias,
+          2, 3 e 6 meses e 1 ano. Clique num ponto para abrir o pedido.</p>
         <div class="rolagem">
           <table>
             <thead>
@@ -236,6 +243,6 @@
       </p>
     </main>
 
-    <script src="./requerimentos-app.js?v=9"></script>
+    <script src="./requerimentos-app.js?v=10"></script>
   </body>
 </html>
