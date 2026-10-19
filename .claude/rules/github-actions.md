@@ -47,8 +47,10 @@ verificação (`testes.yml`, `zizmor.yml`) e não commitam; os pushes de dados d
 separados (`despesas/tests`+`comum/tests`, `precos/tests`, `proposituras/tests` e o `unittest` de
 `respostas-executivo` — os módulos `crawler`/`export` colidem num mesmo pytest) e
 `.github/scripts/checar_versoes.py`, que falha se um `.js`/`.css` local carregado por HTML não
-tiver `?v=` ou se a mesma URL aparecer com versões diferentes entre páginas. Suíte nova entra
-como passo novo lá.
+tiver `?v=` ou se a mesma URL aparecer com versões diferentes entre páginas, e
+`.github/scripts/checar_publicos.py` (2026-10), que falha se um JSON publicado tiver campo fora da
+lista branca do export da base (roda também no `bases-atualizacao.yml`, depois da guarda de
+frescor). Suíte nova entra como passo novo lá.
 
 Consequências a respeitar ao mexer neles:
 - **Nunca fazer dois workflows escreverem o mesmo arquivo** (fora do par serializado acima). Os

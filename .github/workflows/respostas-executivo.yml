@@ -64,6 +64,7 @@ jobs:
       # 253 linhas de fixtures reais do classificador (mérito × prorrogação ×
       # encaminhamento) que nunca rodavam no CI. Falhou, não crawla nem publica.
       - name: Testes do classificador
+        id: testes
         run: python -m unittest discover -s respostas-executivo -p "testes_*.py"
 
       - name: Arquivar respostas no Drive e atualizar planilha
@@ -107,7 +108,13 @@ jobs:
 
       # Exporta a aba "requerimentos" da planilha para o JSON do painel estático e
       # commita no repo (Pages serve o requerimentos-index.json da raiz).
+      # Roda MESMO SE o passo anterior falhar (o export lê só a planilha): até
+      # 2026-10 ele era pulado sempre que a Câmara recusava conexão, e o JSON no ar
+      # ficou dias com a coluna interna "Status atual" depois da correção. O job
+      # continua vermelho pela falha do crawler. Testes vermelhos ainda bloqueiam.
       - name: Exportar e commitar requerimentos-index.json
+        id: export
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' }}
         env:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -122,6 +129,7 @@ jobs:
           fi
 
       - name: Commitar e publicar
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
         uses: ./.github/actions/commitar
         with:
           caminhos: requerimentos-index.json

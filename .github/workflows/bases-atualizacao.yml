@@ -79,6 +79,13 @@ jobs:
       - name: Guarda de frescor das bases
         run: python .github/scripts/frescor_bases.py
 
+      # Guarda de CAMPOS PÚBLICOS — o JSON que está no ar só tem as chaves da lista
+      # branca do export. Pega o arquivo antigo que fica publicado quando o export de
+      # uma base não roda (o teste do export só vale para o arquivo que ele gera).
+      - name: Guarda de campos públicos
+        if: ${{ !cancelled() }}
+        run: python .github/scripts/checar_publicos.py
+
       # O feed parado não pode ficar verde: o job termina vermelho DEPOIS de publicar
       # as datas (e o alerta-falhas abre a issue).
       - name: Falha no feed de novidades (visível)
