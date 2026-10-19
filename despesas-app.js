@@ -54,6 +54,7 @@ async function init() {
   ligarVistaFuncao();
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
+  initGraficosMovimento();   // M8: Mensal | Diário, calendário e caminho do dinheiro
   popularFiltrosAlertas();
   ligarAlertas();   // restaura filtros da URL e renderiza
   // deep-link de busca (paleta ⌘K / links externos): ?q= pré-preenche favorecidos
@@ -323,7 +324,9 @@ function renderGraficos() {
     el.textContent = "* Mês parcial: o portal publica com semanas de atraso — o trecho tracejado " +
                      "ainda vai subir e fica fora das comparações.";
   });
-  Comum.grafico("ch-mensal", {
+  // a escala Mensal (o gráfico abaixo) ou a Diária (M8, defDiario) — desenharMensal escolhe
+  DEF_MENSAL = {
+    eventos: ouvirZoomDiario,   // o mesmo contêiner troca de escala sem recriar o gráfico
     opcao: (p) => {
       const anel = { borderColor: p.card, borderWidth: 2 };
       return {
@@ -363,7 +366,8 @@ function renderGraficos() {
         mm3[i] == null ? "—" : compacto(mm3[i]),
         desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]),
     },
-  });
+  };
+  desenharMensal();
 
   // Execução: empenhado × liquidado × pago por mês (tríade coletada pelo crawler)
   renderExecucao();
@@ -1141,6 +1145,553 @@ function renderPares() {
 function nomeFuncao(s) {
   const nice = String(s || "").replace(/^\d+\s*-\s*/, "").trim();
   return nice ? nice.charAt(0) + nice.slice(1).toLowerCase() : "—";
+}
+
+// ── Pago por dia, calendário e caminho do dinheiro (M8) ─────────────────────
+// despesas/dados/calendario.json (pago e documentos por dia) e dados/fluxo.json (fonte →
+// função → favorecido, por ano), gerados pelo export das MESMAS linhas de dados/mov/. O
+// índice traz o manifesto (`dados_graficos`); sem ele — o índice publicado antes do 1º
+// export com os arquivos — nada é baixado e as caixas dizem quando o gráfico chega.
+const DIA_MS = 864e5;
+const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const dataBR = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+const diaSemana = (iso) => SEMANA[new Date(iso + "T12:00:00").getDay()];
+// "AAAA-MM-DD" ↔ instante da meia-noite local (é como o ECharts lê a data no eixo de tempo)
+const tempoLocal = (iso) => new Date(iso + "T00:00:00").getTime();
+const isoLocal = (t) => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const parcialDia = (iso) => mesParcial(+iso.slice(0, 4), +iso.slice(5, 7));
+const pctDe = (v, total) => (total ? (100 * v / total).toFixed(1).replace(".", ",") + "%" : "—");
+const larguraTexto = (texto, fonte) => {
+  medidorTexto = medidorTexto || document.createElement("canvas").getContext("2d");
+  medidorTexto.font = fonte;
+  return medidorTexto.measureText(texto).width;
+};
+
+let CALENDARIO = null, FLUXO = null;
+const PROMESSAS_GRAFICOS = {};
+function baixarDadosGrafico(nome) {
+  const man = DADOS.dados_graficos?.[nome];
+  if (!man) return Promise.reject(new Error("índice sem dados_graficos." + nome));
+  if (!PROMESSAS_GRAFICOS[nome]) {
+    PROMESSAS_GRAFICOS[nome] = fetch("./" + man.arquivo + "?v=" + encodeURIComponent(DADOS.atualizado_em || ""))
+      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .catch((e) => { delete PROMESSAS_GRAFICOS[nome]; throw e; });   // "Tentar de novo" baixa de novo
+  }
+  return PROMESSAS_GRAFICOS[nome];
+}
+
+// estado do Visão geral na URL (pago=dia, caminho=AAAA, so=privados), sem apagar o resto
+function gravarParamGeral(chave, valor) {
+  const p = Object.fromEntries(Comum.lerParams());
+  if (valor) p[chave] = valor; else delete p[chave];
+  Comum.gravarParams(p);
+}
+
+// Caixa nova antes do 1º export com os arquivos: um aviso no lugar do gráfico. Fora da tela
+// a caixa recolhe; na tela fica a altura reservada — nada se desloca à vista (CLS).
+function avisarIndisponivel(box, grafico, outros) {
+  const r = box.getBoundingClientRect();
+  const naTela = !!box.offsetParent && r.top < innerHeight && r.bottom > 0;
+  grafico.insertAdjacentHTML("beforeend",
+    '<p class="aviso-grafico">Este gráfico fica disponível a partir da próxima atualização da base (diária).</p>');
+  if (naTela) { outros.forEach((el) => { el.style.visibility = "hidden"; }); return; }
+  grafico.style.setProperty("--altura-grafico", "48px");
+  grafico.style.minWidth = "0";
+  outros.forEach((el) => { el.style.display = "none"; });
+}
+
+function initGraficosMovimento() {
+  ligarEscalaPago();
+  ligarCaminho();
+  initCalendario();
+  initCaminho();
+}
+
+// Mesmos dias resumidos por mês (tabela dos leitores de tela do Diário e do calendário):
+// ~470 linhas de dias seriam navegáveis só uma a uma; o mês traz o total, os documentos e
+// o maior dia — os picos que o desenho mostra. O dia a dia está no Detalhamento.
+function resumoCalendarioPorMes() {
+  const meses = new Map();
+  for (const [dia, v, n] of CALENDARIO.linhas) {
+    const m = meses.get(dia.slice(0, 7)) || { v: 0, n: 0, maior: null };
+    m.v += v; m.n += n;
+    if (!m.maior || v > m.maior[1]) m.maior = [dia, v];
+    meses.set(dia.slice(0, 7), m);
+  }
+  return [...meses].map(([k, m]) => [`${MESES[+k.slice(5)]}/${k.slice(0, 4)}${parcialDia(k + "-01") ? " (parcial)" : ""}`,
+    compacto(m.v), m.n.toLocaleString("pt-BR"), `${dataBR(m.maior[0])} (${compacto(m.maior[1])})`]);
+}
+const CABECALHOS_DIAS = ["Mês", "Pago", "Pagamentos", "Maior dia"];
+const maioresDias = (k) => [...CALENDARIO.linhas].sort((a, b) => b[1] - a[1]).slice(0, k);
+
+// Dica de um dia (Diário e calendário): pago, documentos e as notas do dia
+function dicaDia([dia, v, n, anul], p, cor) {
+  const notas = [];
+  if (!n) notas.push("Nenhum pagamento registrado neste dia.");
+  else if (!(v > 0)) notas.push("Sem pagamento líquido: as anulações (estornos) igualam ou superam os pagamentos.");
+  else if (anul) notas.push(`Inclui ${anul.toLocaleString("pt-BR")} anulaç${anul === 1 ? "ão" : "ões"} (estorno de pagamento).`);
+  if (parcialDia(dia)) notas.push(NOTA_PARCIAL);
+  return Comum.dicaGrafico(`${diaSemana(dia)}, ${dataBR(dia)}`, [
+    [cor || p.serie, "Pago no dia", brlc(v), "p"],
+    [null, "Pagamentos", n.toLocaleString("pt-BR")],
+  ], notas.join(" "), parcialDia(dia));
+}
+
+// ── Pago por mês: Mensal | Diário ──
+// A escala Diária desenha o calendário em barras no MESMO contêiner, com régua de zoom
+// (começa nos últimos 120 dias); a Mensal é o gráfico do M7, intacto (DEF_MENSAL).
+let pagoEscala = Comum.lerParams().get("pago") === "dia" ? "dia" : "mes";
+let DEF_MENSAL = null;
+let janelaDiario = null;   // [início, fim] do zoom: sobrevive à troca de tema e de escala
+const ouvirZoomDiario = (chart) => chart.on("datazoom", Comum.debounce(() => {
+  if (pagoEscala !== "dia" || chart.isDisposed()) return;
+  const dz = chart.getOption().dataZoom?.[0];
+  if (dz && dz.startValue != null) janelaDiario = [dz.startValue, dz.endValue];
+}, 120));
+
+function desenharMensal() {
+  if (!DEF_MENSAL) return;
+  if (pagoEscala === "dia" && !CALENDARIO?.linhas?.length) {
+    // escala pedida pelo link (?pago=dia): espera o calendário; sem ele (ou vazio), fica a Mensal
+    baixarDadosGrafico("calendario").then((c) => { CALENDARIO = c; if (!c.linhas?.length) pagoEscala = "mes"; },
+      () => { pagoEscala = "mes"; })
+      .then(() => { marcarAlternancia("#pago-escala button", (b) => b.dataset.escala === pagoEscala); desenharMensal(); });
+    return;
+  }
+  const dia = pagoEscala === "dia";
+  Comum.grafico("ch-mensal", dia ? defDiario() : DEF_MENSAL);
+  document.querySelector("#box-mensal .nota-parcial").hidden = dia || !(DADOS.resumo?.meses_parciais || []).length;
+  document.getElementById("nota-diario").hidden = !dia;
+}
+
+function ligarEscalaPago() {
+  const tem = !!DADOS.dados_graficos?.calendario;
+  marcarAlternancia("#pago-escala button", (b) => b.dataset.escala === pagoEscala);
+  document.querySelectorAll("#pago-escala button").forEach((b) => {
+    if (b.dataset.escala === "dia" && !tem) {
+      b.disabled = true;
+      b.title = "O pago por dia fica disponível a partir da próxima atualização da base.";
+    }
+    b.addEventListener("click", () => definirEscalaPago(b.dataset.escala));
+  });
+  // Ctrl + roda (e a pinça do trackpad, que chega como roda com Ctrl) aproxima o Diário em
+  // torno do cursor; sem o Ctrl a roda rola a página, como em todo gráfico do site
+  document.getElementById("ch-mensal").addEventListener("wheel", (e) => {
+    const chart = pagoEscala === "dia" && e.ctrlKey && e.deltaY && window.echarts?.getInstanceByDom(e.currentTarget);
+    const dz = chart && chart.getOption().dataZoom?.[0];
+    if (!dz) return;
+    e.preventDefault();   // senão o navegador amplia a página inteira
+    const minT = tempoLocal(CALENDARIO.linhas[0][0].slice(0, 8) + "01"), maxT = tempoLocal(CALENDARIO.ate);
+    const ini = dz.startValue, fim = dz.endValue;
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = Math.min(Math.max(chart.convertFromPixel({ xAxisIndex: 0 }, e.clientX - r.left), ini), fim);
+    const vao = Math.min(Math.max((fim - ini) * (e.deltaY < 0 ? 0.8 : 1.25), 14 * DIA_MS), maxT - minT);
+    const novo = Math.min(Math.max(t - (t - ini) * vao / (fim - ini), minT), maxT - vao);
+    chart.dispatchAction({ type: "dataZoom", startValue: novo, endValue: novo + vao });
+  }, { passive: false });
+  // em tela de toque o arrasto dentro do gráfico prenderia a rolagem da página: só a régua
+  document.getElementById("nota-diario").textContent = "Cada barra é um dia (pagamentos pela data). " +
+    (matchMedia("(pointer: coarse)").matches
+      ? "Arraste as alças da régua abaixo do gráfico para mudar o período."
+      : "Arraste a régua abaixo do gráfico, ou o próprio gráfico, para navegar; Ctrl + roda do mouse aproxima.") +
+    ((DADOS.resumo?.meses_parciais || []).length ? " * Mês parcial em destaque: o valor ainda vai subir." : "");
+}
+
+async function definirEscalaPago(escala) {
+  if (escala === pagoEscala) return;
+  if (escala === "dia" && !CALENDARIO) {
+    try { CALENDARIO = await baixarDadosGrafico("calendario"); }
+    catch (e) { Comum.toast("Não foi possível carregar o pago por dia agora. Tente de novo."); return; }
+  }
+  if (escala === "dia" && !CALENDARIO.linhas?.length) { Comum.toast("Ainda não há pagamentos na base."); return; }
+  pagoEscala = escala;
+  marcarAlternancia("#pago-escala button", (b) => b.dataset.escala === pagoEscala);
+  desenharMensal();
+  gravarParamGeral("pago", escala === "dia" ? "dia" : "");
+}
+
+const rotuloDiaEixo = (v) => {
+  const d = new Date(v);
+  return d.getDate() === 1 ? `${MESES[d.getMonth() + 1]}/${String(d.getFullYear()).slice(2)}`
+    : `${d.getDate()} ${MESES[d.getMonth() + 1].toLowerCase()}`;
+};
+
+function defDiario() {
+  return {
+    eventos: ouvirZoomDiario,
+    opcao: (p) => {
+      const { linhas, ate } = CALENDARIO;
+      const fim = tempoLocal(ate);
+      const [ini, fimJanela] = janelaDiario || [fim - 119 * DIA_MS, fim];
+      const parciais = (DADOS.resumo?.meses_parciais || []).slice().sort();
+      const zoom = { xAxisIndex: 0, startValue: ini, endValue: fimJanela, minValueSpan: 14 * DIA_MS };
+      return {
+        grid: { left: 4, right: 14, top: 14, bottom: 58, containLabel: true },
+        tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" }, formatter: (ps) => dicaDia(ps[0].value, p) },
+        xAxis: { type: "time", min: linhas[0][0].slice(0, 8) + "01", max: ate,
+          axisLabel: { hideOverlap: true, margin: 10, formatter: rotuloDiaEixo } },
+        yAxis: { type: "value", min: 0, splitNumber: p.celular ? 4 : 5, axisLabel: { formatter: (v) => Comum.compactoEixo(v) } },
+        dataZoom: [
+          // arrastar o gráfico desloca a janela. zoomLock: o zoom de roda do ECharts captura a roda
+          // mesmo sem o Ctrl (a página parava de rolar sobre o gráfico) — o Ctrl + roda é da página
+          // (ligarEscalaPago). No toque, arrastar o gráfico rolaria a página: fica só a régua
+          { type: "inside", ...zoom, zoomLock: true, moveOnMouseMove: true, disabled: matchMedia("(pointer: coarse)").matches },
+          { type: "slider", ...zoom, height: 26, bottom: 6, left: 6, right: 14, brushSelect: false,
+            showDetail: !p.celular, labelFormatter: (v) => dataBR(isoLocal(v)),
+            dataBackground: { lineStyle: { color: p.muted, width: 0.5, opacity: 0.6 }, areaStyle: { color: p.muted, opacity: 0.18 } },
+            selectedDataBackground: { lineStyle: { color: p.ouroLinha, width: 0.6 }, areaStyle: { color: p.ouro, opacity: 0.3 } },
+            moveHandleStyle: { color: p.linha, opacity: 1 },
+            emphasis: { handleStyle: { borderColor: p.ouroLinha }, moveHandleStyle: { color: p.ouro } } },
+        ],
+        series: [{
+          name: "Pago no dia", type: "bar", barMaxWidth: 12, barMinHeight: 1,
+          // mês parcial: barra mais clara e a faixa marcada (o valor ainda vai subir)
+          data: linhas.map((l) => (parcialDia(l[0]) ? { value: l, itemStyle: { opacity: 0.5 } } : { value: l })),
+          itemStyle: { color: p.serie, borderRadius: [2, 2, 0, 0] }, emphasis: { itemStyle: { color: p.ouroLinha } },
+          markArea: parciais.length ? {
+            silent: true, itemStyle: { color: p.ouroFill },
+            // no celular a faixa é estreita: o rótulo encosta na borda direita e cresce para dentro
+            label: { show: true, position: p.celular ? "insideTopRight" : "insideTop", distance: 6, color: p.ouroLinha,
+              fontFamily: p.mono, fontSize: 10.5, formatter: "mês parcial*" },
+            data: [[{ xAxis: tempoLocal(parciais[0] + "-01") - DIA_MS / 2 }, { xAxis: fim + DIA_MS / 2 }]],
+          } : undefined,
+        }],
+      };
+    },
+    acessivel: () => {
+      const [top] = maioresDias(1);
+      return {
+        descricao: `Pago por dia, de ${dataBR(CALENDARIO.linhas[0][0])} a ${dataBR(CALENDARIO.ate)}, em barras; a régua ` +
+          `abaixo do gráfico muda o período (começa nos últimos 120 dias). Maior dia: ${diaSemana(top[0])}, ` +
+          `${dataBR(top[0])}, com ${compacto(top[1])}. A tabela resume os dias por mês, com o maior dia de cada um.`,
+        cabecalhos: CABECALHOS_DIAS, linhas: resumoCalendarioPorMes(),
+      };
+    },
+  };
+}
+
+// ── Calendário de pagamentos (calendário + mapa de calor) ──
+// Um bloco por ano (no celular, por semestre); a cor é a faixa do dia entre os quintis dos
+// dias com pagamento (a mesma régua em todos os anos). Altura reservada no CSS (cqw) com
+// a mesma conta de medidasCalendario — o desenho não empurra a página.
+let quebrasCal = null;
+function quebrasCalendario() {
+  if (!quebrasCal) {
+    const xs = CALENDARIO.linhas.map((l) => l[1]).filter((v) => v > 0).sort((a, b) => a - b);
+    const q = (f) => {   // interpolação linear (numpy "linear")
+      const pos = (xs.length - 1) * f, i = Math.floor(pos);
+      return xs[i] + (xs[Math.min(i + 1, xs.length - 1)] - xs[i]) * (pos - i);
+    };
+    quebrasCal = xs.length ? [0.2, 0.4, 0.6, 0.8].map(q) : [0, 0, 0, 0];
+  }
+  return quebrasCal;
+}
+
+function anosCalendario() {
+  const a0 = +CALENDARIO.linhas[0][0].slice(0, 4), a1 = +CALENDARIO.ate.slice(0, 4);
+  return Array.from({ length: a1 - a0 + 1 }, (_, i) => a0 + i);
+}
+function semanasNoBloco([a, b]) {   // colunas do bloco: do domingo da 1ª semana ao último dia
+  const ini = new Date(a + "T12:00:00"), fim = new Date(b + "T12:00:00");
+  return Math.floor((fim.getTime() - (ini.getTime() - ini.getDay() * DIA_MS)) / DIA_MS / 7) + 1;
+}
+// O tamanho da célula sai da largura (as semanas do bloco mais largo) e, por garantia, da
+// altura reservada no CSS — as constantes daqui são as do --altura-grafico de #ch-calendario.
+function medidasCalendario(larg, alt, celular) {
+  const anos = anosCalendario();
+  const blocos = celular ? anos.flatMap((a) => [[`${a}-01-01`, `${a}-06-30`], [`${a}-07-01`, `${a}-12-31`]])
+    : anos.map((a) => [`${a}-01-01`, `${a}-12-31`]);
+  const esq = celular ? 22 : 58, dir = 4, topo = 24, entre = celular ? 34 : 40;
+  const pelaLargura = (larg - esq - dir) / Math.max(...blocos.map(semanasNoBloco));
+  const pelaAltura = alt ? (alt - topo - 6 - (blocos.length - 1) * entre) / (7 * blocos.length) : Infinity;
+  return { blocos, esq, topo, entre, cel: Math.max(5, Math.min(22, pelaLargura, pelaAltura)) };
+}
+
+function opcaoCalendario(p, larg) {
+  const el = document.getElementById("ch-calendario");
+  const m = medidasCalendario(larg, el.clientHeight, p.celular);
+  const porDia = new Map(CALENDARIO.linhas.map((l) => [l[0], l]));
+  const ate = CALENDARIO.ate;
+  const calendar = [], series = [];
+  m.blocos.forEach(([a, b], i) => {
+    calendar.push({
+      range: [a, b], orient: "horizontal", cellSize: [m.cel, m.cel], left: m.esq,
+      top: m.topo + i * (7 * m.cel + m.entre),
+      itemStyle: { color: p.card, borderColor: p.linha, borderWidth: 0.6 },   // dia ainda sem dado
+      splitLine: { show: true, lineStyle: { color: p.muted, width: 1, opacity: 0.45 } },
+      dayLabel: { firstDay: 0, nameMap: p.celular ? ["", "S", "", "Q", "", "S", ""] : ["", "seg", "", "qua", "", "sex", ""],
+        color: p.muted, fontFamily: p.sans, fontSize: p.celular ? 9.5 : 10.5, margin: 6 },
+      monthLabel: { color: p.muted, fontFamily: p.sans, fontSize: p.celular ? 10.5 : 11.5, margin: 6, align: "left",
+        formatter: (x) => {   // no celular o ano vai no 1º mês de cada semestre
+          const mes = +x.M;
+          return MESES[mes] + (p.celular && (mes === 1 || mes === 7) ? "/" + String(x.yyyy).slice(2) : "") +
+            (mesParcial(+x.yyyy, mes) ? "*" : "");
+        } },
+      yearLabel: { show: !p.celular, position: "left", margin: 34, color: p.tinta, fontFamily: p.sans,
+        fontSize: 14, fontWeight: 800 },
+    });
+    const dias = [], parciais = [];
+    const ultimo = b < ate ? b : ate;
+    for (let t = new Date(a + "T12:00:00").getTime(); ; t += DIA_MS) {   // meio-dia: imune a horário de verão
+      const d = isoLocal(t);
+      if (d > ultimo) break;
+      (parcialDia(d) ? parciais : dias).push(porDia.get(d) || [d, 0, 0, 0]);
+    }
+    const serie = { type: "heatmap", coordinateSystem: "calendar", calendarIndex: i,
+      itemStyle: { borderColor: p.card, borderWidth: p.celular ? 1.5 : 2 },
+      emphasis: { itemStyle: { borderColor: p.tinta, borderWidth: 1.5 } } };
+    series.push({ ...serie, data: dias });
+    // mês parcial: hachurado (o valor do dia ainda pode subir) — numa série à parte, com UMA
+    // hachura: hachura por dia, cada uma com a cor da célula, dobrava o custo do desenho
+    if (parciais.length) series.push({ ...serie, data: parciais, itemStyle: { ...serie.itemStyle, decal: {
+      symbol: "rect", symbolSize: 1, color: `rgba(${hexRgb(p.tinta).join(",")},.35)`, dashArrayX: [1, 0],
+      dashArrayY: [2, 3], rotation: Math.PI / 4 } } });
+  });
+  const q = quebrasCalendario();
+  return {
+    // centenas de células: sem animação de entrada (cada quadro repintaria todas)
+    animation: false,
+    tooltip: { confine: true, formatter: (e) => dicaDia(e.value, p, e.color) },
+    calendar, series,
+    // a cor é a faixa do valor (quintis dos dias com pagamento): uma regra para todas as células,
+    // no lugar de um estilo por dia; a legenda escreve as mesmas faixas
+    visualMap: { type: "piecewise", show: false, dimension: 1, seriesIndex: series.map((_, k) => k),
+      pieces: [{ lte: 0, color: p.neutro }, ...p.rampa.map((cor, k) => ({ gt: k ? q[k - 1] : 0,
+        ...(k < 4 ? { lte: q[k] } : {}), color: cor }))] },
+  };
+}
+
+function pintarLegendaCalendario() {
+  const ul = document.getElementById("cal-legenda");
+  if (!ul || !CALENDARIO?.linhas?.length) return;
+  const p = Comum.paleta(), q = quebrasCalendario();
+  ul.querySelectorAll(".sw[data-cor]").forEach((sw) => {
+    const c = sw.dataset.cor;
+    sw.style.background = c === "neutro" ? p.neutro
+      : c === "parcial" ? `repeating-linear-gradient(135deg, ${p.rampa[2]} 0 2px, ${misturar(p.rampa[2], p.tinta, 0.35)} 2px 3px)`
+      : p.rampa[+c];
+  });
+  const faixas = [`até ${compacto(q[0])}`, `${compacto(q[0])} a ${compacto(q[1])}`, `${compacto(q[1])} a ${compacto(q[2])}`,
+    `${compacto(q[2])} a ${compacto(q[3])}`, `acima de ${compacto(q[3])}`];
+  ul.querySelectorAll(".faixa").forEach((s, i) => { s.textContent = faixas[i]; s.classList.remove("reserva"); });
+}
+addEventListener("temamudou", pintarLegendaCalendario);
+
+function initCalendario() {
+  const box = document.getElementById("box-calendario"), el = document.getElementById("ch-calendario");
+  const legenda = document.getElementById("cal-legenda"), nota = document.getElementById("cal-nota");
+  if (!DADOS.dados_graficos?.calendario) { avisarIndisponivel(box, el, [legenda, nota]); return; }
+  baixarDadosGrafico("calendario").then((c) => {
+    CALENDARIO = c;
+    if (!c.linhas?.length) { avisarIndisponivel(box, el, [legenda, nota]); return; }
+    legenda.style.visibility = "";
+    renderCalendario();
+  }, () => {
+    legenda.style.visibility = "hidden";
+    Comum.estadoErro(el, "Não foi possível carregar o calendário de pagamentos agora. " +
+      "Os demais gráficos e tabelas da página seguem disponíveis.", initCalendario);
+  });
+}
+
+function renderCalendario() {
+  const el = document.getElementById("ch-calendario");
+  const anos = anosCalendario();
+  if (anos.length !== 2) el.style.setProperty("--anos", anos.length);   // o CSS reserva 2 anos
+  pintarLegendaCalendario();
+  Comum.grafico(el, {
+    dependeDaLargura: true,
+    opcao: opcaoCalendario,
+    acessivel: {
+      descricao: `Calendário de ${anos.join(" e ")} com o total pago em cada dia, em cinco faixas de dourado ` +
+        "(quintis dos dias com pagamento). Maiores dias: " +
+        maioresDias(3).map((x) => `${dataBR(x[0])} (${compacto(x[1])})`).join(", ") +
+        `. Dados até ${dataBR(CALENDARIO.ate)}. A tabela resume os dias por mês, com o maior dia de cada um.`,
+      cabecalhos: CABECALHOS_DIAS, linhas: resumoCalendarioPorMes(),
+    },
+  });
+}
+
+// ── Caminho do dinheiro (Sankey): grupo da fonte → função → favorecido ──
+// Um ano por vez, todos os favorecidos ou só os fornecedores privados (sem os entes
+// públicos do índice). O clique num favorecido abre o raio-X (link pronto no arquivo).
+let fluxoAno = "", fluxoModo = Comum.lerParams().get("so") === "privados" ? "privados" : "todos";
+let caminhoPorId = new Map();
+
+// nome da origem em caixa alta → exibição: mesma regra de nomeLegivel (favorecido-app.js),
+// só para os rótulos do gráfico — a vitrine aprovada; candidata à camada comum
+const SIGLAS_NOME = new Set(["LTDA", "EIRELI", "ME", "EPP", "SA", "S/A", "S.A", "S.A.", "SPE", "CIA", "IPREV", "CET",
+  "COHAB", "PRODESAN", "CAPEP", "IPS", "SABESP", "CPFL", "INSS", "FGTS", "SUS", "ONG", "OSC", "OSCIP",
+  "APAE", "SESC", "SENAC", "SESI", "SENAI", "UPA", "UBS", "SP", "RJ", "MG", "BR"]);
+const CONECTIVOS_NOME = new Set(["A", "O", "AS", "OS", "AO", "AOS", "À", "ÀS", "DE", "DA", "DO", "DAS", "DOS",
+  "E", "EM", "NA", "NO", "NAS", "NOS", "PARA", "POR", "COM"]);
+function nomeLegivel(nome) {
+  if (!nome || /[a-zß-ÿ]/.test(nome)) return nome;
+  const inicial = (p) => p.charAt(0) + p.slice(1).toLowerCase();
+  return nome.trim().split(/\s+/).map((w, i) => {
+    const nu = w.replace(/[.,;:]+$/, "");
+    if (SIGLAS_NOME.has(nu) || /\d/.test(w) || !/[AEIOUYÁÉÍÓÚÂÊÔÃÕÀÜ]/.test(w) ||
+        /^(I{1,3}|IV|VI{0,3}|IX|X{1,3})$/.test(nu)) return w;
+    if (i > 0 && CONECTIVOS_NOME.has(w)) return w.toLowerCase();
+    return w.split("-").map((p) => p.split("'").map(inicial).join("'")).join("-");
+  }).join(" ");
+}
+
+// nome inteiro (dica e tabela) e cor de cada nó: fonte em navy, função em dourado,
+// favorecido em cinza; "Demais" no cinza de referência
+const nomeNo = (n) => (!n ? "—" : n.demais || n.nivel === 0 ? n.nome : n.nivel === 1 ? nomeFuncao(n.nome) : nomeLegivel(n.nome));
+const corNo = (n, p) => (n.demais ? p.ref : [p.serie, p.ouro, p.muted][n.nivel]);
+const semCodigoFonte = (f) => String(f).replace(/^\d{2}-\d+\s*-\s*/, "");
+
+function recorteCaminho() {
+  const s = FLUXO.anos[fluxoAno][fluxoModo];
+  // valor ≤ 0 (anulações acima do pago) não tem espessura: fica na tabela, fora do desenho
+  const nos = s.nos.filter((n) => n.valor > 0), ids = new Set(nos.map((n) => n.id));
+  return { ...s, nos, ligacoes: s.ligacoes.filter(([a, b, v]) => v > 0 && ids.has(a) && ids.has(b)) };
+}
+
+// rótulo "nome  valor" que cabe inteiro: na coluna da direita, a margem reservada; nas
+// outras, o vão até a próxima coluna (o rótulo passa por cima das faixas)
+function rotulosCaminho(nos, p, larg, direita) {
+  const fNome = `600 ${p.celular ? 11 : 12}px Manrope, sans-serif`;
+  const fValor = `400 ${p.celular ? 10 : 11}px "IBM Plex Mono", monospace`;
+  const vao = (larg - 2 - direita - 3 * 12) / 2;
+  const rt = (s) => String(s).replace(/[{}|]/g, "");   // chave e barra quebrariam o rich text
+  const mapa = new Map();
+  for (const n of nos) {
+    const valor = compacto(n.valor);
+    const cabe = (n.nivel === 2 ? direita : vao) - 6 - larguraTexto(valor, fValor) - 16;
+    let nome = nomeNo(n);
+    if (larguraTexto(nome, fNome) > cabe) {
+      while (nome.length > 4 && larguraTexto(nome + "…", fNome) > cabe) nome = nome.slice(0, -1);
+      nome = nome.trimEnd() + "…";
+    }
+    mapa.set(n.id, `{n|${rt(nome)}}  {v|${rt(valor)}}`);
+  }
+  return mapa;
+}
+
+function dicaCaminho(e, p) {
+  const total = FLUXO.anos[fluxoAno][fluxoModo].total;
+  if (e.dataType === "edge") {
+    const a = caminhoPorId.get(e.data.source), b = caminhoPorId.get(e.data.target);
+    return Comum.dicaGrafico(`${nomeNo(a)} → ${nomeNo(b)}`, [[corNo(a, p), "Pago", brlc(e.value), "p"],
+      [null, `Parte de ${nomeNo(a)}`, pctDe(e.value, a.valor)]]);
+  }
+  const n = caminhoPorId.get(e.name);
+  if (!n) return "";
+  const doc = n.documento ? [null, n.documento.includes("/") ? "CNPJ" : n.documento.includes("*") ? "CPF" : "Documento",
+    n.documento] : null;
+  const nota = n.demais
+    ? (n.qtd ? `${n.qtd.toLocaleString("pt-BR")} favorecidos fora dos maiores — a lista inteira está na aba Favorecidos.`
+      : `Inclui: ${(n.inclui || []).map((x) => (n.nivel === 1 ? nomeFuncao(x) : x)).join(", ")}.`)
+    : n.nivel === 0 ? `Principais fontes: ${(n.fontes || []).map(([f]) => semCodigoFonte(f)).join("; ")}.`
+    : n.nivel === 2 ? (n.ente_publico ? "Ente público. " : "") + "Clique para abrir o raio-X." : "";
+  return Comum.dicaGrafico(nomeNo(n), [[corNo(n, p), `Pago em ${fluxoAno}`, brlc(n.valor), "p"],
+    [null, "Do total do gráfico", pctDe(n.valor, total)], doc], nota);
+}
+
+function opcaoCaminho(p, larg) {
+  const { nos, ligacoes } = recorteCaminho();
+  const direita = p.celular ? 238 : 292;
+  const rotulos = rotulosCaminho(nos, p, larg, direita);
+  const fonte = p.celular ? 11 : 12;
+  const contorno = { textBorderColor: p.card, textBorderWidth: 3 };   // legível por cima das faixas
+  return {
+    animation: false,
+    tooltip: { confine: true, formatter: (e) => dicaCaminho(e, p) },
+    series: [{
+      type: "sankey", left: 2, right: direita, top: 6, bottom: 6, nodeWidth: 12, nodeGap: p.celular ? 14 : 15,
+      // a ordem do arquivo (maiores primeiro, "Demais" por último) é a ordem na coluna
+      nodeAlign: "justify", layoutIterations: 0, draggable: false,
+      data: nos.map((n) => ({ name: n.id, value: n.valor, depth: n.nivel, itemStyle: { color: corNo(n, p), borderWidth: 0 } })),
+      links: ligacoes.map(([a, b, v]) => ({ source: a, target: b, value: v })),
+      lineStyle: { color: "source", opacity: Comum.temaAtual() === "escuro" ? 0.3 : 0.2, curveness: 0.5 },
+      emphasis: { focus: "adjacency", lineStyle: { opacity: 0.55 } },
+      blur: { lineStyle: { opacity: 0.06 }, itemStyle: { opacity: 0.35 }, label: { opacity: 0.4 } },
+      label: { position: "right", distance: 6, color: p.tinta, fontFamily: p.sans, fontSize: fonte, ...contorno,
+        formatter: (e) => rotulos.get(e.name) || "",
+        rich: { n: { fontFamily: p.sans, fontWeight: 600, fontSize: fonte, color: p.tinta, ...contorno },
+          v: { fontFamily: p.mono, fontSize: fonte - 1, color: p.muted, ...contorno } } },
+      labelLayout: { hideOverlap: true },
+    }],
+  };
+}
+
+function ligarCaminho() {
+  const sel = document.getElementById("caminho-ano");
+  sel.addEventListener("change", () => {
+    fluxoAno = sel.value;
+    gravarParamGeral("caminho", fluxoAno === sel.options[0]?.value ? "" : fluxoAno);   // o ano mais recente fica fora
+    renderCaminho();
+  });
+  marcarAlternancia("#caminho-modo button", (b) => b.dataset.modo === fluxoModo);
+  document.querySelectorAll("#caminho-modo button").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.modo === fluxoModo || !FLUXO) return;
+    fluxoModo = b.dataset.modo;
+    marcarAlternancia("#caminho-modo button", (x) => x.dataset.modo === fluxoModo);
+    gravarParamGeral("so", fluxoModo === "privados" ? "privados" : "");
+    renderCaminho();
+  }));
+  // a caixa que rola entra no Tab só quando rola de fato (no desktop largo não rola)
+  addEventListener("resize", Comum.debounce(ajustarRolagemCaminho, 200));
+}
+function ajustarRolagemCaminho() {
+  const w = document.getElementById("caminho-rolagem");
+  if (w) w.tabIndex = w.scrollWidth > w.clientWidth + 1 ? 0 : -1;
+}
+
+function initCaminho() {
+  const box = document.getElementById("box-caminho"), el = document.getElementById("ch-caminho");
+  const controles = box.querySelector(".caminho-controles"), nota = document.getElementById("caminho-nota");
+  const dica = box.querySelector(".dica-scroll");
+  if (!DADOS.dados_graficos?.fluxo) { avisarIndisponivel(box, el, [controles, nota, dica]); ajustarRolagemCaminho(); return; }
+  baixarDadosGrafico("fluxo").then((fx) => {
+    FLUXO = fx;
+    const anos = Object.keys(fx.anos || {}).sort().reverse();
+    if (!anos.length) { avisarIndisponivel(box, el, [controles, nota, dica]); return; }
+    const pedido = Comum.lerParams().get("caminho");
+    fluxoAno = anos.includes(pedido) ? pedido : anos[0];
+    const sel = document.getElementById("caminho-ano");
+    sel.innerHTML = anos.map((a) => `<option value="${a}">${a}</option>`).join("");
+    sel.value = fluxoAno;
+    renderCaminho();
+  }, () => Comum.estadoErro(el, "Não foi possível carregar o caminho do dinheiro agora. " +
+    "Os demais gráficos e tabelas da página seguem disponíveis.", initCaminho));
+}
+
+function renderCaminho() {
+  const a = FLUXO.anos[fluxoAno], s = a[fluxoModo];
+  caminhoPorId = new Map(s.nos.map((n) => [n.id, n]));
+  const ate = DADOS.dados_ate && fluxoAno === DADOS.dados_ate.slice(0, 4) ? ` (até ${dataBR(DADOS.dados_ate.slice(0, 10))})` : "";
+  const nota = document.getElementById("caminho-nota");
+  nota.classList.remove("reserva");
+  nota.textContent = fluxoModo === "privados"
+    ? `${fluxoAno}${ate}: ${compacto(s.total)} pagos a fornecedores privados. Fora do gráfico: os entes públicos ` +
+      `(${compacto(a.todos.total - s.total)} — Município, IPREV, CAPEP, bancos públicos…) e o extra-orçamentário (${compacto(a.extra)}).`
+    : `${fluxoAno}${ate}: ${compacto(s.total)} pagos. Fora do gráfico: o extra-orçamentário (${compacto(a.extra)}).`;
+  const maior = (k) => s.nos.find((n) => n.nivel === k && !n.demais);
+  Comum.grafico("ch-caminho", {
+    dependeDaLargura: true,
+    opcao: opcaoCaminho,
+    eventos: (chart) => chart.on("click", (e) => {
+      if (e.dataType !== "node") return;
+      const n = caminhoPorId.get(e.name);
+      if (n?.link) location.href = n.link;
+      else if (n?.demais && n.qtd) Comum.toast(`${n.qtd.toLocaleString("pt-BR")} favorecidos fora dos maiores — veja a aba Favorecidos.`);
+    }),
+    acessivel: {
+      descricao: `Caminho do dinheiro pago em ${fluxoAno}${ate}${fluxoModo === "privados" ? ", só fornecedores privados" : ""}: ` +
+        `${compacto(s.total)}, da fonte do recurso para a função e dela para quem recebeu, sem o extra-orçamentário. ` +
+        [["Maior fonte", maior(0)], ["maior função", maior(1)], ["maior favorecido", maior(2)]]
+          .filter(([, n]) => n).map(([r, n]) => `${r}: ${nomeNo(n)} (${compacto(n.valor)})`).join("; ") + ".",
+      cabecalhos: ["De", "Para", "Pago"],
+      linhas: s.ligacoes.map(([de, para, v]) => [nomeNo(caminhoPorId.get(de)), nomeNo(caminhoPorId.get(para)), compacto(v)]),
+    },
+  });
+  ajustarRolagemCaminho();
 }
 
 // ── Alertas ──────────────────────────────────────────────────────────────────
