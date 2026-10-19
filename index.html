@@ -6,7 +6,7 @@
     <script>/* tema antes do paint (anti-flash) */(function(){try{var t=localStorage.getItem("tema")||(matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro");if(t==="escuro")document.documentElement.dataset.tema="escuro";}catch(e){}})();</script>
     <title>Gabinete Rui de Rosis Jr. — Ferramentas de Fiscalização</title>
     <meta name="description" content="Painéis públicos de transparência e fiscalização do gabinete do vereador Rui de Rosis Jr. — Câmara Municipal de Santos." />
-    <link rel="stylesheet" href="./comum.css?v=10" />
+    <link rel="stylesheet" href="./comum.css?v=11" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#07111f" />
@@ -65,25 +65,8 @@
       }
 
       /* ── Cabeçalho / hero ─────────────────────────────────────────── */
-      header.hero {
-        position: relative; overflow: hidden; color: #fff;
-        background:
-          radial-gradient(120% 90% at 12% -10%, var(--navy-3) 0%, transparent 55%),
-          radial-gradient(130% 120% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 45%),
-          linear-gradient(180deg, var(--navy-2) 0%, var(--navy) 100%);
-        border-bottom: 1px solid rgba(201,168,76,0.25);
-      }
-      header.hero::before {  /* trama fina tipo guilloché (cédula/documento) */
-        content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-        background-image:
-          repeating-linear-gradient(45deg, rgba(201,168,76,0.05) 0 1px, transparent 1px 10px),
-          repeating-linear-gradient(-45deg, rgba(201,168,76,0.045) 0 1px, transparent 1px 10px);
-        mask-image: radial-gradient(120% 100% at 80% 0%, #000 0%, transparent 70%);
-      }
-      header.hero::after {  /* fio dourado superior */
-        content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
-        background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold-bright) 50%, var(--gold) 82%, transparent);
-      }
+      /* fundo navy profundo, trama em todo o topo e fio dourado: comum.css (direção
+         Noturno, 2026-10) — o hub só ajusta o que é dele: título, lede e régua maiores */
       .hero-in { position: relative; max-width: 1120px; margin: 0 auto;
         padding: clamp(20px, 3vw, 36px) 24px clamp(14px, 2vw, 22px); }
 
@@ -98,28 +81,27 @@
       .brand .who { font-size: 12.5px; letter-spacing: .04em; color: #cdd6e3; flex: 1 1 14em; min-width: 0; }
       .brand .who b { color: #fff; font-weight: 700; }
 
-      .eyebrow { display: inline-flex; align-items: center; gap: 10px;
-        font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .26em;
-        text-transform: uppercase; color: var(--gold-bright); margin: 0 0 18px; font-weight: 500;
-        opacity: 0; animation: rise .7s .12s cubic-bezier(.2,.7,.2,1) forwards; }
-      .eyebrow { margin-bottom: 14px; }
-      .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--gold); display: inline-block; }
+      /* etiqueta (cor, tracking e fio de 34px) vem do comum.css; aqui só a entrada */
+      .eyebrow { opacity: 0; animation: rise .7s .12s cubic-bezier(.2,.7,.2,1) forwards; }
 
-      h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600;
-        font-size: clamp(29px, 4.1vw, 44px); line-height: 1.03; letter-spacing: -0.015em;
-        margin: 0; max-width: 19ch;
+      /* maior que o título dos painéis (é a capa do site); 12em = 2 linhas no desktop */
+      header.hero h1 { font-size: clamp(40px, 6.2vw, 76px); line-height: 1; max-width: 12em;
         opacity: 0; animation: rise .8s .2s cubic-bezier(.2,.7,.2,1) forwards; }
       h1 em { font-style: italic; color: var(--gold-bright); }
-      .lede { color: #c3cdda; margin: 16px 0 0; font-size: clamp(14.5px, 1.5vw, 16px);
+      .lede { color: #c3cdda; margin: 16px 0 0; font-size: clamp(15px, 1.6vw, 17.5px);
         line-height: 1.55; max-width: 58ch; font-weight: 400;
         opacity: 0; animation: rise .8s .3s cubic-bezier(.2,.7,.2,1) forwards; }
 
       /* Régua de indicadores fiscais ao vivo (pé do hero) */
-      .regua { display: flex; flex-wrap: wrap; margin: clamp(18px, 2.8vw, 28px) 0 0;
-        border-top: 1px solid rgba(201,168,76,0.22);
+      .regua { display: flex; flex-wrap: wrap; margin: clamp(22px, 3.2vw, 36px) 0 0;
+        border-top: 1px solid rgba(201,168,76,0.4);
         opacity: 0; animation: rise .8s .4s cubic-bezier(.2,.7,.2,1) forwards; }
+      /* números grandes com entrada escalonada (a cadência da Retrospectiva) */
       .ind { display: flex; flex-direction: column; gap: 7px;
-        padding: 13px 30px 2px 0; text-decoration: none; }
+        padding: 16px 30px 2px 0; text-decoration: none;
+        opacity: 0; animation: rise .8s cubic-bezier(.2,.7,.2,1) forwards; }
+      .ind:nth-child(1) { animation-delay: .45s; } .ind:nth-child(2) { animation-delay: .58s; }
+      .ind:nth-child(3) { animation-delay: .71s; } .ind:nth-child(4) { animation-delay: .84s; }
       /* divisória à esquerda do 2º indicador VISÍVEL em diante: com border-right +
          :last-child, um indicador escondido por `hidden` (fonte fora) deixava um
          fio dourado solto à direita do último visível */
@@ -128,7 +110,7 @@
       .ind[hidden] { display: none; }
       .ind-lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px;
         letter-spacing: .2em; text-transform: uppercase; color: #8794a6; white-space: nowrap; }
-      .ind-val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 17px;
+      .ind-val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: clamp(22px, 2.3vw, 31px);
         line-height: 1.2; color: #fff; letter-spacing: -0.01em;
         font-variant-numeric: tabular-nums; white-space: nowrap; }
       #ind-alertas .ind-val { color: var(--gold-bright); }
@@ -145,7 +127,7 @@
           border-left: 1px solid rgba(201,168,76,0.14); }
         .ind:nth-child(n+3) { border-top: 1px solid rgba(201,168,76,0.10); }
         .ind-lbl { white-space: normal; }
-        .ind-val { font-size: 15.5px; }
+        .ind-val { font-size: 16px; }
         /* alvo de toque: o botão de tema media 22×16px, abaixo do mínimo da WCAG */
         .hub-busca { min-height: 44px; }
         .hub-tema { min-width: 44px; justify-content: center; }
@@ -223,9 +205,13 @@
 
       /* Primeira linha: origem à esquerda, estado à direita. A pill fica no FLUXO —
          absoluta ela colidiria com a tag (a mais longa mede ~271px em 288px de caixa). */
-      .cartao-topo { display: flex; align-items: center; gap: 10px; min-height: 17px; }
+      /* Noturno: a origem vai numa faixa navy no topo do cartão, em mono dourado (a
+         barra lateral dourada continua). O padding de cima do cartão é a própria faixa. */
+      .cartao-topo { display: flex; align-items: center; gap: 10px; min-height: 0;
+        margin: -24px -28px 16px; padding: 11px 28px; background: var(--navy); }
+      html[data-tema="escuro"] .cartao-topo { background: #060e1a; }
       .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .16em;
-        text-transform: uppercase; color: var(--gold-texto); font-weight: 500; min-width: 0; }
+        text-transform: uppercase; color: var(--gold-bright); font-weight: 500; min-width: 0; }
       /* onde há selo o espaço é disputado (a caixa cai a 246px em 1000px de viewport):
          a tag trunca em vez de quebrar, senão o h2 desce só nesse cartão e desalinha a
          fileira inteira. Sem selo, a tag pode quebrar à vontade — em 1 coluna é inofensivo. */
@@ -278,6 +264,7 @@
       @media (max-width: 640px) {
         .grade { gap: 14px; }
         .cartao { padding: 18px 20px 16px; }
+        .cartao-topo { margin: -18px -20px 12px; padding: 10px 20px; }
         .cartao h3 { margin-top: 8px; }
         .cartao .desc { margin-top: 8px; line-height: 1.5; display: -webkit-box;
           -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -294,7 +281,7 @@
       @keyframes rise { to { opacity: 1; transform: none; } }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
-        .brand, .eyebrow, h1, .lede, .regua, .novidades-linha, .cartao { opacity: 1; transform: none; }
+        .brand, .eyebrow, header.hero h1, .lede, .regua, .ind, .novidades-linha, .cartao { opacity: 1; transform: none; }
         html { scroll-behavior: auto; }  /* o salto do "pular" também é movimento */
       }
     </style>
@@ -468,7 +455,7 @@
       Caráter informativo e não oficial. &nbsp;·&nbsp; <b>Gabinete Rui de Rosis Jr.</b> (PL)
     </footer>
 
-    <script src="./comum.js?v=20"></script>
+    <script src="./comum.js?v=21"></script>
     <script>
       // Números "ao vivo" lidos dos index.json de cada base (degrada se falhar).
       const reduzMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -198,6 +198,17 @@ function renderResumo() {
     t.innerHTML = Comum.destacarNumeros(DADOS.resumo.texto);
     t.classList.remove("resumo-reserva");
     t.removeAttribute("aria-hidden");
+    // celular: o resumo fica no topo, recolhido em 5 linhas (comum.css); o botão nasce
+    // reservado e só some se o texto couber
+    const mais = document.getElementById("resumo-mais");
+    if (mais && t.scrollHeight <= t.clientHeight + 2) mais.hidden = true;
+    else if (mais) {
+      mais.onclick = () => {
+        const aberto = t.classList.toggle("aberto");
+        mais.setAttribute("aria-expanded", String(aberto));
+        mais.textContent = aberto ? "Menos ▴" : "Ler o resumo inteiro ▾";
+      };
+    }
   });
 }
 
