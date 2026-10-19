@@ -467,7 +467,7 @@ window.Comum = (() => {
       linhas.filter(Boolean).map(([cor, rot, val, forma]) =>
         `<div class="ec-dica-l"><span class="r">${cor ? `<span class="k${forma === "p" ? " p" : ""}" style="background:${escapar(cor)}"></span>` : ""}` +
         `${escapar(rot)}</span><b>${escapar(val)}</b></div>`).join("") +
-      (nota ? `<div class="ec-dica-n${alerta ? " alerta" : ""}">${escapar(nota)}</div>` : "") + "</div>";
+      (nota ? `<div class="ec-dica-n${alerta ? " ec-dica-alerta" : ""}">${escapar(nota)}</div>` : "") + "</div>";
   }
 
   // ── Visualizador de PDF embutido (Comum.visorPdf) ───────────────────────────
