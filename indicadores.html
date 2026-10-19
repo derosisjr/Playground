@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -104,7 +104,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("indicadores.html");</script>
     <header class="hero">
       <div class="hero-in">
@@ -120,25 +120,25 @@
     </header>
 
     <main class="shell">
-      <div class="abas" id="abas" role="tablist"><!-- skeleton até o índice chegar -->
+      <div class="abas" id="abas" role="tablist" data-slide-filtro="sempre"><!-- skeleton até o índice chegar -->
         <span class="skel" aria-hidden="true" style="display:inline-block;width:120px;height:40px;border-radius:999px;margin-right:8px"></span>
         <span class="skel" aria-hidden="true" style="display:inline-block;width:120px;height:40px;border-radius:999px;margin-right:8px"></span>
         <span class="skel" aria-hidden="true" style="display:inline-block;width:120px;height:40px;border-radius:999px"></span>
       </div>
-      <div class="pergunta" id="pergunta" hidden>
+      <div class="pergunta" id="pergunta" hidden data-slide="1" data-slide-tipo="texto" data-slide-titulo="Em resumo">
         <p id="pergunta-txt"></p>
         <span class="fonte-nota" id="pergunta-fonte"></span>
       </div>
 
       <div class="cartao">
         <h2 id="titulo-grafico">A tesoura: gasto × resultado</h2>
-        <p class="sub" id="sub-grafico">As duas séries começam em 100 no primeiro ano. Quando elas
+        <p class="sub" id="sub-grafico" data-slide="2" data-slide-titulo="Como ler o gráfico">As duas séries começam em 100 no primeiro ano. Quando elas
           se afastam, a área âmbar mostra o tamanho da distância entre o que se paga e o que se recebe.</p>
         <div class="controles">
           <label for="sel-indicador">Indicador:</label>
-          <select id="sel-indicador"></select>
+          <select id="sel-indicador" data-slide-filtro="sempre"></select>
         </div>
-        <div class="grafico-wrap"><div class="grafico" id="grafico"></div></div>
+        <div class="grafico-wrap"><div class="grafico" id="grafico" data-slide="3" data-slide-altura="livre" data-slide-frase="2" data-slide-legenda="#legenda"></div></div>
         <div class="legenda-tesoura" id="legenda"></div>
       </div>
 
@@ -146,11 +146,14 @@
         <h2>Santos entre as comparáveis <span class="pos-chip" id="pos-geral" hidden></span></h2>
         <p class="sub">Último ano disponível de cada indicador. Municípios de porte similar
           (350–550 mil habitantes) do estado de São Paulo.</p>
-        <div class="tbl-scroll" tabindex="0" role="region" aria-label="Tabela de comparação entre cidades (role na horizontal para ver todas as colunas)"><table class="comparaveis" id="tabela"></table></div>
+        <div class="tbl-scroll" tabindex="0" role="region" aria-label="Tabela de comparação entre cidades (role na horizontal para ver todas as colunas)"><table class="comparaveis" id="tabela" data-slide="4" data-slide-titulo="Santos entre as comparáveis"
+          data-slide-colunas="1,2" data-slide-ignorar=".ano-fonte" data-slide-max="6"></table></div>
         <div class="acoes">
           <button class="botao" type="button" data-acao="compartilhar">Compartilhar</button>
           <button class="botao" id="csv">Exportar CSV</button>
           <button class="botao" type="button" data-acao="imprimir">Imprimir</button>
+          <button class="botao" type="button" data-acao="apresentar"
+            data-slide-fonte="Tesouro Nacional/SICONFI, IBGE e INEP">Apresentar</button>
         </div>
       </div>
 

@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -159,7 +159,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("endividamento.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -171,29 +171,32 @@
           município declara ao Tesouro Nacional, a cada quadrimestre.
         </p>
         <!-- nasce com esqueleto (antes nascia oculto e empurrava a página ao chegar) -->
-        <div class="hero-num" id="hero-num">
+        <div class="hero-num" id="hero-num" data-slide>
           <span class="grande" id="hero-divida"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
         <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
+        <!-- modo apresentação (Comum.apresentar): no canto do topo; no celular, ao lado do "Sobre este painel" -->
+        <button type="button" class="ap-botao ap-botao-topo" data-acao="apresentar"
+          data-slide-fonte="Relatório de Gestão Fiscal (RGF) · SICONFI/Tesouro Nacional"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Apresentar</button>
         <p class="base-de" data-base="endividamento-index.json"></p>
       </div>
     </header>
 
     <main class="shell">
-      <h2 class="sec" id="semaforo">Semáforo Fiscal <span class="contagem" id="semaforo-quando"></span></h2>
+      <h2 class="sec" id="semaforo">Semáforo Fiscal <span class="contagem" id="semaforo-quando" data-slide-capa></span></h2>
       <p class="sec-sub">
         Cada mostrador compara um compromisso do município com a receita que ele tem para
         pagá-lo (a RCL — receita corrente líquida). <b>Verde</b>: dentro do limite, com folga.
         <b>Amarelo</b>: acima do nível de alerta da LRF. <b>Vermelho</b>: limite legal estourado.
       </p>
-      <div class="semaforo" id="semaforo-cards">
+      <div class="semaforo" id="semaforo-cards" data-slide data-slide-titulo="Os limites da LRF — {#semaforo-quando}">
         <div class="skel" style="height:230px" aria-hidden="true"></div>
         <div class="skel" style="height:230px" aria-hidden="true"></div>
         <div class="skel" style="height:230px" aria-hidden="true"></div>
         <span class="sr-only">Carregando o semáforo…</span>
       </div>
-      <div class="box resumo-box" id="em-resumo" hidden>
+      <div class="box resumo-box" id="em-resumo" hidden data-slide data-slide-titulo="Em resumo">
         <p class="resumo-rotulo">Em resumo</p>
         <p class="resumo-texto"></p>
       </div>
@@ -203,13 +206,13 @@
       <p class="sec-sub">Série quadrimestral desde 2018, em valores correntes (sem correção pela inflação).</p>
       <div class="box">
         <h3>Dívida consolidada — bruta e líquida (R$)</h3>
-        <div class="grafico" id="ch-divida"></div>
+        <div class="grafico" id="ch-divida" data-slide data-slide-altura="livre" data-slide-frase="2" data-slide-nota-frase="3"></div>
         <p class="nota-quebra" data-quebra hidden></p>
       </div>
       <div class="grid2">
-        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><div class="grafico" id="ch-dcl-pct"></div>
+        <div class="box"><h3>Dívida líquida em % da RCL — limite: 120%</h3><div class="grafico" id="ch-dcl-pct" data-slide data-slide-altura="livre" data-slide-frase="2" data-slide-nota-frase="3"></div>
           <p class="nota-quebra" data-quebra hidden></p></div>
-        <div class="box"><h3>Despesa com pessoal em % da RCL — limite: 54%</h3><div class="grafico" id="ch-pessoal"></div></div>
+        <div class="box"><h3>Despesa com pessoal em % da RCL — limite: 54%</h3><div class="grafico" id="ch-pessoal" data-slide data-slide-altura="livre" data-slide-frase="2"></div></div>
       </div>
       <div class="grid2">
         <div class="box"><h3>Precatórios vencidos e não pagos (R$)</h3><div class="grafico" id="ch-precatorios"></div>

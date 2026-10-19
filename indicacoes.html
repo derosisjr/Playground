@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       /* Irmã de requerimentos.html. Topo (Noturno), KPIs, foco, botões e impressão vêm do comum.css. */
       :root {
@@ -206,7 +206,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("indicacoes.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -224,7 +224,7 @@
           acompanham os filtros.
         </p>
         <!-- número-manchete: sem resposta de mérito, base inteira (indicacoes-app.js, renderHero) -->
-        <div class="hero-num" id="hero-num">
+        <div class="hero-num" id="hero-num" data-slide="1">
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:2.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
@@ -234,7 +234,7 @@
     </header>
 
     <main class="shell">
-      <div class="stats" id="stats">
+      <div class="stats" id="stats" data-slide="2" data-slide-titulo="Em números">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -242,9 +242,9 @@
       </div>
 
       <div class="filtros">
-        <input id="q" type="search" aria-label="Buscar indicações por número ou assunto (ex.: poda, iluminação)" placeholder="Buscar por número ou assunto..." />
-        <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
-        <select id="sit" aria-label="Filtrar pela situação da resposta">
+        <input id="q" data-slide-filtro type="search" aria-label="Buscar indicações por número ou assunto (ex.: poda, iluminação)" placeholder="Buscar por número ou assunto..." />
+        <select id="ano" aria-label="Filtrar por ano" data-slide-filtro><option value="">Todos os anos</option></select>
+        <select id="sit" aria-label="Filtrar pela situação da resposta" data-slide-filtro>
           <option value="">Situação: todas</option>
           <option value="respondida">Só respondidas (mérito)</option>
           <option value="sem_merito">Tudo sem resposta de mérito</option>
@@ -252,7 +252,7 @@
         </select>
       </div>
 
-      <p class="foco" id="foco" hidden>Mostrando a Indicação <b id="foco-num"></b>.
+      <p class="foco" id="foco" hidden data-slide-filtro>Mostrando a Indicação <b id="foco-num"></b>.
         <button type="button" class="lnk" id="foco-todos">Ver a lista inteira</button></p>
 
       <div class="barra">
@@ -262,6 +262,8 @@
           <button class="btn" type="button" data-acao="compartilhar">Compartilhar</button>
           <button class="btn" id="csv" type="button" disabled>Exportar CSV</button>
           <button class="btn" type="button" data-acao="imprimir">Imprimir</button>
+          <button class="btn" type="button" data-acao="apresentar"
+            data-slide-fonte="Planilha de controle do gabinete · respostas do Executivo">Apresentar</button>
         </div>
       </div>
 
@@ -272,7 +274,9 @@
           <!-- linha de estado: altura fixa, então escolher/limpar não empurra o mapa -->
           <div class="selecao" id="selecao" aria-live="polite"><span class="dica">Clique num bairro para ver as indicações dele.</span></div>
           <div class="mapa-wrap">
-            <div class="grafico mapa" id="mapa"></div>
+            <div class="grafico mapa" id="mapa" data-slide="3" data-slide-frase="2" data-slide-legenda="#legenda" data-slide-layout="lateral"
+              data-slide-nota="A contagem mostra onde o mandato pediu, não a necessidade de cada bairro."
+              data-slide-fonte="Planilha do gabinete · limites dos bairros: Prefeitura de Santos (GeoServer)"></div>
             <div class="inset" id="inset" aria-hidden="true"><span class="inset-rot"><b>Área continental</b><span id="inset-sub">escala reduzida</span></span></div>
             <div class="zoom" role="group" aria-label="Zoom do mapa">
               <button type="button" id="zoom-mais" aria-label="Aproximar o mapa" title="Aproximar">+</button>
@@ -283,7 +287,7 @@
           <ul class="legenda" id="legenda" aria-label="Legenda: indicações por bairro"></ul>
           <div class="lugares">
             <p class="lugares-rot" id="lugares-rot">Fora do mapa</p>
-            <div class="chips" id="chips" role="group" aria-labelledby="lugares-rot"></div>
+            <div class="chips" id="chips" role="group" aria-labelledby="lugares-rot" data-slide-filtro></div>
           </div>
           <p class="fonte-mapa">Limites dos bairros: Prefeitura de Santos (GeoServer, camada
             <code>santos:bairros</code>), simplificados para a web. A área continental aparece à parte, em escala reduzida.</p>
@@ -297,7 +301,8 @@
             </div>
             <!-- no desktop a lista rola dentro do cartão, na altura do mapa; no celular segue a página -->
             <div class="lista-rolagem" id="lista-rolagem" tabindex="0" role="region" aria-label="Lista de indicações (rolável)">
-              <ol class="lista" id="corpo"></ol>
+              <ol class="lista" id="corpo" data-slide="5" data-slide-tipo="lista" data-slide-titulo="Pedidos mais recentes"
+                data-slide-celulas=".num, .ind-assunto, .sit" data-slide-max="5"></ol>
               <div class="vazio" id="vazio" hidden>Nenhuma indicação com esses filtros.</div>
               <button class="mais" id="mais" type="button" hidden>Mostrar mais</button>
             </div>
@@ -305,7 +310,8 @@
         </section>
       </div>
 
-      <details class="caixa por-bairro" id="por-bairro">
+      <details class="caixa por-bairro" id="por-bairro" data-slide="4" data-slide-tipo="lista" data-slide-titulo="Indicações por bairro"
+        data-slide-max="8" data-slide-filtro>
         <summary>Indicações por bairro <span class="sub" id="pb-sub">carregando…</span></summary>
         <div class="rolagem">
           <table>
@@ -346,6 +352,6 @@
       </p>
     </main>
 
-    <script src="./indicacoes-app.js?v=1"></script>
+    <script src="./indicacoes-app.js?v=2"></script>
   </body>
 </html>

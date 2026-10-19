@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -121,7 +121,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("requerimentos.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -141,7 +141,7 @@
           de prazo e ofício de encaminhamento sem anexo aparecem à parte.</span>
         </p>
         <!-- número-manchete: os sem resposta de mérito, base inteira (requerimentos-app.js, renderHero) -->
-        <div class="hero-num" id="hero-num">
+        <div class="hero-num" id="hero-num" data-slide="1">
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:2.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
@@ -151,7 +151,7 @@
     </header>
 
     <main class="shell">
-      <div class="stats" id="stats">
+      <div class="stats" id="stats" data-slide="2" data-slide-titulo="Em números">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -159,9 +159,9 @@
       </div>
 
       <div class="filtros">
-        <input id="q" type="search" aria-label="Buscar requerimentos por número, assunto ou palavra-chave" placeholder="Buscar por número, assunto ou palavra-chave..." />
-        <select id="ano" aria-label="Filtrar por ano"><option value="">Todos os anos</option></select>
-        <select id="status" aria-label="Filtrar por situação da resposta">
+        <input id="q" data-slide-filtro type="search" aria-label="Buscar requerimentos por número, assunto ou palavra-chave" placeholder="Buscar por número, assunto ou palavra-chave..." />
+        <select id="ano" aria-label="Filtrar por ano" data-slide-filtro><option value="">Todos os anos</option></select>
+        <select id="status" aria-label="Filtrar por situação da resposta" data-slide-filtro>
           <option value="">Todas as situações</option>
           <option value="sim">Só respondidos (mérito)</option>
           <option value="nao">Tudo sem resposta de mérito</option>
@@ -169,13 +169,13 @@
           <option value="so_encaminhamento">Só encaminhamento</option>
           <option value="pendente">Sem nenhuma resposta</option>
         </select>
-        <select id="prazo" aria-label="Filtrar pelo prazo da Lei Orgânica">
+        <select id="prazo" aria-label="Filtrar pelo prazo da Lei Orgânica" data-slide-filtro>
           <option value="">Todos os prazos</option>
           <option value="fora">Sem resposta e fora do prazo</option>
           <option value="resp_fora">Respondidos depois de 15 dias</option>
           <option value="resp_no_prazo">Respondidos em até 15 dias</option>
         </select>
-        <select id="sec" aria-label="Filtrar por secretaria">
+        <select id="sec" aria-label="Filtrar por secretaria" data-slide-filtro>
           <option value="">Todas as secretarias</option>
         </select>
         <select id="ordem" aria-label="Ordenar a lista">
@@ -188,12 +188,13 @@
       <details class="secretarias" id="secretarias">
         <summary>Atraso por secretaria <span class="sub" id="sec-sub">carregando…</span></summary>
         <!-- um ponto por pedido (requerimentos-app.js, desenharSecretarias); clique abre o pedido -->
-        <div class="grafico grafico-sec" id="ch-secretarias"></div>
+        <div class="grafico grafico-sec" id="ch-secretarias" data-slide="4" data-slide-titulo="Tempo até a resposta, por secretaria"
+          data-slide-frase="2"></div>
         <p class="nota-sec">Cada ponto é um requerimento: cheio = já respondido (dias da sessão à resposta de mérito);
           vazado = ainda sem resposta de mérito (dias desde a sessão). Escala logarítmica — as marcas são 15 e 30 dias,
           2, 3 e 6 meses e 1 ano. Clique num ponto para abrir o pedido.</p>
         <div class="rolagem">
-          <table>
+          <table data-slide="5" data-slide-titulo="Atraso por secretaria" data-slide-colunas="1,2,4,5,6" data-slide-max="7">
             <thead>
               <tr><th scope="col">Secretaria</th><th scope="col">Pedidos</th><th scope="col">Respondidos</th>
                 <th scope="col">Sem resposta de mérito</th><th scope="col">Fora do prazo</th>
@@ -204,7 +205,7 @@
         </div>
       </details>
 
-      <p class="foco" id="foco" hidden>Mostrando o Req. <b id="foco-num"></b> e os pedidos que o
+      <p class="foco" id="foco" hidden data-slide-filtro>Mostrando o Req. <b id="foco-num"></b> e os pedidos que o
         desdobram. <button type="button" class="lnk" id="foco-todos">Ver todos os requerimentos</button></p>
 
       <div class="barra">
@@ -216,11 +217,14 @@
             title="Copia a lista dos pedidos do filtro atual que estão fora do prazo">Copiar lista de cobrança</button>
           <button class="btn" id="csv" disabled>Exportar CSV</button>
           <button class="btn" type="button" data-acao="imprimir">Imprimir</button>
+          <button class="btn" type="button" data-acao="apresentar"
+            data-slide-fonte="Planilha de controle do gabinete · respostas do Executivo">Apresentar</button>
         </div>
       </div>
 
       <div class="tabela-wrap">
-        <table class="tabela-resp">
+        <table class="tabela-resp" data-slide="6" data-slide-titulo="Pedidos — {#ordem}" data-slide-colunas="1,2,5"
+          data-slide-max="5" data-slide-ignorar=".rel, .sec-tag">
           <thead>
             <tr>
               <th>Número</th><th>Assunto</th><th>Data da sessão</th>
@@ -233,7 +237,8 @@
       </div>
       <button class="mais" id="mais" hidden>Mostrar mais</button>
 
-      <p class="rodape">
+      <p class="rodape" data-slide="3" data-slide-tipo="texto" data-slide-titulo="O prazo da Lei Orgânica"
+        data-slide-frase="1,2" data-slide-ignorar="b:first-child">
         <b>Prazo:</b> a Lei Orgânica de Santos (<a href="./lei-organica.html#art-58">art. 58, XVIII</a>) obriga o Prefeito a prestar as
         informações pedidas pela Câmara em quinze dias, prorrogáveis por igual período a pedido
         dele. Aqui o prazo conta da data da sessão que aprovou o requerimento, em dias corridos

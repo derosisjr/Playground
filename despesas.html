@@ -23,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" href="./comum.css?v=13" />
+    <link rel="stylesheet" href="./comum.css?v=15" />
     <style>
       :root {
         --navy: #07111f; --navy2: #0a1628; --navy3: #12263f; --gold: #c9a84c;
@@ -338,7 +338,7 @@
     </style>
   </head>
   <body>
-    <script src="./comum.js?v=25"></script>
+    <script src="./comum.js?v=26"></script>
     <script>Comum.topbar("despesas.html");</script>
     <header class="hero com-manchete">
       <div class="hero-in">
@@ -351,14 +351,17 @@
           confira sempre o portal oficial.
         </p>
         <!-- número-manchete: acumulado do ano (despesas-app.js, renderHero) -->
-        <div class="hero-num" id="hero-num">
+        <div class="hero-num" id="hero-num" data-slide>
           <span class="grande" id="hero-grande"><span class="skel" aria-hidden="true" style="display:inline-block;width:5.5ch;height:.8em"></span></span>
           <span class="contexto" id="hero-contexto"><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:330px;max-width:100%"></span><br><span class="skel" aria-hidden="true" style="display:inline-block;vertical-align:middle;height:12px;width:240px;max-width:80%"></span></span>
         </div>
         <button type="button" class="hero-mais sobre-painel" aria-expanded="false">Sobre este painel ▾</button>
+        <!-- modo apresentação (Comum.apresentar): no canto do topo; no celular, ao lado do "Sobre este painel" -->
+        <button type="button" class="ap-botao ap-botao-topo" data-acao="apresentar"
+          data-slide-fonte="Portal da Transparência da Prefeitura de Santos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Apresentar</button>
         <!-- "Em resumo" dentro do topo escuro (direção Noturno): vale para o painel todo.
              Nasce visível com a altura reservada (ver .resumo-reserva no comum.css) -->
-        <div class="box resumo-box" id="em-resumo">
+        <div class="box resumo-box" id="em-resumo" data-slide data-slide-titulo="Em resumo">
           <p class="resumo-rotulo">Em resumo</p>
           <p class="resumo-texto resumo-reserva" id="resumo-texto" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></p>
           <button type="button" class="hero-mais resumo-mais" id="resumo-mais" aria-controls="resumo-texto" aria-expanded="false">Ler o resumo inteiro ▾</button>
@@ -368,7 +371,7 @@
     </header>
 
     <main class="shell">
-      <div class="stats" id="stats">
+      <div class="stats" id="stats" data-slide data-slide-titulo="Em números">
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
         <div class="stat" aria-hidden="true"><span class="skel" style="display:block;height:11px;width:55%"></span><span class="skel" style="display:block;height:26px;width:70%;margin-top:8px"></span><span class="skel" style="display:block;height:12px;width:45%;margin-top:6px"></span></div>
@@ -393,14 +396,15 @@
               <button class="btn" data-escala="dia" type="button" aria-pressed="false">Diário</button>
             </div>
           </div>
-          <div class="grafico" id="ch-mensal"></div>
+          <div class="grafico" id="ch-mensal" data-slide data-slide-altura="livre" data-slide-titulo="Pago por mês" data-slide-frase="2"
+            data-slide-nota-de=".nota-parcial"></div>
           <p class="contagem nota-parcial" hidden></p>
           <p class="contagem" id="nota-diario" hidden></p>
         </div>
         <!-- calendário de pagamentos (M8): altura reservada no CSS desde a 1ª pintura -->
         <div class="box" id="box-calendario">
           <h3>Calendário de pagamentos — pago em cada dia (pela data do pagamento)</h3>
-          <div class="cal-area"><div class="grafico" id="ch-calendario"></div></div>
+          <div class="cal-area"><div class="grafico" id="ch-calendario" data-slide data-slide-titulo="Calendário de pagamentos" data-slide-frase="2" data-slide-legenda="#cal-legenda"></div></div>
           <ul class="legenda-cal" id="cal-legenda" aria-label="Legenda do calendário">
             <li><span class="sw" data-cor="neutro"></span>sem pagamento</li>
             <!-- faixas com o texto do formato final (oculto até o dado): a legenda nasce com a altura dela -->
@@ -546,7 +550,7 @@
                 <button class="btn" data-vista="capita" type="button">Por santista</button>
               </div>
             </div>
-            <div class="grafico" id="ch-funcao"></div>
+            <div class="grafico" id="ch-funcao" data-slide data-slide-altura="livre" data-slide-titulo="Gasto por função" data-slide-frase="1"></div>
           </div>
           <div class="box"><h3>Por fonte de recurso</h3><div class="grafico" id="ch-fonte"></div></div>
         </div>
@@ -560,7 +564,7 @@
             <h3>Mapa do gasto — clique numa área para abrir</h3>
             <div class="acoes" id="mapa-trilha" aria-label="Nível do mapa do gasto"></div>
           </div>
-          <div class="grafico" id="ch-mapa"></div>
+          <div class="grafico" id="ch-mapa" data-slide data-slide-titulo="Mapa do gasto" data-slide-frase="1,2"></div>
           <p class="contagem" style="margin:10px 0 0">
             Função → subfunção → elemento de despesa (pago pela data do pagamento). Tocar num
             elemento prepara o Detalhamento já filtrado — você confere o período e o tamanho do
@@ -586,7 +590,7 @@
             abrir o raio-X.</p>
           <p class="dica-scroll" aria-hidden="true">→ arraste para o lado para ver o caminho inteiro</p>
           <div class="rolagem-x" id="caminho-rolagem" role="region" aria-labelledby="caminho-titulo">
-            <div class="grafico" id="ch-caminho"></div>
+            <div class="grafico" id="ch-caminho" data-slide data-slide-titulo="Caminho do dinheiro" data-slide-frase="2"></div>
           </div>
           <!-- texto no formato final, oculto até o dado: a nota nasce com a altura dela -->
           <p class="contagem reserva" id="caminho-nota" style="margin:10px 0 0">2026 (até 00/00/2026): R$ 0,00 bi
@@ -644,17 +648,20 @@
         </p>
         <p class="contagem" id="alertas-historico" hidden></p>
         <div class="filtros filtros-alertas">
-          <select id="alerta-classe" aria-label="Classe do alerta">
+          <select id="alerta-classe" aria-label="Classe do alerta" data-slide-filtro>
             <option value="conferir">A conferir (anomalias e inconsistências)</option>
             <option value="">Todas as classes</option>
             <option value="anomalia">Anomalia a conferir</option>
             <option value="inconsistencia">Inconsistência de dados</option>
             <option value="contexto">Contexto</option>
           </select>
-          <select id="alerta-tipo" aria-label="Tipo de alerta"><option value="">Tipo (todos)</option></select>
-          <select id="alerta-sev" aria-label="Severidade"><option value="">Severidade (todas)</option></select>
+          <select id="alerta-tipo" aria-label="Tipo de alerta" data-slide-filtro><option value="">Tipo (todos)</option></select>
+          <select id="alerta-sev" aria-label="Severidade" data-slide-filtro><option value="">Severidade (todas)</option></select>
         </div>
-        <div id="lista-alertas"></div>
+        <!-- slide: os grupos de alerta como a aba os mostra (regra — quantos — soma), sem os selos -->
+        <div id="lista-alertas" data-slide data-slide-tipo="lista" data-slide-titulo="Alertas fiscais · {#alerta-classe}"
+          data-slide-itens=":scope > details > summary, :scope > .alerta > .top" data-slide-ignorar=".sev, .classe, .estado"
+          data-slide-max="6" data-slide-nota="Nenhum alerta é conclusão de irregularidade."></div>
         <div class="vazio" id="alertas-vazio" hidden></div>
       </section>
 
