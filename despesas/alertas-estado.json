@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-18",
+ "atualizado_em": "2026-10-19",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1325,7 +1325,7 @@
   "b8e5c665f0cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 18 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
   },
   "0a662559872a": {
    "primeiro_em": "2026-10-18",
@@ -1755,7 +1755,7 @@
   "6cf818e4b70e": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 26 empenhos distintos a INOVAMED HOSPITALAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 27 empenhos distintos a INOVAMED HOSPITALAR LTDA (2026)"
   },
   "0a52881682bf": {
    "primeiro_em": "2026-10-18",
@@ -1870,7 +1870,7 @@
   "dfb255c19311": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 65 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 66 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
   },
   "6eccdeeb0bc2": {
    "primeiro_em": "2026-10-18",
@@ -1980,7 +1980,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 58 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 60 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -2020,7 +2020,7 @@
   "703b7e8c49e3": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 60 empenhos distintos a TALKER REPRESENTACAO COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 61 empenhos distintos a TALKER REPRESENTACAO COMERCIAL LTDA (2026)"
   },
   "c78b573787cf": {
    "primeiro_em": "2026-10-18",
@@ -2105,7 +2105,7 @@
   "4a512278a03b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 19 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
   },
   "c4374c034751": {
    "primeiro_em": "2026-10-18",
@@ -2430,7 +2430,7 @@
   "43d3f26b4bd7": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a MEDI HOUSE IND.E COM.DE PROD.CIR.E HOSP.LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a MEDI HOUSE IND.E COM.DE PROD.CIR.E HOSP.LTDA. (2026)"
   },
   "b76e2f81abf5": {
    "primeiro_em": "2026-10-18",
@@ -2670,7 +2670,7 @@
   "7a2a78705f15": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a SAMTRONIC INDUSTRIA E COMERCIO LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a SAMTRONIC INDUSTRIA E COMERCIO LTDA. (2026)"
   },
   "e5e2663a6f40": {
    "primeiro_em": "2026-10-18",
@@ -3221,6 +3221,16 @@
    "primeiro_em": "2026-10-18",
    "tipo": "pago_acima_liquidado",
    "titulo": "Pago acima do liquidado: ASSOCIAÇAO DE MORADORES DO JARDIM PIRATININGA"
+  },
+  "79042a161950": {
+   "primeiro_em": "2026-10-19",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a COLOPLAST DO BRASIL LTDA. (2026)"
+  },
+  "8b033d90b061": {
+   "primeiro_em": "2026-10-19",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a ARLIMED DISTRIBUIDORA HOSPITALAR LTDA (2026)"
   }
  },
  "resolvidos": {
