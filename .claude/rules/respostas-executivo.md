@@ -24,6 +24,42 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 - **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `31 8 * * 1-5` (05h31 BRT, dias úteis).
 - **Painel de Requerimentos & Respostas (`requerimentos.html` + `requerimentos-app.js`):** cartão "Requerimentos" na seção Bases de dados do hub. `respostas-executivo/export.py` lê a aba `requerimentos` da planilha (via Sheets API, reusando `_google_services`/`_idx_header` de `index.py`) e gera `requerimentos-index.json` na raiz — array com número, ano, assunto, datas, situação, `respondido` e `url_resposta`. **O índice é público: só saem as chaves de `CAMPOS_PUBLICOS` (`export.py`)** e o `main()` aborta com exit 1 se aparecer outra. A coluna interna "Status atual" da planilha **não vai ao site** — até out/2026 ela era publicada e exibida como "Situação", vazando anotações do gabinete ("ok (Falar com o Rui)", "não sei se cabe reiterar", links de entrega de documentos). A coluna "Situação" do painel mostra os rótulos públicos da classificação (`SITUACAO_ROTULO` em `requerimentos-app.js`, espelho de `classificar.ROTULOS`). Linha cujo Número não casa `^\d{1,5}/\d{4}$` (ex.: data, como as linhas-fantasma de set/2026) é descartada com aviso. A lógica de montagem vive em `montar_itens()` (testável sem Google: `testes_export.py`). **A coluna `Resposta` é uma fórmula `=HYPERLINK(...)`**, então o export lê com `valueRenderOption="FORMULA"` e extrai a URL do Drive por regex. O painel (vanilla, sem acento, paginado) tem busca + filtros de ano/situação e link para a pasta no Drive (exige login do gabinete) ou badge "Pendente". O JSON é gerado e commitado pelo passo final do `respostas-executivo.yml` (com guarda anti-base-vazia). **O export roda mesmo se o crawler falhar** (`if: !cancelled() && testes ok`; só lê a planilha): até out/2026 ele era pulado quando a Câmara recusava conexão, e o JSON no ar ficou dias com a coluna interna depois da correção. **`.github/scripts/checar_publicos.py`** confere o JSON JÁ PUBLICADO contra a lista branca (lida do `export.py` pela árvore sintática, sem importar — o export puxa `requests`) no `testes.yml` e no `bases-atualizacao.yml` diário; base nova com dado da planilha entra no dicionário `bases()`. `--dry-run` no export imprime contagens sem gravar.
 
+## Diagnóstico somente leitura e regras de escrita (R0, out/2026)
+
+**Regra do usuário (20/10/2026): nada que a equipe escreve à mão é apagado ou sobrescrito, em
+nenhuma linha.** O robô só preenche célula vazia das colunas dele (ou atualiza as de resposta
+quando chega documento novo), grava só valor (nunca formato), não apaga nem ordena linha, não
+mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe.
+
+- **`planilha.py`**: `numero_canonico()` ("0845/2026" → "845/2026"; None para o que não é
+  nº/aaaa) — a chave de um pedido em todo o módulo; `somente_leitura(cliente)` embrulha o
+  cliente do Sheets/Drive e levanta `EscritaBloqueada` em qualquer método que grave
+  (`METODOS_ESCRITA`, lista fechada). Obrigatório em diagnóstico, simulação e `--dry-run`.
+- **`camara.py`**: listagem pública por autor (`filtro.php?pesquisa_autor[...]`, tipo 1 =
+  Requerimento, 3 = Indicação; 20/página, latin-1). **A numeração dos requerimentos é por
+  subtipo** ("Requerimento Nº 10/2025" ≠ "Requerimento de Homenagem Nº 10/2025"). Fixtures em
+  `fixtures/camara/*.htm` (`.htm`: o `checar_versoes` varre `*.html`).
+- **`diagnostico.py`** (`--detalhe` local, `--json`, `--sem-camara`, `--sem-drive`): mapa das
+  colunas (com dono), números fora do padrão, grupos repetidos e, nas repetidas, conteúdo da
+  equipe/nota/comentário; pastas sem situação ou sem PDF de resposta; picos do `Log diário` por
+  tipo; conciliação com a Câmara. Saída padrão só com contagens.
+
+**Retrato de 19/10/2026** (base para comparar os lotes seguintes):
+- `requerimentos`: 625 linhas, 0 repetidas, 587 com pasta (5 sem situação). Colunas da equipe
+  preenchidas: Secretaria, Status atual, **Situação** (manual, 28), observação. "Prazo",
+  "Ordem" e "Data do Protocolo na PMS" estão vazias (criadas em 12/10).
+- `indicações`: 887 linhas, 562 números; **318 pares + 3 trios** (324 linhas a mais), 321
+  "limpas" e 3 com "sta" diferente nas duas linhas. **"Data do Protocolo na PMS" (357) e "Prazo"
+  (362) são preenchidas pela equipe nesta aba.** Nenhuma nota nem comentário na planilha.
+- **Origem das repetidas: 20/08/2026** — 321 indicações no `Log diário` num só dia (leitura da
+  aba falhou, mapa vazio, toda indicação já respondida virou "linha nova").
+- Câmara × planilha: faltam **127 requerimentos** (116 aprovados, 7 sem votação, 4
+  encaminhados) e **281 indicações** (todas encaminhadas). Na planilha: 1/2026 e 5/2026 são
+  "Requerimento de Convite"; 6680/2025 e 6995/2025 não são indicações do autor.
+- **Moção 19/2026 caiu na pasta e na linha do Requerimento 19/2026**: tudo que não é indicação
+  vai para `requerimentos` e para a pasta `REQUERIMENTO_<nº>` (`aba_do_item`, `processar_item`).
+- `Log diário`: 19.317 linhas (~570 requerimentos/dia até 12/10, o reprocessamento já corrigido).
+
 ## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
 
 - **Regra (`prazos.py`)**: LOM art. 58, XVIII — informações "dentro de quinze dias (...), salvo
