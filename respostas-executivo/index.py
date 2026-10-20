@@ -69,6 +69,7 @@ from bs4 import BeautifulSoup
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402  (mesmo diretório; ver bloco sys.path acima)
 import planilha  # noqa: E402
+import precadastro  # noqa: E402
 from planilha import numero_canonico  # noqa: E402
 
 # Garante UTF-8 na saída mesmo em consoles Windows (cp1252)
@@ -133,6 +134,7 @@ LOG_ABA = "Log diário"
 LOG_COLUNAS = [
     "Data processamento", "Tipo", "Número", "Assunto",
     "Data da resposta", "Link", "Situação",
+    "Origem",  # "resposta" ou "pré-cadastro" (R5, out/2026)
 ]
 
 # O job tem 35 min de timeout: a varredura para aos ORCAMENTO_MIN para dar tempo de gravar,
@@ -565,7 +567,7 @@ def _idx_header(cabecalhos: list[str], alvo: str) -> int:
     return -1
 
 
-def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
+def garantir_colunas(sheets, sheet_id: str, aba: str, colunas: list[str] | None = None) -> list[str]:
     """Garante que o cabeçalho da aba tenha as colunas que ESTA automação grava
     (as de classificação), acrescentando ao fim as que faltarem. Devolve o
     cabeçalho resultante.
@@ -583,7 +585,7 @@ def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
     ).execute()
     valores = res.get("values") or [[]]
     cab = valores[0] if valores else []
-    faltantes = [c for c in COLUNAS_CLASSIFICACAO if _idx_header(cab, c) < 0]
+    faltantes = [c for c in (colunas or COLUNAS_CLASSIFICACAO) if _idx_header(cab, c) < 0]
     if not faltantes:
         return cab
     inicio = max(len(linha) for linha in valores)  # 1ª coluna vazia em todas as linhas
@@ -664,6 +666,8 @@ def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> di
         idx_num = _idx_coluna_numero(cab)
         info["col_resp"] = _idx_header(cab, "Resposta")
         info["col_situacao"] = _idx_header(cab, COL_SITUACAO)
+        col_sit_camara = _idx_header(cab, precadastro.COL_SIT_CAMARA)
+        col_assunto = _idx_header(cab, "Assunto")
         if idx_num < 0:
             raise RuntimeError(f"aba '{aba}' sem a coluna do número no cabeçalho — nada foi gravado")
 
@@ -680,6 +684,8 @@ def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> di
                 "linha": n,
                 "resp": celula(linha, info["col_resp"]) != "",
                 "sit": celula(linha, info["col_situacao"]),
+                "sit_camara": celula(linha, col_sit_camara),
+                "assunto": celula(linha, col_assunto),
             }
         if info["repetidos"]:
             print(f"  Aviso: aba '{aba}' com {info['repetidos']} linha(s) de número repetido "
@@ -760,7 +766,9 @@ def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
 
 
 # ── E-mail resumo ─────────────────────────────────────────────────────────────
-def montar_email_html(entradas: list[dict], data: str) -> str:
+def montar_email_html(entradas: list[dict], data: str, novos: list[dict] = ()) -> str:
+    """Respostas que chegaram (`entradas`) e, desde o pré-cadastro (R5), os pedidos que
+    entraram na planilha (`novos`) — a equipe completa Secretaria e Bairro."""
     from html import escape as _esc  # campos raspados entram escapados no HTML
     linhas = ""
     for e in entradas:
@@ -780,13 +788,24 @@ def montar_email_html(entradas: list[dict], data: str) -> str:
     resumo = f"{merito} resposta(s) de mérito"
     if tramite:
         resumo += f" e {tramite} de trâmite (prazo/encaminhamento)"
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A1628">
-<div style="max-width:760px;margin:0 auto">
-  <div style="border-top:3px solid #C9A84C;padding:16px 0">
-    <h2 style="margin:0;color:#07111F">Respostas do Executivo</h2>
-    <p style="color:#555;margin:4px 0 0">{resumo} — {data}</p>
-  </div>
+    if novos:
+        resumo += f"; {len(novos)} pedido(s) novo(s) na planilha"
+    td = "<td style='padding:6px 10px;border-bottom:1px solid #eee'>"
+    linhas_novos = "".join(
+        f"<tr>{td}{_esc(e['Tipo'])}</td>{td}{_esc(e['Número'])}</td>{td}{_esc(e['Assunto'])}</td>"
+        f"{td}{_esc(e.get('Situação') or '—')}</td></tr>" for e in novos)
+    secao_novos = f"""
+  <h3 style="margin:24px 0 8px;color:#07111F">{len(novos)} pedido(s) novo(s) — completar Secretaria e Bairro</h3>
+  <table style="border-collapse:collapse;width:100%;font-size:14px">
+    <thead><tr style="background:#07111F;color:#fff">
+      <th style="padding:8px 10px;text-align:left">Tipo</th>
+      <th style="padding:8px 10px;text-align:left">Número</th>
+      <th style="padding:8px 10px;text-align:left">Assunto</th>
+      <th style="padding:8px 10px;text-align:left">Situação na Câmara</th>
+    </tr></thead>
+    <tbody>{linhas_novos}</tbody>
+  </table>""" if novos else ""
+    tabela = f"""
   <table style="border-collapse:collapse;width:100%;font-size:14px">
     <thead><tr style="background:#07111F;color:#fff">
       <th style="padding:8px 10px;text-align:left">Tipo</th>
@@ -797,14 +816,21 @@ def montar_email_html(entradas: list[dict], data: str) -> str:
       <th style="padding:8px 10px;text-align:left">Pasta</th>
     </tr></thead>
     <tbody>{linhas}</tbody>
-  </table>
+  </table>""" if entradas else ""
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A1628">
+<div style="max-width:760px;margin:0 auto">
+  <div style="border-top:3px solid #C9A84C;padding:16px 0">
+    <h2 style="margin:0;color:#07111F">Respostas do Executivo</h2>
+    <p style="color:#555;margin:4px 0 0">{resumo} — {data}</p>
+  </div>{tabela}{secao_novos}
   <p style="color:#888;font-size:12px;margin-top:16px">
     Gerado automaticamente pela rotina Respostas do Executivo — Câmara de Santos.
   </p>
 </div></body></html>"""
 
 
-def enviar_email(entradas: list[dict], data: str) -> None:
+def enviar_email(entradas: list[dict], data: str, novos: list[dict] = ()) -> None:
     user = os.environ.get("GMAIL_USER")
     senha = os.environ.get("GMAIL_APP_PASSWORD")
     # destinatário dedicado (não compartilha com o ordem-do-dia); fallback p/ GMAIL_TO
@@ -815,15 +841,18 @@ def enviar_email(entradas: list[dict], data: str) -> None:
                                "e-mail não enviado.")
     destinatarios = [d.strip() for d in para.split(",") if d.strip()]
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Respostas do Executivo — {len(entradas)} nova(s) em {data}"
+    extra = f" e {len(novos)} pedido(s) novo(s)" if novos else ""
+    msg["Subject"] = f"Respostas do Executivo — {len(entradas)} nova(s){extra} em {data}"
     msg["From"] = f"Respostas do Executivo <{user}>"
     msg["To"] = ", ".join(destinatarios)
     resumo = "\n".join(
-        f"- {e['Tipo']} {e['Número']}: {e['Assunto']} (resposta {e['Data da resposta']})"
-        for e in entradas
+        [f"- {e['Tipo']} {e['Número']}: {e['Assunto']} (resposta {e['Data da resposta']})"
+         for e in entradas]
+        + [f"- novo: {e['Tipo']} {e['Número']}: {e['Assunto']} — completar Secretaria e Bairro"
+           for e in novos]
     )
     msg.attach(MIMEText(resumo, "plain", "utf-8"))
-    msg.attach(MIMEText(montar_email_html(entradas, data), "html", "utf-8"))
+    msg.attach(MIMEText(montar_email_html(entradas, data, novos), "html", "utf-8"))
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
         server.login(user, senha)
@@ -947,6 +976,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     col_numero = "Número" if aba == ABA_INDICACOES else "Nùmero"
     valores = {
         "Assunto": item["ementa"],
+        precadastro.COL_EMENTA: item["ementa"],  # só entra se a linha for nova
         "Data da Sessão": item["dataPropositura"],
         col_numero: numero,
         "Resposta": resposta_cell,
@@ -959,6 +989,47 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         valores[COL_DATA_MERITO] = _data_mais_antiga(datas_merito)
     sem_pdf = not links_resposta
     return Processado(aba, valores, pasta_url, resposta_nova, sem_pdf, pasta_id, aviso_pendente)
+
+
+def anos_do_mandato() -> list[str]:
+    """Do ano corrente até ANO_INICIAL (as respostas ficam no ano de envio do pedido)."""
+    return [str(a) for a in range(datetime.now().year, ANO_INICIAL - 1, -1)]
+
+
+def executar_precadastro(sheets, sheet_id: str, indice: dict, anos: list[str], gravar: bool,
+                         hoje: str) -> tuple[list[dict], "planilha.Relatorio"]:
+    """Pré-cadastro (precadastro.py), antes da busca de respostas: cria as linhas dos pedidos
+    protocolados que ainda não estão na planilha e acerta o espelho "Situação na Câmara".
+    Com `gravar` desligado só conta. Devolve as entradas do log/e-mail e o relatório."""
+    conhecidos = {aba: {n: x.get("sit_camara", "") for n, x in info["mapa"].items()}
+                  for aba, info in indice.items()}
+    # segunda-feira, ou a 1ª vez (espelho vazio em tudo): varredura completa
+    completo = datetime.now().weekday() == 0 or not any(v for d in conhecidos.values() for v in d.values())
+    itens, _ = precadastro.coletar(anos, conhecidos, completo,
+                                   {"Requerimento": ABA_REQUERIMENTOS, "Indicação": ABA_INDICACOES})
+    novas, espelho = precadastro.planejar(itens, conhecidos)
+    rel = planilha.aplicar(sheets, sheet_id, novas + espelho, gravar=gravar)
+    print(f"Pré-cadastro{'' if gravar else ' (desligado: só contado)'}: {len(itens)} pedido(s) "
+          f"vistos na Câmara ({'completa' if completo else 'só os mais novos'}); "
+          f"{len(rel.novas)} linha(s) nova(s), \"{precadastro.COL_SIT_CAMARA}\" acertada em "
+          f"{len(rel.escritas)}.", file=sys.stderr)
+    if not gravar:
+        return [], rel
+    valores = {(n.aba, n.numero): n.valores for n in novas}
+    entradas = []
+    for aba, num, linha in rel.novas:
+        v = valores[(aba, num)]
+        # a busca de respostas vem depois: o pedido novo já tem linha
+        indice[aba]["mapa"][num] = {"linha": linha, "resp": False, "sit": "",
+                                    "sit_camara": v.get(precadastro.COL_SIT_CAMARA, ""),
+                                    "assunto": v.get("Assunto", "")}
+        entradas.append({
+            "Data processamento": hoje,
+            "Tipo": "Requerimento" if aba == ABA_REQUERIMENTOS else "Indicação",
+            "Número": num, "Assunto": v.get("Assunto", ""), "Data da resposta": "",
+            "Link": "", "Situação": v.get(precadastro.COL_SIT_CAMARA, ""), "Origem": "pré-cadastro",
+        })
+    return entradas, rel
 
 
 def _resumo_actions(titulo: str, linhas: list[tuple[str, object]], alertas: list[str]) -> None:
@@ -1010,7 +1081,7 @@ def main() -> int:
     if args.ano.strip():
         anos = [a.strip() for a in args.ano.split(",") if a.strip()]
     else:
-        anos = [str(a) for a in range(datetime.now().year, ANO_INICIAL - 1, -1)]
+        anos = anos_do_mandato()
 
     print(f"Buscando respostas do Executivo — anos {', '.join(anos)}, "
           f"autor {args.autor}...", file=sys.stderr)
@@ -1043,6 +1114,9 @@ def main() -> int:
     indice: dict[str, dict] = {aba: {"mapa": {}} for aba in ABAS}
     sep = ","
 
+    # pré-cadastro (R5): ligado pela variável do repositório PRECADASTRO_ATIVO=true;
+    # desligado, só conta o que faria
+    precadastro_ativo = os.environ.get("PRECADASTRO_ATIVO", "").strip().lower() == "true"
     if not args.dry_run:
         if not sheet_id or not pasta_raiz:
             raise EnvironmentError("Defina SHEET_ID e DRIVE_FOLDER_ID.")
@@ -1058,7 +1132,8 @@ def main() -> int:
             # parecia "sem veredito", era rebaixado e reclassificado todo dia e saía
             # no log e no e-mail como resposta nova (~576 por execução, out/2026).
             for aba in ABAS:
-                garantir_colunas(sheets, sheet_id, aba)
+                garantir_colunas(sheets, sheet_id, aba, COLUNAS_CLASSIFICACAO
+                                 + (precadastro.COLUNAS_NOVAS if precadastro_ativo else []))
         indice = carregar_planilha(sheets, sheet_id)
         # separador de argumentos de fórmula conforme o locale da planilha
         try:
@@ -1080,6 +1155,18 @@ def main() -> int:
     avisos: list[dict] = []              # entradas confirmadas depois da gravação
     rel_total = planilha.Relatorio()
     ultimo_lote = time.monotonic()
+
+    # Pré-cadastro (R5): os pedidos protocolados entram na planilha ANTES da busca de
+    # respostas — a resposta de um pedido novo já encontra a linha dele
+    novos_pre: list[dict] = []
+    rel_pre = planilha.Relatorio()
+    if not args.dry_run and not cods_alvo:
+        try:
+            novos_pre, rel_pre = executar_precadastro(
+                sheets, sheet_id, indice, anos, precadastro_ativo and not args.planejar, hoje)
+        except Exception as e:
+            cont["pré-cadastro com erro"] += 1
+            print(f"  ERRO no pré-cadastro: {e} — segue a busca de respostas.", file=sys.stderr)
 
     def gravar_lote() -> None:
         """Aplica o plano acumulado (relendo a planilha agora) e confirma os avisos do lote:
@@ -1181,6 +1268,7 @@ def main() -> int:
                     "Situação": cls.ROTULOS.get(r.valores.get(COL_SITUACAO) or sit_atual, "—"),
                     "Link": _hyperlink(r.pasta_url, "Abrir", sep),
                     "LinkUrl": r.pasta_url,
+                    "Origem": "resposta",
                     "_avisar": avisar,
                     "_novidade": novidade,
                     "_pasta_marcada": r.pasta_id if r.aviso_pendente else None,
@@ -1213,17 +1301,17 @@ def main() -> int:
                 print(f"{rotulo}: " + ", ".join(f"{a} {n}" for a, n in lista[:20]), file=sys.stderr)
 
     falhas_aviso: list[str] = []
-    if avisos and not args.dry_run and not args.planejar:
+    if (avisos or novos_pre) and not args.dry_run and not args.planejar:
         if not args.sem_log:
             try:
-                registrar_log(sheets, sheet_id, avisos)
-                print(f"Log diário: {len(avisos)} linha(s) registrada(s).", file=sys.stderr)
+                registrar_log(sheets, sheet_id, avisos + novos_pre)
+                print(f"Log diário: {len(avisos) + len(novos_pre)} linha(s) registrada(s).", file=sys.stderr)
             except Exception as e:
                 falhas_aviso.append("log diário")
                 print(f"  ERRO ao registrar o log diário: {e}", file=sys.stderr)
         if args.email:
             try:
-                enviar_email(avisos, hoje)
+                enviar_email(avisos, hoje, novos_pre)
             except Exception as e:
                 falhas_aviso.append("e-mail")
                 print(f"  ERRO ao enviar o e-mail resumo: {e}", file=sys.stderr)
@@ -1239,6 +1327,8 @@ def main() -> int:
                               file=sys.stderr)
 
     alertas = []
+    if cont["pré-cadastro com erro"]:
+        alertas.append("O pré-cadastro falhou — ver o log do passo.")
     if cont["com erro"]:
         alertas.append(f"{cont['com erro']} item(ns) com erro — ver o log do passo.")
     if cont["lotes com erro"]:
@@ -1260,6 +1350,9 @@ def main() -> int:
          ("Divergências (mantido o valor da planilha)", len(rel_total.divergencias)),
          ("Linha sumiu ou surgiu no meio", len(rel_total.sem_linha) + len(rel_total.ja_existia)),
          ("Avisos (log e e-mail)", len(avisos)), ("Itens com erro", cont["com erro"]),
+         ("Pré-cadastro: linhas novas" + ("" if precadastro_ativo else " (desligado: só contado)"),
+          len(rel_pre.novas)),
+         ("Situação na Câmara acertada", len(rel_pre.escritas)),
          ("Minutos", f"{(time.monotonic() - inicio) / 60:.1f}")],
         alertas)
     for a in alertas:

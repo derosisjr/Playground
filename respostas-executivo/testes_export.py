@@ -107,6 +107,23 @@ class TestExportPublico(unittest.TestCase):
         self.assertNotIn("cita", por_num["20/2026"])
         self.assertEqual(campos_fora_da_lista(itens), set())
 
+    def test_pre_cadastro_ementa_e_prazo_so_depois_do_envio(self):
+        # colunas do robô do pré-cadastro (R5): o site publica a ementa da Câmara, e o prazo
+        # da LOM só corre depois que a Câmara aprova/encaminha o pedido
+        cab = CAB + ["Ementa (Câmara)", "Situação na Câmara"]
+
+        def linha(numero, sit_camara):
+            x = _linha(numero, assunto="Resumo da equipe")
+            return {k: v + ["Indica ao Executivo a poda na rua X.", sit_camara] for k, v in x.items()}
+        linhas = [linha("5000/2026", "-"), linha("5001/2026", "Aprovado"), linha("5002/2026", "")]
+        valores, formulas, brutos = ([cab] + [x[k] for x in linhas] for k in ("valores", "formulas", "brutos"))
+        itens = {i["numero"]: i for i in montar_itens(valores, formulas, brutos)}
+        self.assertEqual(itens["5000/2026"]["assunto"], "Indica ao Executivo a poda na rua X.")
+        self.assertEqual(itens["5000/2026"]["vence_em"], "")       # ainda não votado
+        self.assertNotEqual(itens["5001/2026"]["vence_em"], "")    # aprovado: prazo corre
+        self.assertNotEqual(itens["5002/2026"]["vence_em"], "")    # linha antiga, sem o dado
+        self.assertEqual(campos_fora_da_lista(list(itens.values())), set())
+
     def test_resumo_dos_prazos(self):
         itens = montar_itens(*_aba([
             _linha("1/2026", situacao="respondido", resposta=LINK, merito=46010),  # 10 dias

@@ -151,6 +151,33 @@ mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe
 - **Export de indicações** lê "Ementa (Câmara)" e a prefere ao "Assunto" (resumo da equipe): o
   texto publicado não muda com a mescla.
 
+## Pré-cadastro (R5, out/2026)
+
+- **`precadastro.py`** + `camara.listar_autor(..., parar=)`: a linha de cada pedido do mandato
+  entra na planilha assim que é protocolado (antes só com resposta; em 19/10/2026 faltavam 127
+  requerimentos e 281 indicações). Requerimentos: só o subtipo "Requerimento"; indicações: todas.
+  Linha nova (via `planilha.NovaLinha`): Número canônico, Assunto (= ementa; a equipe pode
+  encurtar), **"Ementa (Câmara)"**, Data da Sessão e **"Situação na Câmara"** — Secretaria,
+  Bairro e observações seguem com a equipe.
+- **"Situação na Câmara"** é o espelho da listagem ("-" = não votado, "Aprovado",
+  "Encaminhado") e a única coluna que o robô **regrava** quando muda (`COLUNAS_ESPELHO` no
+  motor). **Prazo da LOM só depois do envio**: `prazos.enviado()` — vazio (linha antiga) ou
+  Aprovado/Encaminhado = enviado; senão o export de requerimentos sai sem `vence_em` (não conta
+  "fora do prazo"). O export de requerimentos também prefere "Ementa (Câmara)" ao "Assunto".
+- **No robô diário** (`index.executar_precadastro`, antes da busca de respostas — a resposta de
+  pedido novo já acha a linha): liga com a variável do repositório **`PRECADASTRO_ATIVO=true`**
+  (env no workflow); desligado, só conta ("Pré-cadastro … (desligado: só contado)" no resumo).
+  Ligado, `garantir_colunas` cria as 2 colunas novas. Varredura: para depois de 2 páginas
+  seguidas sem pedido novo nem situação mudada; completa às segundas e na 1ª vez (espelho vazio).
+  Pedido novo vai ao `Log diário` (coluna nova **"Origem"**: `resposta` | `pré-cadastro`) e ao
+  e-mail, na seção "N pedido(s) novo(s) — completar Secretaria e Bairro".
+- **CLI**: `precadastro.py` (simula + **conciliação**: números da planilha que na Câmara são de
+  outro subtipo — 1/2026 e 5/2026 são "Requerimento de Convite" — ou não são do autor, com o
+  provável número certo pela ementa; `--detalhe` lista, só localmente) e `--aplicar` (1ª carga).
+- **Impacto público**: os pendentes sobem (requerimentos sem mérito ~87 → ~210; indicações
+  ~190 → ~470) — são pedidos que nunca tinham sido cadastrados. A assessoria para de digitar
+  linhas novas.
+
 ## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
 
 - **Regra (`prazos.py`)**: LOM art. 58, XVIII — informações "dentro de quinze dias (...), salvo

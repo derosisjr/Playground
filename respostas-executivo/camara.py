@@ -79,8 +79,10 @@ def ler_listagem(html: bytes) -> list[dict]:
 
 
 def listar_autor(ano: int | str, tipo: str, autor: str = "282", pausa: float = 0.4,
-                 max_paginas: int = 200) -> list[dict]:
-    """Todas as páginas da listagem de um ano/tipo do autor (GET com retentativa)."""
+                 max_paginas: int = 200, parar=None) -> list[dict]:
+    """Páginas da listagem de um ano/tipo do autor (GET com retentativa), da mais nova
+    para a mais antiga. `parar(blocos_da_pagina)` → True encerra depois daquela página
+    (a varredura diária do pré-cadastro para quando só encontra o que já conhece)."""
     from comum import http
     itens: list[dict] = []
     for pagina in range(max_paginas):
@@ -94,5 +96,7 @@ def listar_autor(ano: int | str, tipo: str, autor: str = "282", pausa: float = 0
         if not blocos:
             break
         itens.extend(blocos)
+        if parar and parar(blocos):
+            break
         time.sleep(pausa)
     return itens

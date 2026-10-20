@@ -108,7 +108,8 @@ def _proc(aba, numero, pasta="PASTA_AAAAAAAA", sit=cls.RESPONDIDO, nova=False, p
 
 
 class _Base(unittest.TestCase):
-    def rodar(self, itens, *args, antes=None, ao_processar=None, email_falha=False, log_falha=False):
+    def rodar(self, itens, *args, antes=None, ao_processar=None, email_falha=False, log_falha=False,
+              pre=(), ambiente=None):
         """`itens` = [(detalhes, Processado | Exception)]; `antes(planilha)` mexe na planilha antes
         da leitura inicial, `ao_processar(planilha)` durante a varredura. Devolve o código de saída."""
         self.planilha = _Planilha()
@@ -134,10 +135,11 @@ class _Base(unittest.TestCase):
                 raise ConnectionError("sem rede")
             self.log.extend(entradas)
 
-        def enviar(entradas, data):
+        def enviar(entradas, data, novos=()):
             if email_falha:
                 raise ConnectionError("smtp")
             self.emails.append(len(entradas))
+            self.novos_email = list(novos)
 
         resumo = tempfile.NamedTemporaryFile("w+", suffix=".md", delete=False, encoding="utf-8")
         resumo.close()
@@ -145,7 +147,10 @@ class _Base(unittest.TestCase):
         patches = [
             mock.patch.object(sys, "argv", ["index.py", "--ano", "2026", "--email", *args]),
             mock.patch.dict(os.environ, {"SHEET_ID": "S", "DRIVE_FOLDER_ID": "D",
-                                         "GITHUB_STEP_SUMMARY": resumo.name}),
+                                         "GITHUB_STEP_SUMMARY": resumo.name,
+                                         "PRECADASTRO_ATIVO": "", **(ambiente or {})}),
+            # a listagem da Câmara do pré-cadastro: `pre` = pedidos do autor (nunca a rede)
+            mock.patch.object(index.precadastro, "coletar", return_value=(list(pre), [])),
             mock.patch.object(index, "_google_services", return_value=(object(), self.planilha)),
             mock.patch.object(index, "coletar_cods", return_value=[
                 {"cod": d["cod"], "recebimentoBusca": ""} for d, _ in itens]),
@@ -240,6 +245,48 @@ class TestGravacao(_Base):
         proc.valores.pop(COL_SITUACAO)  # já respondido: nesta passada não reclassifica
         self.rodar([(_det("1", "Indicação", "3/2025"), proc)], antes=preparar)
         self.assertEqual(self.log[0]["Situação"], cls.ROTULOS[cls.RESPONDIDO])
+
+
+def _pedido(aba, numero, situacao="Encaminhado"):
+    return {"aba": aba, "numero": numero, "situacao": situacao, "data": "15/10/2026",
+            "ementa": f"Indica ao Executivo o pedido {numero}.", "subtipo": "Indicação", "tipo": "Indicação"}
+
+
+class TestPreCadastro(_Base):
+    def test_ligado_cria_a_linha_antes_da_busca_e_a_resposta_cai_nela(self):
+        codigo = self.rodar([(_det("1", "Indicação", "900/2026"), _proc("indicações", "900/2026", nova=True))],
+                            pre=[_pedido("indicações", "900/2026"), _pedido("indicações", "901/2026")],
+                            ambiente={"PRECADASTRO_ATIVO": "true"})
+        self.assertEqual(codigo, 0)
+        aba = self.planilha.abas["indicações"]
+        numeros = [linha[CAB_IND.index("Número")] for linha in aba[1:]]
+        self.assertEqual(numeros.count("900/2026"), 1)  # uma linha só: a resposta achou a do pré-cadastro
+        self.assertIn("901/2026", numeros)
+        self.assertEqual(self.planilha.celula("indicações", "900/2026", COL_SITUACAO), cls.RESPONDIDO)
+        self.assertEqual(sorted(e["Origem"] for e in self.log), ["pré-cadastro", "pré-cadastro", "resposta"])
+        self.assertEqual([e["Número"] for e in self.novos_email], ["900/2026", "901/2026"])
+        self.assertIn("| Pré-cadastro: linhas novas | 2 |", self.resumo)
+
+    def test_desligado_so_conta(self):
+        codigo = self.rodar([(_det("1", "Indicação", "4/2025"), _proc("indicações", "4/2025"))],
+                            pre=[_pedido("indicações", "901/2026")])
+        self.assertEqual(codigo, 0)
+        numeros = [linha[CAB_IND.index("Número")] for linha in self.planilha.abas["indicações"][1:]]
+        self.assertNotIn("901/2026", numeros)
+        self.assertIn("| Pré-cadastro: linhas novas (desligado: só contado) | 1 |", self.resumo)
+
+    def test_espelho_da_camara_e_acertado_em_linha_existente(self):
+        # a coluna existe na aba: o robô acompanha a situação da listagem
+        def preparar(p):
+            for aba in p.abas.values():
+                aba[0].append("Situação na Câmara")
+                for linha in aba[1:]:
+                    linha.append("-")
+        self.rodar([(_det("1", "Indicação", "4/2025"), _proc("indicações", "4/2025"))],
+                   pre=[_pedido("requerimentos", "7/2025", situacao="Aprovado")],
+                   antes=preparar, ambiente={"PRECADASTRO_ATIVO": "true"})
+        self.assertEqual(self.planilha.celula("requerimentos", "7/2025", "Situação na Câmara"), "Aprovado")
+        self.assertEqual(self.planilha.celula("requerimentos", "8/2025", "Situação na Câmara"), "-")
 
 
 class TestFalhaAVista(_Base):

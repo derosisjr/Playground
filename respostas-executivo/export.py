@@ -63,6 +63,11 @@ CAMPOS_PUBLICOS = (
 # (ex.: uma data, como as linhas-fantasma de set/2026) não é requerimento.
 RE_NUMERO = re.compile(r"^\d{1,5}/\d{4}$")
 
+# "Ementa (Câmara)": coluna do robô (R4, out/2026) com o texto oficial da Câmara; o
+# "Assunto" pode ser o resumo da equipe. O site publica a ementa quando ela existe.
+COL_EMENTA = "Ementa (Câmara)"
+COL_SIT_CAMARA = "Situação na Câmara"  # espelho da listagem da Câmara (pré-cadastro, R5)
+
 
 def _ano_do_numero(numero: str) -> int | str:
     """Extrai o ano de um número tipo '1729/2026'. Devolve int ou '' se não achar."""
@@ -155,6 +160,8 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
     c_situacao = _idx_header(cab, COL_SITUACAO)
     c_merito = _idx_header(cab, COL_DATA_MERITO)
     c_secretaria = _idx_header(cab, "Secretaria")
+    c_ementa = _idx_header(cab, COL_EMENTA)
+    c_sit_camara = _idx_header(cab, COL_SIT_CAMARA)
 
     def campo(linha: list, idx: int) -> str:
         if idx < 0 or idx >= len(linha):
@@ -169,7 +176,8 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
     itens: list[dict] = []
     for n, linha in enumerate(valores[1:], start=1):
         numero = campo(linha, c_num)
-        assunto = campo(linha, c_assunto)
+        # a ementa da Câmara (coluna do robô) vale mais que o resumo da equipe no "Assunto"
+        assunto = campo(linha, c_ementa) or campo(linha, c_assunto)
         if not numero and not assunto:
             continue  # linha vazia
         if not RE_NUMERO.match(numero):
@@ -201,7 +209,9 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
                 "respondido": situacao == cls.RESPONDIDO,
                 "url_resposta": url,
                 "secretaria": secretaria_canonica(campo(linha, c_secretaria)),
-                "vence_em": prazos.vence_em(data_sessao, situacao),
+                # pedido ainda não votado/encaminhado pela Câmara não tem prazo correndo
+                "vence_em": (prazos.vence_em(data_sessao, situacao)
+                             if prazos.enviado(campo(linha, c_sit_camara)) else ""),
             }
         )
     # Desdobramentos: "Resposta ao requerimento 210/2025 - …" cita um pedido anterior.
@@ -264,9 +274,6 @@ CAMPOS_PUBLICOS_INDICACOES = (
     # um bairro — nunca o texto da coluna "Bairro" da planilha (bairros.py)
     "bairro", "regiao",
 )
-# "Ementa (Câmara)": coluna do robô (R4, out/2026) com o texto oficial da Câmara; o
-# "Assunto" pode ser o resumo da equipe. O site publica a ementa quando ela existe.
-COL_EMENTA = "Ementa (Câmara)"
 # as únicas colunas da aba que o export lê
 COLUNAS_INDICACOES = ("Número", "Assunto", "Data da Sessão", "Resposta", "Data da resposta",
                       "Bairro", COL_SITUACAO, COL_DATA_MERITO, COL_EMENTA)

@@ -38,6 +38,14 @@ class TestVencimento(unittest.TestCase):
                                               date(2030, 1, 1)))
 
 
+class TestEnviado(unittest.TestCase):
+    def test_so_aprovado_ou_encaminhado_e_vazio(self):
+        for sim in ("Aprovado", "Encaminhado", " aprovado ", ""):
+            self.assertTrue(prazos.enviado(sim), sim)
+        for nao in ("-", "Aguardando Votação", "Retirado"):
+            self.assertFalse(prazos.enviado(nao), nao)
+
+
 class TestCitados(unittest.TestCase):
     def test_formatos_reais_da_planilha(self):
         self.assertEqual(prazos.citados("Resposta ao Requerimento 10/2025C - omplementação"), ["10/2025"])

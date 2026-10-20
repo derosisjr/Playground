@@ -109,7 +109,8 @@ def desembrulhar(obj):
 # Garantias por construção (testes em testes_plano.py):
 #   - só grava nas colunas do robô (listas fechadas abaixo); outra coluna → EscritaProibida;
 #   - em linha existente só preenche célula VAZIA; sobrescrever exige `resposta_nova`
-#     (chegou documento de resposta novo) e vale só para as colunas de resposta;
+#     (chegou documento de resposta novo) e vale só para as colunas de resposta — a exceção
+#     é a coluna-espelho "Situação na Câmara", que acompanha a listagem pública;
 #   - não há operação de apagar linha; valor vazio nunca é gravado. Limpar célula só com
 #     `Escrita.limpar`: coluna de resposta e correção autorizada (`resposta_nova`) — é o caso
 #     da data de mérito de um "respondido" falso (reclassificar.py --aplicar-divergentes);
@@ -121,7 +122,12 @@ from datetime import datetime, timedelta  # noqa: E402
 
 COLUNAS_RESPOSTA = ("Resposta", "Data da resposta", "Situação da resposta",
                     "Data da resposta de mérito")
-COLUNAS_CRIACAO = ("Número", "Nùmero", "Assunto", "Data da Sessão")
+# "Ementa (Câmara)": o texto oficial (o site o publica; o "Assunto" a equipe pode encurtar)
+COLUNAS_CRIACAO = ("Número", "Nùmero", "Assunto", "Data da Sessão", "Ementa (Câmara)",
+                   "Situação na Câmara")
+# espelho da Câmara, só do robô: acompanha a listagem pública (o pedido foi votado,
+# encaminhado…) e por isso é regravada quando muda — a única coluna assim (R5, out/2026)
+COLUNAS_ESPELHO = ("Situação na Câmara",)
 
 
 class EscritaProibida(PermissionError):
@@ -260,7 +266,8 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
         for p in (x for x in plano if x.aba == aba):
             if numero_canonico(p.numero) != p.numero:
                 raise ValueError(f"número fora da forma canônica no plano: {p.numero!r} — nada gravado")
-            permitidas = COLUNAS_RESPOSTA if isinstance(p, Escrita) else COLUNAS_RESPOSTA + COLUNAS_CRIACAO
+            permitidas = (COLUNAS_RESPOSTA + COLUNAS_ESPELHO if isinstance(p, Escrita)
+                          else COLUNAS_RESPOSTA + COLUNAS_CRIACAO)
             for nome in p.valores:
                 if nome not in permitidas:
                     raise EscritaProibida(f"coluna '{nome}' não é do robô — nada gravado")
@@ -298,7 +305,7 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
                 exibido, formula = celula(exibidos, n, c), celula(formulas, n, c)
                 if _mesmo_valor(nome, exibido, formula, val, bruta(n, c)):
                     continue
-                if (exibido or formula) and not p.resposta_nova:
+                if (exibido or formula) and not p.resposta_nova and nome not in COLUNAS_ESPELHO:
                     rel.divergencias.append((aba, p.numero, nome))
                     continue
                 dados.append({"range": f"'{aba}'!{_letra(c)}{n}", "values": [[val]]})

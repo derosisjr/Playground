@@ -38,6 +38,15 @@ def vence_em(data_sessao: str, situacao: str) -> str:
     return (inicio + timedelta(days=dias)).strftime("%d/%m/%Y")
 
 
+def enviado(situacao_camara: str) -> bool:
+    """O pedido já saiu da Câmara para a Prefeitura? O prazo da LOM só corre depois disso.
+    "Situação na Câmara" (espelho da listagem, pré-cadastro R5): "Aprovado"/"Encaminhado" =
+    sim; "-" (ainda não votado) ou outra coisa = não. Vazio = linha anterior ao
+    pré-cadastro, sem o dado: conta como enviado (era assim antes)."""
+    s = (situacao_camara or "").strip().lower()
+    return not s or s.startswith(("aprovad", "encaminhad"))
+
+
 def fora_do_prazo(item: dict, hoje: date) -> bool:
     """Sem resposta de mérito e com o prazo (já com a prorrogação, se houve) vencido."""
     limite = data_br(item.get("vence_em"))
