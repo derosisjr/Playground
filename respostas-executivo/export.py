@@ -264,9 +264,12 @@ CAMPOS_PUBLICOS_INDICACOES = (
     # um bairro — nunca o texto da coluna "Bairro" da planilha (bairros.py)
     "bairro", "regiao",
 )
+# "Ementa (Câmara)": coluna do robô (R4, out/2026) com o texto oficial da Câmara; o
+# "Assunto" pode ser o resumo da equipe. O site publica a ementa quando ela existe.
+COL_EMENTA = "Ementa (Câmara)"
 # as únicas colunas da aba que o export lê
 COLUNAS_INDICACOES = ("Número", "Assunto", "Data da Sessão", "Resposta", "Data da resposta",
-                      "Bairro", COL_SITUACAO, COL_DATA_MERITO)
+                      "Bairro", COL_SITUACAO, COL_DATA_MERITO, COL_EMENTA)
 # documento da Prefeitura registrado (pasta no Drive, "SIM" na coluna Resposta ou data
 # de resposta), mas sem a classificação de mérito × trâmite: não é "respondido" nem
 # "pendente" — o painel mostra "Resposta a classificar"
@@ -375,6 +378,7 @@ def linhas_indicacoes(valores: list, formulas: list, brutos: list) -> tuple[list
             "linha": n + 1,
             "numero": _numero_canonico(numero),
             "assunto": assunto,
+            "ementa": str(pega(linha, COL_EMENTA)).strip(),
             "sessao": pega(b, "Data da Sessão"),
             "sessao_exibida": str(pega(linha, "Data da Sessão")).strip(),
             "url": _url_resposta(str(pega(f, "Resposta")).strip()),
@@ -420,12 +424,13 @@ def juntar_indicacao(linhas: list[dict], rel: dict) -> dict:
             rel["divergencias"].append(f"{numero} {campo}: {achadas} — vale {achadas[0]}")
         return achadas[0] if achadas else ""
 
-    assunto = next((x["assunto"] for x in ordem if x["assunto"]), "")
-    for x in ordem[1:]:
-        if x["assunto"] and _sem_acento(x["assunto"]) != _sem_acento(assunto) and not (
-                _parecidos(x["assunto"], assunto)):
+    # a ementa da Câmara (coluna do robô) vale mais que o resumo da equipe no "Assunto"
+    textos = [x["ementa"] or x["assunto"] for x in ordem]
+    assunto = next((t for t in textos if t), "")
+    for t in textos[1:]:
+        if t and _sem_acento(t) != _sem_acento(assunto) and not _parecidos(t, assunto):
             rel["assuntos_diferentes"].append(f"{numero}: vale «{assunto[:70]}»; "
-                                              f"descartado «{x['assunto'][:70]}»")
+                                              f"descartado «{t[:70]}»")
     url = next((x["url"] for x in ordem if x["url"]), "")
     situacoes = [x["situacao"] for x in linhas if x["situacao"] in PRIORIDADE_SITUACAO]
     situacao = max(situacoes, key=PRIORIDADE_SITUACAO.get) if situacoes else ""

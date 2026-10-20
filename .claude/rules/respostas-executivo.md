@@ -124,6 +124,33 @@ mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe
 - **`--forcar`/`--cods`** avisam mesmo sem mudança (testar/reenviar e-mail), mas **não
   sobrescrevem** nada preenchido.
 
+## Auditoria dos "respondido" (R1c) e mescla das indicações repetidas (R4), out/2026
+
+- **`reclassificar.py --comparar`** (só leitura; plano em `%TEMP%/reclassificar-plano.json` com
+  hash) revê pelas cópias do Drive cada linha "respondido" (a última de cada número) e lista as
+  que são só trâmite/pendente; pasta com **dois arquivos PEDIDO_** (documentos de dois pedidos,
+  ex.: Moção 19/2026 na pasta do Requerimento 19/2026) é recalculada pela página da Câmara do
+  pedido certo (`camara.listar_autor` → `index.processar_item(simular=True)`).
+  **`--aplicar-divergentes <hash>`** grava só essa lista via `planilha.aplicar`, só nos itens que
+  estão como na simulação; quem deixa de ser "respondido" perde a data de mérito
+  (`Escrita.limpar`, que exige coluna de resposta e correção autorizada). O backfill sem flag
+  agora **só preenche célula vazia** (antes regravava a situação de todo mundo).
+- **`mesclar_indicacoes.py`** (simula por padrão; `--detalhe` local; `--aplicar <hash>`): por
+  número repetido, fica a 1ª linha (a da equipe, onde a equipe a pôs), que recebe nas colunas do
+  robô os valores da linha oficial (`export.linha_oficial`), a ementa na coluna nova do robô
+  **"Ementa (Câmara)"** e, em célula vazia, valor da equipe que só exista na outra linha; sai a
+  outra linha só se estiver limpa. **Conflito não é mexido**: coluna da equipe diferente, coluna
+  do robô com outro valor na linha que fica ("SIM" digitado na Resposta), data da sessão
+  diferente, nota na linha que sairia, ou item publicado que mudaria (o export é refeito com o
+  grupo mesclado). `--aplicar`: refaz a simulação e exige o mesmo hash (conteúdo, não posição);
+  recusa planilha com comentário aberto; **duplica a aba e confere a cópia** antes de tudo;
+  grava valores (USER_ENTERED) e apaga, num único `spreadsheets.batchUpdate` de baixo para cima,
+  só as linhas que continuam idênticas às da simulação. Produção em 20/10/2026: 321 grupos →
+  317 limpos; 4 conflitos para a equipe (trios 7238/2025, 7438/2025, 845/2026 com "sta"
+  diferente; 7441/2025 com sessão 27/11 × 25/11).
+- **Export de indicações** lê "Ementa (Câmara)" e a prefere ao "Assunto" (resumo da equipe): o
+  texto publicado não muda com a mescla.
+
 ## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
 
 - **Regra (`prazos.py`)**: LOM art. 58, XVIII — informações "dentro de quinze dias (...), salvo
