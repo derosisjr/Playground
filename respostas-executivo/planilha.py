@@ -110,7 +110,9 @@ def desembrulhar(obj):
 #   - só grava nas colunas do robô (listas fechadas abaixo); outra coluna → EscritaProibida;
 #   - em linha existente só preenche célula VAZIA; sobrescrever exige `resposta_nova`
 #     (chegou documento de resposta novo) e vale só para as colunas de resposta;
-#   - não há operação de apagar linha nem de limpar célula (valor vazio nunca é gravado);
+#   - não há operação de apagar linha; valor vazio nunca é gravado. Limpar célula só com
+#     `Escrita.limpar`: coluna de resposta e correção autorizada (`resposta_nova`) — é o caso
+#     da data de mérito de um "respondido" falso (reclassificar.py --aplicar-divergentes);
 #   - linha nova entra depois da última linha com conteúdo, relida na hora, e recebe só as
 #     células do robô — as colunas da equipe da linha nova ficam como estão;
 #   - grava só valores (values.batchUpdate), nunca formato.
@@ -128,11 +130,16 @@ class EscritaProibida(PermissionError):
 
 @dataclass
 class Escrita:
-    """Valores para a linha EXISTENTE de um pedido (só colunas de resposta)."""
+    """Valores para a linha EXISTENTE de um pedido (só colunas de resposta).
+
+    `resposta_nova` autoriza sobrescrever as colunas de resposta: chegou documento novo, ou
+    é a lista aprovada de correções do reclassificar.py. `limpar` esvazia colunas de
+    resposta e exige essa autorização."""
     aba: str
     numero: str
     valores: dict
     resposta_nova: bool = False
+    limpar: tuple = ()
 
 
 @dataclass
@@ -257,6 +264,10 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
             for nome in p.valores:
                 if nome not in permitidas:
                     raise EscritaProibida(f"coluna '{nome}' não é do robô — nada gravado")
+            for nome in getattr(p, "limpar", ()):
+                if nome not in COLUNAS_RESPOSTA or not p.resposta_nova or nome in p.valores:
+                    raise EscritaProibida(f"limpar '{nome}' exige coluna de resposta e correção "
+                                          "autorizada — nada gravado")
             if isinstance(p, NovaLinha):
                 if p.numero in linhas:
                     rel.ja_existia.append((aba, p.numero))
@@ -291,6 +302,13 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
                     rel.divergencias.append((aba, p.numero, nome))
                     continue
                 dados.append({"range": f"'{aba}'!{_letra(c)}{n}", "values": [[val]]})
+                rel.celulas += 1
+                gravou = True
+            for nome in p.limpar:
+                c = colunas.get(_sem_acento(nome))
+                if c is None or not (celula(exibidos, n, c) or celula(formulas, n, c)):
+                    continue
+                dados.append({"range": f"'{aba}'!{_letra(c)}{n}", "values": [[""]]})
                 rel.celulas += 1
                 gravou = True
             if gravou:

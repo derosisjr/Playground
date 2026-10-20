@@ -157,6 +157,28 @@ class TestAplicar(unittest.TestCase):
                                         resposta_nova=True)])
         self.assertEqual((p.lotes, rel.escritas, rel.divergencias), ([], [], []))
 
+    def test_limpar_so_coluna_de_resposta_e_com_autorizacao(self):
+        linha = _linha("10/2026", PASTA_A, "01/09/2026", "respondido")
+        linha[9] = "01/09/2026"  # Data da resposta de mérito
+        p = _Planilha({"indicações": [CAB, linha]})
+        for errada in (Escrita("indicações", "10/2026", {}, limpar=("Data da resposta de mérito",)),
+                       Escrita("indicações", "10/2026", {}, resposta_nova=True, limpar=("Bairro",)),
+                       Escrita("indicações", "10/2026", {"Data da resposta de mérito": "02/09/2026"},
+                               resposta_nova=True, limpar=("Data da resposta de mérito",))):
+            with self.assertRaises(EscritaProibida):
+                aplicar(p, "id", [errada])
+        self.assertEqual(p.lotes, [])
+        rel = aplicar(p, "id", [Escrita("indicações", "10/2026", {"Situação da resposta": "so_prorrogacao"},
+                                        resposta_nova=True, limpar=("Data da resposta de mérito",))])
+        self.assertEqual(_gravadas(p), {"'indicações'!I2": [["so_prorrogacao"]], "'indicações'!J2": [[""]]})
+        self.assertEqual(rel.celulas, 2)
+
+    def test_limpar_celula_ja_vazia_nao_grava(self):
+        p = _Planilha({"indicações": [CAB, _linha("10/2026", PASTA_A, "01/09/2026", "respondido")]})
+        aplicar(p, "id", [Escrita("indicações", "10/2026", {}, resposta_nova=True,
+                                  limpar=("Data da resposta de mérito",))])
+        self.assertEqual(p.lotes, [])
+
     def test_numero_fora_da_forma_canonica_e_recusado(self):
         p = _Planilha({"indicações": [CAB, _linha("10/2026")]})
         with self.assertRaises(ValueError):
