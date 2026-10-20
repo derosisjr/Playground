@@ -98,6 +98,9 @@ mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe
   (número sempre canônico); uma só chamada `values.batchUpdate` (valores, nunca formato). Célula
   do robô já preenchida com outro valor vira **divergência** (contada no log), não é sobrescrita —
   inclusive a "Data da resposta" acertada à mão, que antes era regravada a cada execução.
+  **Data é comparada pelo valor** (`UNFORMATTED_VALUE`, nº de série — `_chave_data_celula`), não
+  pelo texto: 93 células de `requerimentos` e 167 de `indicações` exibem m/d/aaaa ("5/20/2026" =
+  20/05), e comparar o texto deu 96 divergências falsas no 1º `--planejar` da produção (20/10).
 - **Novidade e aviso**: novidade = PDF de resposta arquivado agora **ou a marca de aviso
   pendente na subpasta** (`appProperties` `aviso=pendente`, invisível para a equipe; gravada
   ANTES de subir a resposta). Vai ao log/e-mail o item com mudança real gravada (linha nova,

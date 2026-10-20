@@ -115,6 +115,7 @@ def desembrulhar(obj):
 #     células do robô — as colunas da equipe da linha nova ficam como estão;
 #   - grava só valores (values.batchUpdate), nunca formato.
 from dataclasses import dataclass, field  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
 
 COLUNAS_RESPOSTA = ("Resposta", "Data da resposta", "Situação da resposta",
                     "Data da resposta de mérito")
@@ -177,19 +178,40 @@ def _chave_data(s) -> tuple | None:
     return (m.group(3), m.group(2).zfill(2), m.group(1).zfill(2)) if m else None
 
 
+_EPOCA = datetime(1899, 12, 30)  # número de série 0 do Sheets
+_SERIAL_MAX = 73051              # 01/01/2100 (o mesmo limite do export)
+
+
+def _chave_data_celula(bruto, exibido) -> tuple | None:
+    """Data de uma célula pelo VALOR (UNFORMATTED_VALUE), não pelo texto exibido: parte das
+    células da planilha real está formatada como m/d/aaaa ("5/20/2026" é 20 de maio), e
+    comparar o texto dava 96 divergências falsas. Número de série → data; ddmmaaaa digitado
+    sem barras → data (como o `_data` do export); texto → d/m/aaaa."""
+    if isinstance(bruto, (int, float)) and not isinstance(bruto, bool):
+        try:
+            d = (_EPOCA + timedelta(days=int(bruto)) if 0 < bruto < _SERIAL_MAX
+                 else datetime.strptime(str(int(bruto)).zfill(8), "%d%m%Y"))
+        except ValueError:
+            return None
+        return (str(d.year), f"{d.month:02d}", f"{d.day:02d}")
+    return _chave_data(exibido)
+
+
 def _pasta(s) -> str | None:
     m = re.search(r"/folders/([\w-]{10,})", str(s or ""))
     return m.group(1) if m else None
 
 
-def _mesmo_valor(coluna: str, exibido: str, formula: str, novo) -> bool:
+def _mesmo_valor(coluna: str, exibido: str, formula: str, novo, bruto=None) -> bool:
     """Compara o que está na célula com o que o robô gravaria, pelo sentido: a pasta do
-    hyperlink, a data (dd/mm/aaaa) ou o texto sem caixa."""
+    hyperlink, a data (pelo valor da célula; o robô grava dd/mm/aaaa) ou o texto sem caixa."""
     novo = str(novo or "").strip()
     if coluna == "Resposta" and _pasta(formula) and _pasta(novo):
         return _pasta(formula) == _pasta(novo)
-    if coluna.startswith("Data") and _chave_data(exibido) and _chave_data(novo):
-        return _chave_data(exibido) == _chave_data(novo)
+    if coluna.startswith("Data") and _chave_data(novo):
+        atual = _chave_data_celula(bruto, exibido)
+        if atual:
+            return atual == _chave_data(novo)
     return exibido.strip().lower() == novo.lower()
 
 
@@ -205,7 +227,7 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
         def ler(render):
             return executar(sheets.spreadsheets().values().get(
                 spreadsheetId=sheet_id, range=f"'{aba}'", valueRenderOption=render)).get("values", [])
-        exibidos, formulas = ler("FORMATTED_VALUE"), ler("FORMULA")
+        exibidos, formulas, brutos = ler("FORMATTED_VALUE"), ler("FORMULA"), ler("UNFORMATTED_VALUE")
         if not exibidos:
             raise RuntimeError(f"aba '{aba}' vazia na hora de gravar — nada gravado")
         cab = exibidos[0]
@@ -223,6 +245,10 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
         def celula(tabela, n, c):
             linha = tabela[n - 1] if n - 1 < len(tabela) else []
             return str(linha[c]).strip() if c < len(linha) else ""
+
+        def bruta(n, c):  # valor sem formatação (data = número de série)
+            linha = brutos[n - 1] if n - 1 < len(brutos) else []
+            return linha[c] if c < len(linha) else None
 
         for p in (x for x in plano if x.aba == aba):
             if numero_canonico(p.numero) != p.numero:
@@ -259,7 +285,7 @@ def aplicar(sheets, sheet_id: str, plano: list, executar=None, gravar: bool = Tr
                 if c is None or not str(val or "").strip():
                     continue  # valor vazio nunca é gravado: seria limpar a célula
                 exibido, formula = celula(exibidos, n, c), celula(formulas, n, c)
-                if _mesmo_valor(nome, exibido, formula, val):
+                if _mesmo_valor(nome, exibido, formula, val, bruta(n, c)):
                     continue
                 if (exibido or formula) and not p.resposta_nova:
                     rel.divergencias.append((aba, p.numero, nome))

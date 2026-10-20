@@ -14,6 +14,7 @@ sobrescrito, em nenhuma linha — são testadas aqui, não só prometidas:
 import os
 import sys
 import unittest
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from planilha import Escrita, EscritaProibida, NovaLinha, aplicar  # noqa: E402
@@ -39,9 +40,11 @@ class _Planilha:
         return self
 
     def get(self, spreadsheetId, range, valueRenderOption="FORMATTED_VALUE"):
+        # célula = valor ou (exibido, fórmula[, bruto]); sem bruto, o bruto é o exibido
         grade = self.abas[range.strip("'")]
-        i = 1 if valueRenderOption == "FORMULA" else 0
-        return _Exec({"values": [[c[i] if isinstance(c, tuple) else c for c in linha] for linha in grade]})
+        i = {"FORMULA": 1, "UNFORMATTED_VALUE": 2}.get(valueRenderOption, 0)
+        return _Exec({"values": [[(c[i] if i < len(c) else c[0]) if isinstance(c, tuple) else c
+                                  for c in linha] for linha in grade]})
 
     def batchUpdate(self, spreadsheetId, body):
         self.lotes.append(body)
@@ -105,6 +108,17 @@ class TestAplicar(unittest.TestCase):
                                         {"Resposta": PASTA_A, "Data da resposta": "01/09/2026",
                                          "Situação da resposta": "respondido"})])
         self.assertEqual((p.lotes, rel.divergencias, rel.escritas), ([], [], []))
+
+    def test_data_pelo_valor_e_nao_pelo_texto_exibido(self):
+        # parte da planilha real exibe m/d/aaaa: "5/20/2026" é 20/05/2026 (nº de série 46162)
+        serial = (datetime(2026, 5, 20) - datetime(1899, 12, 30)).days
+        linha = _linha("10/2026", PASTA_A, "", "respondido")
+        linha[5] = ("5/20/2026", "5/20/2026", serial)
+        p = _Planilha({"indicações": [CAB, linha]})
+        rel = aplicar(p, "id", [Escrita("indicações", "10/2026", {"Data da resposta": "20/05/2026"})])
+        self.assertEqual((p.lotes, rel.divergencias), ([], []))
+        rel = aplicar(p, "id", [Escrita("indicações", "10/2026", {"Data da resposta": "05/02/2026"})])
+        self.assertEqual(rel.divergencias, [("indicações", "10/2026", "Data da resposta")])
 
     def test_pasta_diferente_e_divergencia(self):
         p = _Planilha({"indicações": [CAB, _linha("10/2026", PASTA_A)]})
