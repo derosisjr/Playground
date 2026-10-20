@@ -105,6 +105,9 @@ jobs:
           EMAIL_INPUT: ${{ github.event.inputs.email }}
           PLANILHA_INPUT: ${{ github.event.inputs.planilha }}
           PLANEJAR_INPUT: ${{ github.event.inputs.planejar }}
+          # pré-cadastro dos pedidos protocolados (R5): liga com a variável do repositório
+          # PRECADASTRO_ATIVO=true; desligado, o robô só conta o que faria
+          PRECADASTRO_ATIVO: ${{ vars.PRECADASTRO_ATIVO }}
         run: |
           ANO_ARG=""
           if [ -n "$ANO_INPUT" ]; then

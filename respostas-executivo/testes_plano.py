@@ -179,6 +179,16 @@ class TestAplicar(unittest.TestCase):
                                   limpar=("Data da resposta de mérito",))])
         self.assertEqual(p.lotes, [])
 
+    def test_espelho_da_camara_acompanha_a_listagem(self):
+        cab = CAB + ["Situação na Câmara"]
+        p = _Planilha({"indicações": [cab, _linha("10/2026") + ["-"]]})
+        rel = aplicar(p, "id", [Escrita("indicações", "10/2026", {"Situação na Câmara": "Aprovado"})])
+        self.assertEqual(_gravadas(p), {"'indicações'!K2": [["Aprovado"]]})
+        self.assertEqual(rel.divergencias, [])
+        # e continua sendo só ela: as outras colunas da equipe seguem recusadas
+        with self.assertRaises(EscritaProibida):
+            aplicar(p, "id", [Escrita("indicações", "10/2026", {"Ementa (Câmara)": "x"})])
+
     def test_numero_fora_da_forma_canonica_e_recusado(self):
         p = _Planilha({"indicações": [CAB, _linha("10/2026")]})
         with self.assertRaises(ValueError):
