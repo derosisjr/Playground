@@ -19,9 +19,9 @@ Google Drive (uma subpasta por item) e registra cada item numa planilha de contr
 - **Fonte de dados:** `busca_documento_pub/filtro_resultado.php?pesquisa_resposta_executivo[ano]=AAAA&pesquisa_resposta_executivo[autor]=282` (paginada via `&limite=N`, 20/página). Páginas em ISO-8859-1. **As respostas ficam arquivadas no ano de ENVIO da propositura**, não no ano da resposta — por isso a rotina varre, por padrão, **de 2025 (`ANO_INICIAL`, 1º ano do mandato) até o ano corrente** (`--ano` aceita lista, ex.: `2025,2026`).
 - **Página canônica:** o link "Mais detalhes" de cada resultado aponta para `detalhes.php?cod=...` do pedido original — contém tipo, número, processo, data, ementa, PDF do pedido e a seção "Resposta anexada" com os PDFs do prefeito.
 - **Arquivamento:** Google Drive via OAuth do próprio usuário (`google-api-python-client`), uma subpasta por item (`Tipo Número`). Token gerado por `setup_oauth.py` (1x); lido de `token.json` (local) ou do secret `GOOGLE_OAUTH_TOKEN` (CI).
-- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo. Para cada item localiza a linha existente pelo número e **atualiza** as colunas `Resposta` (hyperlink para a subpasta do Drive), `Data da resposta`, `Situação da resposta` e `Data da resposta de mérito`; se o número não existir, **anexa** linha nova, posicionando cada valor pelo **cabeçalho real** da aba (`montar_linha`; nunca `values().append` pela ordem de `ABAS`, que deslocava colunas e criava linhas-fantasma com data no Número); item que já tem Resposta e não ganhou PDF novo **não vai ao log nem ao e-mail** — no máximo grava a reclassificação em silêncio. Antes de ler, `garantir_colunas` cria as colunas de classificação que faltarem: sem elas a situação nunca era gravada e ~576 itens saíam todo dia como "resposta nova" (out/2026). Ver `ABAS`/`carregar_planilha` em `index.py`. Pastas no Drive: `REQUERIMENTO_<nº>` / `INDICACAO_<nº>`.
-- **Log diário:** aba `Log diário` (criada automaticamente; `garantir_aba_log` completa o cabeçalho se faltar coluna) recebe uma linha por resposta processada (data, tipo, número, assunto, data da resposta, link, situação). Com `--email`, envia também um resumo HTML via Gmail SMTP (secrets `GMAIL_*`) — só quando há novidades, distinguindo mérito de trâmite.
-- **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `31 8 * * 1-5` (05h31 BRT, dias úteis).
+- **Registro:** Google Sheets; duas abas (`indicações`/`requerimentos`), roteamento por tipo. Cada item vira uma entrada do **plano de escrita** (`planilha.Escrita` para a linha existente, só nas colunas `Resposta`, `Data da resposta`, `Situação da resposta` e `Data da resposta de mérito`; `planilha.NovaLinha` se o número não existir), aplicado por `planilha.aplicar` — ver "Escrita planejada e falha à vista (R3)". Item que já tem Resposta e não ganhou resposta nova **não vai ao log nem ao e-mail** e só tem célula vazia preenchida. Antes de ler, `garantir_colunas` cria as colunas de classificação que faltarem: sem elas a situação nunca era gravada e ~576 itens saíam todo dia como "resposta nova" (out/2026). Ver `ABAS`/`carregar_planilha` em `index.py`. Pastas no Drive: `REQUERIMENTO_<nº>` / `INDICACAO_<nº>`.
+- **Log diário:** aba `Log diário` (criada automaticamente; `garantir_aba_log` completa o cabeçalho se faltar coluna) recebe uma linha por aviso (data, tipo, número, assunto, data da resposta, link, situação). Com `--email`, envia também um resumo HTML via Gmail SMTP (secrets `GMAIL_*`; destinatários em `RESPOSTAS_EMAIL_TO`, reserva `GMAIL_TO`) — só quando há novidades, distinguindo mérito de trâmite. `--email` sem as credenciais é falha (sai 2).
+- **Agendamento:** GitHub Actions (`.github/workflows/respostas-executivo.yml`), cron `31 8 * * 1-5` (05h31 BRT) e `31 14 * * 1-5` (11h31 BRT, para o dia em que a Câmara recusou conexão de manhã), dias úteis; `concurrency: planilha-controle` (uma execução por vez). O GitHub atrasa o agendamento: em out/2026 a das 08:31 UTC começava entre 13h e 18h UTC.
 - **Painel de Requerimentos & Respostas (`requerimentos.html` + `requerimentos-app.js`):** cartão "Requerimentos" na seção Bases de dados do hub. `respostas-executivo/export.py` lê a aba `requerimentos` da planilha (via Sheets API, reusando `_google_services`/`_idx_header` de `index.py`) e gera `requerimentos-index.json` na raiz — array com número, ano, assunto, datas, situação, `respondido` e `url_resposta`. **O índice é público: só saem as chaves de `CAMPOS_PUBLICOS` (`export.py`)** e o `main()` aborta com exit 1 se aparecer outra. A coluna interna "Status atual" da planilha **não vai ao site** — até out/2026 ela era publicada e exibida como "Situação", vazando anotações do gabinete ("ok (Falar com o Rui)", "não sei se cabe reiterar", links de entrega de documentos). A coluna "Situação" do painel mostra os rótulos públicos da classificação (`SITUACAO_ROTULO` em `requerimentos-app.js`, espelho de `classificar.ROTULOS`). Linha cujo Número não casa `^\d{1,5}/\d{4}$` (ex.: data, como as linhas-fantasma de set/2026) é descartada com aviso. A lógica de montagem vive em `montar_itens()` (testável sem Google: `testes_export.py`). **A coluna `Resposta` é uma fórmula `=HYPERLINK(...)`**, então o export lê com `valueRenderOption="FORMULA"` e extrai a URL do Drive por regex. O painel (vanilla, sem acento, paginado) tem busca + filtros de ano/situação e link para a pasta no Drive (exige login do gabinete) ou badge "Pendente". O JSON é gerado e commitado pelo passo final do `respostas-executivo.yml` (com guarda anti-base-vazia). **O export roda mesmo se o crawler falhar** (`if: !cancelled() && testes ok`; só lê a planilha): até out/2026 ele era pulado quando a Câmara recusava conexão, e o JSON no ar ficou dias com a coluna interna depois da correção. **`.github/scripts/checar_publicos.py`** confere o JSON JÁ PUBLICADO contra a lista branca (lida do `export.py` pela árvore sintática, sem importar — o export puxa `requests`) no `testes.yml` e no `bases-atualizacao.yml` diário; base nova com dado da planilha entra no dicionário `bases()`. `--dry-run` no export imprime contagens sem gravar.
 
 ## Diagnóstico somente leitura e regras de escrita (R0, out/2026)
@@ -84,6 +84,45 @@ mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe
 - **Export de requerimentos:** pasta no Drive sem veredito sai como **`a_classificar`** (painel:
   "Resposta a classificar"), não mais "respondido" — 5 itens em 19/10/2026 (2611, 3611, 3688,
   5313/2025 e 3272/2026); continuam na conta do prazo.
+
+## Escrita planejada e falha à vista (R3, out/2026)
+
+- **Motor (`planilha.aplicar`)**: o laço não grava célula a célula; acumula `Escrita`/`NovaLinha`
+  e aplica a cada `LOTE_ITENS` (50) itens ou `LOTE_SEG` (8 min) e no `finally`. Na hora de
+  gravar **relê a aba** e resolve cada escrita **pelo número** (a equipe pode inserir/mover linha
+  durante os 25 min da varredura). Garantias com teste (`testes_plano.py`): só colunas do robô
+  (`COLUNAS_RESPOSTA`, + `COLUNAS_CRIACAO` em linha nova; outra coluna → `EscritaProibida` antes
+  de gravar qualquer coisa); em linha existente só preenche **célula vazia** — sobrescrever exige
+  `resposta_nova` e vale só para as 4 colunas de resposta; valor vazio nunca é gravado (seria
+  limpar); linha nova entra depois da última linha com conteúdo e recebe **só as células do robô**
+  (número sempre canônico); uma só chamada `values.batchUpdate` (valores, nunca formato). Célula
+  do robô já preenchida com outro valor vira **divergência** (contada no log), não é sobrescrita —
+  inclusive a "Data da resposta" acertada à mão, que antes era regravada a cada execução.
+  **Data é comparada pelo valor** (`UNFORMATTED_VALUE`, nº de série — `_chave_data_celula`), não
+  pelo texto: 93 células de `requerimentos` e 167 de `indicações` exibem m/d/aaaa ("5/20/2026" =
+  20/05), e comparar o texto deu 96 divergências falsas no 1º `--planejar` da produção (20/10).
+- **Novidade e aviso**: novidade = PDF de resposta arquivado agora **ou a marca de aviso
+  pendente na subpasta** (`appProperties` `aviso=pendente`, invisível para a equipe; gravada
+  ANTES de subir a resposta). Vai ao log/e-mail o item com mudança real gravada (linha nova,
+  primeira resposta, resposta nova) ou com a marca. A marca vira `avisado` só depois que o log
+  e o e-mail deram certo: execução que cai no meio (timeout, erro) deixa a marca e a seguinte
+  avisa — antes, o e-mail dessas respostas se perdia para sempre. Se o log deu certo e o e-mail
+  não, a linha do log se repete na próxima (preferível a perder o aviso).
+- **Retentativa** (`_executar`: rede, 429, 5xx) em **toda** chamada ao Drive e ao Sheets, via
+  `planilha.com_retentativa` no `main` (o baixador de PDF do Drive recebe a requisição
+  desembrulhada com `planilha.desembrulhar`).
+- **Orçamento** `--orcamento-min` (28): a varredura para e grava, registra o log e manda o
+  e-mail antes do timeout de 35 min do job. O passo principal levava 8–23 min em out/2026.
+- **Códigos de saída**: 1 = busca vazia em todos os anos (layout da Câmara) ou planilha
+  ilegível; 2 = item com erro, lote não gravado, log/e-mail/marca que falhou ou orçamento
+  esgotado. Contagens (nunca texto da planilha nem mensagem de erro) em `GITHUB_STEP_SUMMARY`.
+- **`--planejar`**: Drive e Sheets sob `somente_leitura`; `processar_item(simular=True)` lê
+  pastas e PDFs mas não cria pasta, não sobe, não apaga cópia repetida nem marca; `aplicar(...,
+  gravar=False)` faz a conta contra a planilha de agora. Imprime só contagens.
+- **Workflow**: inputs `planilha` (`producao`|`teste` → secrets `SHEET_ID_TESTE`/
+  `DRIVE_FOLDER_ID_TESTE`; sem e-mail e sem export/commit) e `planejar` (sem export/commit).
+- **`--forcar`/`--cods`** avisam mesmo sem mudança (testar/reenviar e-mail), mas **não
+  sobrescrevem** nada preenchido.
 
 ## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
 
@@ -230,6 +269,9 @@ Basta uma linha classificada para voltar à métrica de mérito.
 ```bash
 # Respostas do Executivo — testar scraping sem escrever (Drive/Sheets)
 python respostas-executivo/index.py --dry-run --limite 3
+
+# Respostas do Executivo — o que seria gravado, lendo Drive e planilha (só leitura, em código)
+python respostas-executivo/index.py --planejar
 
 # Respostas do Executivo — rodar de verdade (ano corrente)
 python respostas-executivo/index.py

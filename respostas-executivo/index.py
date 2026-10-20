@@ -34,7 +34,14 @@ Uso:
     python respostas-executivo/index.py --ano 2026
     python respostas-executivo/index.py --autor 282
     python respostas-executivo/index.py --dry-run       # não escreve em lugar nenhum
+    python respostas-executivo/index.py --planejar      # lê tudo (só leitura) e mostra o plano
     python respostas-executivo/index.py --limite 3      # processa no máx N itens novos
+
+Gravação (out/2026): a varredura não grava célula a célula; acumula um plano e o aplica com
+`planilha.aplicar` a cada LOTE_ITENS itens ou LOTE_SEG segundos — relendo a aba na hora, só
+nas colunas do robô e sem sobrescrever o que a equipe escreveu. Códigos de saída: 0 ok;
+1 busca vazia em todos os anos ou planilha ilegível; 2 item com erro, gravação, log ou e-mail
+que falhou, ou varredura cortada pelo orçamento de tempo (--orcamento-min).
 """
 
 import argparse
@@ -49,7 +56,9 @@ from comum.formato import sem_acento  # noqa: E402
 from comum import http  # noqa: E402
 import time
 import unicodedata
+from collections import Counter
 from datetime import datetime
+from typing import NamedTuple
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import urljoin
@@ -59,6 +68,7 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402  (mesmo diretório; ver bloco sys.path acima)
+import planilha  # noqa: E402
 from planilha import numero_canonico  # noqa: E402
 
 # Garante UTF-8 na saída mesmo em consoles Windows (cp1252)
@@ -124,6 +134,19 @@ LOG_COLUNAS = [
     "Data processamento", "Tipo", "Número", "Assunto",
     "Data da resposta", "Link", "Situação",
 ]
+
+# O job tem 35 min de timeout: a varredura para aos ORCAMENTO_MIN para dar tempo de gravar,
+# registrar o log, mandar o e-mail e exportar. Antes o timeout cortava tudo isso.
+ORCAMENTO_MIN = 28
+LOTE_ITENS = 50      # o plano é gravado a cada N itens…
+LOTE_SEG = 8 * 60    # …ou a cada 8 min, o que vier antes (e sempre no fim)
+
+# Marca na subpasta do pedido (appProperties: só o app vê, a equipe não): "pendente" desde que
+# uma resposta é arquivada até ela sair no log e no e-mail. Execução que cai no meio deixa a
+# marca, e a seguinte avisa — antes, o e-mail dessas respostas se perdia para sempre.
+AVISO = "aviso"
+AVISO_PENDENTE = "pendente"
+AVISO_FEITO = "avisado"
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
@@ -394,25 +417,38 @@ def _google_services():
     return drive, sheets
 
 
-def obter_ou_criar_subpasta(drive, pasta_raiz: str, nome: str) -> str:
+def buscar_subpasta(drive, pasta_raiz: str, nome: str) -> dict | None:
+    """Subpasta `nome` ({id, appProperties}) ou None se não existe — só leitura."""
     nome_escapado = nome.replace("'", "\\'")
     q = (
         f"name = '{nome_escapado}' and '{pasta_raiz}' in parents "
         "and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     )
     res = drive.files().list(
-        q=q, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True,
+        q=q, fields="files(id, appProperties)", supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
     ).execute()
     arquivos = res.get("files", [])
-    if arquivos:
-        return arquivos[0]["id"]
+    return arquivos[0] if arquivos else None
+
+
+def obter_ou_criar_subpasta(drive, pasta_raiz: str, nome: str) -> dict:
+    existente = buscar_subpasta(drive, pasta_raiz, nome)
+    if existente:
+        return existente
     meta = {
         "name": nome,
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [pasta_raiz],
     }
     pasta = drive.files().create(body=meta, fields="id", supportsAllDrives=True).execute()
-    return pasta["id"]
+    return {"id": pasta["id"]}
+
+
+def marcar_aviso(drive, pasta_id: str, estado: str) -> None:
+    """Grava a marca de aviso (ver AVISO) na subpasta do pedido."""
+    drive.files().update(fileId=pasta_id, body={"appProperties": {AVISO: estado}},
+                         fields="id", supportsAllDrives=True).execute()
 
 
 def listar_arquivos_pasta(drive, pasta_id: str) -> list[dict]:
@@ -467,7 +503,8 @@ def baixar_drive(drive, file_id: str) -> bytes | None:
 
     try:
         buf = io.BytesIO()
-        req = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+        # o baixador quer a requisição de verdade, não o embrulho de retentativa
+        req = planilha.desembrulhar(drive.files().get_media(fileId=file_id, supportsAllDrives=True))
         baixador = MediaIoBaseDownload(buf, req)
         concluido = False
         while not concluido:
@@ -535,7 +572,7 @@ def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
 
     Só as automáticas: colunas manuais de ABAS que a planilha não tem (ou tem com
     outra grafia) não são criadas — em 12/10/2026 isto criou "Ordem", "Prazo" e
-    "Data do Protocolo na PMS" vazias no fim da aba. `montar_linha` já descarta
+    "Data do Protocolo na PMS" vazias no fim da aba. `planilha.aplicar` já descarta
     valor sem coluna correspondente, então nada se perde.
 
     As colunas novas entram DEPOIS da última coluna com qualquer conteúdo, com ou sem
@@ -611,8 +648,7 @@ def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> di
     atualizada; a da equipe fica intocada até a mescla."""
     indice: dict[str, dict] = {}
     for aba in ABAS:
-        info = {"col_resp": -1, "col_dataresp": -1, "col_situacao": -1,
-                "col_merito": -1, "mapa": {}, "cab": [], "n_linhas": 0, "repetidos": 0}
+        info = {"col_resp": -1, "col_situacao": -1, "mapa": {}, "repetidos": 0}
         indice[aba] = info
         try:
             res = sheets.spreadsheets().values().get(
@@ -625,13 +661,9 @@ def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> di
             raise RuntimeError(f"aba '{aba}' veio com {max(0, len(valores) - 1)} linha(s) — "
                                "leitura suspeita; nada foi gravado")
         cab = valores[0]
-        info["cab"] = cab
-        info["n_linhas"] = len(valores)
         idx_num = _idx_coluna_numero(cab)
         info["col_resp"] = _idx_header(cab, "Resposta")
-        info["col_dataresp"] = _idx_header(cab, "Data da resposta")
         info["col_situacao"] = _idx_header(cab, COL_SITUACAO)
-        info["col_merito"] = _idx_header(cab, COL_DATA_MERITO)
         if idx_num < 0:
             raise RuntimeError(f"aba '{aba}' sem a coluna do número no cabeçalho — nada foi gravado")
 
@@ -655,106 +687,29 @@ def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> di
     return indice
 
 
-def atualizar_resposta(sheets, sheet_id: str, aba: str, info: dict, linha: int,
-                       resposta: str, data_resposta: str) -> None:
-    """Preenche as colunas Resposta e Data da resposta de uma linha existente."""
-    cr, cd = info["col_resp"], info["col_dataresp"]
-    if cr >= 0 and cd == cr + 1:  # colunas contíguas (caso das duas abas)
-        sheets.spreadsheets().values().update(
-            spreadsheetId=sheet_id,
-            range=f"'{aba}'!{_col_letra(cr)}{linha}:{_col_letra(cd)}{linha}",
-            valueInputOption="USER_ENTERED",
-            body={"values": [[resposta, data_resposta]]},
-        ).execute()
-        return
-    for col, val in ((cr, resposta), (cd, data_resposta)):
-        if col >= 0:
-            sheets.spreadsheets().values().update(
-                spreadsheetId=sheet_id,
-                range=f"'{aba}'!{_col_letra(col)}{linha}",
-                valueInputOption="USER_ENTERED",
-                body={"values": [[val]]},
-            ).execute()
-
-
-def atualizar_classificacao(sheets, sheet_id: str, aba: str, info: dict, linha: int,
-                            valores: dict) -> None:
-    """Grava `Situação da resposta` e `Data da resposta de mérito` de uma linha.
-
-    Silencioso quando `valores` não traz a situação — sinal de que a passagem não
-    classificou todos os PDFs e não tem veredito confiável para escrever."""
-    if COL_SITUACAO not in valores:
-        return
-    cs, cm = info.get("col_situacao", -1), info.get("col_merito", -1)
-    if cs >= 0 and cm == cs + 1:  # colunas contíguas (é como são criadas)
-        sheets.spreadsheets().values().update(
-            spreadsheetId=sheet_id,
-            range=f"'{aba}'!{_col_letra(cs)}{linha}:{_col_letra(cm)}{linha}",
-            valueInputOption="USER_ENTERED",
-            body={"values": [[valores[COL_SITUACAO], valores.get(COL_DATA_MERITO, "")]]},
-        ).execute()
-        return
-    for col, val in ((cs, valores[COL_SITUACAO]), (cm, valores.get(COL_DATA_MERITO, ""))):
-        if col >= 0:
-            sheets.spreadsheets().values().update(
-                spreadsheetId=sheet_id,
-                range=f"'{aba}'!{_col_letra(col)}{linha}",
-                valueInputOption="USER_ENTERED",
-                body={"values": [[val]]},
-            ).execute()
-
-
-def montar_linha(cab: list[str], valores: dict) -> list[str]:
-    """Posiciona cada valor sob a coluna de mesmo nome no cabeçalho REAL da aba
-    (comparação sem acento). Colunas da planilha sem valor ficam vazias; valores
-    sem coluna correspondente são descartados."""
-    linha = [""] * len(cab)
-    for col, val in valores.items():
-        i = _idx_header(cab, col)
-        if i >= 0:
-            linha[i] = val
-    return linha
-
-
-def anexar_linha(sheets, sheet_id: str, aba: str, info: dict, valores: dict) -> None:
-    """Grava `valores` na 1ª linha livre da aba, alinhado ao cabeçalho real.
-
-    Antes usava `values().append` com a ordem fixa de ABAS: se a planilha tinha
-    colunas em outra ordem (ou a detecção de tabela do append errava o início),
-    tudo entrava deslocado — a data da sessão ia parar em Número e criava as
-    linhas-fantasma de Requerimentos."""
-    cab = info.get("cab") or []
-    if not cab:
-        raise RuntimeError(f"Aba '{aba}' sem cabeçalho — não dá para alinhar a linha.")
-    linha = montar_linha(cab, valores)
-    n = info.get("n_linhas", 1) + 1
-    sheets.spreadsheets().values().update(
-        spreadsheetId=sheet_id,
-        range=f"'{aba}'!A{n}:{_col_letra(len(cab) - 1)}{n}",
-        valueInputOption="USER_ENTERED",
-        body={"values": [linha]},
-    ).execute()
-    info["n_linhas"] = n
-
-
 def _hyperlink(url: str, texto: str, sep: str) -> str:
     return f'=HYPERLINK("{url}"{sep}"{texto}")'
 
 
 # ── Log diário ────────────────────────────────────────────────────────────────
 def _executar(req, *, tentativas: int = 4, espera: float = 3.0):
-    """Executa `req.execute()` com retry em erros transitórios de rede/SSL.
+    """Executa `req.execute()` com retry em erros transitórios de rede/SSL e nas
+    respostas 429/5xx da API.
 
     A API do Google às vezes derruba a conexão (ssl.SSLEOFError, timeouts),
     o que abortava a run inteira mesmo após o trabalho útil ter concluído.
+    Desde out/2026 vale para TODA chamada do robô (`planilha.com_retentativa`).
     """
     import socket
     import ssl
     for i in range(tentativas):
         try:
             return req.execute()
-        except (ssl.SSLError, socket.error, ConnectionError, TimeoutError) as e:
-            if i == tentativas - 1:
+        except Exception as e:
+            status = getattr(getattr(e, "resp", None), "status", None)
+            transitorio = (isinstance(e, (ssl.SSLError, socket.error, ConnectionError, TimeoutError))
+                           or status in (429, 500, 502, 503, 504))
+            if not transitorio or i == tentativas - 1:
                 raise
             print(f"  rede instável ({type(e).__name__}: {e}); "
                   f"retry {i + 2}/{tentativas} em {espera:.0f}s...", file=sys.stderr)
@@ -764,29 +719,30 @@ def _executar(req, *, tentativas: int = 4, espera: float = 3.0):
 
 def garantir_aba_log(sheets, sheet_id: str) -> None:
     """Cria a aba de log se não existir; se existir, completa o cabeçalho com as
-    colunas que faltarem (as linhas são montadas pela ordem de LOG_COLUNAS)."""
-    meta = _executar(sheets.spreadsheets().get(
-        spreadsheetId=sheet_id, fields="sheets.properties.title"))
+    colunas que faltarem (as linhas são montadas pela ordem de LOG_COLUNAS).
+    O cliente já vem com retentativa (`planilha.com_retentativa` no main)."""
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties.title").execute()
     titulos = [s["properties"]["title"] for s in meta.get("sheets", [])]
     if LOG_ABA in titulos:
-        res = _executar(sheets.spreadsheets().values().get(
-            spreadsheetId=sheet_id, range=f"'{LOG_ABA}'!1:1"))
+        res = sheets.spreadsheets().values().get(
+            spreadsheetId=sheet_id, range=f"'{LOG_ABA}'!1:1").execute()
         cab = (res.get("values") or [[]])[0]
         if any(_idx_header(cab, c) < 0 for c in LOG_COLUNAS):
-            _executar(sheets.spreadsheets().values().update(
+            sheets.spreadsheets().values().update(
                 spreadsheetId=sheet_id, range=f"'{LOG_ABA}'!A1",
-                valueInputOption="RAW", body={"values": [LOG_COLUNAS]}))
+                valueInputOption="RAW", body={"values": [LOG_COLUNAS]}).execute()
         return
-    _executar(sheets.spreadsheets().batchUpdate(
+    sheets.spreadsheets().batchUpdate(
         spreadsheetId=sheet_id,
         body={"requests": [{"addSheet": {"properties": {"title": LOG_ABA}}}]},
-    ))
-    _executar(sheets.spreadsheets().values().update(
+    ).execute()
+    sheets.spreadsheets().values().update(
         spreadsheetId=sheet_id,
         range=f"'{LOG_ABA}'!A1",
         valueInputOption="RAW",
         body={"values": [LOG_COLUNAS]},
-    ))
+    ).execute()
 
 
 def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
@@ -794,13 +750,13 @@ def registrar_log(sheets, sheet_id: str, entradas: list[dict]) -> None:
         return
     garantir_aba_log(sheets, sheet_id)
     linhas = [[e.get(c, "") for c in LOG_COLUNAS] for e in entradas]
-    _executar(sheets.spreadsheets().values().append(
+    sheets.spreadsheets().values().append(
         spreadsheetId=sheet_id,
         range=f"'{LOG_ABA}'!A1",
         valueInputOption="USER_ENTERED",
         insertDataOption="INSERT_ROWS",
         body={"values": linhas},
-    ))
+    ).execute()
 
 
 # ── E-mail resumo ─────────────────────────────────────────────────────────────
@@ -854,9 +810,9 @@ def enviar_email(entradas: list[dict], data: str) -> None:
     # destinatário dedicado (não compartilha com o ordem-do-dia); fallback p/ GMAIL_TO
     para = os.environ.get("RESPOSTAS_EMAIL_TO") or os.environ.get("GMAIL_TO")
     if not all([user, senha, para]):
-        print("Aviso: GMAIL_USER/GMAIL_APP_PASSWORD/RESPOSTAS_EMAIL_TO não definidos; "
-              "e-mail não enviado.", file=sys.stderr)
-        return
+        # com --email pedido, e-mail não enviado é falha (sai 2 e a marca de aviso fica)
+        raise EnvironmentError("GMAIL_USER/GMAIL_APP_PASSWORD/RESPOSTAS_EMAIL_TO não definidos; "
+                               "e-mail não enviado.")
     destinatarios = [d.strip() for d in para.split(",") if d.strip()]
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Respostas do Executivo — {len(entradas)} nova(s) em {data}"
@@ -876,18 +832,32 @@ def enviar_email(entradas: list[dict], data: str) -> None:
 
 
 # ── Processamento ─────────────────────────────────────────────────────────────
+class Processado(NamedTuple):
+    aba: str
+    valores: dict
+    pasta_url: str
+    resposta_nova: bool          # PDF de resposta arquivado agora (na simulação: subiria agora)
+    sem_pdf: bool                # nenhum PDF de resposta arquivado: nada vai à planilha
+    pasta_id: str | None = None
+    aviso_pendente: bool = False  # a pasta tem a marca AVISO_PENDENTE
+
+
 def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
                    sep: str = ",", classificar_tudo: bool = True,
-                   ) -> tuple[str, dict, str, bool, bool]:
-    """Baixa PDFs que ainda não estão arquivados, sobe ao Drive e devolve
-    (aba, valores, pasta_url, resposta_nova, sem_pdf) — `resposta_nova` indica se algum
-    PDF de RESPOSTA foi arquivado agora (sinal robusto p/ saber se chegou novidade,
-    independente do formato de data na planilha); `sem_pdf`, que nenhum PDF de resposta
-    está arquivado (o chamador não grava Resposta nem Data e conta como falha).
+                   simular: bool = False) -> Processado:
+    """Baixa PDFs que ainda não estão arquivados, sobe ao Drive e devolve um `Processado`.
+
+    `resposta_nova` indica se algum PDF de RESPOSTA foi arquivado agora (sinal robusto p/
+    saber se chegou novidade, independente do formato de data na planilha); `sem_pdf`, que
+    nenhum PDF de resposta está arquivado (o chamador não grava Resposta nem Data e conta
+    como falha). Antes de subir a 1ª resposta nova, a pasta recebe a marca AVISO_PENDENTE.
 
     `classificar_tudo` faz rebaixar também os PDFs já arquivados, para classificá-los.
     Só vale a pena quando a planilha ainda não tem veredito para o item — do
-    contrário seriam centenas de downloads por dia sem novidade nenhuma."""
+    contrário seriam centenas de downloads por dia sem novidade nenhuma.
+
+    `simular` (o --planejar) lê Drive e Câmara como de verdade, mas não cria pasta, não sobe
+    arquivo, não apaga cópia repetida nem marca a pasta."""
     aba = aba_do_item(item["tipo"])
     numero = item["numero"] or item["cod"]
     categoria = "REQUERIMENTO" if aba == ABA_REQUERIMENTOS else "INDICACAO"
@@ -899,19 +869,25 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     existentes: dict[str, str] = {}
     ids_existentes: dict[str, str] = {}
     resposta_nova = False
+    aviso_pendente = False
     if not dry_run:
-        pasta_id = obter_ou_criar_subpasta(drive, pasta_raiz, nome_pasta)
-        pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
-        # Lista a pasta uma vez: limpa duplicatas antigas e monta o mapa nome→link.
-        # Permite pular o download de PDFs já arquivados e detectar respostas novas.
-        arquivos = limpar_duplicatas(drive, listar_arquivos_pasta(drive, pasta_id))
-        existentes = {a["name"]: a.get("webViewLink", "") for a in arquivos}
-        ids_existentes = {a["name"]: a["id"] for a in arquivos if a.get("id")}
+        pasta = (buscar_subpasta if simular else obter_ou_criar_subpasta)(drive, pasta_raiz, nome_pasta)
+        if pasta:  # na simulação, pasta que ainda não existe fica None
+            pasta_id = pasta["id"]
+            pasta_url = f"https://drive.google.com/drive/folders/{pasta_id}"
+            aviso_pendente = (pasta.get("appProperties") or {}).get(AVISO) == AVISO_PENDENTE
+            # Lista a pasta uma vez: limpa duplicatas antigas e monta o mapa nome→link.
+            # Permite pular o download de PDFs já arquivados e detectar respostas novas.
+            arquivos = listar_arquivos_pasta(drive, pasta_id)
+            if not simular:
+                arquivos = limpar_duplicatas(drive, arquivos)
+            existentes = {a["name"]: a.get("webViewLink", "") for a in arquivos}
+            ids_existentes = {a["name"]: a["id"] for a in arquivos if a.get("id")}
 
     # Pedido (arquivado no Drive; a planilha não tem coluna própria p/ ele)
     if item["pedidoPdf"]:
         nome_pedido = _slug(f"PEDIDO {numero} {item['pedidoPdf']['nome']}")
-        if not dry_run and nome_pedido not in existentes:
+        if not dry_run and not simular and nome_pedido not in existentes:
             dados = baixar_pdf_bytes(item["pedidoPdf"]["url"])
             if dados:
                 subir_pdf(drive, pasta_id, nome_pedido, dados, existentes)
@@ -942,7 +918,15 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
                 continue
             if dry_run:
                 links_resposta.append(pdf["url"])
+            elif simular:
+                links_resposta.append(pdf["url"])
+                resposta_nova = True  # subiria agora
             else:
+                if not aviso_pendente:
+                    # marca ANTES de subir: se a execução cair entre o upload e o aviso,
+                    # a próxima vê a marca e avisa
+                    marcar_aviso(drive, pasta_id, AVISO_PENDENTE)
+                    aviso_pendente = True
                 links_resposta.append(
                     subir_pdf(drive, pasta_id, nome_resp, dados, existentes))
                 resposta_nova = True
@@ -958,7 +942,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         resposta_cell = "\n".join(links_resposta)
         resposta_nova = True  # sem Drive não dá pra comparar; trata como novidade
     else:
-        resposta_cell = _hyperlink(pasta_url, "Resposta", sep)
+        resposta_cell = _hyperlink(pasta_url or "(pasta a criar)", "Resposta", sep)
 
     col_numero = "Número" if aba == ABA_INDICACOES else "Nùmero"
     valores = {
@@ -974,10 +958,23 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         valores[COL_SITUACAO] = cls.situacao(classes)
         valores[COL_DATA_MERITO] = _data_mais_antiga(datas_merito)
     sem_pdf = not links_resposta
-    return aba, valores, pasta_url, resposta_nova, sem_pdf
+    return Processado(aba, valores, pasta_url, resposta_nova, sem_pdf, pasta_id, aviso_pendente)
 
 
-def main():
+def _resumo_actions(titulo: str, linhas: list[tuple[str, object]], alertas: list[str]) -> None:
+    """Contagens no resumo do job do Actions. O repo é público: só números e rótulos fixos,
+    nunca texto da planilha nem mensagem de erro (que pode trazer o ID dela)."""
+    caminho = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not caminho:
+        return
+    with open(caminho, "a", encoding="utf-8") as f:
+        f.write(f"### {titulo}\n\n| | |\n|---|---:|\n")
+        f.writelines(f"| {rotulo} | {valor} |\n" for rotulo, valor in linhas)
+        f.writelines(f"\n> ⚠️ {a}\n" for a in alertas)
+
+
+def main() -> int:
+    inicio = time.monotonic()
     parser = argparse.ArgumentParser(description="Respostas do Executivo — Câmara de Santos")
     parser.add_argument("--ano", default="",
                         help=f"Ano(s) da busca, separados por vírgula (ex.: 2025,2026). "
@@ -987,19 +984,28 @@ def main():
                         help=f"Código do autor. Padrão: {AUTOR_PADRAO}.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Não escreve no Drive nem na planilha.")
+    parser.add_argument("--planejar", action="store_true",
+                        help="Lê Câmara, Drive e planilha em modo somente leitura e mostra só as "
+                             "contagens do que seria gravado. Nada é gravado nem enviado.")
     parser.add_argument("--limite", type=int, default=0,
-                        help="Processa no máximo N itens (0 = todos).")
+                        help="Processa no máximo N itens com novidade (0 = todos).")
+    parser.add_argument("--orcamento-min", type=float, default=ORCAMENTO_MIN,
+                        help=f"Encerra a varredura após N minutos e grava, registra o log e manda "
+                             f"o e-mail antes do timeout do job. Padrão: {ORCAMENTO_MIN}.")
     parser.add_argument("--forcar", action="store_true",
-                        help="Reprocessa mesmo itens cuja Resposta já está preenchida.")
+                        help="Reclassifica todos os PDFs e avisa todos os itens, com ou sem "
+                             "mudança (não sobrescreve o que já está preenchido na planilha).")
     parser.add_argument("--cods", default="",
                         help="Processa apenas estes cods (lista separada por vírgula) e os "
-                             "reprocessa mesmo se já respondidos — útil p/ reenviar um e-mail "
-                             "que se perdeu, sem reprocessar a base inteira.")
+                             "avisa mesmo sem mudança — útil p/ reenviar um e-mail que se "
+                             "perdeu, sem reprocessar a base inteira.")
     parser.add_argument("--email", action="store_true",
                         help="Envia e-mail resumo das respostas processadas (se houver).")
     parser.add_argument("--sem-log", action="store_true",
                         help="Não registra na aba Log diário (ex.: carga retroativa).")
     args = parser.parse_args()
+    if args.planejar and args.dry_run:
+        parser.error("--planejar e --dry-run não combinam (o --dry-run nem abre o Google)")
 
     if args.ano.strip():
         anos = [a.strip() for a in args.ano.split(",") if a.strip()]
@@ -1017,6 +1023,13 @@ def main():
         itens.extend(novos)
         print(f"  {ano}: {len(encontrados)} itens.", file=sys.stderr)
     print(f"  {len(itens)} itens únicos no total.", file=sys.stderr)
+    if not itens:
+        # a busca nunca volta vazia de verdade (há respostas desde 2025): é o layout que mudou
+        print("ERRO: a busca não devolveu nenhum item em nenhum ano — o layout da Câmara mudou?",
+              file=sys.stderr)
+        _resumo_actions("Respostas do Executivo", [("Itens na busca", 0)],
+                        ["Busca vazia em todos os anos: o layout da Câmara pode ter mudado."])
+        return 1
 
     cods_alvo = {c.strip() for c in args.cods.split(",") if c.strip()}
     if cods_alvo:
@@ -1034,11 +1047,18 @@ def main():
         if not sheet_id or not pasta_raiz:
             raise EnvironmentError("Defina SHEET_ID e DRIVE_FOLDER_ID.")
         drive, sheets = _google_services()
-        # Sem as colunas de classificação a situação nunca era gravada: todo item
-        # parecia "sem veredito", era rebaixado e reclassificado todo dia e saía
-        # no log e no e-mail como resposta nova (~576 por execução, out/2026).
-        for aba in ABAS:
-            garantir_colunas(sheets, sheet_id, aba)
+        # Retentativa (rede, 429, 5xx) em TODA chamada ao Drive e ao Sheets. No --planejar, a
+        # trava de somente leitura por cima: qualquer gravação levanta EscritaBloqueada.
+        drive = planilha.com_retentativa(drive, _executar)
+        sheets = planilha.com_retentativa(sheets, _executar)
+        if args.planejar:
+            drive, sheets = planilha.somente_leitura(drive), planilha.somente_leitura(sheets)
+        else:
+            # Sem as colunas de classificação a situação nunca era gravada: todo item
+            # parecia "sem veredito", era rebaixado e reclassificado todo dia e saía
+            # no log e no e-mail como resposta nova (~576 por execução, out/2026).
+            for aba in ABAS:
+                garantir_colunas(sheets, sheet_id, aba)
         indice = carregar_planilha(sheets, sheet_id)
         # separador de argumentos de fórmula conforme o locale da planilha
         try:
@@ -1052,119 +1072,200 @@ def main():
         print(f"  {total} linhas já na planilha (sep fórmula '{sep}').", file=sys.stderr)
 
     hoje = datetime.now().strftime("%d/%m/%Y")
-    processados = 0
-    falhas = 0
-    fora_do_escopo = 0
-    log_entradas: list[dict] = []
-    for item in itens:
-        if args.limite and processados >= args.limite:
-            break
+    # --forcar e --cods servem para testar/reenviar o e-mail: avisam mesmo sem mudança
+    avisar_sempre = args.forcar or bool(cods_alvo)
+    cont: Counter = Counter()
+    plano: list = []                     # escritas acumuladas desde a última gravação
+    candidatos: dict[tuple, dict] = {}   # (aba, nº) do lote em curso → entrada do log/e-mail
+    avisos: list[dict] = []              # entradas confirmadas depois da gravação
+    rel_total = planilha.Relatorio()
+    ultimo_lote = time.monotonic()
+
+    def gravar_lote() -> None:
+        """Aplica o plano acumulado (relendo a planilha agora) e confirma os avisos do lote:
+        aviso é mudança real gravada ou resposta arquivada que ainda não foi avisada."""
+        nonlocal plano, ultimo_lote
+        lote, plano = plano, []
+        do_lote = dict(candidatos)
+        candidatos.clear()
+        ultimo_lote = time.monotonic()
+        if not lote:
+            return
         try:
-            detalhes = detalhar_item(item["cod"])
-            detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
-            if not detalhes["tipo"]:
-                raise RuntimeError("página sem tipo no título (layout da Câmara mudou?)")
-            aba = aba_do_item(detalhes["tipo"])
-            if aba is None:
-                fora_do_escopo += 1
-                print(f"  Fora das abas: {detalhes['tipo']} {detalhes['numero']} "
-                      f"(cod={item['cod']}) — só requerimentos e indicações.", file=sys.stderr)
-                continue
-            num = numero_canonico(detalhes["numero"])
-            if not num:
-                raise RuntimeError(f"número fora do padrão: {detalhes['numero']!r}")
-            info = indice.get(aba, {"mapa": {}})
-            existente = info["mapa"].get(num)
-            ja_respondido = bool(existente and existente.get("resp"))
-            sit_atual = (existente or {}).get("sit", "")
-            # Reclassifica quando ainda não há veredito de mérito: item sem situação
-            # (anterior à classificação) ou parado em trâmite, que pode ter recebido
-            # a resposta de verdade desde a última passagem. Com --forcar reclassifica
-            # tudo — é o único jeito de preencher `Data da resposta de mérito` nos
-            # itens que o backfill do Drive marcou como respondidos (a data de
-            # recebimento só existe na página da Câmara).
-            classificar_tudo = args.forcar or sit_atual != cls.RESPONDIDO
+            rel = planilha.aplicar(sheets, sheet_id, lote, gravar=not args.planejar)
+        except Exception as e:
+            cont["lotes com erro"] += 1
+            print(f"  ERRO ao gravar {len(lote)} item(ns) na planilha: {e} — nada desse lote "
+                  "foi gravado; a próxima execução refaz.", file=sys.stderr)
+            return
+        rel_total.somar(rel)
+        mudou = set(rel.escritas) | {(a, n) for a, n, _ in rel.novas}
+        sem_linha = set(rel.sem_linha) | set(rel.ja_existia)
+        for chave, c in do_lote.items():
+            if chave in sem_linha:
+                continue  # a linha sumiu (ou surgiu) no meio: a marca fica e a próxima resolve
+            if (chave in mudou and c["_avisar"]) or c["_novidade"] or avisar_sempre:
+                avisos.append(c)
 
-            aba, valores, pasta_url, resposta_nova, sem_pdf = processar_item(
-                detalhes, drive, pasta_raiz, args.dry_run, sep, classificar_tudo)
-            if sem_pdf:
-                # sem nenhum PDF de resposta arquivado, a pasta não prova resposta:
-                # nada vai à planilha (tenta de novo na próxima execução)
-                raise RuntimeError("nenhum PDF de resposta arquivado — nada gravado")
+    interrompidos = 0
+    try:
+        for pos, item in enumerate(itens):
+            if args.limite and cont["com novidade"] >= args.limite:
+                break
+            if time.monotonic() - inicio > args.orcamento_min * 60:
+                interrompidos = len(itens) - pos
+                print(f"  ORÇAMENTO de {args.orcamento_min:g} min esgotado: {interrompidos} "
+                      "item(ns) ficam para a próxima execução.", file=sys.stderr)
+                break
+            try:
+                detalhes = detalhar_item(item["cod"])
+                detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
+                if not detalhes["tipo"]:
+                    raise RuntimeError("página sem tipo no título (layout da Câmara mudou?)")
+                aba = aba_do_item(detalhes["tipo"])
+                if aba is None:
+                    cont["fora das abas"] += 1
+                    print(f"  Fora das abas: {detalhes['tipo']} {detalhes['numero']} "
+                          f"(cod={item['cod']}) — só requerimentos e indicações.", file=sys.stderr)
+                    continue
+                num = numero_canonico(detalhes["numero"])
+                if not num:
+                    raise RuntimeError(f"número fora do padrão: {detalhes['numero']!r}")
+                info = indice.get(aba, {"mapa": {}})
+                existente = info["mapa"].get(num)
+                ja_respondido = bool(existente and existente.get("resp"))
+                sit_atual = (existente or {}).get("sit", "")
+                # Reclassifica quando ainda não há veredito de mérito: item sem situação
+                # (anterior à classificação) ou parado em trâmite, que pode ter recebido
+                # a resposta de verdade desde a última passagem. Com --forcar reclassifica
+                # tudo — mas o veredito só entra em célula vazia (ou com documento novo).
+                classificar_tudo = args.forcar or sit_atual != cls.RESPONDIDO
 
-            # Item que já tem Resposta na planilha: só vai ao log/e-mail se chegou
-            # PDF de resposta novo no Drive (sinal robusto, imune ao reformato de
-            # data da planilha). Sem novidade, apenas grava a reclassificação, se
-            # mudou — em silêncio.
-            if (ja_respondido and not resposta_nova
-                    and not args.forcar and not cods_alvo):
-                nova_sit = valores.get(COL_SITUACAO)
-                if nova_sit is not None and nova_sit != sit_atual and not args.dry_run:
-                    atualizar_classificacao(sheets, sheet_id, aba, info,
-                                            existente["linha"], valores)
-                    existente["sit"] = nova_sit
-                    print(f"  Reclassificado em silêncio: {detalhes['numero']} "
-                          f"({sit_atual or '—'} → {nova_sit})", file=sys.stderr)
-                continue
+                r = processar_item(detalhes, drive, pasta_raiz, args.dry_run, sep,
+                                   classificar_tudo, simular=args.planejar)
+                if r.sem_pdf:
+                    # sem nenhum PDF de resposta arquivado, a pasta não prova resposta:
+                    # nada vai à planilha (tenta de novo na próxima execução)
+                    raise RuntimeError("nenhum PDF de resposta arquivado — nada gravado")
+                cont["vistos"] += 1
 
-            rotulo = f"{detalhes['tipo']} {detalhes['numero']} (cod={item['cod']}) → {aba}"
-            acao = ("resposta nova" if resposta_nova and ja_respondido
-                    else "reprocessa" if ja_respondido
-                    else "atualiza" if existente else "nova linha")
-            print(f"Processando ({acao}): {rotulo}", file=sys.stderr)
-
-            if args.dry_run:
-                print(json.dumps({"aba": aba, "acao": acao, **valores},
-                                 ensure_ascii=False, indent=2))
-            else:
+                # Novidade: resposta arquivada agora ou numa execução que caiu antes de
+                # avisar (marca na pasta). Só ela autoriza atualizar as colunas de resposta
+                # já preenchidas; sem novidade, o robô só preenche célula vazia — e em
+                # silêncio, se o item já tinha resposta.
+                novidade = r.resposta_nova or r.aviso_pendente
+                avisar = novidade or not ja_respondido or avisar_sempre
+                acao = ("nova linha" if not existente else "resposta nova" if novidade
+                        else "atualiza" if avisar else "confere")
+                if avisar:
+                    cont["com novidade"] += 1
+                    print(f"Processando ({acao}): {detalhes['tipo']} {detalhes['numero']} "
+                          f"(cod={item['cod']}) → {aba}", file=sys.stderr)
+                if args.dry_run:
+                    print(json.dumps({"aba": aba, "acao": acao, **r.valores},
+                                     ensure_ascii=False, indent=2))
+                    continue
                 if existente:
-                    atualizar_resposta(sheets, sheet_id, aba, info, existente["linha"],
-                                       valores["Resposta"], valores["Data da resposta"])
-                    atualizar_classificacao(sheets, sheet_id, aba, info,
-                                            existente["linha"], valores)
-                    existente["resp"] = True
-                    existente["sit"] = valores.get(COL_SITUACAO, sit_atual)
+                    plano.append(planilha.Escrita(
+                        aba, num, {c: v for c, v in r.valores.items() if c in planilha.COLUNAS_RESPOSTA},
+                        resposta_nova=novidade))
                 else:
-                    anexar_linha(sheets, sheet_id, aba, info, valores)
-                    info["mapa"][num] = {
-                        "linha": info["n_linhas"], "resp": True,
-                        "sit": valores.get(COL_SITUACAO, ""),
-                    }
-                log_entradas.append({
+                    plano.append(planilha.NovaLinha(aba, num, r.valores))
+                candidatos[(aba, num)] = {
                     "Data processamento": hoje,
                     "Tipo": detalhes["tipo"],
                     "Número": detalhes["numero"],
                     "Assunto": detalhes["ementa"],
                     "Data da resposta": detalhes["dataResposta"],
-                    "Situação": cls.ROTULOS.get(valores.get(COL_SITUACAO, ""), "—"),
-                    "Link": _hyperlink(pasta_url, "Abrir", sep),
-                    "LinkUrl": pasta_url,
-                })
-            processados += 1
-        except Exception as e:
-            falhas += 1
-            print(f"  ERRO no cod={item['cod']}: {e} — pulando.", file=sys.stderr)
-            continue
+                    # sem reclassificação nesta passada (já respondido), vale a da planilha
+                    "Situação": cls.ROTULOS.get(r.valores.get(COL_SITUACAO) or sit_atual, "—"),
+                    "Link": _hyperlink(r.pasta_url, "Abrir", sep),
+                    "LinkUrl": r.pasta_url,
+                    "_avisar": avisar,
+                    "_novidade": novidade,
+                    "_pasta_marcada": r.pasta_id if r.aviso_pendente else None,
+                }
+            except Exception as e:
+                cont["com erro"] += 1
+                print(f"  ERRO no cod={item['cod']}: {e} — pulando.", file=sys.stderr)
+                continue
+            if len(plano) >= LOTE_ITENS or time.monotonic() - ultimo_lote > LOTE_SEG:
+                gravar_lote()
+    finally:
+        # também em erro inesperado ou Ctrl+C: o que já foi processado não se perde
+        if not args.dry_run:
+            gravar_lote()
 
-    print(f"Concluído: {processados} itens processados, {falhas} falha(s), "
-          f"{fora_do_escopo} fora das abas (moção, convite…).", file=sys.stderr)
+    print(f"Concluído: {cont['vistos']} itens vistos, {cont['com novidade']} com novidade, "
+          f"{cont['com erro']} falha(s), {cont['fora das abas']} fora das abas "
+          "(moção, convite…).", file=sys.stderr)
+    if not args.dry_run:
+        verbo = "seriam gravadas" if args.planejar else "gravadas"
+        print(f"Planilha: {rel_total.celulas} célula(s) {verbo} — {len(rel_total.novas)} linha(s) "
+              f"nova(s), {len(rel_total.escritas)} linha(s) atualizada(s).", file=sys.stderr)
+        por_coluna = Counter((a, c) for a, _, c in rel_total.divergencias)
+        if por_coluna:
+            print("Divergências (mantido o que está na planilha): " + "; ".join(
+                f"{a}/{c}: {n}" for (a, c), n in sorted(por_coluna.items())), file=sys.stderr)
+        for rotulo, lista in (("Linha sumiu antes da gravação", rel_total.sem_linha),
+                              ("Linha já existia (criada no meio)", rel_total.ja_existia)):
+            if lista:
+                print(f"{rotulo}: " + ", ".join(f"{a} {n}" for a, n in lista[:20]), file=sys.stderr)
 
-    if not args.dry_run and log_entradas:
-        # Log e e-mail são passos secundários: o trabalho útil (Drive + planilha)
-        # já concluiu acima. Uma falha transitória aqui não deve marcar a run
-        # inteira como falha nem impedir o passo seguinte.
+    falhas_aviso: list[str] = []
+    if avisos and not args.dry_run and not args.planejar:
         if not args.sem_log:
             try:
-                registrar_log(sheets, sheet_id, log_entradas)
-                print(f"Log diário: {len(log_entradas)} linha(s) registrada(s).", file=sys.stderr)
+                registrar_log(sheets, sheet_id, avisos)
+                print(f"Log diário: {len(avisos)} linha(s) registrada(s).", file=sys.stderr)
             except Exception as e:
-                print(f"  AVISO: falha ao registrar log diário: {e} — seguindo.", file=sys.stderr)
+                falhas_aviso.append("log diário")
+                print(f"  ERRO ao registrar o log diário: {e}", file=sys.stderr)
         if args.email:
             try:
-                enviar_email(log_entradas, hoje)
+                enviar_email(avisos, hoje)
             except Exception as e:
-                print(f"  AVISO: falha ao enviar e-mail resumo: {e} — seguindo.", file=sys.stderr)
+                falhas_aviso.append("e-mail")
+                print(f"  ERRO ao enviar o e-mail resumo: {e}", file=sys.stderr)
+        if not falhas_aviso:
+            # aviso dado: a marca sai. Se o log ou o e-mail falhou, ela fica e a próxima avisa.
+            for a in avisos:
+                if a["_pasta_marcada"]:
+                    try:
+                        marcar_aviso(drive, a["_pasta_marcada"], AVISO_FEITO)
+                    except Exception as e:
+                        falhas_aviso.append("marca de aviso")
+                        print(f"  ERRO ao tirar a marca de aviso de {a['Número']}: {e}",
+                              file=sys.stderr)
+
+    alertas = []
+    if cont["com erro"]:
+        alertas.append(f"{cont['com erro']} item(ns) com erro — ver o log do passo.")
+    if cont["lotes com erro"]:
+        alertas.append(f"A gravação na planilha falhou em {cont['lotes com erro']} lote(s); "
+                       "a próxima execução refaz.")
+    if falhas_aviso:
+        alertas.append(f"Falhou: {', '.join(dict.fromkeys(falhas_aviso))} — a marca de aviso fica "
+                       "e a próxima execução avisa de novo.")
+    if interrompidos:
+        alertas.append(f"Orçamento de {args.orcamento_min:g} min esgotado: {interrompidos} "
+                       "item(ns) não vistos nesta execução.")
+    _resumo_actions(
+        "Respostas do Executivo" + (" — plano (nada gravado)" if args.planejar else ""),
+        [("Itens na busca", len(itens)), ("Itens vistos", cont["vistos"]),
+         ("Fora das abas (moção, convite…)", cont["fora das abas"]),
+         ("Com novidade", cont["com novidade"]),
+         ("Células gravadas" if not args.planejar else "Células a gravar", rel_total.celulas),
+         ("Linhas novas", len(rel_total.novas)), ("Linhas atualizadas", len(rel_total.escritas)),
+         ("Divergências (mantido o valor da planilha)", len(rel_total.divergencias)),
+         ("Linha sumiu ou surgiu no meio", len(rel_total.sem_linha) + len(rel_total.ja_existia)),
+         ("Avisos (log e e-mail)", len(avisos)), ("Itens com erro", cont["com erro"]),
+         ("Minutos", f"{(time.monotonic() - inicio) / 60:.1f}")],
+        alertas)
+    for a in alertas:
+        print(f"ATENÇÃO: {a}", file=sys.stderr)
+    return 2 if alertas else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
