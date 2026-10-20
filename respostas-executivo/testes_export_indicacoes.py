@@ -134,6 +134,18 @@ class TestJuncao(unittest.TestCase):
         self.assertEqual(itens[0]["data_sessao"], "25/11/2025")
         self.assertEqual(rel["datas"]["sessao:divergente"], 1)
 
+    def test_linha_mesclada_publica_a_ementa_da_camara(self):
+        # depois da mescla (R4) fica só a linha da equipe, com a ementa na coluna do robô:
+        # o site continua publicando o texto oficial, não o resumo da equipe
+        cab = CAB + ["Ementa (Câmara)"]
+        x = ASSESSORIA
+        valores, formulas, brutos = (l + [ROBO["valores"][1]] for l in (x["valores"], x["formulas"], x["brutos"]))
+        mesclada, _ = montar_indicacoes([cab, valores], [cab, formulas], [cab, brutos])
+        antes, _ = _um(ASSESSORIA, ROBO)
+        self.assertEqual(mesclada[0]["assunto"], antes[0]["assunto"])
+        self.assertEqual(mesclada[0]["assunto"], "Indica ao Executivo a manutenção de canteiros em "
+                                                 "frente a UBS Odete Gomes de Rosis.")
+
     def test_numero_invalido_e_zero_a_esquerda(self):
         itens, rel = _um(
             _linha("", "Indica ao Executivo a poda (sem número)", (4, 2, 2025)),
