@@ -59,6 +59,7 @@ from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402  (mesmo diretório; ver bloco sys.path acima)
+from planilha import numero_canonico  # noqa: E402
 
 # Garante UTF-8 na saída mesmo em consoles Windows (cp1252)
 for _stream in (sys.stdout, sys.stderr):
@@ -136,12 +137,22 @@ def fetch_html(url: str) -> bytes:
     return _http_get(url, timeout=30).content
 
 
+def _eh_pdf(dados: bytes | None) -> bool:
+    return bool(dados) and b"%PDF" in dados[:1024]
+
+
 def baixar_pdf_bytes(url: str) -> bytes | None:
     try:
-        return _http_get(url, timeout=60).content
+        dados = _http_get(url, timeout=60).content
     except Exception as e:
         print(f"  Aviso: não foi possível baixar PDF {url}: {e}", file=sys.stderr)
         return None
+    # Página de erro em HTML (ou arquivo truncado) não é PDF: subiria ao Drive como
+    # RESPOSTA e nunca mais seria trocada, porque o nome já existiria na pasta.
+    if not _eh_pdf(dados):
+        print(f"  Aviso: {url} não devolveu um PDF — ignorado nesta passada.", file=sys.stderr)
+        return None
+    return dados
 
 
 def _text(tag) -> str:
@@ -150,11 +161,6 @@ def _text(tag) -> str:
 
 def _sem_acento(s: str) -> str:
     return sem_acento(s, forma="NFKD", caixa="baixa").strip()
-
-
-def _norm_num(s: str) -> str:
-    """Normaliza um número de propositura para comparação (apenas dígitos)."""
-    return re.sub(r"\D", "", s or "")
 
 
 def _chave_data(d: str) -> tuple | None:
@@ -193,8 +199,17 @@ def _data_mais_antiga(datas: list[str]) -> str:
     return melhor
 
 
-def aba_do_item(tipo: str) -> str:
-    return ABA_INDICACOES if "indica" in _sem_acento(tipo) else ABA_REQUERIMENTOS
+def aba_do_item(tipo: str) -> str | None:
+    """Aba do pedido pelo tipo da página da Câmara. Só "Requerimento" e "Indicação":
+    moção, convite, homenagem… voltam None. Antes tudo que não era indicação ia para
+    "requerimentos" e para a pasta REQUERIMENTO_<nº> — a Moção 19/2026 foi gravada na
+    pasta e na linha do Requerimento 19/2026 (a numeração é por tipo e subtipo)."""
+    t = _sem_acento(tipo)
+    if t == "indicacao":
+        return ABA_INDICACOES
+    if t == "requerimento":
+        return ABA_REQUERIMENTOS
+    return None
 
 
 def _idx_coluna_numero(cabecalhos: list[str]) -> int:
@@ -445,6 +460,25 @@ def limpar_duplicatas(drive, arquivos: list[dict]) -> list[dict]:
     return remanescentes
 
 
+def baixar_drive(drive, file_id: str) -> bytes | None:
+    """Cópia arquivada no Drive — reserva quando a Câmara não entrega o PDF de novo.
+    None se não der para ler ou se o arquivo não for PDF."""
+    from googleapiclient.http import MediaIoBaseDownload
+
+    try:
+        buf = io.BytesIO()
+        req = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+        baixador = MediaIoBaseDownload(buf, req)
+        concluido = False
+        while not concluido:
+            _, concluido = baixador.next_chunk()
+        dados = buf.getvalue()
+    except Exception as e:
+        print(f"  Aviso: não foi possível ler a cópia do Drive {file_id}: {e}", file=sys.stderr)
+        return None
+    return dados if _eh_pdf(dados) else None
+
+
 def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes,
               existentes: dict[str, str] | None = None) -> str:
     """Sobe um PDF, evitando re-upload se já houver arquivo com esse nome na pasta.
@@ -477,8 +511,13 @@ def subir_pdf(drive, pasta_id: str, nome: str, dados: bytes,
 
 
 def _col_letra(idx: int) -> str:
-    """Índice 0-based → letra de coluna A1 (suficiente para até 26 colunas)."""
-    return chr(ord("A") + idx)
+    """Índice 0-based → letra(s) de coluna A1 (A…Z, AA, AB…)."""
+    letras = ""
+    idx += 1
+    while idx:
+        idx, resto = divmod(idx - 1, 26)
+        letras = chr(ord("A") + resto) + letras
+    return letras
 
 
 def _idx_header(cabecalhos: list[str], alvo: str) -> int:
@@ -497,23 +536,45 @@ def garantir_colunas(sheets, sheet_id: str, aba: str) -> list[str]:
     Só as automáticas: colunas manuais de ABAS que a planilha não tem (ou tem com
     outra grafia) não são criadas — em 12/10/2026 isto criou "Ordem", "Prazo" e
     "Data do Protocolo na PMS" vazias no fim da aba. `montar_linha` já descarta
-    valor sem coluna correspondente, então nada se perde."""
+    valor sem coluna correspondente, então nada se perde.
+
+    As colunas novas entram DEPOIS da última coluna com qualquer conteúdo, com ou sem
+    título: coluna sem título com anotações é da equipe e não pode ser ocupada. Só as
+    células novas do cabeçalho são gravadas (antes a linha 1 inteira era regravada)."""
     res = sheets.spreadsheets().values().get(
-        spreadsheetId=sheet_id, range=f"'{aba}'!1:1",
+        spreadsheetId=sheet_id, range=f"'{aba}'",
     ).execute()
-    cab = (res.get("values") or [[]])[0]
+    valores = res.get("values") or [[]]
+    cab = valores[0] if valores else []
     faltantes = [c for c in COLUNAS_CLASSIFICACAO if _idx_header(cab, c) < 0]
     if not faltantes:
         return cab
-    novo = cab + faltantes
+    inicio = max(len(linha) for linha in valores)  # 1ª coluna vazia em todas as linhas
+    _garantir_largura(sheets, sheet_id, aba, inicio + len(faltantes))
     sheets.spreadsheets().values().update(
         spreadsheetId=sheet_id,
-        range=f"'{aba}'!A1",
+        range=f"'{aba}'!{_col_letra(inicio)}1",
         valueInputOption="RAW",
-        body={"values": [novo]},
+        body={"values": [faltantes]},
     ).execute()
     print(f"  Aba '{aba}': coluna(s) criada(s) — {', '.join(faltantes)}.", file=sys.stderr)
-    return novo
+    return cab + [""] * (inicio - len(cab)) + faltantes
+
+
+def _garantir_largura(sheets, sheet_id: str, aba: str, colunas: int) -> None:
+    """Acrescenta colunas vazias no fim da grade se ela não comporta `colunas`."""
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=sheet_id, fields="sheets.properties(sheetId,title,gridProperties.columnCount)",
+    ).execute()
+    for s in meta.get("sheets", []):
+        p = s.get("properties", {})
+        if p.get("title") == aba:
+            atual = p.get("gridProperties", {}).get("columnCount", 0)
+            if atual < colunas:
+                sheets.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body={"requests": [
+                    {"appendDimension": {"sheetId": p["sheetId"], "dimension": "COLUMNS",
+                                         "length": colunas - atual}}]}).execute()
+            return
 
 
 def listar_subpastas(drive, pasta_raiz: str) -> list[dict]:
@@ -535,24 +596,34 @@ def listar_subpastas(drive, pasta_raiz: str) -> list[dict]:
     return pastas
 
 
-def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
+MIN_LINHAS = 100  # as abas reais têm 600+ linhas: menos que isso é leitura suspeita
+
+
+def carregar_planilha(sheets, sheet_id: str, min_linhas: int = MIN_LINHAS) -> dict[str, dict]:
     """Lê cada aba e devolve, por aba, os índices de coluna e um mapa
-    número→{linha, resp} (resp = se a coluna Resposta já está preenchida)."""
+    número canônico→{linha, resp, sit} (resp = se a coluna Resposta já está preenchida).
+
+    Aborta (RuntimeError) se não conseguir ler uma aba, se ela vier quase vazia ou sem a
+    coluna do número: seguir com o mapa vazio transformava todo item já respondido em
+    "linha nova" — em 20/08/2026 isso criou 321 linhas repetidas em indicações.
+
+    Número repetido na aba (os pares de 20/08): vale a ÚLTIMA linha, a que o robô já mantém
+    atualizada; a da equipe fica intocada até a mescla."""
     indice: dict[str, dict] = {}
     for aba in ABAS:
         info = {"col_resp": -1, "col_dataresp": -1, "col_situacao": -1,
-                "col_merito": -1, "mapa": {}, "cab": [], "n_linhas": 0}
+                "col_merito": -1, "mapa": {}, "cab": [], "n_linhas": 0, "repetidos": 0}
         indice[aba] = info
         try:
             res = sheets.spreadsheets().values().get(
-                spreadsheetId=sheet_id, range=f"'{aba}'!A1:Z",
+                spreadsheetId=sheet_id, range=f"'{aba}'",
             ).execute()
         except Exception as e:
-            print(f"Aviso: não consegui ler a aba '{aba}': {e}", file=sys.stderr)
-            continue
+            raise RuntimeError(f"não consegui ler a aba '{aba}' ({e}) — nada foi gravado") from e
         valores = res.get("values", [])
-        if not valores:
-            continue
+        if len(valores) - 1 < min_linhas:
+            raise RuntimeError(f"aba '{aba}' veio com {max(0, len(valores) - 1)} linha(s) — "
+                               "leitura suspeita; nada foi gravado")
         cab = valores[0]
         info["cab"] = cab
         info["n_linhas"] = len(valores)
@@ -562,18 +633,25 @@ def carregar_planilha(sheets, sheet_id: str) -> dict[str, dict]:
         info["col_situacao"] = _idx_header(cab, COL_SITUACAO)
         info["col_merito"] = _idx_header(cab, COL_DATA_MERITO)
         if idx_num < 0:
-            continue
+            raise RuntimeError(f"aba '{aba}' sem a coluna do número no cabeçalho — nada foi gravado")
 
         def celula(linha: list, col: int) -> str:
             return linha[col].strip() if 0 <= col < len(linha) else ""
 
         for n, linha in enumerate(valores[1:], start=2):  # nº da linha (1-based)
-            if len(linha) > idx_num and linha[idx_num].strip():
-                info["mapa"][_norm_num(linha[idx_num])] = {
-                    "linha": n,
-                    "resp": celula(linha, info["col_resp"]) != "",
-                    "sit": celula(linha, info["col_situacao"]),
-                }
+            num = numero_canonico(celula(linha, idx_num))
+            if not num:
+                continue
+            if num in info["mapa"]:
+                info["repetidos"] += 1
+            info["mapa"][num] = {
+                "linha": n,
+                "resp": celula(linha, info["col_resp"]) != "",
+                "sit": celula(linha, info["col_situacao"]),
+            }
+        if info["repetidos"]:
+            print(f"  Aviso: aba '{aba}' com {info['repetidos']} linha(s) de número repetido "
+                  "(vale a última; a mescla é à parte).", file=sys.stderr)
     return indice
 
 
@@ -800,11 +878,12 @@ def enviar_email(entradas: list[dict], data: str) -> None:
 # ── Processamento ─────────────────────────────────────────────────────────────
 def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
                    sep: str = ",", classificar_tudo: bool = True,
-                   ) -> tuple[str, dict, str, bool]:
+                   ) -> tuple[str, dict, str, bool, bool]:
     """Baixa PDFs que ainda não estão arquivados, sobe ao Drive e devolve
-    (aba, valores, pasta_url, resposta_nova) — `resposta_nova` indica se algum PDF
-    de RESPOSTA foi arquivado agora (sinal robusto p/ saber se chegou novidade,
-    independente do formato de data na planilha).
+    (aba, valores, pasta_url, resposta_nova, sem_pdf) — `resposta_nova` indica se algum
+    PDF de RESPOSTA foi arquivado agora (sinal robusto p/ saber se chegou novidade,
+    independente do formato de data na planilha); `sem_pdf`, que nenhum PDF de resposta
+    está arquivado (o chamador não grava Resposta nem Data e conta como falha).
 
     `classificar_tudo` faz rebaixar também os PDFs já arquivados, para classificá-los.
     Só vale a pena quando a planilha ainda não tem veredito para o item — do
@@ -818,6 +897,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     pasta_id = None
     pasta_url = ""
     existentes: dict[str, str] = {}
+    ids_existentes: dict[str, str] = {}
     resposta_nova = False
     if not dry_run:
         pasta_id = obter_ou_criar_subpasta(drive, pasta_raiz, nome_pasta)
@@ -826,6 +906,7 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
         # Permite pular o download de PDFs já arquivados e detectar respostas novas.
         arquivos = limpar_duplicatas(drive, listar_arquivos_pasta(drive, pasta_id))
         existentes = {a["name"]: a.get("webViewLink", "") for a in arquivos}
+        ids_existentes = {a["name"]: a["id"] for a in arquivos if a.get("id")}
 
     # Pedido (arquivado no Drive; a planilha não tem coluna própria p/ ele)
     if item["pedidoPdf"]:
@@ -842,24 +923,32 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     for i, pdf in enumerate(item["respostasPdf"], 1):
         nome_resp = _slug(f"RESPOSTA {i} {numero} {pdf['nome']}")
         arquivado = (not dry_run) and nome_resp in existentes
-        dados = None
         if arquivado:
             links_resposta.append(existentes[nome_resp])
-            if classificar_tudo:
-                dados = baixar_pdf_bytes(pdf["url"])
+            if not classificar_tudo:
+                continue
+            # O PDF já arquivado é rebaixado só para classificar. Se a Câmara não o
+            # entrega, vale a cópia do Drive; sem nenhuma das duas, o item fica sem
+            # veredito NESTA passada. Antes isso virava INDETERMINADO, que conta como
+            # mérito: um "respondido" falso que nunca mais era reclassificado.
+            dados = baixar_pdf_bytes(pdf["url"])
+            if dados is None and nome_resp in ids_existentes:
+                dados = baixar_drive(drive, ids_existentes[nome_resp])
+            if dados is None:
+                continue
         else:
             dados = baixar_pdf_bytes(pdf["url"])
+            if dados is None:
+                continue
             if dry_run:
                 links_resposta.append(pdf["url"])
-            elif dados:
+            else:
                 links_resposta.append(
                     subir_pdf(drive, pasta_id, nome_resp, dados, existentes))
                 resposta_nova = True
-            else:
-                continue
-        if arquivado and not classificar_tudo:
-            continue
-        classe = cls.classificar(cls.texto_pdf(dados)) if dados else cls.INDETERMINADO
+        # PDF lido mas sem camada de texto continua INDETERMINADO = mérito (falha
+        # segura: nunca rebaixar um item por não conseguir ler o arquivo).
+        classe = cls.classificar(cls.texto_pdf(dados))
         classes.append(classe)
         if classe in (cls.MERITO, cls.INDETERMINADO) and pdf.get("data"):
             datas_merito.append(pdf["data"])
@@ -881,10 +970,11 @@ def processar_item(item: dict, drive, pasta_raiz: str, dry_run: bool,
     }
     # Só grava a situação se TODOS os PDFs foram classificados nesta passagem;
     # caso contrário sobrescreveríamos um veredito bom com um parcial.
-    if len(classes) == len(item["respostasPdf"]):
+    if classes and len(classes) == len(item["respostasPdf"]):
         valores[COL_SITUACAO] = cls.situacao(classes)
         valores[COL_DATA_MERITO] = _data_mais_antiga(datas_merito)
-    return aba, valores, pasta_url, resposta_nova
+    sem_pdf = not links_resposta
+    return aba, valores, pasta_url, resposta_nova, sem_pdf
 
 
 def main():
@@ -964,6 +1054,7 @@ def main():
     hoje = datetime.now().strftime("%d/%m/%Y")
     processados = 0
     falhas = 0
+    fora_do_escopo = 0
     log_entradas: list[dict] = []
     for item in itens:
         if args.limite and processados >= args.limite:
@@ -971,10 +1062,17 @@ def main():
         try:
             detalhes = detalhar_item(item["cod"])
             detalhes["dataResposta"] = detalhes["dataResposta"] or item["recebimentoBusca"]
+            if not detalhes["tipo"]:
+                raise RuntimeError("página sem tipo no título (layout da Câmara mudou?)")
             aba = aba_do_item(detalhes["tipo"])
-            num = _norm_num(detalhes["numero"])
-            if not num:
+            if aba is None:
+                fora_do_escopo += 1
+                print(f"  Fora das abas: {detalhes['tipo']} {detalhes['numero']} "
+                      f"(cod={item['cod']}) — só requerimentos e indicações.", file=sys.stderr)
                 continue
+            num = numero_canonico(detalhes["numero"])
+            if not num:
+                raise RuntimeError(f"número fora do padrão: {detalhes['numero']!r}")
             info = indice.get(aba, {"mapa": {}})
             existente = info["mapa"].get(num)
             ja_respondido = bool(existente and existente.get("resp"))
@@ -987,8 +1085,12 @@ def main():
             # recebimento só existe na página da Câmara).
             classificar_tudo = args.forcar or sit_atual != cls.RESPONDIDO
 
-            aba, valores, pasta_url, resposta_nova = processar_item(
+            aba, valores, pasta_url, resposta_nova, sem_pdf = processar_item(
                 detalhes, drive, pasta_raiz, args.dry_run, sep, classificar_tudo)
+            if sem_pdf:
+                # sem nenhum PDF de resposta arquivado, a pasta não prova resposta:
+                # nada vai à planilha (tenta de novo na próxima execução)
+                raise RuntimeError("nenhum PDF de resposta arquivado — nada gravado")
 
             # Item que já tem Resposta na planilha: só vai ao log/e-mail se chegou
             # PDF de resposta novo no Drive (sinal robusto, imune ao reformato de
@@ -1044,8 +1146,8 @@ def main():
             print(f"  ERRO no cod={item['cod']}: {e} — pulando.", file=sys.stderr)
             continue
 
-    print(f"Concluído: {processados} itens processados, {falhas} falha(s).",
-          file=sys.stderr)
+    print(f"Concluído: {processados} itens processados, {falhas} falha(s), "
+          f"{fora_do_escopo} fora das abas (moção, convite…).", file=sys.stderr)
 
     if not args.dry_run and log_entradas:
         # Log e e-mail são passos secundários: o trabalho útil (Drive + planilha)

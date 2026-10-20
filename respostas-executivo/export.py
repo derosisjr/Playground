@@ -128,7 +128,7 @@ def ler_aba(aba: str) -> tuple[list, list, list]:
         return (
             sheets.spreadsheets()
             .values()
-            .get(spreadsheetId=sheet_id, range=f"'{aba}'!A1:Z", valueRenderOption=render)
+            .get(spreadsheetId=sheet_id, range=f"'{aba}'", valueRenderOption=render)
             .execute()
             .get("values", [])
         )
@@ -182,10 +182,11 @@ def montar_itens(valores: list, formulas: list, brutos: list) -> list[dict]:
         linha_bruta = brutos[n] if n < len(brutos) else []
         url = _url_resposta(campo(linha_formula, c_resp))
         # `situacao` distingue resposta de mérito de mero trâmite (pedido de prazo,
-        # ofício de encaminhamento). Antes do backfill a coluna está vazia — aí vale
-        # o critério antigo, "tem pasta no Drive".
+        # ofício de encaminhamento). Pasta no Drive sem veredito é "a classificar", não
+        # "respondido": pasta criada sem PDF de resposta (ou com PDF que ainda não deu
+        # para ler) não prova resposta de mérito — como nas indicações.
         situacao = campo(linha, c_situacao) or (
-            cls.RESPONDIDO if url else cls.PENDENTE
+            A_CLASSIFICAR if url else cls.PENDENTE
         )
         data_sessao = _data(bruto(linha_bruta, c_sessao))
         itens.append(

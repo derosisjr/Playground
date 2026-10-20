@@ -28,9 +28,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import classificar as cls  # noqa: E402
 from index import (  # noqa: E402
     ABA_INDICACOES, ABA_REQUERIMENTOS, COL_SITUACAO,
-    _col_letra, _google_services, _idx_coluna_numero, _idx_header, _norm_num,
+    _col_letra, _google_services, _idx_coluna_numero, _idx_header,
     garantir_colunas, listar_arquivos_pasta, listar_subpastas,
 )
+from planilha import numero_canonico  # noqa: E402
 
 # Acima disto, não baixa: ofício de trâmite é sempre pequeno.
 LIMITE_DOWNLOAD = 1_000_000
@@ -142,13 +143,14 @@ def carregar_linhas(sheets, sheet_id: str) -> dict[str, dict]:
     for aba in (ABA_REQUERIMENTOS, ABA_INDICACOES):
         cab = garantir_colunas(sheets, sheet_id, aba)
         valores = sheets.spreadsheets().values().get(
-            spreadsheetId=sheet_id, range=f"'{aba}'!A1:Z",
+            spreadsheetId=sheet_id, range=f"'{aba}'",
         ).execute().get("values", [])
         idx_num = _idx_coluna_numero(cab)
         mapa = {}
         for n, linha in enumerate(valores[1:], start=2):
-            if idx_num >= 0 and len(linha) > idx_num and linha[idx_num].strip():
-                mapa[_norm_num(linha[idx_num])] = n
+            num = numero_canonico(linha[idx_num]) if 0 <= idx_num < len(linha) else None
+            if num:
+                mapa[num] = n
         indice[aba] = {"col_situacao": _idx_header(cab, COL_SITUACAO), "mapa": mapa}
     return indice
 
@@ -206,7 +208,7 @@ def main() -> None:
 
         if not args.dry_run:
             info = indice.get(aba, {})
-            linha = info.get("mapa", {}).get(_norm_num(numero))
+            linha = info.get("mapa", {}).get(numero_canonico(numero))
             if not linha:
                 sem_linha.append(f"{aba}:{numero}")
                 continue

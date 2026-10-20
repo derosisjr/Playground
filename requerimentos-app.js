@@ -13,6 +13,7 @@ const ROTULOS = {
   respondido: "Resposta ↗",
   so_prorrogacao: "Prazo prorrogado ↗",
   so_encaminhamento: "Só encaminhamento ↗",
+  a_classificar: "Resposta a classificar ↗",
 };
 // Coluna "Situação": rótulos públicos da classificação (espelho de ROTULOS em
 // respostas-executivo/classificar.py). Antes a coluna mostrava o "Status atual"
@@ -21,6 +22,7 @@ const SITUACAO_ROTULO = {
   respondido: "Respondido",
   so_prorrogacao: "Prazo prorrogado",
   so_encaminhamento: "Só encaminhamento",
+  a_classificar: "Resposta a classificar",
   pendente: "Sem resposta",
 };
 
