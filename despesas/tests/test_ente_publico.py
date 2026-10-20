@@ -51,6 +51,26 @@ def test_nomes_reais_publicos_continuam_ente():
         assert eh_ente_publico(nome), nome
 
 
+def test_judiciario_e_ente_publico():
+    # decisão do usuário (2026-10-20): o TJ-SP contava como fornecedor privado ("Só fornecedores
+    # privados" no caminho do dinheiro, modo da aba Favorecidos) — nomes reais da base
+    for nome in [
+        "SÃO PAULO TRIBUNAL DE JUSTIÇA",
+        "TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP",
+        "Tribunal Regional do Trabalho da 15 Região",
+        "TRIBUNAL REGIONAL FEDERAL 3 REGIAO",
+        "SUPERIOR TRIBUNAL DE JUSTICA",
+        "Justica Federal de Primeiro Grau em Sao Paulo",
+    ]:
+        assert eh_ente_publico(nome), nome
+    for nome in [
+        "CAMARA E TRIBUNAL ARBITRAL DE SANTOS",          # arbitragem é privada
+        "TRIBUNAL DE JUSTICA DESPORTIVA DO FUTEBOL",      # órgão de federação esportiva
+        "EDITORA FORUM LTDA",
+    ]:
+        assert not eh_ente_publico(nome), nome
+
+
 def test_fundacoes_duvidosas_seguem_como_ente_ate_decisao():
     # pendentes de decisão do usuário (2026-10): mantêm o comportamento anterior
     assert len(FUNDACOES_DUVIDOSAS) == 4

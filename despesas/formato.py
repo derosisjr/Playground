@@ -55,7 +55,11 @@ def pct(novo, velho) -> str:
 #      públicas (SETTAPORT e FCTH, privadas, entravam pelo nome);
 #   4. marcadores públicos (_ENTE_RE): FUNDO só seguido de qualificador público e
 #      "ESTADO DE SÃO PAULO" só com marcador estatal antes (governo, secretaria,
-#      polícia, companhia estadual…).
+#      polícia, companhia estadual…);
+#   5. Judiciário (decisão do usuário, 2026-10-20): todo TRIBUNAL e a Justiça Federal/do
+#      Trabalho/Eleitoral/Militar — "SÃO PAULO TRIBUNAL DE JUSTIÇA" (R$ 116 mi no mandato,
+#      depósitos e custas) não tinha "ESTADO DE SÃO PAULO" depois do marcador e contava como
+#      fornecedor privado; tribunal arbitral e de justiça desportiva são privados.
 _ENTE_EXPLICITO_RE = re.compile(r"COMPANHIA DE ENGENHARIA DE TRAFEGO|\bPRODESAN\b|\bCOHAB\b")
 
 _ENTE_RE = re.compile(
@@ -70,6 +74,7 @@ _ENTE_RE = re.compile(
     r"\b(?:GOVERNO|FAZENDA|TRIBUNAL|POLICIA|BOMBEIROS|DEPARTAMENTO|PROCURADORIA|DEFENSORIA|ASSEMBLEIA|"
     r"COMPANHIA|CIA)\b.*\bESTADO DE SAO PAULO|"
     r"FUNDO DE GARANTIA|FGTS|PASEP|"
+    r"\bTRIBUNAL\b(?!.*\b(?:ARBITR|DESPORTIV))|\bJUSTICA (?:FEDERAL|DO TRABALHO|ELEITORAL|MILITAR)\b|"
     r"\bSECRETARIA\b")   # órgãos (ex.: SECRETARIA DE TURISMO E VIAGENS, do Estado)
 
 # Fundações PÚBLICAS conhecidas na base (o nome casa por trecho).
