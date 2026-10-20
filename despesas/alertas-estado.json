@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-19",
+ "atualizado_em": "2026-10-20",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -96,11 +96,6 @@
    "primeiro_em": "2026-09-29",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
-  },
-  "3c38294561e4": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "pico_favorecido",
-   "titulo": "Pico de pagamento a favorecido: SÃO PAULO TRIBUNAL DE JUSTIÇA em 2025-07"
   },
   "3339484d5ef1": {
    "primeiro_em": "2026-09-29",
@@ -266,11 +261,6 @@
    "primeiro_em": "2026-09-29",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: DIAS CONSULTORIA LTDA"
-  },
-  "be3142b9309d": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP"
   },
   "da0c8c96cfa9": {
    "primeiro_em": "2026-09-29",
@@ -1401,11 +1391,6 @@
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 4 empenhos distintos a COLOPLAST DO BRASIL LTDA (2025)"
-  },
-  "a381aa74c080": {
-   "primeiro_em": "2026-10-18",
-   "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 7 empenhos distintos a TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP (2025)"
   },
   "a8347840ee1b": {
    "primeiro_em": "2026-10-18",
@@ -3380,6 +3365,24 @@
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: CONSTRUTORA ARMADA EIRELI",
    "resolvido_em": "2026-10-17"
+  },
+  "3c38294561e4": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: SÃO PAULO TRIBUNAL DE JUSTIÇA em 2025-07",
+   "resolvido_em": "2026-10-20"
+  },
+  "be3142b9309d": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP",
+   "resolvido_em": "2026-10-20"
+  },
+  "a381aa74c080": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a TRIBUNAL REGIONAL DO TRABALHO DA 2ª REGIÃO - SP (2025)",
+   "resolvido_em": "2026-10-20"
   }
  }
 }
