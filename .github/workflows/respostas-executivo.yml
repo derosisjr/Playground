@@ -3,6 +3,9 @@ name: Respostas do Executivo
 on:
   schedule:
     - cron: "31 8 * * 1-5"  # 08:31 UTC = 05:31 BRT, dias úteis (minuto quebrado p/ evitar pico)
+    # 2ª passada (11:31 BRT): pega o dia em que a Câmara recusou conexão de manhã. Sem
+    # novidade, só confere; com a marca de aviso na pasta, nada é avisado duas vezes.
+    - cron: "31 14 * * 1-5"
   workflow_dispatch:
     inputs:
       ano:
@@ -25,9 +28,25 @@ on:
         description: "Enviar e-mail resumo (false p/ backfill silencioso)"
         required: false
         default: "true"
+      planilha:
+        description: "Onde gravar: producao ou teste (cópia de ensaio; sem e-mail e sem publicar)"
+        required: false
+        type: choice
+        options: [producao, teste]
+        default: producao
+      planejar:
+        description: "Só planejar (true): lê tudo em modo somente leitura e mostra as contagens"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
+
+# Uma execução por vez na planilha de controle (agendada, manual ou de teste): duas varreduras
+# simultâneas gravariam o mesmo pedido duas vezes.
+concurrency:
+  group: planilha-controle
+  cancel-in-progress: false
 
 # UTF-8 como codificação padrão do Python (vira o padrão no 3.15, out/2026):
 # os crawlers lidam com páginas em latin-1 e campos UTF-8 embutidos — sem isto,
@@ -39,7 +58,8 @@ jobs:
   arquivar-respostas:
     runs-on: ubuntu-latest
     # 35 min: além de varrer ~900 páginas, a rotina agora rebaixa os PDFs dos itens
-    # sem veredito de mérito para classificá-los (ver classificar.py).
+    # sem veredito de mérito para classificá-los (ver classificar.py). A varredura para
+    # sozinha aos 28 (--orcamento-min) para gravar, registrar o log e mandar o e-mail antes.
     timeout-minutes: 35
 
     steps:
@@ -70,17 +90,21 @@ jobs:
       - name: Arquivar respostas no Drive e atualizar planilha
         env:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          # planilha=teste: cópia de ensaio (Arquivo → Fazer uma cópia) e pasta de teste no Drive
+          SHEET_ID: ${{ github.event.inputs.planilha == 'teste' && secrets.SHEET_ID_TESTE || secrets.SHEET_ID }}
+          DRIVE_FOLDER_ID: ${{ github.event.inputs.planilha == 'teste' && secrets.DRIVE_FOLDER_ID_TESTE || secrets.DRIVE_FOLDER_ID }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RESPOSTAS_EMAIL_TO: ${{ secrets.RESPOSTAS_EMAIL_TO }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}  # reserva do index.py quando RESPOSTAS_EMAIL_TO falta
           # inputs sempre via env (nunca ${{ }} dentro de run:) — evita injeção de shell
           ANO_INPUT: ${{ github.event.inputs.ano }}
           FORCAR_INPUT: ${{ github.event.inputs.forcar }}
           LIMITE_INPUT: ${{ github.event.inputs.limite }}
           CODS_INPUT: ${{ github.event.inputs.cods }}
           EMAIL_INPUT: ${{ github.event.inputs.email }}
+          PLANILHA_INPUT: ${{ github.event.inputs.planilha }}
+          PLANEJAR_INPUT: ${{ github.event.inputs.planejar }}
         run: |
           ANO_ARG=""
           if [ -n "$ANO_INPUT" ]; then
@@ -101,10 +125,16 @@ jobs:
           # E-mail ligado por padrão (inclusive no agendamento); só desliga quando
           # o disparo manual passa email=false (ex.: backfill silencioso).
           EMAIL_ARG="--email"
-          if [ "$EMAIL_INPUT" = "false" ]; then
-            EMAIL_ARG=""
+          if [ "$EMAIL_INPUT" = "false" ] || [ "$PLANILHA_INPUT" = "teste" ]; then
+            EMAIL_ARG=""  # ensaio na cópia nunca manda e-mail aos destinatários reais
           fi
-          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG $CODS_ARG $EMAIL_ARG
+          PLANEJAR_ARG=""
+          if [ "$PLANEJAR_INPUT" = "true" ]; then
+            PLANEJAR_ARG="--planejar"
+          fi
+          # Sai 1 (busca vazia/planilha ilegível) ou 2 (item com erro, gravação, log ou e-mail
+          # que falhou, orçamento esgotado): o job fica vermelho e o alerta de falhas abre a issue.
+          python respostas-executivo/index.py $ANO_ARG $FORCAR_ARG $LIMITE_ARG $CODS_ARG $EMAIL_ARG $PLANEJAR_ARG
 
       # Exporta a aba "requerimentos" da planilha para o JSON do painel estático e
       # commita no repo (Pages serve o requerimentos-index.json da raiz).
@@ -114,7 +144,8 @@ jobs:
       # continua vermelho pela falha do crawler. Testes vermelhos ainda bloqueiam.
       - name: Exportar e commitar requerimentos-index.json
         id: export
-        if: ${{ !cancelled() && steps.testes.outcome == 'success' }}
+        # ensaio na cópia e plano só leitura não publicam nada
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' && github.event.inputs.planilha != 'teste' && github.event.inputs.planejar != 'true' }}
         env:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -134,7 +165,7 @@ jobs:
       # dos requerimentos, e vice-versa. O job fica vermelho do mesmo jeito.
       - name: Exportar indicacoes-index.json
         id: export_indicacoes
-        if: ${{ !cancelled() && steps.testes.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.testes.outcome == 'success' && github.event.inputs.planilha != 'teste' && github.event.inputs.planejar != 'true' }}
         env:
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
