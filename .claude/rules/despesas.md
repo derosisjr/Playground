@@ -468,7 +468,13 @@ contém "Fundação de Apoio", LTDA/EIRELI/ME/EPP) + exceções nominais (AFIP, 
 FUNDAÇÃO só pela lista curada `FUNDACOES_PUBLICAS` (FAMS, Pró-Esporte/FUPES, FUNAP, FUB, FUNAPE);
 FUNDO só com qualificador público (municipal/estadual/nacional/federal/penitenciário/
 previdenciário/social de solidariedade); "ESTADO DE SÃO PAULO" só com marcador estatal antes
-(governo, secretaria, polícia, bombeiros, companhia…). Saíram de `entes_publicos` (13 identidades em
+(governo, secretaria, polícia, bombeiros, companhia…). **Judiciário** (decisão do usuário,
+2026-10-20): todo TRIBUNAL — menos arbitral e de justiça desportiva, privados — e a Justiça
+Federal/do Trabalho/Eleitoral/Militar. "SÃO PAULO TRIBUNAL DE JUSTIÇA" (R$ 116 mi no mandato) não
+tinha "ESTADO DE SÃO PAULO" depois do marcador e contava como fornecedor privado ("Só fornecedores
+privados" do caminho do dinheiro e da aba Favorecidos); mudaram 6 identidades (TJ-SP, TRT-2, TRT-15,
+TRF-3, STJ, Justiça Federal) e saíram os falsos alertas de pico (TJ-SP, jul/2025) e de crescimento
+(TRT-2) e o candidato de fracionamento (sentenças pagas ao TRT-2). Saíram de `entes_publicos` (13 identidades em
 2026-10-17): AFIP, ANEPREM, FAP-UNIFESP, FUSP, SETTAPORT, FCTH, FEAS, FUNDIC, Federação de Tênis de
 Mesa, Associação de Lutas, associações de secretários/secretarias e APRECESP. **Pendentes de decisão
 do usuário** (`FUNDACOES_DUVIDOSAS`, seguem como ente até lá): Pinacoteca Benedito Calixto, CENEP,
