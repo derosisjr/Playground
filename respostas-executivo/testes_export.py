@@ -61,14 +61,17 @@ class TestExportPublico(unittest.TestCase):
         ]))
         self.assertEqual([i["numero"] for i in itens], ["4386/2026"])
 
-    def test_situacao_vazia_cai_no_criterio_antigo(self):
+    def test_pasta_sem_veredito_e_a_classificar_nao_respondido(self):
+        # pasta no Drive não prova resposta de mérito (pode ter sido criada sem PDF de
+        # resposta): até out/2026 ela virava "respondido"
         itens = montar_itens(*_aba([
-            _linha("1/2026", resposta=LINK),   # tem pasta no Drive
+            _linha("1/2026", resposta=LINK),   # tem pasta no Drive, sem situação
             _linha("2/2026"),                  # não tem
         ]))
-        self.assertEqual([i["situacao"] for i in itens], ["respondido", "pendente"])
-        self.assertEqual([i["respondido"] for i in itens], [True, False])
+        self.assertEqual([i["situacao"] for i in itens], ["a_classificar", "pendente"])
+        self.assertEqual([i["respondido"] for i in itens], [False, False])
         self.assertEqual(itens[0]["url_resposta"], "https://drive.google.com/drive/folders/abc")
+        self.assertTrue(itens[0]["vence_em"])  # sem mérito, segue na conta do prazo
 
     def test_situacao_da_planilha_prevalece(self):
         itens = montar_itens(*_aba([

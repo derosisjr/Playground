@@ -60,6 +60,31 @@ mexe em nota/comentário e trata coluna sem título com conteúdo como da equipe
   vai para `requerimentos` e para a pasta `REQUERIMENTO_<nº>` (`aba_do_item`, `processar_item`).
 - `Log diário`: 19.317 linhas (~570 requerimentos/dia até 12/10, o reprocessamento já corrigido).
 
+## Correções do robô (R1 e R2, out/2026)
+
+- **Só requerimento e indicação vão às abas** (`aba_do_item` devolve None para moção, convite,
+  homenagem…; o item conta como "fora das abas", não como falha). Título sem tipo (layout da
+  Câmara mudou) e número fora do padrão contam como falha.
+- **"Respondido" falso:** o PDF já arquivado é rebaixado só para classificar. Se a Câmara não
+  o entrega, vale a cópia do Drive (`baixar_drive`); sem nenhuma das duas, o item fica **sem
+  veredito nesta passada** — antes virava INDETERMINADO, que conta como mérito, e o item nunca
+  mais era reclassificado. A "falha segura" continua só para PDF lido sem camada de texto.
+- **Só PDF de verdade** (`_eh_pdf`: `%PDF` no início): página de erro em HTML não sobe ao Drive.
+- **Sem nenhum PDF de resposta arquivado, nada vai à planilha** (`processar_item` devolve
+  `sem_pdf`; o item conta como falha e é tentado de novo na execução seguinte).
+- **`carregar_planilha` aborta** (RuntimeError, nada gravado) se não ler uma aba, se ela vier
+  com menos de `MIN_LINHAS` (100) linhas ou sem a coluna do número — o mapa vazio de 20/08/2026
+  criou as 321 linhas repetidas. Chave = `numero_canonico`; número repetido: vale a última
+  linha (a que o robô mantém) e o total vai para o aviso.
+- **Leitura sem limite de coluna** (`'aba'` em vez de `A1:Z`, também no export e no
+  reclassificar) e `_col_letra` além de Z.
+- **`garantir_colunas`** põe a coluna nova depois da última coluna com QUALQUER conteúdo
+  (coluna sem título com anotação é da equipe), grava só as células novas do cabeçalho e
+  acrescenta colunas à grade se faltar (`appendDimension`).
+- **Export de requerimentos:** pasta no Drive sem veredito sai como **`a_classificar`** (painel:
+  "Resposta a classificar"), não mais "respondido" — 5 itens em 19/10/2026 (2611, 3611, 3688,
+  5313/2025 e 3272/2026); continuam na conta do prazo.
+
 ## Cobrança do Executivo — prazo da Lei Orgânica (out/2026)
 
 - **Regra (`prazos.py`)**: LOM art. 58, XVIII — informações "dentro de quinze dias (...), salvo
@@ -193,8 +218,9 @@ resposta`, que na prática coincide na maioria dos casos (o bloco mais recente c
 justamente o de mérito).
 
 **Painel sem classificação na base (2026-10):** enquanto nenhuma linha do índice tiver
-situação além de `respondido`/`pendente` **e** nenhuma `data_resposta_merito`, o export está no
-fallback "tem pasta no Drive" — e o painel (`baseClassificada()` em `requerimentos-app.js`) **não
+situação além de `respondido`/`pendente` **e** nenhuma `data_resposta_merito`, a base não foi
+classificada (desde R1, pasta sem veredito sai `a_classificar`, que já conta como classificada) —
+e o painel (`baseClassificada()` em `requerimentos-app.js`) **não
 fala em mérito**: rotula "com algum retorno da Prefeitura (inclui prorrogações; classificação de
 mérito pendente)", troca o texto do topo, os rótulos do filtro e some com os filtros de trâmite.
 Basta uma linha classificada para voltar à métrica de mérito.
