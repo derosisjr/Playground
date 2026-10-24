@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-23",
+ "atualizado_em": "2026-10-24",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1290,7 +1290,7 @@
   "5260e68d3d18": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 107 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 109 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
   },
   "04c7404b6a59": {
    "primeiro_em": "2026-10-18",
@@ -1770,7 +1770,7 @@
   "172122219722": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 24 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 25 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
   },
   "97b8a7eb077d": {
    "primeiro_em": "2026-10-18",
@@ -1845,7 +1845,7 @@
   "dfb255c19311": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 70 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 72 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
   },
   "6eccdeeb0bc2": {
    "primeiro_em": "2026-10-18",
@@ -2165,7 +2165,7 @@
   "30d5d3b7907f": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 66 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 69 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "91db64a1c854": {
    "primeiro_em": "2026-10-18",
@@ -2180,7 +2180,7 @@
   "6c01e21e90cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 63 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 64 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "e7d445fd6e3b": {
    "primeiro_em": "2026-10-18",
@@ -2280,7 +2280,7 @@
   "2b8ae4ae630b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 27 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 28 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
   },
   "553cb27201fd": {
    "primeiro_em": "2026-10-18",
@@ -2545,7 +2545,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 106 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 108 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -3240,7 +3240,7 @@
   "5a2c1aa57f33": {
    "primeiro_em": "2026-10-20",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 13 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
   },
   "3482bc2a75bf": {
    "primeiro_em": "2026-10-20",
@@ -3296,6 +3296,16 @@
    "primeiro_em": "2026-10-23",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 23 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
+  },
+  "2881adf791ac": {
+   "primeiro_em": "2026-10-24",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO NACIONAL DO SEGURO SOCIAL"
+  },
+  "0cf064b5740a": {
+   "primeiro_em": "2026-10-24",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Liquidação paga duas vezes: BARBARA MENDONCA BRASIL                           "
   }
  },
  "resolvidos": {
