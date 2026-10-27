@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-24",
+ "atualizado_em": "2026-10-27",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1310,7 +1310,7 @@
   "b8e5c665f0cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 20 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a ROSA MARIA DOS PASSOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
   },
   "0a662559872a": {
    "primeiro_em": "2026-10-18",
@@ -1845,7 +1845,7 @@
   "dfb255c19311": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 72 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 73 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
   },
   "6eccdeeb0bc2": {
    "primeiro_em": "2026-10-18",
@@ -3306,6 +3306,16 @@
    "primeiro_em": "2026-10-24",
    "tipo": "pago_acima_liquidado",
    "titulo": "Liquidação paga duas vezes: BARBARA MENDONCA BRASIL                           "
+  },
+  "b33d4ef9c973": {
+   "primeiro_em": "2026-10-27",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a NUCLEO DE REABIL.DO EXCEP. S VIC. PAULO - NUREX (2026)"
+  },
+  "18d9bc823036": {
+   "primeiro_em": "2026-10-27",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a NUCLEO DE REABIL.DO EXCEP. S VIC. PAULO - NUREX (2026)"
   }
  },
  "resolvidos": {
