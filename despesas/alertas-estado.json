@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-29",
+ "atualizado_em": "2026-10-30",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -360,7 +360,7 @@
   "9e98a7024864": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 45% da função 28 - ENCARGOS ESPECIAIS"
+   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 44% da função 28 - ENCARGOS ESPECIAIS"
   },
   "0afbe01ebfb8": {
    "primeiro_em": "2026-09-29",
@@ -1275,12 +1275,12 @@
   "b1b710aa3520": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 15 empenhos distintos a VIAÇÃO PIRACICABANA S A (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a VIAÇÃO PIRACICABANA S A (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "456b4b025b40": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 9 empenhos distintos a FEDERACAO PAULISTA DE BASKETEBALL (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a FEDERACAO PAULISTA DE BASKETEBALL (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "fba0d50dda4e": {
    "primeiro_em": "2026-10-18",
@@ -1650,7 +1650,7 @@
   "96fc86fc6bee": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 11 empenhos distintos a JULEAN DECORACOES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a JULEAN DECORACOES LTDA (2026)"
   },
   "21eab6d79e53": {
    "primeiro_em": "2026-10-18",
@@ -1770,7 +1770,7 @@
   "172122219722": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 25 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 27 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
   },
   "97b8a7eb077d": {
    "primeiro_em": "2026-10-18",
@@ -1845,7 +1845,7 @@
   "dfb255c19311": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 83 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 86 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
   },
   "6eccdeeb0bc2": {
    "primeiro_em": "2026-10-18",
@@ -1955,7 +1955,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 64 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 66 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -1995,7 +1995,7 @@
   "703b7e8c49e3": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 61 empenhos distintos a TALKER REPRESENTACAO COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 63 empenhos distintos a TALKER REPRESENTACAO COMERCIAL LTDA (2026)"
   },
   "c78b573787cf": {
    "primeiro_em": "2026-10-18",
@@ -2080,7 +2080,7 @@
   "4a512278a03b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 25 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 27 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
   },
   "c4374c034751": {
    "primeiro_em": "2026-10-18",
@@ -2105,7 +2105,7 @@
   "f0a93b7095a5": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 20 empenhos distintos a OCTO FARMACO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a OCTO FARMACO LTDA (2026)"
   },
   "84377b00eac2": {
    "primeiro_em": "2026-10-18",
@@ -2125,7 +2125,7 @@
   "2932ae19d176": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 17 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2026)"
   },
   "6af1f3e119b9": {
    "primeiro_em": "2026-10-18",
@@ -2180,7 +2180,7 @@
   "6c01e21e90cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 64 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 66 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "e7d445fd6e3b": {
    "primeiro_em": "2026-10-18",
@@ -2515,7 +2515,7 @@
   "82978004ad9b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 38 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 39 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "d932097cf5f2": {
    "primeiro_em": "2026-10-18",
@@ -2545,7 +2545,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 108 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 109 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -2650,7 +2650,7 @@
   "e5e2663a6f40": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 19 empenhos distintos a PERSIANAS NOVA AMERICA LTDA - ME (2026)"
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a PERSIANAS NOVA AMERICA LTDA - ME (2026)"
   },
   "2b4c94d7c33a": {
    "primeiro_em": "2026-10-18",
@@ -2660,7 +2660,7 @@
   "dad6d6a87699": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 9 empenhos distintos a BLUE PRINT IMPRESSOES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BLUE PRINT IMPRESSOES LTDA (2026)"
   },
   "e28e1f299f0a": {
    "primeiro_em": "2026-10-18",
@@ -2680,7 +2680,7 @@
   "829f3dcb0a92": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 32 empenhos distintos a OESTE SUL CIRURGICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 33 empenhos distintos a OESTE SUL CIRURGICA LTDA (2026)"
   },
   "675239ddf1bc": {
    "primeiro_em": "2026-10-18",
@@ -2735,7 +2735,7 @@
   "af11b6f8eae7": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BRUNA MUSETTI DOS SANTOS (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a BRUNA MUSETTI DOS SANTOS (2026)"
   },
   "96fd57d20028": {
    "primeiro_em": "2026-10-18",
@@ -2750,7 +2750,7 @@
   "7ab04a8c08c7": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a GABRIEL MOTA ZAMARIOLLI TAVARES (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a GABRIEL MOTA ZAMARIOLLI TAVARES (2026)"
   },
   "27178a1655d0": {
    "primeiro_em": "2026-10-18",
@@ -2785,12 +2785,12 @@
   "68e166562c60": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a Victor Monteiro Guidini Caldas (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a Victor Monteiro Guidini Caldas (2026)"
   },
   "73bd18279a1d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 8 empenhos distintos a JENIFER MAFRA SOUSA LUZ (2026)"
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a JENIFER MAFRA SOUSA LUZ (2026)"
   },
   "4ebc13175341": {
    "primeiro_em": "2026-10-18",
@@ -2800,12 +2800,12 @@
   "4c2cd63abd64": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BIANCA MULLER GOMES (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a BIANCA MULLER GOMES (2026)"
   },
   "8876263c8b90": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PATRICIA DA SILVA SOARES (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a PATRICIA DA SILVA SOARES (2026)"
   },
   "6e4a522d97d1": {
    "primeiro_em": "2026-10-18",
@@ -2815,7 +2815,7 @@
   "6350f9404d3f": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a MARIANA GOMEZ BLANCO NASCIMENTO  (2026)"
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a MARIANA GOMEZ BLANCO NASCIMENTO  (2026)"
   },
   "cff92ac98839": {
    "primeiro_em": "2026-10-18",
@@ -2830,12 +2830,12 @@
   "509f9af49a9d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a HELLEN PRISCILA DINIZ (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a HELLEN PRISCILA DINIZ (2026)"
   },
   "89fcf803d322": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a VITORIA SANTOS DE SOUZA (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a VITORIA SANTOS DE SOUZA (2026)"
   },
   "8d61d7c525d9": {
    "primeiro_em": "2026-10-18",
@@ -2845,12 +2845,12 @@
   "b71a6ee06907": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 8 empenhos distintos a NAYARA ARAUJO MICHELETTO (2026)"
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a NAYARA ARAUJO MICHELETTO (2026)"
   },
   "ec3043ed7209": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a FABIANA DANIELLI DINIZ (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a FABIANA DANIELLI DINIZ (2026)"
   },
   "6381a1708b99": {
    "primeiro_em": "2026-10-18",
@@ -2860,7 +2860,7 @@
   "8a7e9e10bbbc": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 7 empenhos distintos a RODRIGO MARTIN PEREIRA (2026)"
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a RODRIGO MARTIN PEREIRA (2026)"
   },
   "a35c1488e38a": {
    "primeiro_em": "2026-10-18",
@@ -2870,12 +2870,12 @@
   "341b5c2b945d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a Ingrid Naomi Pires Nozimoto (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a Ingrid Naomi Pires Nozimoto (2026)"
   },
   "6d3a0a50f03c": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a LUIZ CLAUDIO RODRIGUES DO PRADO (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a LUIZ CLAUDIO RODRIGUES DO PRADO (2026)"
   },
   "08322eaf33c1": {
    "primeiro_em": "2026-10-18",
@@ -2895,7 +2895,7 @@
   "8f748911d70c": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a KETTY HELLEN SOUZA DO NASCIMENTO CARRIL (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a KETTY HELLEN SOUZA DO NASCIMENTO CARRIL (2026)"
   },
   "59ab06c3cb23": {
    "primeiro_em": "2026-10-18",
@@ -2905,7 +2905,7 @@
   "6e5a6ca61248": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a PATRICIA FERNANDES DUARTE DOI (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a PATRICIA FERNANDES DUARTE DOI (2026)"
   },
   "da1de4431ec2": {
    "primeiro_em": "2026-10-18",
@@ -3331,6 +3331,11 @@
    "primeiro_em": "2026-10-29",
    "tipo": "pago_acima_liquidado",
    "titulo": "Pago acima do liquidado: MARCELO M.MONTEIRO PNEUMOLOGIA CLINICA MEDICA"
+  },
+  "6f4a881db681": {
+   "primeiro_em": "2026-10-30",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
   }
  },
  "resolvidos": {
