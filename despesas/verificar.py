@@ -18,7 +18,9 @@ partição e por conservação, executadas sobre o que o export ACABOU de gravar
      e caminho do dinheiro (cada nível soma o pago do ano sem o extra-orçamentário);
   5. favorecidos: soma do top-N ≤ total geral; cada dossiê existe e seu total bate
      com o ranking (raio-X e ranking coerentes);
-  6. piso de escala (o antigo "≥ R$ 4 bi"), mantido só como sanidade grosseira.
+  6. piso de escala (o antigo "≥ R$ 4 bi"), mantido só como sanidade grosseira;
+  7–8. casamento pagamento → empenho e conciliação com o TCE-SP: mês incompleto na
+     origem fora do acumulado do ano e do fim de exercício, sempre com alerta de dados.
 
 Sai 1 com a lista de falhas; 0 quando tudo passa. Uso:
     python despesas/verificar.py                 # artefatos do repo
@@ -34,7 +36,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(AQUI)
 PISO_TOTAL = 4_000_000_000     # sanidade grosseira (mandato completo ≈ R$ 8 bi)
 # Fração do pago de um mês cujo empenho não está na base. Histórico 2025–ago/2026:
-# 0–8% (globais de dezembro do exercício anterior).
+# 0–8% (empenhos de jan–fev/2025, meses que a origem publicou incompletos — ver a
+# conciliação com o TCE-SP).
 LIMITE_NAO_LOCALIZADO = 0.25
 PISO_NL_PAGO = 5_000_000      # meses com pago menor (ex.: mês corrente no dia 1) não contam
 TOL = 1.0                      # tolerância em R$ nas somas (arredondamento a 2 casas)
@@ -195,6 +198,40 @@ def verificar(raiz: str, tolerar_erros: bool = False) -> list[str]:
         if pago >= PISO_NL_PAGO and nl / pago > LIMITE_NAO_LOCALIZADO:
             falhas.append(f"{s['ano']}-{s['mes']:02d}: {nl / pago:.0%} do pago com empenho não localizado "
                           f"(limite {LIMITE_NAO_LOCALIZADO:.0%}) — formato do nº de empenho mudou na origem?")
+
+    # 8) conciliação com o TCE-SP: mês incompleto na origem fora das comparações
+    falhas += verificar_conciliacao(idx)
+    return falhas
+
+
+def verificar_conciliacao(idx: dict) -> list[str]:
+    """Os meses `incompletos_origem` (conciliação com o TCE-SP) não entram no acumulado do
+    ano nem na média do fim de exercício, e cada um tem o alerta de dados. Base ACIMA do
+    TCE só avisa (o Tribunal também recebe o mês aos poucos). Índice sem o bloco (export
+    anterior) não é falha."""
+    falhas = []
+    conc = (idx.get("cobertura") or {}).get("conciliacao_tce")
+    if conc is None:
+        return falhas
+    inc = set((idx.get("cobertura") or {}).get("incompletos_origem") or [])
+    if inc != {m["periodo"] for m in conc.get("meses") or [] if m.get("status") == "incompleto"}:
+        falhas.append("incompletos_origem difere dos meses com status 'incompleto' na conciliação")
+    yoy = (idx.get("resumo") or {}).get("yoy") or {}
+    mr = (idx.get("resumo") or {}).get("mes_ref") or {}
+    if yoy and mr:
+        janela = {f"{a}-{m:02d}" for a in (mr["ano"], mr["ano"] - 1) for m in range(1, mr["mes"] + 1)}
+        if (inc & janela) - set(yoy.get("excluidos") or []):
+            falhas.append(f"acumulado do ano compara mês incompleto na origem: {sorted((inc & janela) - set(yoy.get('excluidos') or []))}")
+    for ano, linha in (idx.get("fim_de_exercicio") or {}).items():
+        dentro = {p for p in inc if p.startswith(ano + "-") and int(p[5:7]) <= 11}
+        if dentro - set(linha.get("meses_excluidos") or []):
+            falhas.append(f"fim de exercício {ano}: média jan–nov inclui mês incompleto na origem")
+    alertados = {f"{a['filtro']['ano']}-{a['filtro']['mes']:02d}" for a in idx.get("alertas") or []
+                 if a.get("tipo") == "dados_incompleto_origem"}
+    if inc - alertados:
+        falhas.append(f"mês incompleto na origem sem alerta de dados: {sorted(inc - alertados)}")
+    for p in conc.get("acima") or []:
+        print(f"AVISO: {p} com a base acima do TCE-SP além do limite — duplicidade não descartada?", file=sys.stderr)
     return falhas
 
 

@@ -34,10 +34,18 @@ function serieDoAno() {
     : !(s.ano === hoje.getFullYear() && s.mes === hoje.getMonth() + 1)));
 }
 
+// meses do ano que a Prefeitura publicou incompletos (cobertura.incompletos_origem, conferidos
+// com o TCE-SP): o total soma o pouco que veio, mas o gráfico e o "mês mais leve" não os usam
+const incompletosDoAno = () => (DADOS.cobertura?.incompletos_origem || []).filter((p) => p.startsWith(ANO + "-"));
+const serieComparavel = () => {
+  const inc = incompletosDoAno();
+  return serieDoAno().filter((s) => !inc.includes(`${s.ano}-${String(s.mes).padStart(2, "0")}`));
+};
+
 // gráfico da série do ano desenhado progressivamente (canvas puro)
 function desenharSerie(progresso) {
   const cv = el("ch-serie");
-  const serie = serieDoAno();
+  const serie = serieComparavel();
   if (!serie.length) return;
   const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
   cv.width = w * dpr; cv.height = h * dpr;
@@ -96,22 +104,29 @@ function render() {
       `${d}/${m}/${a}; meses que o portal ainda está publicando ficam de fora · role para descer ↓`;
   }
 
-  // maior e menor mês
-  if (serieAno.length >= 2) {
-    const maior = serieAno.reduce((a, b) => (b.valor > a.valor ? b : a));
-    const menor = serieAno.reduce((a, b) => (b.valor < a.valor ? b : a));
-    // comparação com o mesmo período do ano anterior (resumo.yoy: jan–mês de referência)
+  // maior e menor mês — só entre os meses comparáveis (mês incompleto na origem seria o "mais leve")
+  const comparaveis = serieComparavel(), inc = incompletosDoAno();
+  const notaInc = inc.length
+    ? ` ${inc.map((p) => MESES_N[+p.slice(5, 7)]).join(" e ").replace(/^./, (c) => c.toUpperCase())} ` +
+      `${inc.length > 1 ? "vieram incompletos" : "veio incompleto"} do portal (conferido com o TCE-SP): ` +
+      "o total do ano fica abaixo do real" +
+      (comparaveis.length ? ` e o gráfico ${comparaveis[0].mes > 1 ? "começa em " + MESES_N[comparaveis[0].mes] : "pula esses meses"}.`
+        : ".") : "";
+  if (comparaveis.length >= 2) {
+    const maior = comparaveis.reduce((a, b) => (b.valor > a.valor ? b : a));
+    const menor = comparaveis.reduce((a, b) => (b.valor < a.valor ? b : a));
+    // comparação com o mesmo período do ano anterior (resumo.yoy: meses comparáveis até o de referência)
     const r = DADOS.resumo, yoy = r?.yoy;
     const comp = yoy && r.mes_ref?.ano === ANO && yoy.pct != null
-      ? ` No acumulado, ${Math.abs(yoy.pct)}% ${yoy.pct >= 0 ? "acima" : "abaixo"} do mesmo período de ${ANO - 1} ` +
-        `(${compacto(yoy.anterior)}).` : "";
+      ? ` No acumulado${yoy.excluidos?.length ? ` de ${yoy.periodo}` : ""}, ${Math.abs(yoy.pct)}% ` +
+        `${yoy.pct >= 0 ? "acima" : "abaixo"} do mesmo período de ${ANO - 1} (${compacto(yoy.anterior)}).` : "";
     el("t-serie").textContent =
       `O mês mais pesado foi ${MESES_N[maior.mes]} (${compacto(maior.valor)}); ` +
-      `o mais leve, ${MESES_N[menor.mes]} (${compacto(menor.valor)}).` + comp;
+      `o mais leve, ${MESES_N[menor.mes]} (${compacto(menor.valor)}).` + comp + notaInc;
   }
   // equivalente acessível do gráfico desenhado à mão (a regra: todo gráfico usa chartAcessivel)
-  Comum.chartAcessivel("ch-serie", `Gasto pago por mês em ${ANO}, meses completos. Total: ${compacto(total)}.`,
-    ["Mês", "Pago"], serieAno.map((s) => [`${MESES_N[s.mes]}/${s.ano}`, compacto(s.valor)]));
+  Comum.chartAcessivel("ch-serie", `Gasto pago por mês em ${ANO}, meses completos. Total: ${compacto(total)}.` + notaInc,
+    ["Mês", "Pago"], comparaveis.map((s) => [`${MESES_N[s.mes]}/${s.ano}`, compacto(s.valor)]));
 
   el("t-capita-sub").textContent =
     `É o gasto ${parcial ? "no ano até agora" : "do ano"} dividido por cada um dos ` +

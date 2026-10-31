@@ -495,9 +495,15 @@
               retido do salário do servidor e recolhido à Receita), com ou sem nº de empenho.</dd>
             <dt>Empenho não localizado na base</dt>
             <dd>Pagamento que o portal classifica como orçamentário, mas cujo nº de empenho não veio
-              no endpoint de empenhos (em geral empenhos globais emitidos antes do início da base,
-              em dezembro do exercício anterior). Não é tratado como restos a pagar nem como
+              no endpoint de empenhos (em geral empenho emitido num mês que a Prefeitura publicou
+              incompleto — ver abaixo). Não é tratado como restos a pagar nem como
               extra-orçamentário: fica visível como categoria própria.</dd>
+            <dt>Mês incompleto na origem</dt>
+            <dd>Mês que o portal da Prefeitura publicou pela metade. O painel confere cada mês com os
+              totais que o próprio município envia ao Tribunal de Contas (TCE-SP): quando o empenhado
+              ou o liquidado do portal fica mais de 5% abaixo, o mês é marcado com † — aparece
+              tracejado e fica fora das comparações (acumulado do ano, crescimento, picos, fim de
+              exercício). O dado do Tribunal não substitui o do portal.</dd>
             <dt>Movimentação × execução</dt>
             <dd><strong>Movimentação no período</strong> conta cada lançamento no mês da sua data
               (é a visão dos gráficos acima). <strong>Execução dos empenhos</strong> mostra os
@@ -861,6 +867,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=24"></script>
+    <script defer src="./despesas-app.js?v=25"></script>
   </body>
 </html>

@@ -109,6 +109,17 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
         fim_ly = date(ano - 1, fim_d.month, 28).isoformat()
     mes_ly = soma_pago(date(ano - 1, mes, 1).isoformat(), fim_ly)
     ano_ly = soma_pago(date(ano - 1, 1, 1).isoformat(), fim_ly)
+    # mês que a Prefeitura publicou incompleto (conciliação com o TCE-SP, a mesma do
+    # painel) sai do acumulado dos DOIS anos — senão o "vs. ano anterior" infla
+    cob = export.cobertura_conciliada(conn)
+    fora = sorted({m for (a, m) in export._incompletos(cob) if a in (ano, ano - 1) and m < mes})
+    ano_comp = None
+    if fora:
+        soma_mes = lambda a, m: q("SELECT COALESCE(SUM(valor),0) s FROM pagamentos WHERE ano=? AND mes=?",  # noqa: E731
+                                  a, m)[0]["s"]
+        ano_comp = {"atual": ano_atual - sum(soma_mes(ano, m) for m in fora),
+                    "anterior": ano_ly - sum(soma_mes(ano - 1, m) for m in fora),
+                    "periodo": export._rotulo_periodo([m for m in range(1, mes + 1) if m not in fora])}
 
     ident = export.preparar_identidades(conn)
     nome = lambda chave: export._fav_campos(ident, chave)["nome"]  # noqa: E731
@@ -136,16 +147,16 @@ def coletar(conn, dias: int, defasagem: int) -> dict:
         "ini": ini, "fim": fim, "dias": dias,
         "semana": semana, "semana_ant": semana_ant, "media_semanal": media_semanal,
         "mes_atual": mes_atual, "mes_ly": mes_ly, "mes_nome": fim_d.strftime("%m/%Y"),
-        "ano_atual": ano_atual, "ano_ly": ano_ly, "ano": ano,
+        "ano_atual": ano_atual, "ano_ly": ano_ly, "ano": ano, "ano_comp": ano_comp,
         "fav_publico": fav_publico[:TOP], "fav_demais": fav_demais[:TOP],
         "total_publico": total_publico, "total_demais": total_demais,
         "pagamentos": pagamentos, "funcoes": funcoes, "empenhos": empenhos,
         "alertas": selecionar_alertas(_todos := alertas_com_historico(conn, ident)),
         "alertas_total": _todos,
         "historico": HISTORICO_INFO,
-        "execucao": export.execucao_agregada(conn)["por_ano"].get(str(ano)),
+        "execucao": export.execucao_agregada(conn, cob)["por_ano"].get(str(ano)),
         "mes_completo": export._mes_completo_ate(conn),
-        "cobertura": export.cobertura(conn),
+        "cobertura": cob,
     }
 
 
@@ -156,7 +167,7 @@ def alertas_com_historico(conn, ident) -> list[dict]:
     """Alertas do export com o estado (novo/persistente) lido do arquivo de histórico,
     SEM regravá-lo (quem grava é o export, no pipeline)."""
     import json
-    cob = export.cobertura(conn)
+    cob = export.cobertura_conciliada(conn)
     lista = export.alertas(conn, ident, cob, export.execucao_agregada(conn, cob))
     estado = {}
     try:
@@ -244,8 +255,12 @@ def montar_html(d: dict) -> str:
               f"{pct(d['semana'], d['media_semanal'])} vs. média semanal do ano{aviso_semana}") +
         _card(f"Mês {d['mes_nome']}", compacto(d["mes_atual"]),
               f"{pct(d['mes_atual'], d['mes_ly'])} vs. ano anterior") +
-        _card(f"Acumulado {d['ano']}", compacto(d["ano_atual"]),
-              f"{pct(d['ano_atual'], d['ano_ly'])} vs. ano anterior")
+        (_card(f"Acumulado {d['ano']} ({d['ano_comp']['periodo']})", compacto(d["ano_comp"]["atual"]),
+               f"{pct(d['ano_comp']['atual'], d['ano_comp']['anterior'])} vs. ano anterior, "
+               f"sem os meses incompletos na origem")
+         if d.get("ano_comp") else
+         _card(f"Acumulado {d['ano']}", compacto(d["ano_atual"]),
+               f"{pct(d['ano_atual'], d['ano_ly'])} vs. ano anterior"))
     )
 
     # alertas: seleção por novidade e diversidade (ver selecionar_alertas)
@@ -330,6 +345,11 @@ def montar_html(d: dict) -> str:
     if cob.get("duplicidade_sistematica"):
         avisos.append(f"{len(cob['duplicidade_sistematica'])} partição(ões) vieram da origem em duplicidade "
                       f"sistemática (linhas idênticas contadas uma vez).")
+    if cob.get("incompletos_origem"):
+        inc = export._incompletos(cob)
+        avisos.append(f"{export._rotulo_meses(inc).capitalize()} {'vieram incompletos' if len(inc) > 1 else 'veio incompleto'} "
+                      f"do portal da Prefeitura (conferido com o TCE-SP) e {'ficam' if len(inc) > 1 else 'fica'} "
+                      f"fora das comparações.")
     bloco_avisos = (f'<p style="color:{MUTED};font-size:12px;margin:12px 0 0">{esc(" ".join(avisos))}</p>'
                     if avisos else "")
     sem = d["semana"] or 1

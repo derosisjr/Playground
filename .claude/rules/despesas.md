@@ -69,6 +69,47 @@ descarte fica em `controle_carga.descartados/soma_descartada/duplicidade`, em `l
 no bloco `cobertura` do índice e vira alerta de classe **inconsistência de dados** — nunca é
 silencioso.
 
+## Mês incompleto na origem — conciliação com o TCE-SP (2026-10)
+
+A API da Prefeitura publicou **jan/2025 pela metade** sem aviso: R$ 69 mi empenhados e 1.166
+pagamentos (R$ 12,7 mi) no portal, contra R$ 2,93 bi empenhados no TCE-SP — os empenhos globais do
+ano. Fev/2025 também veio parcial (liquidado sem restos 13,5% abaixo). Conferido ao vivo em
+2026-10-30: a origem ainda devolve o mesmo — é lacuna da Prefeitura, não do crawler. Sem marcar,
+o "Em resumo" dizia "+27% sobre 2025" (mar–set comparável: +11%), 3 alertas de crescimento eram
+artefato (Correios, Cortinas JF, Tarara), 7 meses viravam "fora do padrão" no gráfico, a
+publicidade "+71%" (comparável: +49%), o fim de exercício inflava (liquidado 1,64× → 1,48×) e a
+retrospectiva chamava janeiro de "mês mais leve".
+- **`despesas/tce.py`** baixa `transparencia.tce.sp.gov.br/api/json/despesas/santos/{ano}/{mes}`
+  (sem token; o que o município enviou ao AUDESP) e grava **`despesas/conciliacao-tce.json`**
+  (versionado, `indent=1`, só muda quando um número do TCE muda — cada mês leva `obtido_em`). Por
+  execução: meses sem referência + os 3 mais recentes (`--todos` rebaixa tudo). Totais sem a
+  **Câmara** (não está no portal da Prefeitura): empenhado líquido = Empenhado + Reforço −
+  Anulação; Valor Liquidado; Valor Pago (estornos negativos somados). TCE fora do ar: mantém o
+  estado e o workflow segue (`|| echo ::warning`).
+- **`export.conciliacao_tce` / `cobertura_conciliada`** (export E briefing usam a mesma): por mês,
+  base × TCE no **empenhado** e no **liquidado sem restos a pagar** (o TCE conta só o do
+  exercício — jan/2026 parecia 30% "acima" até tirar os R$ 92 mi de restos). Calibração (2025-03 a
+  2026-08): empenhado bate ao centavo; liquidado ≤ 2,87%. **Base abaixo além de `TCE_LIMITE` 5% (e
+  de `TCE_PISO` R$ 1 mi) = `incompleto`**; acima = `acima` (só informativo + aviso no `verificar`);
+  sem dado no TCE = `sem_referencia` (o TCE recebe com ~1–2 meses de atraso); posterior ao último
+  mês completo = `parcial`. O "Valor Pago" fica registrado mas não entra (difere 6–16% do pago sem
+  extra nos meses íntegros — outra semântica). Índice: `cobertura.conciliacao_tce` (mês a mês) e
+  **`cobertura.incompletos_origem`** (["2025-01", "2025-02"]).
+- **Só marca, não preenche** (decisão do usuário, 2026-10-30): o mês incompleto sai do acumulado
+  do ano (`resumo.yoy` ganha `periodo` "mar–set" e `excluidos`), da média de 12 meses, do
+  destaque de função, do crescimento YoY (mesma janela), dos picos (mensal e locais), do fim de
+  exercício (`meses_excluidos`; dezembro incompleto tira o ano), da comparação da publicidade
+  (`comparacao.periodo`), do valor mensal típico de PF (e o "início dentro da base" conta do 1º
+  mês íntegro); o ano não tem % de anulação (`anulacoes.por_ano[ano].incompleto_origem`) e a taxa
+  de execução não é validada (motivo declarado). Alerta **`dados_incompleto_origem`**
+  (inconsistência, média, sem teto) com os números dos dois lados.
+- Painel: `mesIncompleto()` — "†" no eixo, trecho tracejado com ponto vazado (`dividirParciais`
+  aceita meses fora da conta em qualquer posição; com só parciais no fim, a saída é a de antes),
+  nota com a prova na dica (portal × TCE), fora da média dos desvios e da média móvel;
+  calendário/diário com a mesma hachura/clareamento dos parciais e fora dos quintis da régua;
+  card, hero e retrospectiva escrevem o período comparável. `verificar.py` (bloco 8): incompleto
+  fora do acumulado e do fim de exercício e sempre com alerta.
+
 ## Identidade do favorecido (2026-09)
 
 O Portal TP grafa o mesmo CNPJ de várias formas ("INSTITUTO DE PREVIDÊNCIA…", "INSTITUTO DE
@@ -145,8 +186,9 @@ programa × elemento × fonte × grupo, com `pago` (soma em centavos inteiros �
 `classificar_documento(tipo_fonte, empenho, na_base)`: **Extra-orçamentário** e **Restos a pagar**
 vêm do campo da fonte (`tipo_pagamento`/`tipo_liquidacao`), com ou sem nº de empenho; orçamentário
 com empenho na base → **Orçamentário**; orçamentário cujo empenho não veio no endpoint (ou sem nº)
-→ **Empenho não localizado na base** (R$ 277 mi em 2025 — em geral globais emitidos em dez do
-exercício anterior; a v1 chamava isso de "restos"). Empenho com só anulações/reforços na base →
+→ **Empenho não localizado na base** (R$ 277 mi em 2025 — todos com nº `/2025`: originais de
+jan–fev/2025, meses incompletos na origem; a v1 chamava isso de "restos" e esta rule, até
+2026-10, atribuía a "globais de dez do exercício anterior" — errado). Empenho com só anulações/reforços na base →
 **Empenho (original fora da base)**. A ausência de nº, sozinha, não é conclusiva; o exercício do nº
 (`exercicio_do_empenho`), sozinho, também não. Na execução, liquidações/pagamentos não casados com
 nº viram um pseudo-empenho por (UG, nº, tipo) no mês do 1º documento. `execucao.serie` traz
@@ -156,7 +198,8 @@ base** (`base_taxa`: `cobertura_pct`, `sem_original`, `pago_sem_original`); publ
 `taxa_liquidacao`/`taxa_pagamento` (**`taxa_validada: true`**) apenas quando a cobertura dos 3
 estágios do ano é completa, o denominador > 0 e liquidado ≤ empenhado ≥ pago; senão
 `taxa_motivos` + `taxas_brutas` (sem teto de 100%) e alerta `dados_taxa`. Em 2025 a taxa cobre
-~45% do empenhado (R$ 3,5 bi pagos por 1.632 empenhos sem original ficam fora) — o painel diz isso.
+~45% do empenhado (R$ 3,5 bi pagos por 1.632 empenhos sem original ficam fora — todos `/2025`,
+originais de jan/2025, mês incompleto na origem): desde 2026-10 a taxa de 2025 não é validada.
 
 ## Export, índice e cobertura
 
@@ -239,8 +282,8 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=24` (com `defer`),
-`retrospectiva-app.js?v=8`, `favorecido-app.js?v=11` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=25` (com `defer`),
+`retrospectiva-app.js?v=9`, `favorecido-app.js?v=11` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
@@ -530,8 +573,9 @@ passo final do `despesas.yml` às segundas (`date +%u = 1`) ou `workflow_dispatc
 
 Testes → cache do `.sqlite` → crawler (partições sem carga; depois `--ano corrente --forcar`, ou
 tudo com `reconciliar_tudo=true`) com tratamento dos códigos 1 (aborta) e 2 (publica e falha no
-fim, lista no `GITHUB_STEP_SUMMARY`) → `export.py` → **`verificar.py --tolerar-erros`** → commit de
-`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json favorecidos`
+fim, lista no `GITHUB_STEP_SUMMARY`) → **`tce.py`** (conciliação com o TCE-SP; falha vira aviso) →
+`export.py` → **`verificar.py --tolerar-erros`** → commit de
+`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json favorecidos`
 (o export cria `despesas/historico/` mesmo vazia — `git add` de pasta inexistente derruba o passo)
 → briefing → passo "Falha parcial" (vermelho se alguma partição não atualizou).
 
@@ -577,6 +621,10 @@ python -m pytest despesas/tests -q
 
 # Benchmark cidades pares (SICONFI/DCA) — conferir sem gravar
 python despesas/benchmark.py --dry-run
+
+# Conciliação com o TCE-SP (mês incompleto na origem) — conferir sem gravar / rebaixar tudo
+python despesas/tce.py --dry-run
+python despesas/tce.py --todos
 ```
 
 **Cuidado ao testar localmente:** `export.py` sem `--saida` sobrescreve artefatos VERSIONADOS

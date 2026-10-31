@@ -161,7 +161,7 @@ CAP_POR_REGRA = 15             # teto de alertas por regra (não afogar o painel
 CAP_ESPECIAL = {"extra_orcamentario": 20}   # regras com teto próprio
 # regras sem teto por regra (poucos casos por construção: meses, partições, anos)
 SEM_TETO = ("pico_mensal", "dados_duplicidade", "dados_particao", "dados_cobertura", "dados_taxa",
-            "dados_nao_localizado")
+            "dados_nao_localizado", "dados_incompleto_origem")
 MAX_ALERTAS = 120              # teto global — corta "contexto" primeiro
 MAX_DOCS_ALERTA = 12           # documentos listados por alerta
 
@@ -323,6 +323,111 @@ def _mes_completo_ate(conn) -> tuple[int, int] | None:
     # o último mês inteiramente anterior a `limite`
     a, mes = limite.year, limite.month
     return (a, mes - 1) if mes > 1 else (a - 1, 12)
+
+
+# ── Conciliação com o TCE-SP (AUDESP): mês incompleto na origem (2026-10) ──────
+# despesas/tce.py grava os totais mensais que o município enviou ao Tribunal; aqui a
+# base é comparada com eles. Nos meses íntegros o empenhado (originais + reforços −
+# anulações) bate ao centavo e o liquidado SEM restos a pagar (o TCE conta só o do
+# exercício) fica a ≤ 3%. Base abaixo do TCE além de TCE_LIMITE (e de TCE_PISO) = mês
+# INCOMPLETO NA ORIGEM: sai das comparações (acumulado do ano, crescimento, picos, fim
+# de exercício, valor mensal típico de PF) e vira alerta de dados. O dado do TCE não
+# preenche a base (decisão do usuário, 2026-10-30). Base ACIMA do TCE fica só como
+# status informativo ("acima"): o TCE também recebe o mês aos poucos.
+CONCILIACAO_TCE_PATH = os.path.join(AQUI, "conciliacao-tce.json")
+TCE_LIMITE = 0.05
+TCE_PISO = 1_000_000
+
+
+def _ler_conciliacao_tce(caminho: str | None = None) -> dict:
+    try:
+        with open(caminho or CONCILIACAO_TCE_PATH, encoding="utf-8") as f:
+            return json.load(f).get("meses") or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def conciliacao_tce(conn, meses_tce: dict | None = None) -> dict:
+    """Mês a mês, base × TCE-SP. status: ok, incompleto (base abaixo), acima (base acima,
+    informativo), sem_referencia (o TCE ainda não tem o mês) ou parcial (posterior ao
+    último mês completo — os dois lados ainda estão publicando)."""
+    meses_tce = _ler_conciliacao_tce() if meses_tce is None else meses_tce
+    completo = _mes_completo_ate(conn)
+    p_completo = completo[0] * 100 + completo[1] if completo else None
+    base: dict[tuple, dict] = defaultdict(lambda: {"empenhado": 0.0, "liquidado": 0.0})
+    for r in _q(conn, "SELECT ano, mes, SUM(valor) s FROM empenhos GROUP BY ano, mes"):
+        base[(r["ano"], r["mes"])]["empenhado"] = r["s"] or 0
+    for r in _q(conn, "SELECT ano, mes, tipo_liquidacao t, SUM(valor) s FROM liquidacoes GROUP BY ano, mes, t"):
+        t = sem_acento(r["t"] or "").upper()
+        if "RESTOS" not in t and "EXTRA" not in t:
+            base[(r["ano"], r["mes"])]["liquidado"] += r["s"] or 0
+    meses = []
+    for ano, mes in sorted(base):
+        per = f"{ano}-{mes:02d}"
+        b = {c: round(v, 2) for c, v in base[(ano, mes)].items()}
+        t = meses_tce.get(per)
+        item = {"periodo": per, "base": b}
+        if p_completo and ano * 100 + mes > p_completo:
+            item["status"] = "parcial"
+        elif not t:
+            item["status"] = "sem_referencia"
+        else:
+            item["tce"] = {c: t.get(c) for c in ("empenhado", "liquidado", "pago")}
+            item["tce_obtido_em"] = t.get("obtido_em")
+            dif, abaixo, acima = {}, False, False
+            for c in ("empenhado", "liquidado"):
+                ref = t.get(c) or 0
+                d = b[c] - ref
+                dif[c] = round(100 * d / ref, 2) if ref else None
+                margem = max(TCE_PISO, TCE_LIMITE * abs(ref))
+                abaixo = abaixo or d < -margem
+                acima = acima or d > margem
+            item["dif_pct"] = dif
+            item["status"] = "incompleto" if abaixo else ("acima" if acima else "ok")
+        meses.append(item)
+    return {"fonte": "TCE-SP (AUDESP), sem a Câmara — despesas/conciliacao-tce.json",
+            "criterio": (f"empenhado e liquidado sem restos a pagar; abaixo do TCE em mais de "
+                         f"{TCE_LIMITE:.0%} (e de {brl(TCE_PISO)}) = incompleto na origem"),
+            "meses": meses,
+            "incompletos": [m["periodo"] for m in meses if m["status"] == "incompleto"],
+            "acima": [m["periodo"] for m in meses if m["status"] == "acima"]}
+
+
+def cobertura_conciliada(conn, meses_tce: dict | None = None) -> dict:
+    """cobertura() + a conciliação com o TCE-SP (`conciliacao_tce`, `incompletos_origem`):
+    a MESMA leitura no export e no briefing — painel e e-mail excluem os mesmos meses."""
+    cob = cobertura(conn)
+    cob["conciliacao_tce"] = conciliacao_tce(conn, meses_tce)
+    cob["incompletos_origem"] = cob["conciliacao_tce"]["incompletos"]
+    return cob
+
+
+def _incompletos(cob: dict | None) -> set:
+    """{(ano, mês)} dos meses incompletos na origem (cobertura.incompletos_origem)."""
+    return {(int(p[:4]), int(p[5:7])) for p in ((cob or {}).get("incompletos_origem") or [])}
+
+
+def _rotulo_meses(meses) -> str:
+    """[(2025, 1), (2025, 2)] → 'jan–fev/2025'; trechos não contíguos (ou de outro ano)
+    separados por vírgula."""
+    trechos = []
+    for a, m in sorted(meses):
+        if trechos and trechos[-1][0] == a and m == trechos[-1][2] + 1:
+            trechos[-1][2] = m
+        else:
+            trechos.append([a, m, m])
+    return ", ".join(f"{MESES_ABREV[i - 1]}{'–' + MESES_ABREV[f - 1] if f != i else ''}/{a}" for a, i, f in trechos)
+
+
+def _rotulo_periodo(meses: list[int]) -> str:
+    """Meses de um ano ([3, 4, …, 9]) → 'mar–set'; trechos não contíguos separados por vírgula."""
+    trechos = []
+    for m in sorted(meses):
+        if trechos and m == trechos[-1][1] + 1:
+            trechos[-1][1] = m
+        else:
+            trechos.append([m, m])
+    return ", ".join(MESES_ABREV[i - 1] + (f"–{MESES_ABREV[f - 1]}" if f != i else "") for i, f in trechos)
 
 
 # ── Agregações para o painel (movimentação de PAGAMENTOS pela data) ──────────
@@ -519,12 +624,14 @@ def execucao_agregada(conn, cob: dict | None = None) -> dict:
                 a[c] = round(a[c] + l[c], 2)
 
     # Taxa de execução por ano DO EMPENHO, calculada só sobre os empenhos cujo
-    # ORIGINAL está na base (empenhos globais emitidos em dez do exercício anterior
-    # entram só como anulação/reforço e subcontariam o denominador). A taxa é
-    # publicada como validada apenas quando: cobertura dos 3 estágios completa
-    # para o ano, denominador > 0 e liquidado ≤ empenhado, pago ≤ liquidado.
+    # ORIGINAL está na base (empenho cujo original não veio — em 2025, os globais de
+    # jan/2025, mês incompleto na origem — entra só como anulação/reforço e
+    # subcontaria o denominador). A taxa é publicada como validada apenas quando:
+    # cobertura dos 3 estágios completa para o ano (inclusive sem mês incompleto na
+    # origem), denominador > 0 e liquidado ≤ empenhado, pago ≤ liquidado.
     # Caso contrário publica os números brutos + motivos, nunca um teto de 100%.
     hoje = date.today()
+    incompletos = _incompletos(cob)
     for r in _q(conn, """
         SELECT e.ano,
                ROUND(SUM(CASE WHEN e.originais > 0 THEN e.empenhado ELSE 0 END),2) emp,
@@ -558,6 +665,11 @@ def execucao_agregada(conn, cob: dict | None = None) -> dict:
             if faltam:
                 motivos.append(f"cobertura incompleta ({len(faltam)} partições sem carga: "
                                f"{', '.join(faltam[:4])}{'…' if len(faltam) > 4 else ''})")
+        inc_ano = sorted(k for k in incompletos if k[0] == ano)
+        if inc_ano:
+            motivos.append(f"{_rotulo_meses(inc_ano)} {'incompletos' if len(inc_ano) > 1 else 'incompleto'} na "
+                           f"origem, conferido com o TCE-SP — os empenhos emitidos no período não vieram e a "
+                           f"taxa cobre só parte do exercício")
         if emp <= 0:
             motivos.append(f"empenhado líquido dos empenhos íntegros é nulo ou negativo ({brl(emp)})")
         else:
@@ -683,9 +795,11 @@ def prazos_pagamento(conn, ident: dict) -> dict:
 
 
 # ── Anulações de empenho ──────────────────────────────────────────────────────
-def anulacoes_empenho(conn, ident: dict) -> dict:
+def anulacoes_empenho(conn, ident: dict, cob: dict | None = None) -> dict:
     """Quanto do empenhado foi anulado, por mês e por favorecido (valores POSITIVOS;
-    a origem grava a anulação negativa)."""
+    a origem grava a anulação negativa). Ano com mês incompleto na origem não tem % do
+    empenhado: as anulações chegam, os originais do mês faltante não."""
+    incompletos = _incompletos(cob)
     serie = [{"ano": r["ano"], "mes": r["mes"], "qtd": r["n"], "valor": round(-r["s"], 2)} for r in _q(conn,
         "SELECT ano, mes, COUNT(*) n, SUM(valor) s FROM empenhos WHERE especie LIKE 'Anula%' "
         "GROUP BY ano, mes ORDER BY ano, mes")]
@@ -698,7 +812,10 @@ def anulacoes_empenho(conn, ident: dict) -> dict:
         a["valor"] = round(a["valor"] + s["valor"], 2)
     for ano, a in por_ano.items():
         base = emp_ano.get(int(ano)) or 0
-        a["pct_do_empenhado"] = round(100 * a["valor"] / base, 1) if base > 0 else None
+        inc_ano = sorted(k for k in incompletos if k[0] == int(ano))
+        a["pct_do_empenhado"] = round(100 * a["valor"] / base, 1) if base > 0 and not inc_ano else None
+        if inc_ano:
+            a["incompleto_origem"] = [f"{y}-{m:02d}" for y, m in inc_ano]
     top = []
     for r in _q(conn, f"""
             SELECT fi.chave k, COUNT(*) n, -SUM(e.valor) s FROM empenhos e {FAV_JOIN.format(t='e')}
@@ -717,10 +834,12 @@ def anulacoes_empenho(conn, ident: dict) -> dict:
 
 
 # ── Fim de exercício: dezembro × média jan–nov ────────────────────────────────
-def fim_de_exercicio(conn) -> dict:
+def fim_de_exercicio(conn, cob: dict | None = None) -> dict:
     """Para cada ano com dezembro COMPLETO: empenhado (originais), liquidado, pago e
     anulado em dezembro contra a média mensal de jan–nov (razão). Corrida de liquidação
-    e cancelamento de saldos no encerramento aparecem aqui."""
+    e cancelamento de saldos no encerramento aparecem aqui. Mês incompleto na origem
+    fica fora da média (`meses_excluidos`); dezembro incompleto tira o ano."""
+    incompletos = _incompletos(cob)
     completo = _mes_completo_ate(conn)
     p_completo = completo[0] * 100 + completo[1] if completo else 0
     medidas = {
@@ -733,15 +852,19 @@ def fim_de_exercicio(conn) -> dict:
     vals = {m: {(r["ano"], r["mes"]): r["s"] or 0 for r in _q(conn, sql)} for m, sql in medidas.items()}
     out = {}
     for ano in sorted({a for (a, _m) in vals["pago"]}):
-        if ano * 100 + 12 > p_completo:
+        if ano * 100 + 12 > p_completo or (ano, 12) in incompletos:
+            continue
+        meses = [k for k in range(1, 12) if (ano, k) not in incompletos]
+        if not meses:
             continue
         linha = {}
         for m, v in vals.items():
-            jan_nov = [v.get((ano, k), 0) for k in range(1, 12)]
-            media = sum(jan_nov) / 11
+            media = sum(v.get((ano, k), 0) for k in meses) / len(meses)
             dez = v.get((ano, 12), 0)
             linha[m] = {"dezembro": round(dez, 2), "media_jan_nov": round(media, 2),
                         "razao": round(dez / media, 2) if media else None}
+        if len(meses) < 11:
+            linha["meses_excluidos"] = [f"{ano}-{k:02d}" for k in range(1, 12) if k not in meses]
         out[str(ano)] = linha
     return out
 
@@ -761,15 +884,17 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
             idx -= 1
     ref = series[idx]
     parciais = [f"{s['ano']}-{s['mes']:02d}" for s in series[idx + 1:]]
+    # mês incompleto na origem (conciliação com o TCE-SP) não entra em comparação nenhuma
+    inc = _incompletos(indice.get("cobertura"))
 
-    # vs média dos até 12 meses anteriores
-    anteriores = series[max(0, idx - 12):idx]
+    # vs média dos até 12 meses anteriores comparáveis
+    anteriores = [s for s in series[:idx] if (s["ano"], s["mes"]) not in inc][-12:]
     media = sum(s["valor"] for s in anteriores) / len(anteriores) if anteriores else None
     delta_media_pct = round((ref["valor"] - media) / media * 100) if media else None
 
     # função com maior variação absoluta vs o mês anterior
     destaque = None
-    if idx >= 1:
+    if idx >= 1 and (series[idx - 1]["ano"], series[idx - 1]["mes"]) not in inc:
         ant = series[idx - 1]
         rows = _q(conn, """
             SELECT COALESCE(NULLIF(funcao,''),'(sem função)') k,
@@ -787,13 +912,18 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
                 nome = re.sub(r"^\d+\s*-\s*", "", k).strip().capitalize()
                 destaque = {"funcao": nome, "delta": round(d, 2)}
 
-    # acumulado do ano (jan..mês de referência) vs mesmo período do ano anterior
+    # acumulado do ano (jan..mês de referência) vs mesmo período do ano anterior, só nos
+    # meses comparáveis dos DOIS anos — `periodo` diz quais ("mar–set" se jan–fev caíram)
     yoy = None
-    atual = sum(s["valor"] for s in series if s["ano"] == ref["ano"] and s["mes"] <= ref["mes"])
-    passado = sum(s["valor"] for s in series if s["ano"] == ref["ano"] - 1 and s["mes"] <= ref["mes"])
-    if passado:
+    comp = [m for m in range(1, ref["mes"] + 1) if (ref["ano"], m) not in inc and (ref["ano"] - 1, m) not in inc]
+    atual = sum(s["valor"] for s in series if s["ano"] == ref["ano"] and s["mes"] in comp)
+    passado = sum(s["valor"] for s in series if s["ano"] == ref["ano"] - 1 and s["mes"] in comp)
+    excluidos = sorted(k for k in inc if k[0] in (ref["ano"], ref["ano"] - 1) and k[1] <= ref["mes"])
+    if passado and comp:
         yoy = {"atual": round(atual, 2), "anterior": round(passado, 2),
-               "pct": round((atual - passado) / passado * 100)}
+               "pct": round((atual - passado) / passado * 100), "periodo": _rotulo_periodo(comp)}
+        if excluidos:
+            yoy["excluidos"] = [f"{a}-{m:02d}" for a, m in excluidos]
 
     ativos = sum(1 for a in indice.get("alertas", []) if a.get("classe") != CLASSE_CONTEXTO)
 
@@ -809,7 +939,7 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
                       f"{'+' if sobe else '−'}{_brl_compacto(abs(destaque['delta']))} "
                       f"em relação ao mês anterior.")
     if yoy:
-        frases.append(f"No acumulado de {ref['ano']} (jan–{MESES_ABREV[ref['mes'] - 1]}), "
+        frases.append(f"No acumulado {'comparável ' if excluidos else ''}de {ref['ano']} ({yoy['periodo']}), "
                       f"o pago soma {_brl_compacto(yoy['atual'])}, "
                       f"{abs(yoy['pct'])}% {'acima' if yoy['pct'] >= 0 else 'abaixo'} "
                       f"do mesmo período de {ref['ano'] - 1}.")
@@ -834,6 +964,11 @@ def resumo_narrativo(conn, indice: dict) -> dict | None:
         varios = len(parciais) > 1
         frases.append(f"{'Os meses' if varios else 'O mês'} {', '.join(parciais)} ainda "
                       f"{'estão incompletos' if varios else 'está incompleto'} na origem e "
+                      f"{'ficam' if varios else 'fica'} fora das comparações.")
+    if inc:
+        varios = len(inc) > 1
+        frases.append(f"{_rotulo_meses(inc).capitalize()} {'foram publicados' if varios else 'foi publicado'} "
+                      f"incompleto{'s' if varios else ''} pela Prefeitura (conferido com o TCE-SP) e "
                       f"{'ficam' if varios else 'fica'} fora das comparações.")
     return {
         "texto": " ".join(frases),
@@ -1159,6 +1294,7 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
     fav = lambda chave: _fav_campos(ident, chave)  # noqa: E731
     completo = _mes_completo_ate(conn)
     p_completo = completo[0] * 100 + completo[1] if completo else None
+    inc = _incompletos(cob)   # mês incompleto na origem: fora de picos, crescimento e PF
 
     def meses_pag(where, *params) -> str:
         """Meses (AAAA-MM) com pagamento no recorte — o link baixa só esses arquivos."""
@@ -1232,9 +1368,9 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                     meses=meses_pag("fi.chave=? AND COALESCE(NULLIF(p.funcao,''),'(sem função)')=?", k, fn))),
             })
 
-    # 3) Pico mensal (sobre o total geral por mês) — só meses completos
+    # 3) Pico mensal (sobre o total geral por mês) — só meses completos e íntegros na origem
     serie = [r for r in _q(conn, "SELECT ano, mes, SUM(valor) s FROM pagamentos GROUP BY ano, mes ORDER BY ano, mes")
-             if p_completo is None or r["ano"] * 100 + r["mes"] <= p_completo]
+             if (p_completo is None or r["ano"] * 100 + r["mes"] <= p_completo) and (r["ano"], r["mes"]) not in inc]
     vals = [r["s"] for r in serie]
     if len(vals) >= 4:
         media = sum(vals) / len(vals)
@@ -1406,32 +1542,39 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
             })
 
     # 7) Crescimento ano-a-ano no MESMO período (jan–M do último mês completo em
-    # ambos os anos) — sem projeção anualizada
-    if completo and completo[1] >= ALERTA_YOY_MIN_MESES:
+    # ambos os anos, menos os meses incompletos na origem em qualquer dos dois) — sem
+    # projeção anualizada
+    comp = [m for m in range(1, completo[1] + 1)
+            if (completo[0], m) not in inc and (completo[0] - 1, m) not in inc] if completo else []
+    if len(comp) >= ALERTA_YOY_MIN_MESES:
         atual, mlim = completo
         ant = atual - 1
+        em = f"p.mes IN ({','.join(str(m) for m in comp)})"   # inteiros do próprio código
+        fora = sorted(k for k in inc if k[0] in (atual, ant) and k[1] <= mlim)
+        fora_txt = (f"; {_rotulo_meses(fora)} fora — {'incompletos' if len(fora) > 1 else 'incompleto'} na origem"
+                    if fora else "")
         for r in _q(conn,
             f"SELECT fi.chave k, "
-            f"SUM(CASE WHEN p.ano=? AND p.mes<=? THEN p.valor ELSE 0 END) v_ant, "
-            f"SUM(CASE WHEN p.ano=? AND p.mes<=? THEN p.valor ELSE 0 END) v_atual "
+            f"SUM(CASE WHEN p.ano=? AND {em} THEN p.valor ELSE 0 END) v_ant, "
+            f"SUM(CASE WHEN p.ano=? AND {em} THEN p.valor ELSE 0 END) v_atual "
             f"FROM pagamentos p {FAV_JOIN.format(t='p')} GROUP BY fi.chave "
             f"HAVING v_ant > 0 AND v_atual >= ? ORDER BY v_atual DESC",
-            ant, mlim, atual, mlim, ALERTA_YOY_VALOR):
+            ant, atual, ALERTA_YOY_VALOR):
             f = fav(r["k"])
             if eh_ente_publico(f["nome"]) or r["v_atual"] < ALERTA_YOY_FATOR * r["v_ant"]:
                 continue
-            per = f"jan–{MESES_ABREV[mlim - 1]}"
+            per = _rotulo_periodo(comp)
             out.append({
                 "id": _id_alerta("crescimento_yoy", r["k"], atual),
                 "tipo": "crescimento_yoy", "classe": CLASSE_ANOMALIA, "severidade": "media",
                 "titulo": f"Crescimento no mesmo período: {f['nome']}",
                 "detalhe": (f"{brl(r['v_atual'])} em {per}/{atual} vs {brl(r['v_ant'])} em {per}/{ant} "
-                            f"— {fator(r['v_atual'] / r['v_ant'])} (meses completos; sem projeção)."),
+                            f"— {fator(r['v_atual'] / r['v_ant'])} (meses completos; sem projeção{fora_txt})."),
                 "valor": round(r["v_atual"], 2),
                 "filtro": _filtro_fav(f, r["k"]),
                 "link": _link_fav(f, tops_slugs),
                 "_ordem": (-r["v_atual"],),
-                "_completar": adiar(docs=lambda k=r["k"]: docs_pag("fi.chave=? AND p.ano=? AND p.mes<=?", k, atual, mlim)),
+                "_completar": adiar(docs=lambda k=r["k"]: docs_pag(f"fi.chave=? AND p.ano=? AND {em}", k, atual)),
             })
 
     # 8) Pessoa física (CPF) recebendo em elemento sensível. Severidade MÉDIA (era
@@ -1450,9 +1593,12 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                 f"SELECT fi.chave k, p.elemento_despesa e, p.ano a, p.mes m, SUM(p.valor) v "
                 f"FROM pagamentos p {FAV_JOIN.format(t='p')} WHERE fi.chave LIKE 'cpf:%' AND ({cond_elem}) "
                 f"GROUP BY 1, 2, 3, 4"):
-            mensal_pf[(m["k"], m["e"])][(m["a"], m["m"])] = m["v"]
+            if (m["a"], m["m"]) not in inc:   # mês incompleto na origem não mede valor típico
+                mensal_pf[(m["k"], m["e"])][(m["a"], m["m"])] = m["v"]
     lim = _q(conn, "SELECT MIN(ano*100+mes) i, MAX(ano*100+mes) f FROM pagamentos")[0]
     inicio_base = (lim["i"] // 100, lim["i"] % 100) if lim["i"] else (0, 0)
+    while inicio_base in inc:   # "início dentro da base" conta do 1º mês íntegro na origem
+        inicio_base = (inicio_base[0], inicio_base[1] + 1) if inicio_base[1] < 12 else (inicio_base[0] + 1, 1)
     ult = (lim["f"] // 100, lim["f"] % 100) if lim["f"] else (0, 0)
     ultimo_completo = (ult[0] - 1, 12) if ult[1] == 1 else (ult[0], ult[1] - 1)  # mês corrente é parcial
     ipca = _ipca_serie()
@@ -1525,7 +1671,7 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
         sql = (f"SELECT {campo_sql} k, p.ano*100+p.mes per, SUM(p.valor) s FROM pagamentos p "
                f"{FAV_JOIN.format(t='p')} GROUP BY k, per ORDER BY k, per")
         for r in _q(conn, sql):
-            if not r["k"] or (p_completo and r["per"] > p_completo):
+            if not r["k"] or (p_completo and r["per"] > p_completo) or (r["per"] // 100, r["per"] % 100) in inc:
                 continue
             series.setdefault(r["k"], []).append((r["per"], r["s"]))
         achados = []
@@ -1599,6 +1745,26 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "filtro": {"ano": ano, "mes": mes},
             "link": _link_detalhe(visao="mov", meses=mes_txt),
         })
+    # mês que a origem publicou pela metade (conciliação com o TCE-SP — ver conciliacao_tce)
+    for m in (cob.get("conciliacao_tce") or {}).get("meses") or []:
+        if m["status"] != "incompleto":
+            continue
+        ano, mes = int(m["periodo"][:4]), int(m["periodo"][5:7])
+        b, t = m["base"], m["tce"]
+        out.append({
+            "id": _id_alerta("dados_incompleto_origem", ano, mes),
+            "tipo": "dados_incompleto_origem", "classe": CLASSE_INCONSISTENCIA, "severidade": "media",
+            "titulo": f"Prefeitura publicou {MESES_ABREV[mes - 1]}/{ano} incompleto (conferido com o TCE-SP)",
+            "detalhe": (f"No portal da Prefeitura: {brl(b['empenhado'])} empenhados e {brl(b['liquidado'])} "
+                        f"liquidados no mês (sem restos a pagar). No TCE-SP, que recebe a contabilidade do "
+                        f"município: {brl(t['empenhado'])} e {brl(t['liquidado'])}, sem a Câmara. O mês fica fora "
+                        f"das comparações (acumulado do ano, crescimento, picos, fim de exercício). Empenhos "
+                        f"emitidos nele e não publicados aparecem depois só pelas liquidações e pagamentos "
+                        f"(“original fora da base”). Conferir no portal oficial."),
+            "valor": round(max(t["empenhado"] - b["empenhado"], t["liquidado"] - b["liquidado"]), 2),
+            "filtro": {"ano": ano, "mes": mes},
+            "link": _link_detalhe(visao="mov", meses=m["periodo"]),
+        })
     for p in cob["particoes"]:
         if p.get("status") not in (None, "ok"):
             out.append({
@@ -1637,13 +1803,16 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
             nl[r["ano"]][1] += r["s"]
     for ano, (qtd, soma) in sorted(nl.items()):
         if soma >= ALERTA_NL_VALOR:
+            inc_ano = sorted(k for k in inc if k[0] == ano)
+            causa = (f"provável empenho emitido em {_rotulo_meses(inc_ano)}, que a origem publicou incompleto"
+                     if inc_ano else f"provável empenho emitido antes de {ANO_INICIAL}-01 ou lacuna da origem")
             out.append({
                 "id": _id_alerta("dados_nao_localizado", ano),
                 "tipo": "dados_nao_localizado", "classe": CLASSE_INCONSISTENCIA, "severidade": "baixa",
                 "titulo": f"Pagamentos orçamentários de {ano} cujo empenho não está na base",
                 "detalhe": (f"{brl(soma)} em {qtd} pagamentos classificados pela origem como orçamentários, "
-                            f"mas o nº de empenho não veio no endpoint de empenhos (provável empenho emitido "
-                            f"antes de {ANO_INICIAL}-01 ou lacuna da origem). Não são restos a pagar."),
+                            f"mas o nº de empenho não veio no endpoint de empenhos ({causa}). "
+                            f"Não são restos a pagar."),
                 "valor": round(soma, 2), "filtro": {"ano": ano, "tipo": T_NAO_LOCALIZADO},
                 "link": _link_detalhe(visao="exe", meses=str(ano), tipo=T_NAO_LOCALIZADO),
             })
@@ -1941,9 +2110,11 @@ ELEM_PUBLICIDADE = {"33903988": "propaganda", "33903990": "legal"}
 PUB_TOP_FAVORECIDOS = 10
 
 
-def publicidade(conn, ident: dict) -> dict | None:
+def publicidade(conn, ident: dict, cob: dict | None = None) -> dict | None:
     """Bloco `publicidade` do índice: por ano, mesmo período do ano anterior (jan–M do
-    último mês completo), série mensal e favorecidos (por identidade)."""
+    último mês completo, sem os meses incompletos na origem), série mensal e
+    favorecidos (por identidade)."""
+    incompletos = _incompletos(cob)
     cond = " OR ".join(f"p.elemento_despesa LIKE '{c}%'" for c in ELEM_PUBLICIDADE)
     tipo = lambda el: ELEM_PUBLICIDADE.get((el or "")[:8], "propaganda")  # noqa: E731
     rows = _q(conn, f"SELECT p.ano, p.mes, p.elemento_despesa el, SUM(p.valor) s, COUNT(*) n "
@@ -1971,13 +2142,15 @@ def publicidade(conn, ident: dict) -> dict | None:
     completo = _mes_completo_ate(conn)
     if completo:
         ano, mes = completo
-        soma = lambda a, c: round(sum(s[c] for s in serie if s["ano"] == a and s["mes"] <= mes), 2)  # noqa: E731
+        comp = [m for m in range(1, mes + 1) if (ano, m) not in incompletos and (ano - 1, m) not in incompletos]
+        soma = lambda a, c: round(sum(s[c] for s in serie if s["ano"] == a and s["mes"] in comp), 2)  # noqa: E731
         atual = {c: soma(ano, c) for c in ("propaganda", "legal")}
         anterior = {c: soma(ano - 1, c) for c in ("propaganda", "legal")}
         t_at, t_an = round(sum(atual.values()), 2), round(sum(anterior.values()), 2)
-        if any(s["ano"] == ano - 1 for s in serie):
+        if comp and any(s["ano"] == ano - 1 for s in serie):
             comparacao = {"ano": ano, "mes": mes, "atual": t_at, "anterior": t_an,
                           "pct": round(100 * (t_at - t_an) / t_an) if t_an > 0 else None,
+                          "periodo": _rotulo_periodo(comp),
                           "por_tipo": {c: {"atual": atual[c], "anterior": anterior[c]} for c in atual}}
     fav = []
     for r in _q(conn, f"SELECT fi.chave k, SUM(p.valor) s, COUNT(*) n, "
@@ -2802,7 +2975,8 @@ def main():
         sys.exit(1)
     conn = conectar()
     ident = preparar_identidades(conn)
-    cob = cobertura(conn)
+    # conciliação com o TCE-SP ANTES de tudo: mês incompleto na origem sai das comparações
+    cob = cobertura_conciliada(conn)
     indice = agregados(conn, ident)
     indice["cobertura"] = cob
     indice["execucao"] = execucao_agregada(conn, cob)
@@ -2811,9 +2985,9 @@ def main():
     indice["entes_publicos"] = sorted(k for k, o in ident.items() if eh_ente_publico(o["nome"]))
     # análises (Lote D5): prazo liquidação→pagamento, anulações, fim de exercício
     indice["prazos_pagamento"] = prazos_pagamento(conn, ident)
-    indice["anulacoes"] = anulacoes_empenho(conn, ident)
-    indice["fim_de_exercicio"] = fim_de_exercicio(conn)
-    indice["publicidade"] = publicidade(conn, ident)   # só agregados (2026-10)
+    indice["anulacoes"] = anulacoes_empenho(conn, ident, cob)
+    indice["fim_de_exercicio"] = fim_de_exercicio(conn, cob)
+    indice["publicidade"] = publicidade(conn, ident, cob)   # só agregados (2026-10)
     # alertas: TODOS os candidatos → histórico sobre todos (deslocado pelo teto não vira
     # "resolvido") → publicação por prioridade e tetos → lista completa p/ o CSV do painel
     cands = candidatos_alertas(conn, ident, cob, indice["execucao"], prazos=indice["prazos_pagamento"])
