@@ -1,0 +1,147 @@
+{
+ "fonte": "TCE-SP — transparencia.tce.sp.gov.br/api/json/despesas (dados enviados pelo município ao AUDESP), sem a Câmara Municipal",
+ "meses": {
+  "2025-01": {
+   "empenhado": 2928585727.01,
+   "liquidado": 274673974.49,
+   "obtido_em": "2026-10-30",
+   "pago": 242005663.06,
+   "registros": 6612
+  },
+  "2025-02": {
+   "empenhado": 190179418.01,
+   "liquidado": 425202161.55,
+   "obtido_em": "2026-10-30",
+   "pago": 386682126.91,
+   "registros": 9740
+  },
+  "2025-03": {
+   "empenhado": 288398251.93,
+   "liquidado": 408275563.52,
+   "obtido_em": "2026-10-30",
+   "pago": 405902979.15,
+   "registros": 11412
+  },
+  "2025-04": {
+   "empenhado": 284227813.71,
+   "liquidado": 393378420.16,
+   "obtido_em": "2026-10-30",
+   "pago": 416398051.24,
+   "registros": 11273
+  },
+  "2025-05": {
+   "empenhado": 254903944.27,
+   "liquidado": 419121460.33,
+   "obtido_em": "2026-10-30",
+   "pago": 405589326.51,
+   "registros": 11303
+  },
+  "2025-06": {
+   "empenhado": 247665009.85,
+   "liquidado": 457893676.04,
+   "obtido_em": "2026-10-30",
+   "pago": 466160496.1,
+   "registros": 11843
+  },
+  "2025-07": {
+   "empenhado": 302630504.56,
+   "liquidado": 478904847.54,
+   "obtido_em": "2026-10-30",
+   "pago": 447169779.21,
+   "registros": 12895
+  },
+  "2025-08": {
+   "empenhado": 231198093.26,
+   "liquidado": 435252274.78,
+   "obtido_em": "2026-10-30",
+   "pago": 419350692.98,
+   "registros": 13082
+  },
+  "2025-09": {
+   "empenhado": 178014206.51,
+   "liquidado": 426386022.96,
+   "obtido_em": "2026-10-30",
+   "pago": 458251916.27,
+   "registros": 13888
+  },
+  "2025-10": {
+   "empenhado": 199730959.42,
+   "liquidado": 472873470.58,
+   "obtido_em": "2026-10-30",
+   "pago": 438713978.03,
+   "registros": 13053
+  },
+  "2025-11": {
+   "empenhado": 114978576.04,
+   "liquidado": 393483300.72,
+   "obtido_em": "2026-10-30",
+   "pago": 422740028.33,
+   "registros": 12033
+  },
+  "2025-12": {
+   "empenhado": 195928418.7,
+   "liquidado": 638432689.29,
+   "obtido_em": "2026-10-30",
+   "pago": 591406698.76,
+   "registros": 15351
+  },
+  "2026-01": {
+   "empenhado": 3030612611.94,
+   "liquidado": 304481413.48,
+   "obtido_em": "2026-10-30",
+   "pago": 288356349.34,
+   "registros": 7365
+  },
+  "2026-02": {
+   "empenhado": 218427413.27,
+   "liquidado": 434980063.54,
+   "obtido_em": "2026-10-30",
+   "pago": 390441430.65,
+   "registros": 8761
+  },
+  "2026-03": {
+   "empenhado": 279340694.0,
+   "liquidado": 475709434.91,
+   "obtido_em": "2026-10-30",
+   "pago": 469229135.79,
+   "registros": 12391
+  },
+  "2026-04": {
+   "empenhado": 268141523.25,
+   "liquidado": 438319914.41,
+   "obtido_em": "2026-10-30",
+   "pago": 428920658.14,
+   "registros": 9810
+  },
+  "2026-05": {
+   "empenhado": 227352832.18,
+   "liquidado": 457676192.47,
+   "obtido_em": "2026-10-30",
+   "pago": 440697504.65,
+   "registros": 11027
+  },
+  "2026-06": {
+   "empenhado": 321929274.34,
+   "liquidado": 506225030.13,
+   "obtido_em": "2026-10-30",
+   "pago": 507016618.94,
+   "registros": 11496
+  },
+  "2026-07": {
+   "empenhado": 307299795.71,
+   "liquidado": 464130023.93,
+   "obtido_em": "2026-10-30",
+   "pago": 461726880.04,
+   "registros": 11727
+  },
+  "2026-08": {
+   "empenhado": 231888247.71,
+   "liquidado": 456828927.43,
+   "obtido_em": "2026-10-30",
+   "pago": 453459784.69,
+   "registros": 11231
+  }
+ },
+ "municipio": "santos",
+ "versao": 1
+}

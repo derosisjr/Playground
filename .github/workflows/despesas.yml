@@ -115,6 +115,12 @@ jobs:
             echo "parcial=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Totais mensais que o município enviou ao TCE-SP (AUDESP): o export compara com a
+      # base e marca o mês que a Prefeitura publicou incompleto. TCE fora do ar não para
+      # o pipeline — o script mantém o último estado versionado e o export usa esse.
+      - name: Conciliação com o TCE-SP
+        run: python despesas/tce.py || echo "::warning::TCE-SP indisponível — conciliação com o estado anterior"
+
       - name: Export (índice, execução, movimentação, dossiês, alertas)
         run: python despesas/export.py
 
@@ -130,7 +136,7 @@ jobs:
         uses: ./.github/actions/commitar
         with:
           # historico/ = alterações da origem, só-acréscimo (o SQLite do cache pode ser despejado)
-          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json favorecidos
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json favorecidos
           mensagem: "chore: atualiza base de Despesas"
           sem-mudancas: "Sem mudancas na base."
 

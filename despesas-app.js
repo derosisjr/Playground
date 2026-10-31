@@ -106,6 +106,8 @@ function renderCobertura() {
   if (cob.com_erro?.length) partes.push(`${cob.com_erro.length} com falha na última coleta (versão anterior mantida)`);
   if (cob.duplicidade_sistematica?.length)
     partes.push(`${cob.duplicidade_sistematica.length} devolvidas pela origem em duplicidade sistemática (linhas idênticas contadas uma vez — ver Alertas › Inconsistência de dados)`);
+  if (cob.incompletos_origem?.length)
+    partes.push(`${rotuloMeses(cob.incompletos_origem)}: publicado${cob.incompletos_origem.length > 1 ? "s" : ""} incompleto${cob.incompletos_origem.length > 1 ? "s" : ""} pela Prefeitura, conferido com o TCE-SP — fora das comparações (ver Alertas › Inconsistência de dados)`);
   if (DADOS.conservacao && !DADOS.conservacao.ok) partes.push("ATENÇÃO: soma da execução ≠ soma da movimentação (conservação falhou)");
   el.textContent = partes.join(" · ") + ".";
 }
@@ -126,18 +128,56 @@ function mesParcial(ano, mes) {
   return (DADOS.resumo?.meses_parciais || []).includes(`${ano}-${String(mes).padStart(2, "0")}`);
 }
 
+// Meses que a Prefeitura publicou incompletos (cobertura.incompletos_origem — conferidos
+// com o TCE-SP pelo export): fora das comparações, "†" no eixo, tracejados como os parciais.
+// Índice anterior à conciliação não traz o campo: nenhum mês é marcado.
+function mesIncompleto(ano, mes) {
+  return (DADOS.cobertura?.incompletos_origem || []).includes(`${ano}-${String(mes).padStart(2, "0")}`);
+}
+const incompletoDia = (iso) => mesIncompleto(+iso.slice(0, 4), +iso.slice(5, 7));
+// ["2025-01", "2025-02"] → "jan–fev/2025" (o mesmo texto do export)
+function rotuloMeses(lista) {
+  const trechos = [];
+  for (const p of [...lista].sort()) {
+    const a = +p.slice(0, 4), m = +p.slice(5, 7), t = trechos[trechos.length - 1];
+    if (t && t.a === a && m === t.f + 1) t.f = m; else trechos.push({ a, i: m, f: m });
+  }
+  return trechos.map(t => MESES[t.i].toLowerCase() + (t.f !== t.i ? "–" + MESES[t.f].toLowerCase() : "") + "/" + t.a).join(", ");
+}
+// "jan–fev/2025 vieram incompletos" | "jan/2025 veio incompleto"
+const veioIncompleto = (lista) => `${rotuloMeses(lista)} ${lista.length > 1 ? "vieram incompletos" : "veio incompleto"}`;
+// "mar–set" → "de março a setembro" (trecho único); outro formato → "em <período>"
+const MESES_LONGOS = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
+                      "setembro", "outubro", "novembro", "dezembro"];
+function periodoPorExtenso(per) {
+  const m = /^(\p{L}{3})–(\p{L}{3})$/u.exec(per || "");
+  const i = (abrev) => MESES.findIndex(x => x.toLowerCase() === abrev);
+  return m && i(m[1]) > 0 && i(m[2]) > 0 ? `de ${MESES_LONGOS[i(m[1])]} a ${MESES_LONGOS[i(m[2])]}` : `em ${per}`;
+}
+// "No portal: R$ 69 mi empenhados; no TCE-SP: R$ 2,93 bi" — a prova na dica do mês
+function notaIncompleto(ano, mes) {
+  const per = `${ano}-${String(mes).padStart(2, "0")}`;
+  const c = (DADOS.cobertura?.conciliacao_tce?.meses || []).find(m => m.periodo === per);
+  return "Mês incompleto na origem: o portal da Prefeitura não publicou o mês inteiro" +
+    (c?.tce ? ` (${compacto(c.base.empenhado)} empenhados no portal × ${compacto(c.tce.empenhado)} no TCE-SP)` : "") +
+    "; fora das comparações.";
+}
+
 function renderStats() {
   const t = DADOS.totais, p = DADOS.periodo, r = DADOS.resumo;
   const anos = Object.keys(t.por_ano || {}).sort();
   const ultimoAno = anos[anos.length - 1];
   const perCapita = t.geral / POP_SANTOS;
   const yoy = r?.yoy, mr = r?.mes_ref; // acumulado jan–mês de referência vs mesmo período do ano anterior
-  const per = mr ? `jan–${MESES[mr.mes].toLowerCase()}` : "";
+  // yoy.periodo: os meses comparáveis dos dois anos ("mar–set" quando jan–fev vieram incompletos)
+  const per = mr ? (yoy?.periodo || `jan–${MESES[mr.mes].toLowerCase()}`) : "";
   const cardAno = yoy && mr
     ? { rotulo: `Acumulado ${per}/${mr.ano}`,
         valor: compacto(yoy.atual) + deltaHTML(yoy.pct, `vs ${per}/${mr.ano - 1}`),
+        // com mês incompleto na origem o período já diz a janela; o aviso curto cabe no celular
         sub: `vs ${compacto(yoy.anterior)} em ${per}/${mr.ano - 1}` +
-             (r.meses_parciais?.length ? " · meses parciais fora" : "") }
+             (yoy.excluidos?.length ? ` · sem ${rotuloMeses(yoy.excluidos)} (incompleto${yoy.excluidos.length > 1 ? "s" : ""} na origem)`
+               : r.meses_parciais?.length ? " · meses parciais fora" : "") }
     : { rotulo: `Total em ${ultimoAno || "—"}`, valor: compacto(t.por_ano?.[ultimoAno] || 0),
         sub: "exercício corrente" };
   // "2025-01" → "jan/2025"
@@ -204,8 +244,11 @@ function renderHero() {
       grande.textContent = compacto(r.yoy.atual);
       const b = document.createElement("b");
       b.textContent = `${Math.abs(r.yoy.pct)}% ${r.yoy.pct >= 0 ? "acima" : "abaixo"}`;
-      ctx.replaceChildren(`pagos pela Prefeitura em ${mr.ano}, de janeiro a ${mes} — `, b,
-        ` do mesmo período de ${mr.ano - 1}.`);
+      // com mês incompleto na origem o acumulado é só dos meses comparáveis (yoy.periodo)
+      const exc = r.yoy.excluidos || [];
+      ctx.replaceChildren(`pagos pela Prefeitura em ${mr.ano}, ` +
+        (exc.length ? `${periodoPorExtenso(r.yoy.periodo)} — ` : `de janeiro a ${mes} — `), b,
+        ` do mesmo período de ${mr.ano - 1}` + (exc.length ? ` (${veioIncompleto(exc)} do portal).` : "."));
     } else {
       grande.textContent = compacto(mr.valor);
       ctx.textContent = `pagos pela Prefeitura em ${mes} de ${mr.ano}, o último mês completo.`;
@@ -229,26 +272,26 @@ const cinzaLinha = (p) => (Comum.temaAtual() === "escuro" ? p.muted : p.ref);
 // painel já usava; a 8ª (vermelho) é também a das anulações
 const coresCategorias = (p) => [p.serie, p.ouro, "#8d9aad", "#5b8def", "#e08a3c", "#2fa79a", "#a78bfa", "#e0564a"];
 
-// Desvio de cada mês vs a média dos até 12 meses anteriores (null = sem base p/ comparar)
-function desviosSerie(serie) {
+// Desvio de cada mês vs a média dos até 12 meses anteriores (null = sem base p/ comparar);
+// `fora[j]` (mês incompleto na origem) não entra na média de ninguém
+function desviosSerie(serie, fora = []) {
   return serie.map((s, i) => {
-    const ant = serie.slice(Math.max(0, i - 12), i);
+    const ant = serie.slice(0, i).filter((_, j) => !fora[j]).slice(-12);
     if (ant.length < 3) return null;
     const media = ant.reduce((t, x) => t + x.valor, 0) / ant.length;
     return Math.round((s.valor - media) / media * 100);
   });
 }
 
-// Linha mensal com meses parciais no fim: duas séries com o MESMO nome (a legenda liga
-// e desliga as duas) — os meses completos e o trecho que sai do último mês completo e
-// entra nos parciais (tracejado, ponto vazado). "-" = sem ponto (lacuna do ECharts).
+// Linha mensal com meses fora da conta — parciais no fim, incompletos na origem em
+// qualquer ponto: duas séries com o MESMO nome (a legenda liga e desliga as duas) — os
+// meses completos e o trecho tracejado (ponto vazado) que liga cada bloco fora da conta
+// ao mês completo vizinho. "-" = sem ponto (lacuna do ECharts).
 function dividirParciais(valores, parcial) {
-  const ini = parcial.indexOf(true);
-  const de = ini > 0 ? ini - 1 : ini;   // o trecho parte do último mês completo
+  const liga = (i) => !parcial[i] && (parcial[i - 1] || parcial[i + 1]);   // vizinho completo do trecho
   return {
     completo: valores.map((v, i) => (parcial[i] || v == null ? "-" : v)),
-    parcial: valores.map((v, i) => (ini >= 0 && i >= de && v != null
-      ? (i === de && i !== ini ? { value: v, symbol: "none" } : v) : "-")),
+    parcial: valores.map((v, i) => (v == null ? "-" : parcial[i] ? v : liga(i) ? { value: v, symbol: "none" } : "-")),
   };
 }
 
@@ -301,28 +344,35 @@ function renderGraficos() {
   // ganham destaque; a média móvel 3m dá a tendência sem o serrilhado dos pagamentos.
   const serie = DADOS.series_mensais;
   const parcial = serie.map(s => mesParcial(s.ano, s.mes));
-  const desvios = desviosSerie(serie).map((d, i) => parcial[i] ? null : d);
+  const incompleto = serie.map(s => mesIncompleto(s.ano, s.mes));
+  const fora = serie.map((_, i) => parcial[i] || incompleto[i]);   // fora das comparações
+  const desvios = desviosSerie(serie, incompleto).map((d, i) => fora[i] ? null : d);
   const anomalo = desvios.map(d => d != null && Math.abs(d) > 25);
-  const mm3 = serie.map((s, i) => i < 2 || parcial[i] ? null :
+  const mm3 = serie.map((s, i) => i < 2 || fora[i] || incompleto[i - 1] || incompleto[i - 2] ? null :
     (serie[i - 2].valor + serie[i - 1].valor + s.valor) / 3);
-  const trechos = dividirParciais(serie.map(s => s.valor), parcial);
+  const trechos = dividirParciais(serie.map(s => s.valor), fora);
   const dicaMensal = (i, p) => {
     const s = serie[i];
     const nota = parcial[i] ? "Mês parcial — a origem ainda está publicando; fora das comparações."
+      : incompleto[i] ? notaIncompleto(s.ano, s.mes)
       : anomalo[i] ? `${desvios[i] > 0 ? "+" : ""}${desvios[i]}% vs média 12m — fora do padrão, ver aba Alertas.` : "";
-    return Comum.dicaGrafico(mesAno(s) + (parcial[i] ? " (parcial)" : ""), [
+    return Comum.dicaGrafico(mesAno(s) + (parcial[i] ? " (parcial)" : incompleto[i] ? " (incompleto na origem)" : ""), [
       [p.serie, "Pago no mês", brlc(s.valor)],
       mm3[i] != null ? [p.ouroLinha, "Média móvel (3 m)", brlc(mm3[i])] : null,
-    ], nota, parcial[i] || anomalo[i]);
+    ], nota, fora[i] || anomalo[i]);
   };
 
   // Equivalentes acessíveis: descrição conclusiva + tabela oculta por gráfico
   const ult = [...serie].reverse().find(s => !mesParcial(s.ano, s.mes));
   const nParciais = parcial.filter(Boolean).length;
+  const nIncompletos = incompleto.filter(Boolean).length;
   document.querySelectorAll(".nota-parcial").forEach(el => {
-    el.hidden = !nParciais;
-    el.textContent = "* Mês parcial: o portal publica com semanas de atraso — o trecho tracejado " +
-                     "ainda vai subir e fica fora das comparações.";
+    el.hidden = !nParciais && !nIncompletos;
+    el.textContent = [nParciais ? "* Mês parcial: o portal publica com semanas de atraso — o trecho tracejado " +
+                        "ainda vai subir e fica fora das comparações." : "",
+                      nIncompletos ? `† ${veioIncompleto(DADOS.cobertura.incompletos_origem)} do portal da ` +
+                        "Prefeitura (conferido com o TCE-SP): tracejado e fora das comparações." : ""]
+      .filter(Boolean).join(" ");
   });
   // a escala Mensal (o gráfico abaixo) ou a Diária (M8, defDiario) — desenharMensal escolhe
   DEF_MENSAL = {
@@ -335,8 +385,8 @@ function renderGraficos() {
         legend: { data: ["Pago no mês", { name: "Média móvel (3 m)", itemStyle: { opacity: 0 } }],
           [p.celular ? "bottom" : "top"]: 0, left: 0, itemGap: 18, itemWidth: 22, itemHeight: 10 },
         tooltip: { trigger: "axis", confine: true, formatter: (ps) => dicaMensal(ps[0].dataIndex, p) },
-        xAxis: { type: "category", data: serie.map((s, i) => rotuloMes(s) + (parcial[i] ? "*" : "")), boundaryGap: false,
-          axisLabel: EIXO_MESES(p) },
+        xAxis: { type: "category", data: serie.map((s, i) => rotuloMes(s) + (parcial[i] ? "*" : incompleto[i] ? "†" : "")),
+          boundaryGap: false, axisLabel: EIXO_MESES(p) },
         yAxis: { type: "value", min: 0, splitNumber: p.celular ? 4 : 5, axisLabel: { formatter: (v) => Comum.compactoEixo(v) } },
         series: [
           // showAllSymbol: no celular o ECharts some com marcadores que "não cabem" — e os
@@ -360,9 +410,10 @@ function renderGraficos() {
     acessivel: {
       descricao: `Total pago por mês, com média móvel de três meses. Último mês completo (${ult ? MESES[ult.mes] + "/" + ult.ano : "—"}): ${ult ? compacto(ult.valor) : "—"}.` +
         (nParciais ? ` ${nParciais} mês(es) seguinte(s) ainda parcial(is) na origem.` : "") +
+        (nIncompletos ? ` ${rotuloMeses(DADOS.cobertura.incompletos_origem)} publicado(s) incompleto(s) pela Prefeitura, fora das comparações.` : "") +
         " Pontos fora do padrão são detalhados na aba Alertas.",
       cabecalhos: ["Mês", "Pago", "Média 3 m", "Desvio vs média 12m"],
-      linhas: serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}${parcial[i] ? " (parcial)" : ""}`, compacto(s.valor),
+      linhas: serie.map((s, i) => [`${MESES[s.mes]}/${s.ano}${parcial[i] ? " (parcial)" : incompleto[i] ? " (incompleto na origem)" : ""}`, compacto(s.valor),
         mm3[i] == null ? "—" : compacto(mm3[i]),
         desvios[i] == null ? "—" : (desvios[i] > 0 ? "+" : "") + desvios[i] + "%"]),
     },
@@ -452,7 +503,7 @@ function renderExecucao() {
   }
   if (bt?.sem_original)
     partes.push(`${bt.sem_original.toLocaleString("pt-BR")} empenhos de ${ultimo} só têm anulações/reforços na base ` +
-                `(original emitido antes de ${DADOS.periodo?.de || "2025-01"}): ${compacto(bt.pago_sem_original)} pagos por eles ficam fora da taxa`);
+                `(o original não veio da origem): ${compacto(bt.pago_sem_original)} pagos por eles ficam fora da taxa`);
   if (taxas.restos)
     partes.push(`restos a pagar quitados em ${ultimo}: ${compacto(taxas.restos)}`);
   if (taxas.nao_localizado)
@@ -461,10 +512,12 @@ function renderExecucao() {
 
   const s = exe.serie;
   const parcial = s.map(x => mesParcial(x.ano, x.mes));
-  const labels = s.map((x, i) => `${rotuloMes(x)}${parcial[i] ? "*" : ""}`);
+  const incompleto = s.map(x => mesIncompleto(x.ano, x.mes));
+  const labels = s.map((x, i) => `${rotuloMes(x)}${parcial[i] ? "*" : incompleto[i] ? "†" : ""}`);
   // estágio sem partição carregada vem null (desconhecido ≠ 0): vira lacuna na linha
   const ESTAGIOS = [["empenhado", "Empenhado"], ["liquidado", "Liquidado"], ["pago", "Pago"]];
-  const trechos = Object.fromEntries(ESTAGIOS.map(([k]) => [k, dividirParciais(s.map(x => x[k]), parcial)]));
+  const fora = s.map((_, i) => parcial[i] || incompleto[i]);
+  const trechos = Object.fromEntries(ESTAGIOS.map(([k]) => [k, dividirParciais(s.map(x => x[k]), fora)]));
   const valor = (v) => v == null ? "não carregado" : brlc(v);
   Comum.grafico("ch-execucao", {
     opcao: (p) => {
@@ -478,8 +531,9 @@ function renderExecucao() {
           [p.celular ? "bottom" : "top"]: 0, left: 0, itemGap: 18, itemWidth: 22, itemHeight: 10 },
         tooltip: { trigger: "axis", confine: true, formatter: (ps) => {
           const i = ps[0].dataIndex, x = s[i];
-          return Comum.dicaGrafico(mesAno(x) + (parcial[i] ? " (parcial)" : ""),
-            ESTAGIOS.map(([k, nome]) => [estilo[k].cor, nome, valor(x[k])]), parcial[i] ? NOTA_PARCIAL : "", parcial[i]);
+          return Comum.dicaGrafico(mesAno(x) + (parcial[i] ? " (parcial)" : incompleto[i] ? " (incompleto na origem)" : ""),
+            ESTAGIOS.map(([k, nome]) => [estilo[k].cor, nome, valor(x[k])]),
+            parcial[i] ? NOTA_PARCIAL : incompleto[i] ? notaIncompleto(x.ano, x.mes) : "", fora[i]);
         } },
         xAxis: { type: "category", data: labels, boundaryGap: false, axisLabel: EIXO_MESES(p) },
         yAxis: { type: "value", min: 0, splitNumber: p.celular ? 4 : 5, axisLabel: { formatter: (v) => Comum.compactoEixo(v) } },
@@ -501,7 +555,7 @@ function renderExecucao() {
       descricao: "Empenhado (compromisso assumido), liquidado (entrega atestada) e pago (dinheiro que saiu) " +
         "em cada mês. " + (partes.length ? partes.join("; ") + "." : ""),
       cabecalhos: ["Mês", "Empenhado", "Liquidado", "Pago"],
-      linhas: s.map((x, i) => [labels[i].replace("*", " (parcial)"), x.empenhado == null ? "não carregado" : compacto(x.empenhado),
+      linhas: s.map((x, i) => [labels[i].replace("*", " (parcial)").replace("†", " (incompleto na origem)"), x.empenhado == null ? "não carregado" : compacto(x.empenhado),
         x.liquidado == null ? "não carregado" : compacto(x.liquidado), x.pago == null ? "não carregado" : compacto(x.pago)]),
     },
   });
@@ -599,12 +653,13 @@ function renderAnalises() {
   if (an?.por_ano && Object.keys(an.por_ano).length) {
     document.getElementById("anul-resumo").textContent = Object.entries(an.por_ano).map(([k, v]) =>
       `${k}: ${compacto(v.valor)} anulados em ${v.qtd.toLocaleString("pt-BR")} anulações` +
-      (v.pct_do_empenhado != null ? ` (${v.pct_do_empenhado.toLocaleString("pt-BR")}% do empenhado na base)` : "")).join(" · ");
+      (v.pct_do_empenhado != null ? ` (${v.pct_do_empenhado.toLocaleString("pt-BR")}% do empenhado na base)`
+        : v.incompleto_origem?.length ? ` (sem % do empenhado: ${veioIncompleto(v.incompleto_origem)} da origem)` : "")).join(" · ");
     document.getElementById("anul-top").innerHTML = (an.top_favorecidos || []).slice(0, 10).map(x => `
       <tr><td data-label="Favorecido"><a href="${linkRaiox(x)}">${esc(x.nome)}</a>${x.ente_publico ? ' <span class="p" style="color:var(--muted)">· ente público</span>' : ""}</td>
         <td data-label="Anulado" class="r">${compacto(x.valor)}</td>
         <td data-label="% do empenhado" class="r">${x.pct_do_empenhado != null ? x.pct_do_empenhado.toLocaleString("pt-BR") + "%"
-          : '<span title="O empenho original é anterior a jan/2025 — fora da base">orig. anterior</span>'}</td></tr>`).join("");
+          : '<span title="O empenho original não está na base: emitido em mês que a origem publicou incompleto ou em exercício anterior a 2025 — o percentual não tem sentido">orig. fora da base</span>'}</td></tr>`).join("");
     document.getElementById("box-anulacoes").hidden = false;
   }
 
@@ -617,10 +672,14 @@ function renderAnalises() {
         <td data-label="Média jan–nov" class="r">${compacto(m[k].media_jan_nov)}</td>
         <td data-label="Dez ÷ média" class="r"${m[k].razao >= 1.5 ? ' style="font-weight:800"' : ""}>${m[k].razao != null
           ? m[k].razao.toLocaleString("pt-BR") + "×" : "—"}</td></tr>` : "").join("")).join("");
+    // ano com mês incompleto na origem: a média é só dos meses comparáveis de jan–nov
+    const excluidos = Object.entries(fim).filter(([, m]) => m.meses_excluidos?.length)
+      .map(([ano, m]) => ` Em ${ano}, a média deixa de fora ${rotuloMeses(m.meses_excluidos)}, que ` +
+        `${m.meses_excluidos.length > 1 ? "vieram incompletos" : "veio incompleto"} do portal (conferido com o TCE-SP).`).join("");
     document.getElementById("fim-nota").textContent =
       "Corrida de liquidação e cancelamento de saldos no encerramento do exercício aparecem aqui: liquidar em " +
       "dezembro garante a inscrição em restos a pagar processados; anular em massa cancela empenhos sem execução. " +
-      "Só anos com dezembro completo na base.";
+      "Só anos com dezembro completo na base." + excluidos;
     document.getElementById("box-fim").hidden = false;
   }
 
@@ -633,7 +692,7 @@ function renderPublicidade() {
   if (!pub?.serie?.length) return;
   const c = pub.comparacao, partes = [];
   if (c) {
-    const per = `jan–${MESES[c.mes].toLowerCase()}`;
+    const per = c.periodo || `jan–${MESES[c.mes].toLowerCase()}`;   // meses comparáveis dos dois anos
     partes.push(`${per}/${c.ano}: ${compacto(c.atual)} pagos em publicidade` + (c.pct != null
       ? ` — ${Math.abs(c.pct)}% ${c.pct >= 0 ? "acima" : "abaixo"} do mesmo período de ${c.ano - 1} (${compacto(c.anterior)})`
       : ""));
@@ -1221,7 +1280,8 @@ function resumoCalendarioPorMes() {
     if (!m.maior || v > m.maior[1]) m.maior = [dia, v];
     meses.set(dia.slice(0, 7), m);
   }
-  return [...meses].map(([k, m]) => [`${MESES[+k.slice(5)]}/${k.slice(0, 4)}${parcialDia(k + "-01") ? " (parcial)" : ""}`,
+  return [...meses].map(([k, m]) => [`${MESES[+k.slice(5)]}/${k.slice(0, 4)}${parcialDia(k + "-01") ? " (parcial)"
+    : incompletoDia(k + "-01") ? " (incompleto na origem)" : ""}`,
     compacto(m.v), m.n.toLocaleString("pt-BR"), `${dataBR(m.maior[0])} (${compacto(m.maior[1])})`]);
 }
 const CABECALHOS_DIAS = ["Mês", "Pago", "Pagamentos", "Maior dia"];
@@ -1234,10 +1294,11 @@ function dicaDia([dia, v, n, anul], p, cor) {
   else if (!(v > 0)) notas.push("Sem pagamento líquido: as anulações (estornos) igualam ou superam os pagamentos.");
   else if (anul) notas.push(`Inclui ${anul.toLocaleString("pt-BR")} anulaç${anul === 1 ? "ão" : "ões"} (estorno de pagamento).`);
   if (parcialDia(dia)) notas.push(NOTA_PARCIAL);
+  if (incompletoDia(dia)) notas.push(notaIncompleto(+dia.slice(0, 4), +dia.slice(5, 7)));
   return Comum.dicaGrafico(`${diaSemana(dia)}, ${dataBR(dia)}`, [
     [cor || p.serie, "Pago no dia", brlc(v), "p"],
     [null, "Pagamentos", n.toLocaleString("pt-BR")],
-  ], notas.join(" "), parcialDia(dia));
+  ], notas.join(" "), parcialDia(dia) || incompletoDia(dia));
 }
 
 // ── Pago por mês: Mensal | Diário ──
@@ -1263,7 +1324,8 @@ function desenharMensal() {
   }
   const dia = pagoEscala === "dia";
   Comum.grafico("ch-mensal", dia ? defDiario() : DEF_MENSAL);
-  document.querySelector("#box-mensal .nota-parcial").hidden = dia || !(DADOS.resumo?.meses_parciais || []).length;
+  document.querySelector("#box-mensal .nota-parcial").hidden = dia ||
+    !((DADOS.resumo?.meses_parciais || []).length || (DADOS.cobertura?.incompletos_origem || []).length);
   document.getElementById("nota-diario").hidden = !dia;
 }
 
@@ -1297,7 +1359,9 @@ function ligarEscalaPago() {
     (matchMedia("(pointer: coarse)").matches
       ? "Arraste as alças da régua abaixo do gráfico para mudar o período."
       : "Arraste a régua abaixo do gráfico, ou o próprio gráfico, para navegar; Ctrl + roda do mouse aproxima.") +
-    ((DADOS.resumo?.meses_parciais || []).length ? " * Mês parcial em destaque: o valor ainda vai subir." : "");
+    ((DADOS.resumo?.meses_parciais || []).length ? " * Mês parcial em destaque: o valor ainda vai subir." : "") +
+    ((DADOS.cobertura?.incompletos_origem || []).length ? ` † Mais claro: ${veioIncompleto(DADOS.cobertura.incompletos_origem)} ` +
+      "do portal (conferido com o TCE-SP)." : "");
 }
 
 async function definirEscalaPago(escala) {
@@ -1348,8 +1412,9 @@ function defDiario() {
         ],
         series: [{
           name: "Pago no dia", type: "bar", barMaxWidth: 12, barMinHeight: 1,
-          // mês parcial: barra mais clara e a faixa marcada (o valor ainda vai subir)
-          data: linhas.map((l) => (parcialDia(l[0]) ? { value: l, itemStyle: { opacity: 0.5 } } : { value: l })),
+          // mês parcial: barra mais clara e a faixa marcada (o valor ainda vai subir); mês
+          // incompleto na origem também mais claro (fora das comparações)
+          data: linhas.map((l) => (parcialDia(l[0]) || incompletoDia(l[0]) ? { value: l, itemStyle: { opacity: 0.5 } } : { value: l })),
           itemStyle: { color: p.serie, borderRadius: [2, 2, 0, 0] }, emphasis: { itemStyle: { color: p.ouroLinha } },
           markArea: parciais.length ? {
             silent: true, itemStyle: { color: p.ouroFill },
@@ -1380,7 +1445,9 @@ function defDiario() {
 let quebrasCal = null;
 function quebrasCalendario() {
   if (!quebrasCal) {
-    const xs = CALENDARIO.linhas.map((l) => l[1]).filter((v) => v > 0).sort((a, b) => a - b);
+    // dia de mês incompleto na origem não entra na régua (os dias quase vazios a puxariam para baixo)
+    const xs = CALENDARIO.linhas.filter((l) => !incompletoDia(l[0])).map((l) => l[1]).filter((v) => v > 0)
+      .sort((a, b) => a - b);
     const q = (f) => {   // interpolação linear (numpy "linear")
       const pos = (xs.length - 1) * f, i = Math.floor(pos);
       return xs[i] + (xs[Math.min(i + 1, xs.length - 1)] - xs[i]) * (pos - i);
@@ -1428,7 +1495,7 @@ function opcaoCalendario(p, larg) {
         formatter: (x) => {   // no celular o ano vai no 1º mês de cada semestre
           const mes = +x.M;
           return MESES[mes] + (p.celular && (mes === 1 || mes === 7) ? "/" + String(x.yyyy).slice(2) : "") +
-            (mesParcial(+x.yyyy, mes) ? "*" : "");
+            (mesParcial(+x.yyyy, mes) ? "*" : mesIncompleto(+x.yyyy, mes) ? "†" : "");
         } },
       yearLabel: { show: !p.celular, position: "left", margin: 34, color: p.tinta, fontFamily: p.sans,
         fontSize: 14, fontWeight: 800 },
@@ -1438,7 +1505,7 @@ function opcaoCalendario(p, larg) {
     for (let t = new Date(a + "T12:00:00").getTime(); ; t += DIA_MS) {   // meio-dia: imune a horário de verão
       const d = isoLocal(t);
       if (d > ultimo) break;
-      (parcialDia(d) ? parciais : dias).push(porDia.get(d) || [d, 0, 0, 0]);
+      (parcialDia(d) || incompletoDia(d) ? parciais : dias).push(porDia.get(d) || [d, 0, 0, 0]);
     }
     const serie = { type: "heatmap", coordinateSystem: "calendar", calendarIndex: i,
       itemStyle: { borderColor: p.card, borderWidth: p.celular ? 1.5 : 2 },
@@ -1477,6 +1544,15 @@ function pintarLegendaCalendario() {
   const faixas = [`até ${compacto(q[0])}`, `${compacto(q[0])} a ${compacto(q[1])}`, `${compacto(q[1])} a ${compacto(q[2])}`,
     `${compacto(q[2])} a ${compacto(q[3])}`, `acima de ${compacto(q[3])}`];
   ul.querySelectorAll(".faixa").forEach((s, i) => { s.textContent = faixas[i]; s.classList.remove("reserva"); });
+  // a mesma hachura marca o mês incompleto na origem (fora das comparações)
+  const inc = DADOS.cobertura?.incompletos_origem || [];
+  const hach = ul.querySelector('.sw[data-cor="parcial"]')?.parentElement;
+  if (hach && inc.length) hach.lastChild.textContent = "mês parcial* ou incompleto na origem†";
+  const nota = document.getElementById("cal-nota");
+  if (nota && inc.length && !nota.dataset.incompleto) {
+    nota.dataset.incompleto = "1";
+    nota.append(` † Também hachurado: ${veioIncompleto(inc)} do portal (conferido com o TCE-SP).`);
+  }
 }
 addEventListener("temamudou", pintarLegendaCalendario);
 
