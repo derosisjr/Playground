@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-30",
+ "atualizado_em": "2026-10-31",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -82,11 +82,6 @@
    "tipo": "concentracao",
    "titulo": "Concentração: COHAB CIA HABITACAO DA BAIXADA SANTISTA concentra 100% da função 16 - HABITAÇÃO"
   },
-  "b28a1ff6c9af": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "pico_elemento",
-   "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2025-02"
-  },
   "15e5ed865428": {
    "primeiro_em": "2026-09-29",
    "tipo": "pico_favorecido",
@@ -101,11 +96,6 @@
    "primeiro_em": "2026-09-29",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTROS MATERIAIS PERMANENTES em 2025-09"
-  },
-  "bd47689476b9": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "pico_elemento",
-   "titulo": "Pico de gasto no elemento: DIVERSAS INDENIZAÇÕES E RESTITUIÇÕES em 2025-02"
   },
   "6f34854da142": {
    "primeiro_em": "2026-09-29",
@@ -277,20 +267,10 @@
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: RP MANUTENCAO INDUSTRIAL LTDA"
   },
-  "1dc21ca9136d": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS"
-  },
   "e44fefae36c3": {
    "primeiro_em": "2026-09-29",
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: USC SAÚDE"
-  },
-  "7b8e5a84e2e6": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: TARARA COMERCIAL EIRELI - ME"
   },
   "10cda15c70b0": {
    "primeiro_em": "2026-09-29",
@@ -496,11 +476,6 @@
    "primeiro_em": "2026-10-17",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: PANVILLE ATACADISTA LTDA"
-  },
-  "b8ad76de78f5": {
-   "primeiro_em": "2026-10-17",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA"
   },
   "aed7837c5b7c": {
    "primeiro_em": "2026-10-17",
@@ -3336,6 +3311,36 @@
    "primeiro_em": "2026-10-30",
    "tipo": "extra_orcamentario",
    "titulo": "Extra-orçamentário relevante: MUNICÍPIO DE SANTOS"
+  },
+  "da32e4c543f8": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: TERRACOM CONSTRUCOES LTDA em 2025-03"
+  },
+  "3acb23282403": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2025-03"
+  },
+  "b857591806d6": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: DIVERSAS INDENIZAÇÕES E RESTITUIÇÕES em 2026-02"
+  },
+  "432dcc5f0369": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "dados_incompleto_origem",
+   "titulo": "Prefeitura publicou jan/2025 incompleto (conferido com o TCE-SP)"
+  },
+  "91238506b944": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "dados_incompleto_origem",
+   "titulo": "Prefeitura publicou fev/2025 incompleto (conferido com o TCE-SP)"
+  },
+  "fb0863764274": {
+   "primeiro_em": "2026-10-31",
+   "tipo": "dados_taxa",
+   "titulo": "Taxa de execução de 2025 não validada"
   }
  },
  "resolvidos": {
@@ -3527,6 +3532,36 @@
    "tipo": "pago_acima_liquidado",
    "titulo": "Pago acima do liquidado: MARCELO M.MONTEIRO PNEUMOLOGIA CLINICA MEDICA",
    "resolvido_em": "2026-10-23"
+  },
+  "b28a1ff6c9af": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2025-02",
+   "resolvido_em": "2026-10-31"
+  },
+  "bd47689476b9": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: DIVERSAS INDENIZAÇÕES E RESTITUIÇÕES em 2025-02",
+   "resolvido_em": "2026-10-31"
+  },
+  "1dc21ca9136d": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS",
+   "resolvido_em": "2026-10-31"
+  },
+  "7b8e5a84e2e6": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: TARARA COMERCIAL EIRELI - ME",
+   "resolvido_em": "2026-10-31"
+  },
+  "b8ad76de78f5": {
+   "primeiro_em": "2026-10-17",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA",
+   "resolvido_em": "2026-10-31"
   }
  }
 }
