@@ -121,6 +121,16 @@ jobs:
       - name: Conciliação com o TCE-SP
         run: python despesas/tce.py || echo "::warning::TCE-SP indisponível — conciliação com o estado anterior"
 
+      # Outras operações da API do portal: contratos e convênios (raio-X, fracionamento,
+      # ranking), emendas e o monitor da ordem cronológica. Bloco que falha mantém os
+      # arquivos anteriores; o export usa o que estiver no repo.
+      - name: Contratos, convênios, emendas e ordem cronológica (portal)
+        run: python despesas/instrumentos.py || echo "::warning::instrumentos do portal indisponíveis — arquivos anteriores mantidos"
+
+      # Orçamento × execução por função (RREO Anexo 02, SICONFI) para a caixa do painel
+      - name: Orçamento × execução (RREO)
+        run: python despesas/orcamento.py || echo "::warning::RREO indisponível — orcamento.json anterior mantido"
+
       - name: Export (índice, execução, movimentação, dossiês, alertas)
         run: python despesas/export.py
 
@@ -136,7 +146,7 @@ jobs:
         uses: ./.github/actions/commitar
         with:
           # historico/ = alterações da origem, só-acréscimo (o SQLite do cache pode ser despejado)
-          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json favorecidos
+          caminhos: despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json despesas/instrumentos.json despesas/orcamento.json despesas/emendas.json despesas/contratos favorecidos
           mensagem: "chore: atualiza base de Despesas"
           sem-mudancas: "Sem mudancas na base."
 

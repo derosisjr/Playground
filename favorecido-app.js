@@ -153,6 +153,53 @@ function renderGrafias(d) {
   el("box-grafias").hidden = false;
 }
 
+// ── Contratos e convênios publicados no portal (despesas/instrumentos.py) ─────
+// Dossiê do top-300: vêm prontos (`contratos`, `convenios`); rota por documento: a fatia
+// despesas/contratos/NN.json do CNPJ (NN = 2 primeiros dígitos). Só CNPJ.
+async function instrumentosDo(d, dig) {
+  if (Array.isArray(d.contratos)) return { c: d.contratos, total: d.contratos_total ?? d.contratos.length, v: d.convenios || [] };
+  try {
+    const r = await fetch(`./despesas/contratos/${dig.slice(0, 2)}.json`);
+    if (r.status === 404) return { c: [], total: 0, v: [] };   // fatia inexistente = nenhum CNPJ com esse início
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const f = await r.json(), item = f.cnpj?.[dig] || {};
+    const obj = (campos, l) => Object.fromEntries(campos.map((k, i) => [k, l[i]]));
+    const c = (item.c || []).map((l) => obj(f.campos_contrato, l));
+    return { c, total: c.length, v: (item.v || []).map((l) => obj(f.campos_convenio, l)) };
+  } catch (e) {
+    console.warn("contratos:", e.message);
+    return null;
+  }
+}
+
+async function renderContratos(d) {
+  const dig = (d.chave || "").startsWith("cnpj:") ? d.chave.slice(5) : "";
+  if (!dig) return;
+  const ins = await instrumentosDo(d, dig);
+  if (!ins) return;
+  const { c, total, v } = ins;
+  el("ctr-resumo").textContent = !total && !v.length
+    ? "Nenhum contrato (assinado desde 2019) nem convênio firmado (desde 2025) publicado no Portal para este CNPJ. " +
+      "Não é irregularidade por si: pode ser ata de registro de preços, credenciamento (SUS), concessão, contrato " +
+      "anterior a 2019 ou instrumento publicado em outro lugar — confira antes de citar."
+    : `${total} contrato(s) publicado(s) no Portal para este CNPJ` + (total > c.length ? ` (os ${c.length} mais recentes abaixo)` : "") +
+      (v.length ? ` e ${v.length} convênio(s) firmado(s)` : "") +
+      ". Fonte: Portal da Transparência de Santos — contratos assinados desde 2019; valor 0 e situação “Classificar” vêm assim da origem.";
+  el("ctr-tabela").hidden = !c.length;
+  el("corpo-contratos").innerHTML = c.map((x) => `
+    <tr>
+      <td data-label="Assinatura">${esc(dataBR(x.assinatura))}</td>
+      <td data-label="Contrato · processo">${esc([x.contrato, x.processo].filter(Boolean).join(" · "))}${x.tipo === "emergencial" ? " <strong>(emergencial)</strong>" : ""}</td>
+      <td data-label="Objeto">${esc(x.objeto || "")}</td>
+      <td data-label="Situação">${esc([x.situacao, x.categoria].filter(Boolean).join(" · "))}</td>
+      <td data-label="Valor" class="num">${x.valor ? brlc(x.valor) : "—"}</td>
+    </tr>`).join("");
+  el("ctr-convenios").hidden = !v.length;
+  el("ctr-convenios").innerHTML = v.length ? "<strong>Convênios firmados:</strong> " + v.map((x) =>
+    `${esc(x.convenio)} (${esc(dataBR(x.data))}, ${esc(x.tipo || "")}, ${x.valor ? brlc(x.valor) : "sem valor"}): ${esc(x.objeto || "")}`).join("; ") : "";
+  el("box-contratos").hidden = false;
+}
+
 // ── Consultas externas (só CNPJ de fornecedor — CPF e entes públicos não) ─────
 function renderExterno(d) {
   const dig = (d.chave || "").startsWith("cnpj:") ? d.chave.slice(5) : (soDigitos(d.documento).length === 14 ? soDigitos(d.documento) : "");
@@ -264,6 +311,7 @@ function render(d) {
   renderGraficosFav(d);
   renderComposicao(d);
   renderGrafias(d);
+  renderContratos(d);   // assíncrono na rota por documento (baixa a fatia do CNPJ)
   renderExterno(d);
 
   // alertas

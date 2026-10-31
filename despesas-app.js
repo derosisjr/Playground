@@ -54,6 +54,8 @@ async function init() {
   ligarVistaFuncao();
   initMapa();   // treemap (assíncrono; degrada se arvore.json/plugin faltarem)
   initPares();  // benchmark SICONFI (assíncrono; degrada se benchmark.json faltar)
+  initOrcamento();   // orçamento × execução (RREO; some sem orcamento.json)
+  initEmendas();     // emendas parlamentares (portal; some sem o arquivo)
   initGraficosMovimento();   // M8: Mensal | Diário, calendário e caminho do dinheiro
   popularFiltrosAlertas();
   ligarAlertas();   // restaura filtros da URL e renderiza
@@ -323,10 +325,11 @@ function eixoValor(maximo, util, fmt) {
 // `cores`: uma cor ou uma por barra; `dica(i)`: HTML da dica da barra i. Depende da
 // largura (a escala do eixo): registrar com `dependeDaLargura: true`.
 function opcaoBarrasDeitadas(p, larg, { nomes, valores, cores, dica, eixo = (v) => Comum.compactoEixo(v),
-                                        largRotulo = 230, largRotuloCel = 120 }) {
+                                        largRotulo = 230, largRotuloCel = 120, teto = 0 }) {
   const porBarra = Array.isArray(cores);
   const largNomes = Math.min(p.celular ? largRotuloCel : largRotulo, 7 * Math.max(...nomes.map(n => String(n).length)));
-  const [eixoX, direita] = eixoValor(Math.max(...valores), larg - largNomes - 40, eixo);
+  // `teto`: o eixo alcança ao menos isto (uma linha de referência além da maior barra)
+  const [eixoX, direita] = eixoValor(Math.max(teto, ...valores), larg - largNomes - 40, eixo);
   return {
     grid: { left: 4, right: direita, top: 6, bottom: 4, containLabel: true },
     tooltip: { trigger: "axis", confine: true, axisPointer: { type: "shadow" }, formatter: (ps) => dica(ps[0].dataIndex) },
@@ -642,10 +645,19 @@ function renderAnalises() {
       <td data-label="Valor" class="r">${compacto(x.valor)}</td></tr>`;
     document.getElementById("prazos-lentos").innerHTML = (prz.mais_lentos || []).map(linha).join("");
     document.getElementById("prazos-rapidos").innerHTML = (prz.mais_rapidos || []).map(linha).join("");
+    // a ordem cronológica oficial (fila, vencimento, justificativas) não é publicada: a fila
+    // daqui é inferida dos documentos — monitor diário da API (instrumentos.py)
+    const oc = DADOS.instrumentos?.ordem_cronologica;
+    const ocVazia = oc && Object.values(oc.registros || {}).every(n => !n);
+    const ocAnos = Object.keys(oc?.registros || {}).sort();
+    const ocPeriodo = ocAnos.length > 1 ? `${ocAnos[0]}–${ocAnos[ocAnos.length - 1]}` : ocAnos[0];
     document.getElementById("prazos-nota").textContent =
       `Distribuição de ${ult}. ${prz.criterio} A Lei 14.133 (art. 141) manda pagar na ordem cronológica, ` +
       "por fonte de recurso, com exceções justificadas: pagamento muito mais rápido ou muito mais lento que a " +
-      "fila é triagem para pedir a justificativa — não é conclusão. Os casos extremos viram alertas.";
+      "fila é triagem para pedir a justificativa — não é conclusão. Os casos extremos viram alertas." +
+      (ocVazia ? ` A Prefeitura não publica a ordem cronológica de pagamentos: a API do portal está vazia para ` +
+        `${ocPeriodo} (conferência diária desde ${dataBR(oc.desde)}) e a página do portal ` +
+        `também estava vazia em ${dataBR(oc.pagina_conferida_em || oc.desde)} — a fila acima é inferida dos documentos.` : "");
     document.getElementById("box-prazos").hidden = false;
   }
 
@@ -1198,6 +1210,143 @@ function renderPares() {
       cabecalhos: ["Cidade", "R$ por habitante"], linhas: cidades.map(c => [c.nome, brl(c.v)]),
     },
   });
+}
+
+// ── Orçamento × execução por função (RREO Anexo 02, SICONFI) ─────────────────
+// Consome despesas/orcamento.json (gerado por orcamento.py): dotação atualizada e o que
+// já foi empenhado/liquidado até o bimestre. Competência — não é a visão caixa do painel.
+let ORCAMENTO = null, orcAno = null;
+
+async function initOrcamento() {
+  try {
+    const r = await fetch("./despesas/orcamento.json?v=" + (DADOS.atualizado_em || ""));
+    if (!r.ok) throw new Error(r.status);
+    ORCAMENTO = await r.json();
+  } catch (e) { return; }
+  if (!ORCAMENTO.exercicios?.length) return;
+  const sel = document.getElementById("orc-ano");
+  sel.innerHTML = ORCAMENTO.exercicios.map((e, i) =>
+    `<option value="${i}">${e.exercicio}${e.bimestre < 6 ? ` (até ${e.ate_mes})` : " (ano fechado)"}</option>`).join("");
+  sel.addEventListener("change", () => { orcAno = ORCAMENTO.exercicios[+sel.value]; renderOrcamento(); });
+  orcAno = ORCAMENTO.exercicios[0];
+  document.getElementById("box-orcamento").hidden = false;
+  renderOrcamento();
+}
+
+function renderOrcamento() {
+  const e = orcAno, t = e.total;
+  const pct = (v, base) => (base ? Math.round(1000 * v / base) / 10 : 0);
+  const ano = Math.round(100 * e.bimestre / 6);   // fração do exercício decorrida
+  // funções com dotação relevante (as minúsculas viram ruído de 0% ou 100%)
+  const fns = e.funcoes.filter(f => f.dotacao_atualizada >= 10e6);
+  const comLiq = fns.map(f => ({ ...f, pl: pct(f.liquidado, f.dotacao_atualizada), pe: pct(f.empenhado, f.dotacao_atualizada) }));
+  const lenta = [...comLiq].sort((a, b) => a.pl - b.pl)[0];
+  document.getElementById("orc-frase").textContent =
+    `Até ${e.ate_mes}/${e.exercicio} (${e.bimestre}º bimestre, ${ano}% do ano), a Prefeitura liquidou ` +
+    `${pct(t.liquidado, t.dotacao_atualizada).toLocaleString("pt-BR")}% do orçamento atualizado ` +
+    `(${compacto(t.liquidado)} de ${compacto(t.dotacao_atualizada)}) e empenhou ` +
+    `${pct(t.empenhado, t.dotacao_atualizada).toLocaleString("pt-BR")}%.` +
+    (lenta && e.bimestre < 6 ? ` A função mais atrasada é ${lenta.funcao} (${lenta.pl.toLocaleString("pt-BR")}% liquidado).` : "");
+  document.getElementById("orc-nota").textContent =
+    `Fonte: ${ORCAMENTO.fonte}. Barra = liquidado ÷ dotação atualizada; ` +
+    (e.bimestre < 6 ? `a linha marca ${ano}% (a fração do ano decorrida) e a barra em laranja fica mais de 15 ` +
+      "pontos abaixo dela — atraso de liquidação a conferir (obra e investimento costumam liquidar no fim do ano). " : "") +
+    "Funções com dotação abaixo de R$ 10 mi ficam fora do gráfico. Os valores não coincidem com a visão de caixa do painel.";
+  Comum.grafico("ch-orcamento", {
+    dependeDaLargura: true,
+    opcao: (p, larg) => {
+      const op = opcaoBarrasDeitadas(p, larg, { nomes: comLiq.map(f => f.funcao), valores: comLiq.map(f => f.pl),
+        cores: comLiq.map(f => (e.bimestre < 6 && f.pl < ano - 15 ? p.amarelo : p.ouro)),
+        eixo: (v) => v.toLocaleString("pt-BR") + "%", largRotulo: 200, teto: e.bimestre < 6 ? ano + 3 : 0,
+        dica: (i) => Comum.dicaGrafico(comLiq[i].funcao, [
+          [p.ouro, "Liquidado", `${brlc(comLiq[i].liquidado)} (${comLiq[i].pl.toLocaleString("pt-BR")}%)`, "p"],
+          [null, "Empenhado", `${brlc(comLiq[i].empenhado)} (${comLiq[i].pe.toLocaleString("pt-BR")}%)`],
+          [null, "Dotação atualizada", brlc(comLiq[i].dotacao_atualizada)],
+          [null, "Dotação inicial", brlc(comLiq[i].dotacao_inicial)],
+        ]) });
+      if (e.bimestre < 6) {
+        // rótulo no topo da linha ("start": o eixo das funções é invertido) — embaixo ele
+        // encavalava com os números do eixo; o topo do grid ganha espaço para ele
+        op.series[0].markLine = { silent: true, symbol: "none",
+          lineStyle: { color: p.muted, type: [4, 3], width: 1.5 },
+          label: { formatter: `${ano}% do ano`, color: p.muted, fontFamily: p.mono, fontSize: 10.5, position: "start" },
+          data: [{ xAxis: ano }] };
+        op.grid = { ...op.grid, top: 24 };
+      }
+      return op;
+    },
+    acessivel: {
+      descricao: `Orçamento × execução por função, ${e.exercicio} até ${e.ate_mes}. ` +
+        document.getElementById("orc-frase").textContent,
+      cabecalhos: ["Função", "Dotação atualizada", "Empenhado", "Liquidado"],
+      linhas: comLiq.map(f => [f.funcao, compacto(f.dotacao_atualizada), `${f.pe.toLocaleString("pt-BR")}%`,
+        `${f.pl.toLocaleString("pt-BR")}%`]),
+    },
+  });
+}
+
+// ── Emendas parlamentares (portal; lista, não execução) ──────────────────────
+// Consome despesas/emendas.json (instrumentos.py). A API de pagamentos não traz a
+// ação orçamentária: dá para listar quem indicou o quê, não para acompanhar cada emenda.
+let EMENDAS = null;
+
+async function initEmendas() {
+  const man = DADOS.instrumentos?.emendas_arquivo;
+  if (!man) return;
+  try {
+    const r = await fetch("./" + man.arquivo + "?v=" + (DADOS.atualizado_em || ""));
+    if (!r.ok) throw new Error(r.status);
+    EMENDAS = await r.json();
+  } catch (e) { return; }
+  // o ano mais recente com emenda municipal (as impositivas dos vereadores)
+  const anos = Object.keys(EMENDAS.anos || {}).filter(a => (EMENDAS.anos[a] || []).length).sort();
+  const ano = [...anos].reverse().find(a => EMENDAS.anos[a].some(l => l[1] === "Municipal")) || anos[anos.length - 1];
+  if (!ano) return;
+  const iA = EMENDAS.campos.indexOf("autor"), iV = EMENDAS.campos.indexOf("valor");
+  const linhas = EMENDAS.anos[ano];
+  const porAutor = new Map();
+  for (const l of linhas) {
+    const k = l[iA] || "";
+    const a = porAutor.get(k) || { n: 0, v: 0 };
+    a.n++; a.v += l[iV];
+    porAutor.set(k, a);
+  }
+  const autores = [...porAutor].sort((a, b) => b[1].v - a[1].v || a[0].localeCompare(b[0]));
+  const sel = document.getElementById("emd-autor");
+  sel.innerHTML = '<option value="*">Todos os autores (resumo)</option>' + autores.map(([k, a]) =>
+    `<option value="${esc(k)}">${esc(k || "Sem autor identificado")} — ${a.n}</option>`).join("");
+  sel.addEventListener("change", () => renderEmendas(ano, sel.value, autores));
+  document.getElementById("emd-titulo").textContent = `Emendas parlamentares de ${ano}`;
+  document.getElementById("box-emendas").hidden = false;
+  renderEmendas(ano, "*", autores);
+}
+
+function renderEmendas(ano, autor, autores) {
+  const c = EMENDAS.campos, linhas = EMENDAS.anos[ano];
+  const res = DADOS.instrumentos?.emendas?.[ano] || {};
+  const total = linhas.reduce((s, l) => s + l[c.indexOf("valor")], 0);
+  document.getElementById("emd-resumo").textContent =
+    `${linhas.length.toLocaleString("pt-BR")} emendas, ${compacto(total)} — ` +
+    // "1 estadual, 2 federais, 1.523 municipais" (origem no singular, da API)
+    Object.entries(res.por_origem || {}).map(([o, n]) =>
+      `${n.toLocaleString("pt-BR")} ${n > 1 ? o.toLowerCase().replace(/al$/, "ais") : o.toLowerCase()}`).join(", ") +
+    (res.sem_autor ? `; ${res.sem_autor.toLocaleString("pt-BR")} sem autor identificado na origem` : "") + ".";
+  const cab = document.getElementById("emd-cabecalho"), corpo = document.getElementById("emd-corpo");
+  if (autor === "*") {
+    cab.innerHTML = '<tr><th>Autor</th><th class="r">Emendas</th><th class="r">Valor</th></tr>';
+    corpo.innerHTML = autores.map(([k, a]) => `<tr><td data-label="Autor">${esc(k || "Sem autor identificado")}</td>
+      <td data-label="Emendas" class="r">${a.n}</td><td data-label="Valor" class="r">${compacto(a.v)}</td></tr>`).join("");
+  } else {
+    cab.innerHTML = '<tr><th>Nº</th><th>Descrição</th><th>Função</th><th class="r">Valor</th></tr>';
+    corpo.innerHTML = linhas.filter(l => (l[c.indexOf("autor")] || "") === autor).map(l => `<tr>
+      <td data-label="Nº">${esc(l[c.indexOf("numero")])}</td><td data-label="Descrição">${esc(l[c.indexOf("descricao")])}</td>
+      <td data-label="Função">${esc(l[c.indexOf("funcao")])}</td>
+      <td data-label="Valor" class="r">${brlc(l[c.indexOf("valor")])}</td></tr>`).join("");
+  }
+  document.getElementById("emd-nota").textContent =
+    "Fonte: Portal da Transparência (emendas parlamentares; descrição, função e autor como a Prefeitura publica — " +
+    "muitas vêm só como “EMENDA nº”). A API de pagamentos não traz a ação orçamentária: aqui dá para ver quem " +
+    "indicou o quê, não acompanhar a execução de cada emenda.";
 }
 
 // "04 - ADMINISTRAÇÃO" → "Administração" (rótulo amigável p/ blocos didáticos)
@@ -2084,7 +2233,7 @@ let favVisiveis = FAV_LOTE;
 // predicado de tipo de documento conforme o modo
 function predTipoFav() {
   if (favModo === "pf") return (d) => ehCpf(d);
-  if (favModo === "pj") return (d) => (d || "").includes("/");
+  if (favModo === "pj" || favModo === "semcontrato") return (d) => (d || "").includes("/");
   return () => true;
 }
 
@@ -2129,6 +2278,8 @@ function fonteFav() {
     const all = DADOS.top_favorecidos || [];
     if (favModo === "pj") return all.filter(f => (f.documento || "").includes("/"));
     if (favModo === "privados") return all.filter(f => !f.ente_publico);   // flag do export (formato.eh_ente_publico)
+    // CNPJ privado sem contrato nem convênio no portal (contagens do export; PF não tem contagem)
+    if (favModo === "semcontrato") return all.filter(f => !f.ente_publico && f.contratos === 0 && f.convenios === 0);
     return all;
   }
   // PF sem elemento: agregado leve pré-computado (dados/pf-resumo.json).
@@ -2141,6 +2292,11 @@ function fonteFav() {
     if (favModo === "privados") {
       const publicos = new Set(DADOS.entes_publicos || []);
       lista = lista.filter(f => !publicos.has(f.chave));
+    }
+    if (favModo === "semcontrato") {   // as contagens só existem no ranking geral (top-N do índice)
+      const sem = new Set((DADOS.top_favorecidos || [])
+        .filter(f => !f.ente_publico && f.contratos === 0 && f.convenios === 0).map(f => f.chave));
+      lista = lista.filter(f => sem.has(f.chave));
     }
     favMemo = { chave, lista };
   }
@@ -2155,6 +2311,8 @@ function renderFavoridosTabela() {
   let linhas = fonte.map(f => ({
     nome: f.nome || "—", valor: f.valor, qtd: f.qtd, meses: f.meses, documento: f.documento || "",
     chave: f.chave || chaveFavorecido(f.nome, f.documento), grafias: f.grafias || [],
+    // contratos + convênios do portal (só CNPJ, só no agregado do índice); -1 = sem contagem
+    contratos: f.contratos == null ? -1 : f.contratos + (f.convenios || 0), nContr: f.contratos, nConv: f.convenios,
   }));
   if (termo) linhas = linhas.filter(f =>
     semAcento(f.nome).includes(termo) ||
@@ -2184,6 +2342,9 @@ function renderFavoridosTabela() {
       : "Nenhum favorecido encontrado.";
   }
   const visiveis = linhas.slice(0, favVisiveis);
+  // coluna "Contratos" só quando o índice traz as contagens (export com instrumentos.py)
+  const temContratos = (DADOS.top_favorecidos || []).some(f => f.contratos != null);
+  document.getElementById("th-contratos").hidden = !temContratos;
   // o nome abre o raio-X (dossiê do top-300 ou rota por documento/nome); a linha inteira
   // também, como atalho de mouse — o teclado usa o próprio link
   corpo.innerHTML = visiveis.map(f => `
@@ -2192,6 +2353,9 @@ function renderFavoridosTabela() {
       <td data-label="Valor total" class="r num">${brlc(f.valor)}</td>
       <td data-label="Pagamentos" class="r num">${f.qtd}</td>
       <td data-label="Meses" class="r num">${f.meses}</td>
+      ${temContratos ? `<td data-label="Contratos" class="r num" title="${f.contratos < 0 ? "Sem contagem: só CNPJ, no ranking geral"
+        : `${f.nContr} contrato(s) e ${f.nConv} convênio(s) publicados no Portal`}">${f.contratos < 0 ? "—"
+        : f.nContr + (f.nConv ? ` + ${f.nConv} conv.` : "")}</td>` : ""}
     </tr>`).join("");
   corpo.querySelectorAll(".fav-row").forEach(tr => tr.addEventListener("click", (e) => {
     if (e.target.closest("a") || getSelection().toString()) return;
@@ -2206,7 +2370,15 @@ function renderFavoridosTabela() {
   });
   document.getElementById("fav-mais").hidden = linhas.length <= favVisiveis;
   const rotuloModo = favModo === "pf" ? "pessoa(s) física(s)"
-    : favModo === "pj" ? "empresa(s)" : favModo === "privados" ? "fornecedor(es) privado(s)" : "favorecido(s)";
+    : favModo === "pj" ? "empresa(s)" : favModo === "privados" ? "fornecedor(es) privado(s)"
+    : favModo === "semcontrato" ? "fornecedor(es) privado(s) sem contrato publicado" : "favorecido(s)";
+  const notaCtr = document.getElementById("fav-nota-contratos");
+  notaCtr.hidden = favModo !== "semcontrato";
+  const ins = DADOS.instrumentos?.contratos;
+  notaCtr.textContent = "Triagem, não achado: nenhum contrato (assinado desde " + (ins?.desde || 2019) +
+    ") nem convênio firmado (desde 2025) publicado no Portal para o CNPJ. Pode ser ata de registro de preços " +
+    "(ver a etiqueta do PNCP nos alertas), credenciamento do SUS, concessão, contrato anterior ou instrumento " +
+    "publicado em outro lugar — confira antes de citar.";
   document.getElementById("contagem").textContent =
     `${linhas.length} ${rotuloModo} — top ${fonte.length} por valor` +
     (linhas.length > visiveis.length ? ` · exibindo ${visiveis.length}` : "");
@@ -2217,7 +2389,7 @@ function renderFavoridosTabela() {
 function popularElementosFav() {
   let vals = null;
   if (ELEMENTOS) {
-    vals = ELEMENTOS[favModo === "pf" ? "pf" : favModo === "pj" ? "pj" : "todos"] || [];
+    vals = ELEMENTOS[favModo === "pf" ? "pf" : favModo === "pj" || favModo === "semcontrato" ? "pj" : "todos"] || [];
   } else if (FAV_DETALHE) {
     const pred = predTipoFav();
     const iE = FAV_DETALHE.campos.indexOf("elemento_despesa");
@@ -2268,6 +2440,9 @@ async function carregarElementosLeve() {
 }
 
 function ligarModosFav() {
+  // "Sem contrato publicado" só existe quando o índice traz as contagens de contratos
+  document.querySelector('#fav-modos button[data-modo="semcontrato"]').hidden =
+    !(DADOS.top_favorecidos || []).some(f => f.contratos != null);
   document.querySelectorAll("#fav-modos button").forEach(b =>
     b.addEventListener("click", () => {
       favModo = b.dataset.modo;
