@@ -29,7 +29,7 @@ na classificação das linhas (abaixo).
 **A API devolve misturada a entidade-demo da plataforma Portal TP** ("PREFEITURA MUNICIPAL
 DEMONSTRAÇÃO", dados de um município de Rondônia — R$ 696 mi em 2025 detectados no levantamento de
 2026-07): o crawler descarta na coleta (`UG_EXCLUIR="DEMONSTRA"`) e **expurga do cache** a cada
-execução (`expurgar_demo()` em `abrir_db`). **A origem muda a largura dos códigos sem aviso**: desde 2026-09-30 os nºs de empenho/liquidação/pagamento vêm com 8 dígitos e, desde 2026-08, o `grupo_despesa` com 11 — `normalizar()` devolve tudo à largura histórica (`numero_documento`, `codigo_grupo`), senão o casamento `UG|nº` por texto exato quebra (72% de "não localizado" em out/2026). `verificar.py` falha se um mês passar de 25% do pago sem empenho localizado. **A API NÃO expõe unidade orçamentária (secretaria)**; o
+execução (`expurgar_demo()` em `abrir_db`). **A origem muda a largura dos códigos sem aviso**: desde 2026-09-30 os nºs de empenho/liquidação/pagamento vêm com 8 dígitos e, desde 2026-08, o `grupo_despesa` com 11 — `normalizar()` devolve tudo à largura histórica (`numero_documento`, `codigo_grupo`), senão o casamento `UG|nº` por texto exato quebra (72% de "não localizado" em out/2026). `verificar.py` falha se um mês passar de 25% do pago sem empenho localizado. **A API NÃO expõe unidade orçamentária (secretaria)** (nem `json_programa_acao`: só as 7 entidades — ver "Outras operações"); o
 único campo de unidade é `unidade_gestora` (a entidade: Prefeitura, CAPEP, IPS, fundações). O recorte
 por órgão usa **`funcao`** como proxy de área/secretaria.
 
@@ -226,6 +226,53 @@ da guarda "total > R$ 4 bi", que ficou como sanidade) confere cobertura, conserv
 arquivos, série × movimentação e ranking × dossiês; **`despesas/comparar.py`** compara dois
 conjuntos de artefatos (e duas bases) e explica as diferenças por causa.
 
+## Outras operações da API do portal e orçamento × execução (2026-10)
+
+O `transparencia.asmx` tem **88 operações** (WSDL); a base usa 3. Conferido em 2026-10-30:
+- **Usadas — `despesas/instrumentos.py`** (sem SQLite; bloco que falha mantém os arquivos anteriores;
+  tudo ordenado): `json_contratos` (por ano de assinatura, 2019→corrente: 9.951, dos quais 6.855 com
+  CNPJ em 1.789 fornecedores) + `json_contratos_emergenciais` (com vigência e modalidade) →
+  **`despesas/contratos/NN.json`** (fatias pelos 2 primeiros dígitos do CNPJ — o raio-X baixa
+  só a do favorecido); `json_convenios_firmados` (mensal, só existe desde 2025; CNPJ do participante)
+  → mesmas fatias; `json_emendas_parlamentares` (por ano: 2026 = 1.523 municipais + 3, R$ 80,8 mi, 636
+  sem autor, muitas só "EMENDA nº") → **`despesas/emendas.json`** (fora de `dados/`: o export apaga lá todo `.json` que não é dele); `json_ordem_cronologica` →
+  só monitor. Resumo em **`despesas/instrumentos.json`** (contagens; `ordem_cronologica.desde` só
+  muda quando o estado muda). **Contrato de pessoa física fica fora** (2.957, CPF mascarado na
+  origem; em geral locação, objeto com endereço) — só contado.
+- **Ordem cronológica não publicada**: API vazia para 2024–2026 e a página do portal
+  (`ordemCronologicaGpi.aspx`, renderiza no navegador; cita a Lei 8.666) também vazia para a
+  Prefeitura em 2024, 2025 e 2026, todos os meses — conferência manual em 2026-10-30
+  (`PAGINA_OC_CONFERIDA`). O box de prazos diz isso (a fila dele é inferida dos documentos).
+  Requerimento sobre o assunto: decisão do usuário, ainda não.
+- **Descartadas**: `json_convenios` (documento vem como o texto "CNPJ", sem nome);
+  `json_orcamento_despesas` (soma R$ 11,24 bi para 2026 contra R$ 6,30 bi de dotação inicial no
+  RREO); `json_programa_acao` (`CNO_ORGAO` só tem as 7 entidades — **secretaria continua
+  indisponível**); `json_obras` (lista genérica de pagamentos); `json_licitacoes`
+  (`extra` é booleano; 0 registros) e `json_dispensas_inexigibilidades` (0).
+- **Export**: `contratos_portal()` lê as fatias do repo (entrada, como o espelho do PNCP — mesmo
+  com `--saida`). `top_favorecidos[].contratos/convenios` só para CNPJ (ausente = sem contagem);
+  dossiê com `contratos` (60 mais recentes), `contratos_total` e `convenios` (lista vazia =
+  conferido, nada publicado). **Fracionamento**: contrato do mesmo CNPJ assinado até 24 meses antes
+  de algum empenho (`CONTRATO_JANELA_DIAS`, a janela do PNCP) vira `contrato` + `contrato_alcance`
+  e o texto "os empenhos podem ser execução desse contrato"; na publicação vai para o fim da fila,
+  como `provavel_ata`. Base de 2026-10-30: 357 candidatos → 106 com contrato, 154 provável ata, 29
+  os dois, **126 sem nenhum** (os que sobem). Índice: bloco `instrumentos` (resumo + manifesto das
+  emendas).
+- **`despesas/orcamento.py`** → **`despesas/orcamento.json`**: RREO Anexo 02 do SICONFI (mesma API
+  do Endividamento), exceto intra + intra, por função (reconhecida pelo nome na lista das 28
+  funções — o anexo intercala função e subfunção sem marcador); exercício corrente no último
+  bimestre publicado e o anterior no 6º. Somas conferidas com o total do RREO (2026 até ago:
+  dotação atualizada R$ 6,39 bi, liquidado 56,4%; Saneamento 5,2%).
+- **Painel**: caixa "Orçamento × execução por função" (barra = liquidado ÷ dotação atualizada,
+  linha na fração do ano, laranja = mais de 15 p.p. abaixo; funções < R$ 10 mi fora; competência,
+  não caixa) e "Emendas parlamentares" (resumo por autor; escolher um autor lista as emendas dele)
+  depois da Execução; aba Favorecidos com a coluna **Contratos** e o modo **"Sem contrato
+  publicado"** (privados com CNPJ sem contrato nem convênio — 69 no top-300 —, com a ressalva de
+  triagem: ata, SUS, concessão, contrato anterior a 2019); raio-X com a caixa "Contratos e
+  convênios no Portal" (dossiê ou a fatia do CNPJ na rota `?doc=`). `opcaoBarrasDeitadas` ganhou
+  `teto` (o eixo alcança a linha de referência). Ids das emendas com prefixo `emd-` (`em-resumo` é
+  o "Em resumo").
+
 ## Gravação estável — mesmo dado, mesmos bytes (2026-10)
 
 Medido em 2026-10-30 (clone espelho recompactado como o do GitHub): o repositório (82 MiB) crescia
@@ -300,8 +347,8 @@ posteriores ao último mês completo): no painel ficam tracejados e marcados com
 do ponto de anomalia e da média móvel; o card do ano mostra `resumo.yoy` (jan–mês de referência) e
 "Último mês completo" no Detalhamento = `resumo.mes_ref`; na retrospectiva saem da série, do
 total e do "mês mais leve". Os arquivos `dados/mov/` são decodificados por `decodificarParte`
-ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=25` (com `defer`),
-`retrospectiva-app.js?v=9`, `favorecido-app.js?v=11` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
+ao baixar (dicionário é por arquivo). Assets versionados: `despesas-app.js?v=26` (com `defer`),
+`retrospectiva-app.js?v=9`, `favorecido-app.js?v=12` (com `defer`), `comum.js?v=22`, `comum.css?v=12` (bump em todas as páginas ao
 mudar). Carga padrão =
 mandato (2025→ano corrente, `ANO_INICIAL=2025`). `.sqlite`/`.xlsx`/`.csv`, `_backup/`,
 `_candidato/`, `_bruto/` e `*.sqlite.bak-*` no `.gitignore`.
@@ -591,9 +638,10 @@ passo final do `despesas.yml` às segundas (`date +%u = 1`) ou `workflow_dispatc
 
 Testes → cache do `.sqlite` → crawler (partições sem carga; depois `--ano corrente --forcar`, ou
 tudo com `reconciliar_tudo=true`) com tratamento dos códigos 1 (aborta) e 2 (publica e falha no
-fim, lista no `GITHUB_STEP_SUMMARY`) → **`tce.py`** (conciliação com o TCE-SP; falha vira aviso) →
+fim, lista no `GITHUB_STEP_SUMMARY`) → **`tce.py`** (conciliação com o TCE-SP), **`instrumentos.py`**
+(contratos, convênios, emendas, ordem cronológica) e **`orcamento.py`** (RREO) — falha vira aviso →
 `export.py` → **`verificar.py --tolerar-erros`** → commit de
-`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json favorecidos`
+`despesas-index.json despesas/dados despesas/arvore.json despesas/alertas-estado.json despesas/alertas-candidatos.json despesas/historico despesas/servico-divida.json despesas/conciliacao-tce.json despesas/instrumentos.json despesas/orcamento.json despesas/emendas.json despesas/contratos favorecidos`
 (o export cria `despesas/historico/` mesmo vazia — `git add` de pasta inexistente derruba o passo)
 → briefing → passo "Falha parcial" (vermelho se alguma partição não atualizou).
 
@@ -643,6 +691,10 @@ python despesas/benchmark.py --dry-run
 # Conciliação com o TCE-SP (mês incompleto na origem) — conferir sem gravar / rebaixar tudo
 python despesas/tce.py --dry-run
 python despesas/tce.py --todos
+
+# Contratos, convênios, emendas e ordem cronológica (portal) / orçamento × execução (RREO)
+python despesas/instrumentos.py --dry-run
+python despesas/orcamento.py --dry-run
 ```
 
 **Cuidado ao testar localmente:** `export.py` sem `--saida` sobrescreve artefatos VERSIONADOS

@@ -243,6 +243,61 @@ def _marcar_ente_publico(d: dict) -> dict:
     return d
 
 
+# ── Contratos e convênios publicados no portal (despesas/instrumentos.py, 2026-10) ──
+# Fatias por prefixo do CNPJ em despesas/contratos/ — ENTRADA do export (como o
+# espelho do PNCP), lida sempre do repo, mesmo com --saida. Só pessoa jurídica.
+CONTRATOS_DIR = os.path.join(AQUI, "contratos")
+INSTRUMENTOS_PATH = os.path.join(AQUI, "instrumentos.json")
+CONTRATO_JANELA_DIAS = 730   # contrato assinado até 24 meses antes do empenho (a janela do PNCP)
+
+
+def contratos_portal(diretorio: str | None = None) -> dict:
+    """{cnpj (14 dígitos): {"c": [contratos], "v": [convênios firmados]}} — vazio sem os arquivos."""
+    out = {}
+    for arq in sorted(glob.glob(os.path.join(diretorio or CONTRATOS_DIR, "*.json"))):
+        try:
+            with open(arq, encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            continue
+        cc, cv = d.get("campos_contrato") or [], d.get("campos_convenio") or []
+        for k, item in (d.get("cnpj") or {}).items():
+            out[k] = {"c": [dict(zip(cc, l)) for l in item.get("c") or []],
+                      "v": [dict(zip(cv, l)) for l in item.get("v") or []]}
+    return out
+
+
+def _instrumentos_do(chave: str, contratos: dict) -> dict | None:
+    """Contratos e convênios do favorecido — só identidade com CNPJ e com os arquivos
+    carregados (None: não dá para dizer "sem contrato")."""
+    if not chave.startswith("cnpj:") or not contratos:
+        return None
+    return contratos.get(chave[5:]) or {"c": [], "v": []}
+
+
+def instrumentos_indice() -> dict | None:
+    """Bloco `instrumentos` do índice: o resumo de despesas/instrumentos.json (contratos,
+    convênios, emendas, ordem cronológica) + o manifesto das emendas (o painel só baixa a
+    lista quando a caixa aparece). None sem a coleta (índice anterior a ela)."""
+    try:
+        with open(INSTRUMENTOS_PATH, encoding="utf-8") as f:
+            resumo = {k: v for k, v in json.load(f).items() if k != "versao"}
+    except (OSError, ValueError):
+        return None
+    emendas = os.path.join(AQUI, "emendas.json")
+    if os.path.exists(emendas):
+        resumo["emendas_arquivo"] = {"arquivo": "despesas/emendas.json", "bytes": os.path.getsize(emendas)}
+    return resumo
+
+
+def _contagem_instrumentos(f: dict, contratos: dict) -> dict:
+    """Ranking: quantos contratos e convênios o portal publica para o CNPJ do favorecido."""
+    ins = _instrumentos_do(f["chave"], contratos)
+    if ins is not None:
+        f["contratos"], f["convenios"] = len(ins["c"]), len(ins["v"])
+    return f
+
+
 def _fav_campos(ident: dict, chave: str) -> dict:
     o = ident.get(chave) or {"nome": "", "documento": "", "slug": slug_favorecido(chave), "grafias": []}
     d = {"nome": o["nome"], "documento": o["documento"], "chave": chave, "slug": o["slug"]}
@@ -434,8 +489,9 @@ def _rotulo_periodo(meses: list[int]) -> str:
 FONTE_EXTRA = "Extra-orçamentário (retenções e consignações)"
 
 
-def agregados(conn, ident: dict | None = None) -> dict:
+def agregados(conn, ident: dict | None = None, contratos: dict | None = None) -> dict:
     ident = ident if ident is not None else preparar_identidades(conn)
+    contratos = contratos or {}
     total = _q(conn, "SELECT COALESCE(SUM(valor),0) s, COUNT(*) n FROM pagamentos")[0]
     anos = _q(conn, "SELECT ano, SUM(valor) s, COUNT(*) n FROM pagamentos GROUP BY ano ORDER BY ano")
     minmax = _q(conn, "SELECT MIN(ano*100+mes) a, MAX(ano*100+mes) b FROM pagamentos")[0]
@@ -518,8 +574,8 @@ def agregados(conn, ident: dict | None = None) -> dict:
         "por_funcao_orcamentario": [{"funcao": r["k"], "valor": round(r["s"], 2)} for r in por_funcao_orc],
         "por_programa": [{"programa": r["k"], "valor": round(r["s"], 2)} for r in por_programa],
         "por_unidade": [{"unidade": r["k"], "valor": round(r["s"], 2)} for r in por_unidade],
-        "top_favorecidos": [_marcar_ente_publico(
-            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"]))
+        "top_favorecidos": [_contagem_instrumentos(_marcar_ente_publico(
+            dict(_fav_campos(ident, r["k"]), valor=round(r["s"], 2), qtd=r["n"], meses=r["meses"])), contratos)
             for r in favorecidos
         ],
         "servico_divida": {
@@ -1006,8 +1062,12 @@ def anos_detalhe(conn, ident: dict | None = None) -> dict:
 # ── Raio-X por favorecido (favorecidos/<slug>.json) ───────────────────────────
 # Um dossiê estático por IDENTIDADE do top-N: série mensal própria, por função,
 # últimos pagamentos e alertas — consumido por favorecido.html?f=<slug>.
-def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
+CONTRATOS_POR_DOSSIE = 60   # os mais recentes; o total vai em contratos_total
+
+
+def exportar_favorecidos(conn, indice: dict, ident: dict | None = None, contratos: dict | None = None) -> int:
     ident = ident if ident is not None else preparar_identidades(conn)
+    contratos = contratos or {}
     os.makedirs(FAV_DIR, exist_ok=True)
     tops = indice.get("top_favorecidos") or []
     validos = set()
@@ -1092,6 +1152,12 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
             dossies[slug]["grafias_detalhe"] = grafias_det
         if f.get("ente_publico"):
             dossies[slug]["ente_publico"] = True
+        # contratos/convênios publicados no portal para o CNPJ (lista vazia = conferido, nada publicado)
+        ins = _instrumentos_do(chave, contratos)
+        if ins is not None:
+            dossies[slug]["contratos"] = ins["c"][:CONTRATOS_POR_DOSSIE]
+            dossies[slug]["contratos_total"] = len(ins["c"])
+            dossies[slug]["convenios"] = ins["v"]
     for slug, dossie in dossies.items():
         gravar_json_se_mudou(os.path.join(FAV_DIR, slug + ".json"), dossie, separators=(",", ":"))
 
@@ -1281,7 +1347,7 @@ def _eh_ordinario(tipo_empenho) -> bool:
 
 def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                        execucao: dict | None = None, prazos: dict | None = None,
-                       espelho: dict | None = None) -> list[dict]:
+                       espelho: dict | None = None, contratos: dict | None = None) -> list[dict]:
     """TODOS os casos que acionaram as regras (sem tetos). Cada alerta traz: id estável,
     classe (contexto / anomalia / inconsistência), severidade, filtro (com a chave de
     identidade), valor e, quando barato, o link; `_ordem` é a prioridade dentro da regra
@@ -1439,6 +1505,7 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
         if r["originais"]:
             por_grupo[(r["ug"], r["k"], r["el"], r["ano"])].append(dict(r))
     esp = espelho if espelho is not None else espelho_pncp()
+    ctr = contratos if contratos is not None else contratos_portal()   # contratos do portal (instrumentos.py)
     cobertura_pncp = (f"o espelho do PNCP usado aqui cobre só pregão eletrônico e dispensa de Santos "
                       f"publicados desde {_mes_ano(esp.get('inicio'))} — “sem registro” não quer dizer "
                       f"“sem licitação”") if esp.get("inicio") else "espelho do PNCP indisponível nesta execução"
@@ -1479,6 +1546,27 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                         + f" Ressalva: {cobertura_pncp}.")
         else:
             pncp_txt = f" Sem registro deste fornecedor no PNCP na janela de 24 meses ({cobertura_pncp})."
+        # contrato publicado no portal com o mesmo CNPJ, assinado até 24 meses antes de algum
+        # empenho: os empenhos podem ser execução dele, não fracionamento (vai para o fim da fila)
+        ins, contrato, n_ct = _instrumentos_do(k, ctr), None, 0
+        for e in (abaixo if ins and ins["c"] else []):
+            d_emp = (e["data"] or "")[:10]
+            if not d_emp:
+                continue
+            ini = (date.fromisoformat(d_emp) - timedelta(days=CONTRATO_JANELA_DIAS)).isoformat()
+            cobre = [c for c in ins["c"] if c["assinatura"] and ini <= c["assinatura"] <= d_emp]
+            if cobre:
+                n_ct += 1
+                melhor = max(cobre, key=lambda c: (c["assinatura"], c["contrato"]))
+                if not contrato or (melhor["assinatura"], melhor["contrato"]) > (contrato["assinatura"], contrato["contrato"]):
+                    contrato = melhor
+        contrato_txt = ""
+        if contrato:
+            contrato_txt = (f" Portal: há contrato publicado com este CNPJ assinado nos 24 meses anteriores a "
+                            f"{n_ct} de {len(abaixo)} empenhos — nº {contrato['contrato']} (processo "
+                            f"{contrato['processo'] or '—'}), {'/'.join(reversed(contrato['assinatura'].split('-')))}, "
+                            f"{brl(contrato['valor'])}: {contrato['objeto'][:90]} — os empenhos podem ser execução "
+                            f"desse contrato; confira.")
         fora_txt = ""
         if outros:
             fora_txt = (f" Fora da conta: {len(outros)} empenho(s) global(is)/estimativo(s) do mesmo favorecido e "
@@ -1497,7 +1585,7 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                         f"abaixo de {brl(lim['valor'])} ({lim['hipotese']}; {lim['norma']}) — {(el or '')[:50]}. "
                         f"A Lei 14.133 (art. 75, § 1º, I) soma o que a mesma unidade gestora gastou no exercício. "
                         f"Padrão financeiro apenas: o valor empenhado não é o valor da contratação, e "
-                        f"o limite se aplica ao objeto.{fora_txt}{pncp_txt} "
+                        f"o limite se aplica ao objeto.{fora_txt}{pncp_txt}{contrato_txt} "
                         f"Faltam: {', '.join(FRAC_INFO_FALTANTE)}."),
             "valor": soma,
             "filtro": _filtro_fav(f, k, elemento=el, tipo_doc="pj", ano=ano, unidade=ug),
@@ -1505,6 +1593,8 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
             "etiqueta": etiqueta,
             "etiqueta_alcance": [n_et, len(abaixo)] if etiqueta else None,
             "pncp": pncp,
+            **({"contrato": {c: contrato[c] for c in ("contrato", "processo", "assinatura", "valor", "objeto")},
+                "contrato_alcance": [n_ct, len(abaixo)]} if contrato else {}),
             "documentos": docs,
             "informacoes_faltantes": FRAC_INFO_FALTANTE,
             # execução: cada empenho está no arquivo do mês em que foi emitido (1º documento)
@@ -1964,8 +2054,9 @@ ORDEM_ESTADO = {"novo": 0, "sem_historico": 1, "persistente": 1}   # sem estado 
 
 def _prioridade_publicacao(a: dict) -> tuple:
     """Dentro da regra: novo antes de persistente, depois a prioridade própria da regra
-    (valor, na maioria); provável compra por ata (etiqueta do PNCP) por último."""
-    return (a.get("etiqueta") == "provavel_ata", ORDEM_ESTADO.get(a.get("estado"), 1),
+    (valor, na maioria); provável compra por ata (etiqueta do PNCP) ou contrato publicado
+    no portal (provável execução contratual) por último."""
+    return (a.get("etiqueta") == "provavel_ata" or bool(a.get("contrato")), ORDEM_ESTADO.get(a.get("estado"), 1),
             a.get("_ordem") or (-(a.get("valor") or 0),))
 
 
@@ -2992,7 +3083,8 @@ def main():
     ident = preparar_identidades(conn)
     # conciliação com o TCE-SP ANTES de tudo: mês incompleto na origem sai das comparações
     cob = cobertura_conciliada(conn)
-    indice = agregados(conn, ident)
+    contratos = contratos_portal()   # contratos e convênios do portal (despesas/instrumentos.py)
+    indice = agregados(conn, ident, contratos)
     indice["cobertura"] = cob
     indice["execucao"] = execucao_agregada(conn, cob)
     # identidades classificadas como ente público (p/ o filtro "fornecedores privados"
@@ -3005,7 +3097,8 @@ def main():
     indice["publicidade"] = publicidade(conn, ident, cob)   # só agregados (2026-10)
     # alertas: TODOS os candidatos → histórico sobre todos (deslocado pelo teto não vira
     # "resolvido") → publicação por prioridade e tetos → lista completa p/ o CSV do painel
-    cands = candidatos_alertas(conn, ident, cob, indice["execucao"], prazos=indice["prazos_pagamento"])
+    cands = candidatos_alertas(conn, ident, cob, indice["execucao"], prazos=indice["prazos_pagamento"],
+                               contratos=contratos)
     indice["prazos_pagamento"].pop("_linhas", None)   # só alimenta as regras; fora do índice
     historico = aplicar_historico_alertas(cands)
     indice["alertas_regras"] = {}   # por regra: candidatos × publicados (tetos declarados no painel)
@@ -3025,7 +3118,8 @@ def main():
     alteracoes = exportar_historico_alteracoes(conn)
     indice["resumo"] = resumo_narrativo(conn, indice)
     indice["anos_detalhe"] = anos_detalhe(conn, ident)
-    n_fav_raiox = exportar_favorecidos(conn, indice, ident)
+    n_fav_raiox = exportar_favorecidos(conn, indice, ident, contratos)
+    indice["instrumentos"] = instrumentos_indice()
     n_arvore = exportar_arvore(conn, indice)
     execucao = montar_execucao(conn)
     movimento = montar_movimento(conn)

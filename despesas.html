@@ -427,6 +427,27 @@
           <div class="grafico" id="ch-execucao"></div>
           <p class="contagem nota-parcial" hidden></p>
         </div>
+        <!-- orçamento × execução (RREO/SICONFI) e emendas (portal): caixas somem sem os arquivos -->
+        <div class="box" id="box-orcamento" hidden>
+          <div class="box-toggle">
+            <h3>Orçamento × execução por função — quanto da dotação já foi liquidado</h3>
+            <select id="orc-ano" aria-label="Exercício" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color: var(--ink)"></select>
+          </div>
+          <p class="resumo-texto" id="orc-frase" style="font-size:14px;margin:0 0 10px"></p>
+          <div class="grafico" id="ch-orcamento"></div>
+          <p class="contagem" id="orc-nota" style="margin:10px 0 0"></p>
+        </div>
+        <div class="box" id="box-emendas" hidden>
+          <div class="box-toggle">
+            <h3 id="emd-titulo">Emendas parlamentares</h3>
+            <select id="emd-autor" aria-label="Autor da emenda" style="padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);font:inherit;color: var(--ink);max-width:100%"></select>
+          </div>
+          <p class="contagem" id="emd-resumo" style="margin:0 0 10px"></p>
+          <div class="tabela-wrap"><table class="tabela-resp mini">
+            <thead id="emd-cabecalho"></thead>
+            <tbody id="emd-corpo"></tbody></table></div>
+          <p class="contagem" id="emd-nota" style="margin:10px 0 0"></p>
+        </div>
         <div class="box" id="box-prazos" hidden>
           <h3>Quanto a Prefeitura demora para pagar depois de liquidar</h3>
           <p class="contagem" id="prazos-resumo" style="margin:0 0 10px"></p>
@@ -680,7 +701,10 @@
                   title="Exclui Município, IPREV, CAPEP, bancos públicos e demais repasses institucionais">Fornecedores privados</button>
           <button class="btn" data-modo="pj" type="button" aria-pressed="false">Pessoa jurídica (CNPJ)</button>
           <button class="btn" data-modo="pf" type="button" aria-pressed="false">Pessoa física (CPF)</button>
+          <button class="btn" data-modo="semcontrato" type="button" aria-pressed="false" hidden
+                  title="Fornecedores privados com CNPJ sem contrato (desde 2019) nem convênio firmado (desde 2025) publicado no Portal da Transparência">Sem contrato publicado</button>
         </div>
+        <p class="contagem" id="fav-nota-contratos" hidden style="margin:0 0 10px"></p>
         <div class="filtros filtros-fav">
           <input id="q" type="search" placeholder="Buscar por nome, CPF ou CNPJ..." aria-label="Buscar favorecido por nome, CPF ou CNPJ" />
           <select id="f-elemento-fav" aria-label="Elemento de despesa"><option value="">Elemento de despesa (todos)</option></select>
@@ -697,6 +721,8 @@
                 <th data-sort="valor" class="r"><button type="button">Valor total</button></th>
                 <th data-sort="qtd" class="r"><button type="button">Pagamentos</button></th>
                 <th data-sort="meses" class="r"><button type="button">Meses</button></th>
+                <th data-sort="contratos" class="r" id="th-contratos" hidden
+                    title="Contratos (desde 2019) e convênios firmados (desde 2025) publicados no Portal para o CNPJ"><button type="button">Contratos</button></th>
               </tr>
             </thead>
             <tbody id="corpo-fav"></tbody>
@@ -867,6 +893,6 @@
       </div>
     </div>
 
-    <script defer src="./despesas-app.js?v=25"></script>
+    <script defer src="./despesas-app.js?v=26"></script>
   </body>
 </html>

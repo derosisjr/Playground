@@ -183,6 +183,18 @@
             data-slide-nota="Nenhum alerta é conclusão de irregularidade."></div>
         </div>
 
+        <div class="box" id="box-contratos" hidden>
+          <h3>Contratos e convênios no Portal da Transparência</h3>
+          <p class="nota" id="ctr-resumo"></p>
+          <div id="ctr-tabela" style="overflow-x:auto" tabindex="0" role="region" aria-label="Contratos publicados (role na horizontal para ver todas as colunas)" hidden>
+            <table class="tabela-resp">
+              <thead><tr><th>Assinatura</th><th>Contrato · processo</th><th>Objeto</th><th>Situação</th><th style="text-align:right">Valor</th></tr></thead>
+              <tbody id="corpo-contratos"></tbody>
+            </table>
+          </div>
+          <p class="nota" id="ctr-convenios" hidden></p>
+        </div>
+
         <div class="box cad" id="box-externo" hidden>
           <h3>Consultas externas</h3>
           <p class="nota" id="ext-links"></p>
@@ -233,6 +245,6 @@
       </div>
     </main>
 
-    <script defer src="./favorecido-app.js?v=11"></script>
+    <script defer src="./favorecido-app.js?v=12"></script>
   </body>
 </html>

@@ -1,0 +1,59 @@
+{
+ "contratos": {
+  "cnpjs": 1789,
+  "desde": 2019,
+  "pf_omitidos": 2957,
+  "por_ano": {
+   "2019": 1120,
+   "2020": 1061,
+   "2021": 1170,
+   "2022": 1357,
+   "2023": 1207,
+   "2024": 1525,
+   "2025": 1988,
+   "2026": 523
+  },
+  "sem_documento": 141,
+  "total": 6855
+ },
+ "convenios_firmados": {
+  "cnpjs": 241,
+  "desde": 2025,
+  "por_ano": {
+   "2025": 399,
+   "2026": 296
+  }
+ },
+ "emendas": {
+  "2025": {
+   "emendas": 14,
+   "por_origem": {
+    "Estadual": 2,
+    "Federal": 12
+   },
+   "sem_autor": 7,
+   "valor": 930000.0
+  },
+  "2026": {
+   "emendas": 1526,
+   "por_origem": {
+    "Estadual": 1,
+    "Federal": 2,
+    "Municipal": 1523
+   },
+   "sem_autor": 636,
+   "valor": 80799796.0
+  }
+ },
+ "ordem_cronologica": {
+  "desde": "2026-10-30",
+  "pagina": "https://santos-sp.portaltp.com.br/consultas/despesas/ordemCronologicaGpi.aspx",
+  "pagina_conferida_em": "2026-10-30",
+  "registros": {
+   "2024": 0,
+   "2025": 0,
+   "2026": 0
+  }
+ },
+ "versao": 1
+}
