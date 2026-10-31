@@ -226,6 +226,24 @@ da guarda "total > R$ 4 bi", que ficou como sanidade) confere cobertura, conserv
 arquivos, série × movimentação e ranking × dossiês; **`despesas/comparar.py`** compara dois
 conjuntos de artefatos (e duas bases) e explica as diferenças por causa.
 
+## Gravação estável — mesmo dado, mesmos bytes (2026-10)
+
+Medido em 2026-10-30 (clone espelho recompactado como o do GitHub): o repositório (82 MiB) crescia
+**~58 MiB/mês, 66% em `despesas/dados/mov/`**, e 93% das versões diárias desses arquivos em
+outubro **não tinham dado novo** (jan, mar e jun/2026: 33 regravações, zero mudança). Causa: a
+recarga do ano corrente (`--forcar`) substitui as partições no SQLite e muda a ORDEM FÍSICA; o
+export ordenava só por (mês, data, fase) e o empate — e o dicionário pela 1ª aparição — seguia a
+ordem física. Também saíam da ordem física: colunas "soltas" do `GROUP BY` dos pseudo-empenhos
+(`fonte_recurso` de uma linha arbitrária), o tipo do empenho nos estágios, os últimos pagamentos
+do dossiê e os documentos dos alertas (`LIMIT` com empate). Agora toda ordenação é **total pelo
+conteúdo** (desempate por todas as colunas), coluna fora do `GROUP BY` vai com `MAX()` e as
+consultas com `LIMIT` desempatam por documento. Teste: `test_gravacao_estavel.py` — as mesmas
+linhas inseridas em ordens diferentes têm de gravar os mesmos bytes (falha sem a correção). Na
+base real, uma cópia do SQLite com a ordem física embaralhada exporta tudo idêntico, salvo os
+carimbos `atualizado_em` (dossiês, árvore e candidatos já usam `gravar_json_se_mudou`). As
+alternativas cogitadas (Pages via Actions com os dados fora do histórico; commit semanal dos
+dados pesados) ficaram desnecessárias — retomar só se o crescimento voltar.
+
 ## Alertas (regras determinísticas, 2026-09)
 
 Cada alerta tem **`id` estável** (sha1 de tipo+identidade+recorte), **`classe`** — `contexto`

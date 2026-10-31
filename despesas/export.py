@@ -1058,7 +1058,8 @@ def exportar_favorecidos(conn, indice: dict, ident: dict | None = None) -> int:
                    for r in _q(conn,
                        f"SELECT p.data, p.valor, p.funcao, p.elemento_despesa, p.unidade_gestora, "
                        "p.tipo_pagamento, p.pagamento, p.empenho FROM pag_top p "
-                       "WHERE p.chave=? ORDER BY p.data DESC, p.valor DESC LIMIT 50", chave)]
+                       "WHERE p.chave=? ORDER BY p.data DESC, p.valor DESC, p.pagamento DESC, p.empenho DESC, "
+                       "p.elemento_despesa, p.unidade_gestora, p.tipo_pagamento LIMIT 50", chave)]
         meus_alertas = [a for a in indice.get("alertas", [])
                         if (a.get("filtro") or {}).get("chave") == chave]
         # o que uma investigação pergunta primeiro: em quê, por quem, de que tipo, desde quando
@@ -1307,7 +1308,8 @@ def candidatos_alertas(conn, ident: dict | None = None, cob: dict | None = None,
                  "valor": round(r["valor"], 2), "elemento": (r["elemento_despesa"] or "")[:60]}
                 for r in _q(conn, f"SELECT p.data, p.pagamento, p.empenho, p.unidade_gestora, p.valor, "
                                   f"p.elemento_despesa FROM pagamentos p {FAV_JOIN.format(t='p')} "
-                                  f"WHERE {where} ORDER BY p.valor DESC LIMIT {limite}", *params)]
+                                  f"WHERE {where} ORDER BY p.valor DESC, p.data, p.pagamento, p.empenho, "
+                                  f"p.unidade_gestora, p.elemento_despesa LIMIT {limite}", *params)]
 
     def adiar(docs=None, link=None):
         """Documentos/link calculados só se o alerta for publicado."""
@@ -1930,12 +1932,13 @@ def _docs_liquidacao(conn, x: dict) -> list[dict]:
     docs = [{"data": r["data"], "fase": "Liquidação", "doc": r["liquidacao"], "empenho": x["empenho"],
              "valor": round(r["valor"], 2), "especie": r["especie"] if r["especie"] not in (None, "", "Original") else None}
             for r in _q(conn, "SELECT data, liquidacao, valor, especie FROM liquidacoes WHERE unidade_gestora=? "
-                              "AND empenho=? AND liquidacao=? ORDER BY data", x["ug"], x["empenho"], x["liquidacao"])]
+                              "AND empenho=? AND liquidacao=? ORDER BY data, valor, especie",
+                        x["ug"], x["empenho"], x["liquidacao"])]
     docs += [{"data": r["data"], "fase": "Pagamento", "doc": r["pagamento"], "empenho": x["empenho"],
               "valor": round(r["valor"], 2), "especie": r["especie"] if r["especie"] not in (None, "", "Original") else None}
              for r in _q(conn, "SELECT data, pagamento, valor, especie, tipo_pagamento FROM pagamentos "
                                "WHERE unidade_gestora=? AND empenho=? AND liquidacao=? "
-                               "AND COALESCE(tipo_pagamento,'') NOT LIKE '%Extra%' ORDER BY data",
+                               "AND COALESCE(tipo_pagamento,'') NOT LIKE '%Extra%' ORDER BY data, pagamento, valor, especie",
                          x["ug"], x["empenho"], x["liquidacao"])]
     return [{k: v for k, v in d.items() if v is not None} for d in docs[:MAX_DOCS_ALERTA]]
 
@@ -2340,12 +2343,17 @@ def montar_execucao(conn) -> list[dict]:
     grupos: dict[tuple, dict] = {}
 
     def acumular(fonte, campo_valor, campo_tipo):
+        # colunas fora do GROUP BY com MAX() e ORDER BY total: coluna "solta" no SQLite vem de
+        # uma linha arbitrária do grupo (a ordem física) e o arquivo mudava sem dado novo
         for r in _q(conn, f"""
             SELECT unidade_gestora, empenho, ano*100+mes periodo, data, nome_favorecido,
-                   documento_favorecido, funcao, subfuncao, programa, elemento_despesa,
-                   fonte_recurso, grupo_despesa, {campo_tipo} tipo_fonte, ROUND(SUM(valor),2) v
+                   MAX(documento_favorecido) documento_favorecido, MAX(funcao) funcao,
+                   MAX(subfuncao) subfuncao, MAX(programa) programa, elemento_despesa,
+                   MAX(fonte_recurso) fonte_recurso, MAX(grupo_despesa) grupo_despesa,
+                   {campo_tipo} tipo_fonte, ROUND(SUM(valor),2) v
             FROM {fonte}
-            GROUP BY unidade_gestora, empenho, ano, mes, data, nome_favorecido, elemento_despesa, {campo_tipo}"""):
+            GROUP BY unidade_gestora, empenho, ano, mes, data, nome_favorecido, elemento_despesa, {campo_tipo}
+            ORDER BY unidade_gestora, empenho, ano, mes, data, nome_favorecido, elemento_despesa, {campo_tipo}"""):
             emp = r["empenho"] or ""
             if emp and f"{r['unidade_gestora']}|{emp}" in todos:
                 continue
@@ -2372,7 +2380,8 @@ def montar_execucao(conn) -> list[dict]:
     for g in rows:
         if g["pago"] is None and g["tipo"] not in (T_EMPENHO, T_EMPENHO_PARCIAL):
             g["pago"] = 0.0
-    rows.sort(key=lambda x: (x["_periodo"], x["data"] or "", -(x["pago"] or 0)))
+    rows.sort(key=lambda x: (x["_periodo"], x["data"] or "", -(x["pago"] or 0),
+                             *(str(x.get(c)) for c in CAMPOS_DETALHE)))   # empate: ordem total
     return rows
 
 
@@ -2409,7 +2418,11 @@ def montar_movimento(conn) -> list[dict]:
         k = f"{r['unidade_gestora']}|{r['empenho']}"
         rows.append(_linha_mov(r, "P", classificar_documento(r["tf"], r["empenho"], k in todos),
                                r["documento"], periodo_emp.get(k), pago=r["valor"]))
-    rows.sort(key=lambda x: (x["_periodo"], x["data"] or "", x["fase"]))
+    # ordem TOTAL pelo conteúdo: (mês, data, fase) e, no empate, todas as colunas. Sem
+    # isto o empate saía na ordem física do SQLite — que muda a cada recarga do ano
+    # corrente — e os arquivos de dados/mov/ eram regravados todo dia sem dado novo
+    # (dicionário pela 1ª aparição reembaralhado): ~35 MiB/mês no histórico em out/2026.
+    rows.sort(key=lambda x: (x["_periodo"], x["data"] or "", x["fase"], *(str(x.get(c)) for c in CAMPOS_MOV)))
     return rows
 
 
@@ -2817,8 +2830,10 @@ def exportar_estagios(conn, rows: list[dict]) -> int:
             ev.append(especie)
         return ev
 
+    # ORDER BY: o tipo do empenho é o da última linha com tipo — com a ordem física ele
+    # trocava de um dia para o outro (Ordinário × Estimativo no mesmo empenho)
     for r in _q(conn, "SELECT unidade_gestora ug, empenho emp, data, valor, especie, "
-                      "tipo_empenho FROM empenhos"):
+                      "tipo_empenho FROM empenhos ORDER BY ug, emp, data, especie, tipo_empenho, valor"):
         o = eventos.setdefault(chave(r["ug"], r["emp"]), {"e": []})
         if r["tipo_empenho"]:
             o["t"] = r["tipo_empenho"]
@@ -2832,8 +2847,8 @@ def exportar_estagios(conn, rows: list[dict]) -> int:
         eventos.setdefault(chave(r["ug"], r["emp"]), {"e": []})["e"].append(
             evento("P", r["doc"], r["data"], r["valor"], r["especie"]))
 
-    for o in eventos.values():
-        o["e"].sort(key=lambda ev: (ev[2], "ELP".index(ev[0]) if ev[0] in "ELP" else 9))
+    for o in eventos.values():   # data, fase e, no empate, o próprio evento (ordem total)
+        o["e"].sort(key=lambda ev: (ev[2], "ELP".index(ev[0]) if ev[0] in "ELP" else 9, ev[1], ev[3], *ev[4:]))
 
     # partição: cada mês recebe as chaves cujas linhas de detalhe vivem nele
     os.makedirs(ESTAGIOS_DIR, exist_ok=True)
