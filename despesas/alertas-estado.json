@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-10-31",
+ "atualizado_em": "2026-11-03",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -86,11 +86,6 @@
    "primeiro_em": "2026-09-29",
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: NET TELECOM INFORMÁTICA LTDA em 2025-09"
-  },
-  "231fc6ef5961": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "favorecido_novo",
-   "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
   },
   "3339484d5ef1": {
    "primeiro_em": "2026-09-29",
@@ -3562,6 +3557,12 @@
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA",
    "resolvido_em": "2026-10-31"
+  },
+  "231fc6ef5961": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "favorecido_novo",
+   "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD",
+   "resolvido_em": "2026-11-03"
   }
  }
 }
