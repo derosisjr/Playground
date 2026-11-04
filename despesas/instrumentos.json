@@ -1,6 +1,6 @@
 {
  "contratos": {
-  "cnpjs": 1789,
+  "cnpjs": 1791,
   "desde": 2019,
   "pf_omitidos": 2957,
   "por_ano": {
@@ -11,17 +11,17 @@
    "2023": 1207,
    "2024": 1525,
    "2025": 1988,
-   "2026": 523
+   "2026": 525
   },
   "sem_documento": 141,
-  "total": 6855
+  "total": 6857
  },
  "convenios_firmados": {
   "cnpjs": 241,
   "desde": 2025,
   "por_ano": {
    "2025": 399,
-   "2026": 296
+   "2026": 301
   }
  },
  "emendas": {

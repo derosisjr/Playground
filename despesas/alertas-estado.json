@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-03",
+ "atualizado_em": "2026-11-04",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1540,7 +1540,7 @@
   "df3fbdb1a067": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 18 empenhos distintos a COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP (2026)"
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a COLOSSO COMERCIO DE PRODUTOS ALIMENTICIOS LTDA - EPP (2026)"
   },
   "cbcb13dc8b07": {
    "primeiro_em": "2026-10-18",
@@ -1945,7 +1945,7 @@
   "c9133420840d": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 64 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 70 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
   },
   "959c8c44b9b9": {
    "primeiro_em": "2026-09-29",
@@ -2300,7 +2300,7 @@
   "6a4547d8c4e0": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 101 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 102 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
   },
   "58460c308ee9": {
    "primeiro_em": "2026-09-29",
@@ -2350,7 +2350,7 @@
   "71a459ee2036": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 50 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2026)"
+   "titulo": "Triagem de fracionamento: 49 empenhos distintos a ASSOCIAÇÃO FUNDO DE INCENTIVO A PESQUISA - AFIP (2026)"
   },
   "923df45b9c79": {
    "primeiro_em": "2026-09-29",
@@ -2475,7 +2475,7 @@
   "3eb4e7ad2bbf": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 87 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 88 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "3eb5cb193ad7": {
    "primeiro_em": "2026-09-29",
@@ -2485,7 +2485,7 @@
   "82978004ad9b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 39 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 40 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "d932097cf5f2": {
    "primeiro_em": "2026-10-18",
@@ -2515,7 +2515,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 109 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 111 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -3195,7 +3195,7 @@
   "32d8a8a63c4e": {
    "primeiro_em": "2026-10-20",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 13 empenhos distintos a RODRIGO ESCALEIRA MELQUES 37120647806 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a RODRIGO ESCALEIRA MELQUES 37120647806 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "3495b4cc93ed": {
    "primeiro_em": "2026-10-20",
@@ -3210,7 +3210,7 @@
   "5a2c1aa57f33": {
    "primeiro_em": "2026-10-20",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 14 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 15 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
   },
   "3482bc2a75bf": {
    "primeiro_em": "2026-10-20",
