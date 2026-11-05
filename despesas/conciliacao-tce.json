@@ -140,6 +140,13 @@
    "obtido_em": "2026-10-30",
    "pago": 453459784.69,
    "registros": 11231
+  },
+  "2026-09": {
+   "empenhado": 335255542.11,
+   "liquidado": 445727449.29,
+   "obtido_em": "2026-11-05",
+   "pago": 454363307.85,
+   "registros": 11449
   }
  },
  "municipio": "santos",

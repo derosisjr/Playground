@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-04",
+ "atualizado_em": "2026-11-05",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1225,7 +1225,7 @@
   "41626c25c30b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 33 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 34 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "e2aa15678d0c": {
    "primeiro_em": "2026-10-18",
@@ -1695,7 +1695,7 @@
   "54787ff122fc": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 16 empenhos distintos a TATIANA REGINA FERREIRA LOPES-ME (2026)"
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a TATIANA REGINA FERREIRA LOPES-ME (2026)"
   },
   "6cf818e4b70e": {
    "primeiro_em": "2026-10-18",
@@ -1740,7 +1740,7 @@
   "172122219722": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 27 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
   },
   "97b8a7eb077d": {
    "primeiro_em": "2026-10-18",
@@ -1925,7 +1925,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 66 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 68 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -2300,7 +2300,7 @@
   "6a4547d8c4e0": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 102 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 107 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
   },
   "58460c308ee9": {
    "primeiro_em": "2026-09-29",
@@ -2365,7 +2365,7 @@
   "5ddfc728d188": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 43 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 45 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
   },
   "d6a6b87ccec9": {
    "primeiro_em": "2026-10-18",
@@ -2630,7 +2630,7 @@
   "dad6d6a87699": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a BLUE PRINT IMPRESSOES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a BLUE PRINT IMPRESSOES LTDA (2026)"
   },
   "e28e1f299f0a": {
    "primeiro_em": "2026-10-18",
@@ -3336,6 +3336,11 @@
    "primeiro_em": "2026-10-31",
    "tipo": "dados_taxa",
    "titulo": "Taxa de execução de 2025 não validada"
+  },
+  "03e75e88cee3": {
+   "primeiro_em": "2026-11-05",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 23 empenhos distintos a MEGAHOSP COMÉRCIO DE PRODUTOS PARA A SAÚDE LTDA. (2026)"
   }
  },
  "resolvidos": {
