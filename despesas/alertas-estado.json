@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-05",
+ "atualizado_em": "2026-11-06",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -335,7 +335,7 @@
   "9e98a7024864": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 44% da função 28 - ENCARGOS ESPECIAIS"
+   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 43% da função 28 - ENCARGOS ESPECIAIS"
   },
   "0afbe01ebfb8": {
    "primeiro_em": "2026-09-29",
@@ -365,7 +365,7 @@
   "26c0ae8f57ed": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 47% da função 08 - ASSISTÊNCIA SOCIAL"
+   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 48% da função 08 - ASSISTÊNCIA SOCIAL"
   },
   "3b4695b55896": {
    "primeiro_em": "2026-09-29",
@@ -1225,7 +1225,7 @@
   "41626c25c30b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 34 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 35 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "e2aa15678d0c": {
    "primeiro_em": "2026-10-18",
@@ -1645,7 +1645,7 @@
   "4159d18c804a": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2026)"
   },
   "e37b2daad4b5": {
    "primeiro_em": "2026-10-18",
@@ -1925,7 +1925,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 68 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 76 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -1945,7 +1945,7 @@
   "c9133420840d": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 70 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 72 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
   },
   "959c8c44b9b9": {
    "primeiro_em": "2026-09-29",
@@ -2095,7 +2095,7 @@
   "2932ae19d176": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 18 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a LUV ALIMENTAÇÃO E EVENTOS EIRELI (2026)"
   },
   "6af1f3e119b9": {
    "primeiro_em": "2026-10-18",
@@ -2300,7 +2300,7 @@
   "6a4547d8c4e0": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 107 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 108 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
   },
   "58460c308ee9": {
    "primeiro_em": "2026-09-29",
@@ -2475,7 +2475,7 @@
   "3eb4e7ad2bbf": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 88 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 89 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "3eb5cb193ad7": {
    "primeiro_em": "2026-09-29",
@@ -2740,7 +2740,7 @@
   "f1d1b63e466d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 117 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026)"
+   "titulo": "Triagem de fracionamento: 122 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026)"
   },
   "f30f9bc4ae28": {
    "primeiro_em": "2026-10-18",
@@ -3290,7 +3290,7 @@
   "5c2591bc3792": {
    "primeiro_em": "2026-10-28",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 42 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 51 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "4f7911e4cfb0": {
    "primeiro_em": "2026-10-29",
@@ -3341,6 +3341,16 @@
    "primeiro_em": "2026-11-05",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 23 empenhos distintos a MEGAHOSP COMÉRCIO DE PRODUTOS PARA A SAÚDE LTDA. (2026)"
+  },
+  "6351b5e9c1ee": {
+   "primeiro_em": "2026-11-06",
+   "tipo": "extra_orcamentario",
+   "titulo": "Extra-orçamentário relevante: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS"
+  },
+  "2c247fe29cce": {
+   "primeiro_em": "2026-11-06",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a CINEMATOGRAFICA POLIFILMES LTDA (2026)"
   }
  },
  "resolvidos": {
