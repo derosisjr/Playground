@@ -26,12 +26,12 @@
  },
  "emendas": {
   "2025": {
-   "emendas": 14,
+   "emendas": 15,
    "por_origem": {
     "Estadual": 2,
-    "Federal": 12
+    "Federal": 13
    },
-   "sem_autor": 7,
+   "sem_autor": 8,
    "valor": 930000.0
   },
   "2026": {
