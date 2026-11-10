@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-07",
+ "atualizado_em": "2026-11-10",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -290,7 +290,7 @@
   "87224e2c1c42": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 44% da função 12 - EDUCAÇÃO"
+   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 45% da função 12 - EDUCAÇÃO"
   },
   "2394a64ab596": {
    "primeiro_em": "2026-09-29",
@@ -1225,7 +1225,7 @@
   "41626c25c30b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 35 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 36 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "e2aa15678d0c": {
    "primeiro_em": "2026-10-18",
@@ -1260,7 +1260,7 @@
   "5260e68d3d18": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 109 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 110 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
   },
   "04c7404b6a59": {
    "primeiro_em": "2026-10-18",
@@ -1430,7 +1430,7 @@
   "cfa8f182c2b5": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 9 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
   },
   "d12c647671f3": {
    "primeiro_em": "2026-10-18",
@@ -1835,7 +1835,7 @@
   "68c6b68eec79": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 21 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a CAVALCANTE & TAVARES COPIAS LTDA ME (2026)"
   },
   "f467fdc48396": {
    "primeiro_em": "2026-10-18",
@@ -2250,7 +2250,7 @@
   "2b8ae4ae630b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 29 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 31 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
   },
   "553cb27201fd": {
    "primeiro_em": "2026-10-18",
@@ -2335,7 +2335,7 @@
   "f5ae4055c4cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 8 empenhos distintos a CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 9 empenhos distintos a CORTINAS JF DECORAÇOES E COMERCIO EM GERAL LTDA (2026)"
   },
   "1acacdcfe507": {
    "primeiro_em": "2026-10-18",
@@ -2475,7 +2475,7 @@
   "3eb4e7ad2bbf": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 89 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 90 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "3eb5cb193ad7": {
    "primeiro_em": "2026-09-29",
@@ -2495,7 +2495,7 @@
   "fb4affb64d4c": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "4c082a30484c": {
    "primeiro_em": "2026-10-18",
@@ -3340,7 +3340,7 @@
   "03e75e88cee3": {
    "primeiro_em": "2026-11-05",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 24 empenhos distintos a MEGAHOSP COMÉRCIO DE PRODUTOS PARA A SAÚDE LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 25 empenhos distintos a MEGAHOSP COMÉRCIO DE PRODUTOS PARA A SAÚDE LTDA. (2026)"
   },
   "6351b5e9c1ee": {
    "primeiro_em": "2026-11-06",
@@ -3360,7 +3360,7 @@
   "c38cfcc48ca7": {
    "primeiro_em": "2026-11-07",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 17 empenhos distintos a AGENCIA DE TURISMO VASCO DA GAMA LTDA (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a AGENCIA DE TURISMO VASCO DA GAMA LTDA (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   }
  },
  "resolvidos": {
