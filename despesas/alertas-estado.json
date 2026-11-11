@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-10",
+ "atualizado_em": "2026-11-11",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1250,7 +1250,7 @@
   "456b4b025b40": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a FEDERACAO PAULISTA DE BASKETEBALL (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a FEDERACAO PAULISTA DE BASKETEBALL (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "fba0d50dda4e": {
    "primeiro_em": "2026-10-18",
@@ -1945,7 +1945,7 @@
   "c9133420840d": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 72 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 73 empenhos distintos a LITOMAR COMERCIO PRODUTOS ALIMENTICIOS EIRELI (2026)"
   },
   "959c8c44b9b9": {
    "primeiro_em": "2026-09-29",
@@ -3265,7 +3265,7 @@
   "6c4d9db301ed": {
    "primeiro_em": "2026-10-23",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 29 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 33 empenhos distintos a COZINHA INDUSTRIAL SOBERANO EIRELI (2026)"
   },
   "2881adf791ac": {
    "primeiro_em": "2026-10-24",
@@ -3361,6 +3361,36 @@
    "primeiro_em": "2026-11-07",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 18 empenhos distintos a AGENCIA DE TURISMO VASCO DA GAMA LTDA (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+  },
+  "c19ecc549a3c": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "prazo_rapido",
+   "titulo": "Pago bem mais rápido que a fila: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD"
+  },
+  "f987fce57777": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "dados_duplicidade",
+   "titulo": "Origem devolveu 2026-11 em duplicidade sistemática (empenhos, liquidacoes)"
+  },
+  "7aa6ee80eb6e": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: JM COMERCIO DE CLIMATIZADORES LTDA"
+  },
+  "b2f3d2daf535": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: CASA DO PARAPLEGICO DE SANTOS"
+  },
+  "9b310cf6251c": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: ILUMINAR PROJETOS CONSTRUCOES E INSTALACOES ELETRICAS EIRELI"
+  },
+  "81e075c6561d": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: MICROFORT INFORMATICA LTDA"
   }
  },
  "resolvidos": {
