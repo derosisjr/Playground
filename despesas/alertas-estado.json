@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-13",
+ "atualizado_em": "2026-11-14",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -285,7 +285,7 @@
   "638b8005d039": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS concentra 86% da função 09 - PREVIDÊNCIA SOCIAL"
+   "titulo": "Concentração: INSTITUTO DE PREVIDÊNCIA SOCIAL DOS SERVIDORES PÚBLICOS MUNICIPAIS DE SANTOS concentra 87% da função 09 - PREVIDÊNCIA SOCIAL"
   },
   "87224e2c1c42": {
    "primeiro_em": "2026-09-29",
@@ -365,7 +365,7 @@
   "26c0ae8f57ed": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 48% da função 08 - ASSISTÊNCIA SOCIAL"
+   "titulo": "Concentração: MUNICÍPIO DE SANTOS concentra 47% da função 08 - ASSISTÊNCIA SOCIAL"
   },
   "3b4695b55896": {
    "primeiro_em": "2026-09-29",
@@ -1320,7 +1320,7 @@
   "bcbb1e53d4ea": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 15 empenhos distintos a SUPPORT PRODUTOS NUTRICIONAIS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a SUPPORT PRODUTOS NUTRICIONAIS LTDA (2026)"
   },
   "bc5783e3aee7": {
    "primeiro_em": "2026-10-18",
@@ -1535,7 +1535,7 @@
   "f00ea3c8b212": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 5 empenhos distintos a MEDILAR IMPORTACAO E DISTRIBUICAO DE PRODUTOS MEDICO HOSPITALARES S/A (2026)"
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a MEDILAR IMPORTACAO E DISTRIBUICAO DE PRODUTOS MEDICO HOSPITALARES S/A (2026)"
   },
   "df3fbdb1a067": {
    "primeiro_em": "2026-10-18",
@@ -1555,7 +1555,7 @@
   "cfb277b4234e": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 13 empenhos distintos a PRODIET NUTRICAO CLINICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 16 empenhos distintos a PRODIET NUTRICAO CLINICA LTDA (2026)"
   },
   "c1bcf91ec004": {
    "primeiro_em": "2026-10-18",
@@ -2040,7 +2040,7 @@
   "70cb65f6649e": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a S P HOSPITALAR LTDA - EPP (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a S P HOSPITALAR LTDA - EPP (2026)"
   },
   "8b2592d06bdd": {
    "primeiro_em": "2026-10-18",
@@ -2050,7 +2050,7 @@
   "4a512278a03b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 28 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 29 empenhos distintos a XISMED DISTRIBUIDORA LTDA (2026)"
   },
   "c4374c034751": {
    "primeiro_em": "2026-10-18",
@@ -2060,7 +2060,7 @@
   "ba4c29184d11": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 19 empenhos distintos a PARTNER FARMA DISTRIBUIDORA DE MEDICAMENTOS EIRELI - ME (2026)"
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a PARTNER FARMA DISTRIBUIDORA DE MEDICAMENTOS EIRELI - ME (2026)"
   },
   "e81e64f7e3c5": {
    "primeiro_em": "2026-10-18",
@@ -2135,7 +2135,7 @@
   "30d5d3b7907f": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 71 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 72 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "91db64a1c854": {
    "primeiro_em": "2026-10-18",
@@ -2250,7 +2250,7 @@
   "2b8ae4ae630b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 31 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 32 empenhos distintos a SANTA ORANNA INDUSTRIA E COMERCIO LTDA (2026)"
   },
   "553cb27201fd": {
    "primeiro_em": "2026-10-18",
@@ -2430,7 +2430,7 @@
   "ad0b70626af5": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 21 empenhos distintos a NUTRIÇÃO B&N COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 24 empenhos distintos a NUTRIÇÃO B&N COMERCIAL LTDA (2026)"
   },
   "5684b58e7f19": {
    "primeiro_em": "2026-10-18",
@@ -2515,7 +2515,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 113 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 114 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -2680,7 +2680,7 @@
   "a07f1bc8ed76": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 41 empenhos distintos a PRATI, DONADUZZI & CIA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 42 empenhos distintos a PRATI, DONADUZZI & CIA LTDA (2026)"
   },
   "2cd841f8ba6b": {
    "primeiro_em": "2026-10-18",
@@ -3377,11 +3377,6 @@
    "tipo": "pago_acima_liquidado",
    "titulo": "Pago acima do liquidado: JM COMERCIO DE CLIMATIZADORES LTDA"
   },
-  "b2f3d2daf535": {
-   "primeiro_em": "2026-11-11",
-   "tipo": "pago_acima_liquidado",
-   "titulo": "Pago acima do liquidado: CASA DO PARAPLEGICO DE SANTOS"
-  },
   "9b310cf6251c": {
    "primeiro_em": "2026-11-11",
    "tipo": "pago_acima_liquidado",
@@ -3411,6 +3406,16 @@
    "primeiro_em": "2026-11-13",
    "tipo": "pf_sensivel",
    "titulo": "Pessoa física em LOCAÇÃO DE IMÓVEIS: MARIA SALETE M. PARDUCCI"
+  },
+  "d7aace1e9475": {
+   "primeiro_em": "2026-11-14",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a CENTRO DE CONVIVENCIA ESPERANCA E VIDA (C.C.E.V.) (2026)"
+  },
+  "37a05f662569": {
+   "primeiro_em": "2026-11-14",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 7 empenhos distintos a MONTREAL HOSPITALAR LTDA (2026)"
   }
  },
  "resolvidos": {
@@ -3638,6 +3643,12 @@
    "tipo": "favorecido_novo",
    "titulo": "Favorecido novo de alto valor: SOCIEDADE BRASILEIRA CAMINHO DE DAMASCO - SBCD",
    "resolvido_em": "2026-11-03"
+  },
+  "b2f3d2daf535": {
+   "primeiro_em": "2026-11-11",
+   "tipo": "pago_acima_liquidado",
+   "titulo": "Pago acima do liquidado: CASA DO PARAPLEGICO DE SANTOS",
+   "resolvido_em": "2026-11-14"
   }
  }
 }

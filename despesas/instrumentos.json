@@ -21,18 +21,18 @@
   "desde": 2025,
   "por_ano": {
    "2025": 399,
-   "2026": 310
+   "2026": 313
   }
  },
  "emendas": {
   "2025": {
-   "emendas": 14,
+   "emendas": 15,
    "por_origem": {
     "Estadual": 2,
-    "Federal": 12
+    "Federal": 13
    },
-   "sem_autor": 7,
-   "valor": 930000.0
+   "sem_autor": 9,
+   "valor": 1030000.0
   },
   "2026": {
    "emendas": 1526,
