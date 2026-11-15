@@ -28,21 +28,21 @@
   "2025": {
    "emendas": 15,
    "por_origem": {
-    "Estadual": 2,
-    "Federal": 13
+    "Estadual": 3,
+    "Federal": 12
    },
-   "sem_autor": 9,
-   "valor": 1030000.0
+   "sem_autor": 8,
+   "valor": 930000.0
   },
   "2026": {
-   "emendas": 1526,
+   "emendas": 1524,
    "por_origem": {
     "Estadual": 1,
     "Federal": 2,
-    "Municipal": 1523
+    "Municipal": 1521
    },
-   "sem_autor": 636,
-   "valor": 80799796.0
+   "sem_autor": 628,
+   "valor": 80829796.0
   }
  },
  "ordem_cronologica": {
