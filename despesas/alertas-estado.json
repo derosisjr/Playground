@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-14",
+ "atualizado_em": "2026-11-17",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -237,20 +237,10 @@
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: FORTNORT DESENVOLVIMENTO AMBIENTAL E URBANO EIRELI em 2025-05"
   },
-  "bb7c0ded1448": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: VB ESTRUTURAS TEMPORARIAS LTDA"
-  },
   "39492b6dba89": {
    "primeiro_em": "2026-09-29",
    "tipo": "crescimento_yoy",
    "titulo": "Crescimento no mesmo período: DIAS CONSULTORIA LTDA"
-  },
-  "da0c8c96cfa9": {
-   "primeiro_em": "2026-09-29",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: PERICLES FERNANDO NUNES DE OLIVEIRA"
   },
   "ee6634177b30": {
    "primeiro_em": "2026-09-29",
@@ -335,7 +325,7 @@
   "9e98a7024864": {
    "primeiro_em": "2026-09-29",
    "tipo": "concentracao",
-   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 43% da função 28 - ENCARGOS ESPECIAIS"
+   "titulo": "Concentração: CAIXA ECONÔMICA FEDERAL concentra 44% da função 28 - ENCARGOS ESPECIAIS"
   },
   "0afbe01ebfb8": {
    "primeiro_em": "2026-09-29",
@@ -466,11 +456,6 @@
    "primeiro_em": "2026-10-17",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: S2 - OUTROS SERVIÇOS DE TERCEIROS-PESSOA JURÍDICA em 2026-01"
-  },
-  "f0a308993f6d": {
-   "primeiro_em": "2026-10-17",
-   "tipo": "crescimento_yoy",
-   "titulo": "Crescimento no mesmo período: PANVILLE ATACADISTA LTDA"
   },
   "aed7837c5b7c": {
    "primeiro_em": "2026-10-17",
@@ -1225,7 +1210,7 @@
   "41626c25c30b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 37 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 38 empenhos distintos a MARIA FERNANDA LOURENCO DE ALMEIDA 26664916843 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "e2aa15678d0c": {
    "primeiro_em": "2026-10-18",
@@ -1565,7 +1550,7 @@
   "bea0f0891ae9": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a FUTURA COMERCIO DE PRODUTOS MEDICOS HOSPITALARES EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a FUTURA COMERCIO DE PRODUTOS MEDICOS HOSPITALARES EIRELI (2026)"
   },
   "502ade5dc5c1": {
    "primeiro_em": "2026-10-18",
@@ -1600,7 +1585,7 @@
   "404f6f008942": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 37 empenhos distintos a NUTRICIONAIS COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 38 empenhos distintos a NUTRICIONAIS COMERCIAL LTDA (2026)"
   },
   "0e4b223e5f28": {
    "primeiro_em": "2026-10-18",
@@ -1740,7 +1725,7 @@
   "172122219722": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 29 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 31 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
   },
   "97b8a7eb077d": {
    "primeiro_em": "2026-10-18",
@@ -1790,7 +1775,7 @@
   "9a9e1affac0f": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 18 empenhos distintos a TARARA COMERCIAL EIRELI - ME (2026)"
+   "titulo": "Triagem de fracionamento: 20 empenhos distintos a TARARA COMERCIAL EIRELI - ME (2026)"
   },
   "114600a9521c": {
    "primeiro_em": "2026-10-18",
@@ -1925,7 +1910,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 76 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 78 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -2030,7 +2015,7 @@
   "ee92ae025682": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 13 empenhos distintos a TELHA MIX MATERIAIS PARA CONSTRUÇÃO EIRELI (2026)"
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a TELHA MIX MATERIAIS PARA CONSTRUÇÃO EIRELI (2026)"
   },
   "dff234571901": {
    "primeiro_em": "2026-10-18",
@@ -2040,7 +2025,7 @@
   "70cb65f6649e": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 11 empenhos distintos a S P HOSPITALAR LTDA - EPP (2026)"
+   "titulo": "Triagem de fracionamento: 12 empenhos distintos a S P HOSPITALAR LTDA - EPP (2026)"
   },
   "8b2592d06bdd": {
    "primeiro_em": "2026-10-18",
@@ -2175,7 +2160,7 @@
   "c671da6d1ddb": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 20 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2026)"
   },
   "69aadeffbd5a": {
    "primeiro_em": "2026-10-18",
@@ -2300,7 +2285,7 @@
   "6a4547d8c4e0": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 108 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 109 empenhos distintos a BRAFEM COMERCIAL LTDA (2026)"
   },
   "58460c308ee9": {
    "primeiro_em": "2026-09-29",
@@ -2365,7 +2350,7 @@
   "5ddfc728d188": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 45 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 46 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
   },
   "d6a6b87ccec9": {
    "primeiro_em": "2026-10-18",
@@ -2475,7 +2460,7 @@
   "3eb4e7ad2bbf": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 90 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 94 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "3eb5cb193ad7": {
    "primeiro_em": "2026-09-29",
@@ -2515,7 +2500,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 114 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 118 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -2535,7 +2520,7 @@
   "13edd4a9b671": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 5 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "3245456136f2": {
    "primeiro_em": "2026-10-18",
@@ -3102,11 +3087,6 @@
    "tipo": "pico_favorecido",
    "titulo": "Pico de pagamento a favorecido: PANVILLE ATACADISTA LTDA em 2026-07"
   },
-  "7f7eeb6c7588": {
-   "primeiro_em": "2026-10-18",
-   "tipo": "pico_favorecido",
-   "titulo": "Pico de pagamento a favorecido: ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA em 2026-06"
-  },
   "b2b9235bcd30": {
    "primeiro_em": "2026-10-18",
    "tipo": "pico_favorecido",
@@ -3360,7 +3340,7 @@
   "c38cfcc48ca7": {
    "primeiro_em": "2026-11-07",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 18 empenhos distintos a AGENCIA DE TURISMO VASCO DA GAMA LTDA (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 19 empenhos distintos a AGENCIA DE TURISMO VASCO DA GAMA LTDA (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "c19ecc549a3c": {
    "primeiro_em": "2026-11-11",
@@ -3416,6 +3396,31 @@
    "primeiro_em": "2026-11-14",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 7 empenhos distintos a MONTREAL HOSPITALAR LTDA (2026)"
+  },
+  "abcb9dcd98f2": {
+   "primeiro_em": "2026-11-17",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 21 empenhos distintos a SEIXAS ANDRE J MENNA SOCIEDADE DE ADVOGADOS (2026, INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS MUNICIPAIS DE SANTOS)"
+  },
+  "d16a06c3d252": {
+   "primeiro_em": "2026-11-17",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: GABEE FOODS COMERCIO ALIM. EIRELI - EPP"
+  },
+  "47ece14d071d": {
+   "primeiro_em": "2026-11-17",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: INDENIZAÇÃO AUXÍLIO ALIMENTAÇÃO em 2026-10"
+  },
+  "10b67c3a616d": {
+   "primeiro_em": "2026-11-17",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS PRECATÓRIOS JUDICIAIS em 2026-10"
+  },
+  "4d59895cf262": {
+   "primeiro_em": "2026-11-17",
+   "tipo": "pico_elemento",
+   "titulo": "Pico de gasto no elemento: OUTROS PRECATÓRIOS JUDICIAIS em 2025-10"
   }
  },
  "resolvidos": {
@@ -3649,6 +3654,30 @@
    "tipo": "pago_acima_liquidado",
    "titulo": "Pago acima do liquidado: CASA DO PARAPLEGICO DE SANTOS",
    "resolvido_em": "2026-11-14"
+  },
+  "bb7c0ded1448": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: VB ESTRUTURAS TEMPORARIAS LTDA",
+   "resolvido_em": "2026-11-17"
+  },
+  "da0c8c96cfa9": {
+   "primeiro_em": "2026-09-29",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: PERICLES FERNANDO NUNES DE OLIVEIRA",
+   "resolvido_em": "2026-11-17"
+  },
+  "f0a308993f6d": {
+   "primeiro_em": "2026-10-17",
+   "tipo": "crescimento_yoy",
+   "titulo": "Crescimento no mesmo período: PANVILLE ATACADISTA LTDA",
+   "resolvido_em": "2026-11-17"
+  },
+  "7f7eeb6c7588": {
+   "primeiro_em": "2026-10-18",
+   "tipo": "pico_favorecido",
+   "titulo": "Pico de pagamento a favorecido: ESCALA GESTÃO E EXECUÇÃO DE OBRAS LTDA em 2026-06",
+   "resolvido_em": "2026-11-17"
   }
  }
 }

@@ -17,32 +17,32 @@
   "total": 6863
  },
  "convenios_firmados": {
-  "cnpjs": 244,
+  "cnpjs": 245,
   "desde": 2025,
   "por_ano": {
    "2025": 399,
-   "2026": 313
+   "2026": 316
   }
  },
  "emendas": {
   "2025": {
-   "emendas": 14,
+   "emendas": 13,
    "por_origem": {
     "Estadual": 2,
-    "Federal": 12
+    "Federal": 11
    },
    "sem_autor": 7,
    "valor": 930000.0
   },
   "2026": {
-   "emendas": 1526,
+   "emendas": 1522,
    "por_origem": {
     "Estadual": 1,
     "Federal": 2,
-    "Municipal": 1523
+    "Municipal": 1519
    },
-   "sem_autor": 636,
-   "valor": 80799796.0
+   "sem_autor": 633,
+   "valor": 80539276.0
   }
  },
  "ordem_cronologica": {
