@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-17",
+ "atualizado_em": "2026-11-18",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1630,7 +1630,7 @@
   "4159d18c804a": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 5 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a HABIATAR COMERCIO E SERVICOS DE MANUTENCAO LTDA (2026)"
   },
   "e37b2daad4b5": {
    "primeiro_em": "2026-10-18",
@@ -1725,7 +1725,7 @@
   "172122219722": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 31 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
+   "titulo": "Triagem de fracionamento: 33 empenhos distintos a LICICOM COMERCIAL LTDA. (2026)"
   },
   "97b8a7eb077d": {
    "primeiro_em": "2026-10-18",
@@ -2135,7 +2135,7 @@
   "6c01e21e90cf": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 67 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 69 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "e7d445fd6e3b": {
    "primeiro_em": "2026-10-18",
@@ -2160,7 +2160,7 @@
   "c671da6d1ddb": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 21 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 22 empenhos distintos a ZAION SOLUCOES & TECNOLOGIA EM INFORMATICA LTDA (2026)"
   },
   "69aadeffbd5a": {
    "primeiro_em": "2026-10-18",
@@ -2275,7 +2275,7 @@
   "bfc14118a7db": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 39 empenhos distintos a CRISTÁLIA PRODUTOS QUÍMICOS FARMACÊUTICOS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 40 empenhos distintos a CRISTÁLIA PRODUTOS QUÍMICOS FARMACÊUTICOS LTDA (2026)"
   },
   "e863d39a12d6": {
    "primeiro_em": "2026-10-18",
@@ -2405,7 +2405,7 @@
   "e300df70ca3d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a CONSTRUTORA E INCORPORADORA 3 Z LTDA ME (2026)"
+   "titulo": "Triagem de fracionamento: 6 empenhos distintos a CONSTRUTORA E INCORPORADORA 3 Z LTDA ME (2026)"
   },
   "742018294d22": {
    "primeiro_em": "2026-10-18",
@@ -2470,7 +2470,7 @@
   "82978004ad9b": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 40 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 42 empenhos distintos a COMERCIAL BRISMAR LTDA (2026)"
   },
   "d932097cf5f2": {
    "primeiro_em": "2026-10-18",
@@ -2500,7 +2500,7 @@
   "feb46fd31c00": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 118 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 121 empenhos distintos a ADVENTUM COMERCIAL LTDA (2026)"
   },
   "19c69c9d752c": {
    "primeiro_em": "2026-09-29",
@@ -3175,7 +3175,7 @@
   "32d8a8a63c4e": {
    "primeiro_em": "2026-10-20",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 16 empenhos distintos a RODRIGO ESCALEIRA MELQUES 37120647806 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
+   "titulo": "Triagem de fracionamento: 17 empenhos distintos a RODRIGO ESCALEIRA MELQUES 37120647806 (2026, FUNDACAO PRO-ESPORTE DE SANTOS)"
   },
   "3495b4cc93ed": {
    "primeiro_em": "2026-10-20",
@@ -3421,6 +3421,11 @@
    "primeiro_em": "2026-11-17",
    "tipo": "pico_elemento",
    "titulo": "Pico de gasto no elemento: OUTROS PRECATÓRIOS JUDICIAIS em 2025-10"
+  },
+  "9636effcc8b3": {
+   "primeiro_em": "2026-11-18",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 4 empenhos distintos a PRÓTESE PIRES LTDA (2026)"
   }
  },
  "resolvidos": {
