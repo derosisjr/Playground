@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-19",
+ "atualizado_em": "2026-11-20",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1275,7 +1275,7 @@
   "791374f428ae": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 17 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2026)"
+   "titulo": "Triagem de fracionamento: 18 empenhos distintos a ESPACO SOM E LUZ LTDA - ME (2026)"
   },
   "a2bb44fd2095": {
    "primeiro_em": "2026-10-18",
@@ -1750,7 +1750,7 @@
   "d1c15386b6a4": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 49 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
+   "titulo": "Triagem de fracionamento: 50 empenhos distintos a CAPE FEIRAS E EVENTOS EIRELI EPP (2026)"
   },
   "6fde14213ce7": {
    "primeiro_em": "2026-10-18",
@@ -1910,7 +1910,7 @@
   "1b46225d3cfe": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 78 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 79 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "da704b6c18a3": {
    "primeiro_em": "2026-10-18",
@@ -2120,7 +2120,7 @@
   "30d5d3b7907f": {
    "primeiro_em": "2026-09-29",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 72 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 74 empenhos distintos a VB ESTRUTURAS TEMPORARIAS LTDA (2026)"
   },
   "91db64a1c854": {
    "primeiro_em": "2026-10-18",
@@ -2345,7 +2345,7 @@
   "5ddfc728d188": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 46 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 47 empenhos distintos a IDS SERVIÇOS E SOLUÇÕES LTDA (2026)"
   },
   "d6a6b87ccec9": {
    "primeiro_em": "2026-10-18",
@@ -2720,7 +2720,7 @@
   "f1d1b63e466d": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 126 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026)"
+   "titulo": "Triagem de fracionamento: 127 empenhos distintos a GYSELE GOMES DE CARVALHO MURARO (2026)"
   },
   "f30f9bc4ae28": {
    "primeiro_em": "2026-10-18",
@@ -2835,7 +2835,7 @@
   "9775a98a8f37": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 30 empenhos distintos a CLAUDIA CAMPEDELLI RUIVO (2026)"
+   "titulo": "Triagem de fracionamento: 32 empenhos distintos a CLAUDIA CAMPEDELLI RUIVO (2026)"
   },
   "0e54f93b696d": {
    "primeiro_em": "2026-10-18",
@@ -3265,7 +3265,7 @@
   "5c2591bc3792": {
    "primeiro_em": "2026-10-28",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 51 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 52 empenhos distintos a MULTI AMBIENTAL SERVICOS E MAO DE OBRA LTDA (2026)"
   },
   "4f7911e4cfb0": {
    "primeiro_em": "2026-10-29",
@@ -3420,7 +3420,7 @@
   "9636effcc8b3": {
    "primeiro_em": "2026-11-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 4 empenhos distintos a PRÓTESE PIRES LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 5 empenhos distintos a PRÓTESE PIRES LTDA (2026)"
   },
   "b813c1f6a24d": {
    "primeiro_em": "2026-11-19",
