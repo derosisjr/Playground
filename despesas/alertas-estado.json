@@ -1,6 +1,6 @@
 {
  "versao": 2,
- "atualizado_em": "2026-11-25",
+ "atualizado_em": "2026-11-26",
  "alertas": {
   "00f99d373d16": {
    "primeiro_em": "2026-09-29",
@@ -1335,7 +1335,7 @@
   "dc6d8ee8fe08": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 11 empenhos distintos a ASSOCIACAO FABRICA DE SOLIDARIEDADE (2026)"
+   "titulo": "Triagem de fracionamento: 14 empenhos distintos a ASSOCIACAO FABRICA DE SOLIDARIEDADE (2026)"
   },
   "ed5eb4393c1f": {
    "primeiro_em": "2026-10-18",
@@ -1405,7 +1405,7 @@
   "dd69bfa36533": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 7 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 8 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
   },
   "1a50cfffbf10": {
    "primeiro_em": "2026-10-18",
@@ -1415,7 +1415,7 @@
   "cfa8f182c2b5": {
    "primeiro_em": "2026-10-18",
    "tipo": "fracionamento",
-   "titulo": "Triagem de fracionamento: 10 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
+   "titulo": "Triagem de fracionamento: 11 empenhos distintos a NET TELECOM INFORMÁTICA LTDA (2026)"
   },
   "d12c647671f3": {
    "primeiro_em": "2026-10-18",
@@ -3431,6 +3431,11 @@
    "primeiro_em": "2026-11-25",
    "tipo": "fracionamento",
    "titulo": "Triagem de fracionamento: 4 empenhos distintos a GIOVANA FEITOSA MARTINS (2026)"
+  },
+  "f0e8c455177a": {
+   "primeiro_em": "2026-11-26",
+   "tipo": "fracionamento",
+   "titulo": "Triagem de fracionamento: 10 empenhos distintos a CLINICA MED RAD LTDA - EPP (2026)"
   }
  },
  "resolvidos": {
